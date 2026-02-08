@@ -1,0 +1,5 @@
+E:/app_dibujo_proyecto-main/build_debug_winink/CMakeFiles/ArtFlowStudio.dir
+E:/app_dibujo_proyecto-main/build_debug_winink/CMakeFiles/edit_cache.dir
+E:/app_dibujo_proyecto-main/build_debug_winink/CMakeFiles/rebuild_cache.dir
+E:/app_dibujo_proyecto-main/build_debug_winink/CMakeFiles/ArtFlowStudio_autogen_timestamp_deps.dir
+E:/app_dibujo_proyecto-main/build_debug_winink/CMakeFiles/ArtFlowStudio_autogen.dir

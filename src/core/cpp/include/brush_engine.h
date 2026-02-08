@@ -1,142 +1,104 @@
-/**
- * ArtFlow Studio - Brush Engine
- * High-performance brush rendering engine
- */
+#ifndef BRUSH_ENGINE_H
+#define BRUSH_ENGINE_H
 
-#pragma once
-
+#include <QColor>
+#include <QPainter>
+#include <QPen>
+#include <QPointF>
+#include <QRadialGradient>
+#include <cmath>
 #include <cstdint>
-#include <memory>
-#include <string>
 #include <vector>
-
-#include "image_buffer.h"
 
 namespace artflow {
 
-// Color representation (RGBA)
+// Legacy Color struct for compatibility
 struct Color {
   uint8_t r, g, b, a;
-
   Color() : r(0), g(0), b(0), a(255) {}
   Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
       : r(r), g(g), b(b), a(a) {}
-
-  // Blend with another color
-  Color blend(const Color &other, float opacity) const;
 };
 
-// Brush stroke point with pressure
+// Legacy StrokePoint struct for compatibility
 struct StrokePoint {
   float x, y;
-  float pressure;     // 0.0 - 1.0
-  float tiltX, tiltY; // Pen tilt
+  float pressure;
+  float tiltX, tiltY;
   uint64_t timestamp;
-
   StrokePoint()
       : x(0), y(0), pressure(1.0f), tiltX(0), tiltY(0), timestamp(0) {}
   StrokePoint(float x, float y, float pressure = 1.0f)
       : x(x), y(y), pressure(pressure), tiltX(0), tiltY(0), timestamp(0) {}
 };
 
-// Brush settings
 struct BrushSettings {
-  float size = 10.0f;    // Base size in pixels
-  float opacity = 1.0f;  // 0.0 - 1.0
-  float hardness = 0.8f; // Edge hardness 0.0 (soft) - 1.0 (hard)
-  float flow = 1.0f;     // Paint flow rate
-  float spacing = 0.1f;  // Stroke spacing (% of size)
-  float grain = 0.0f;    // Texture grain (0.0 to 1.0)
+  // New fields
+  float size = 10.0f;
+  float opacity = 1.0f;
+  float hardness = 1.0f; // 1.0 = duro, 0.0 = suave
+  float spacing = 0.1f;  // Espaciado del trazo
+  QColor color = Qt::black;
+  bool dynamicsEnabled = true; // Activar/desactivar presión
 
-  // Dynamics
-  bool sizeByPressure = true;     // Size affected by pressure
-  bool opacityByPressure = false; // Opacity affected by pressure
-  float velocityDynamics = 0.0f;  // -1.0 to 1.0 (negative = thinner when fast)
-  float rotation = 0.0f;          // Initial rotation in radians/degrees
-  bool rotateWithStroke = false;  // Rotate dab along stroke direction
-
-  // Stabilization (Pro Features)
-  float stabilization = 0.4f; // Stroke smoothing (0.0 to 1.0)
-  float streamline = 0.0f;    // Corrects path to be smoother (0.0 to 1.0)
-  float jitter = 0.0f;        // Position jitter (0.0 to 1.0)
-
-  // Texture & Stamp
-  int textureId = -1; // -1 = Solid, >=0 = Texture ID
-  float textureScale = 1.0f;
-  float wetness = 0.0f; // 0.0 (dry) to 1.0 (soaking) - for color mixing
-  float smudge = 0.0f;  // 0.0 (no smudge) to 1.0 (pure smudge)
-  float density = 0.5f; // Paint "load" for Oil/Acrylic (0.0 to 1.0)
-  std::shared_ptr<ImageBuffer> tipImage;     // Custom stamp/dab image
-  std::shared_ptr<ImageBuffer> paperTexture; // Global paper grain
-
-  // Brush type - Premium types for different media
+  // Compatibility fields
   enum class Type {
-    Round,      // Basic fast brush
-    Pencil,     // Graphite with grain texture
-    Airbrush,   // Soft and continuous
-    Ink,        // Sharp edges, no texture
-    Watercolor, // Wet edges, transparent
-    Oil,        // Color mixing, bristle texture
-    Acrylic,    // Dry with impasto relief
-    Eraser,     // Eraser tool
-    Custom      // Custom brush tip
+    Round,
+    Pencil,
+    Airbrush,
+    Ink,
+    Watercolor,
+    Oil,
+    Acrylic,
+    Eraser,
+    Custom
   } type = Type::Round;
+  float flow = 1.0f;
+  float stabilization = 0.0f;
+  float streamline = 0.0f;
+  float grain = 0.0f;
+  float wetness = 0.0f;
+  float smudge = 0.0f;
+  float jitter = 0.0f;
+  bool sizeByPressure = true;
+  bool opacityByPressure = true;
+  float velocityDynamics = 0.0f;
 };
 
-/**
- * BrushEngine - Core brush rendering system
- */
 class BrushEngine {
 public:
   BrushEngine();
-  ~BrushEngine();
 
-  // Set current brush settings
-  void setBrush(const BrushSettings &settings);
-  const BrushSettings &getBrush() const { return m_brush; }
+  // Función principal de dibujo adaptada (QPainter based)
+  void paintStroke(QPainter *painter, const QPointF &lastPoint,
+                   const QPointF &currentPoint, float pressure,
+                   const BrushSettings &settings);
 
-  // Set current color
-  void setColor(const Color &color);
-  const Color &getColor() const { return m_color; }
+  // Compatibility methods for CanvasItem integration
+  void setBrush(const BrushSettings &settings) { m_currentSettings = settings; }
+  BrushSettings getBrush() const { return m_currentSettings; }
+  void setColor(const Color &color) {
+    m_currentSettings.color = QColor(color.r, color.g, color.b, color.a);
+  }
 
-  // Stroke operations
-  void beginStroke(const StrokePoint &point);
-  void continueStroke(const StrokePoint &point);
-  void endStroke();
+  // Compatibility methods (Empty or mapped)
+  void beginStroke(const StrokePoint &point) { /* Handled in paintStroke now */
+  }
+  void endStroke() { /* Handled in paintStroke now */ }
 
-  // Render a single dab at position. Mask is used for Clipping Masks.
-  void renderDab(ImageBuffer &target, float x, float y, float pressure,
-                 bool alphaLock = false, const ImageBuffer *mask = nullptr);
-
-  // Render stroke segment between two points
-  void renderStrokeSegment(ImageBuffer &target, const StrokePoint &from,
-                           const StrokePoint &to, bool alphaLock = false,
-                           const ImageBuffer *mask = nullptr);
-
-  // Get interpolated stroke points for smooth rendering
-  std::vector<StrokePoint> interpolatePoints(const StrokePoint &from,
-                                             const StrokePoint &to) const;
+  // Helper to map legacy calls to new engine if needed,
+  // but we will update CanvasItem to call paintStroke directly.
+  // However, keeping these to avoid linker errors if I miss one call.
+  // Ideally CanvasItem should construct QPainter and call paintStroke.
 
 private:
-  BrushSettings m_brush;
-  Color m_color;
+  BrushSettings m_currentSettings;
 
-  // Stroke state
-  bool m_isStroking = false;
-  StrokePoint m_lastPoint;
-  StrokePoint m_brushPos; // Smoothed position for stabilization
-  float m_strokeDistance = 0.0f;
-  float m_remainder =
-      0.0f; // Accumulated distance from previous segment for smooth spacing
-
-  // Stabilization buffer for smooth strokes
-  std::vector<StrokePoint> m_stabilizationBuffer;
-
-  // Internal rendering
-  void applyBrushTexture(ImageBuffer &target, float x, float y, float size,
-                         float opacity);
-  float calculateDabSize(float pressure) const;
-  float calculateDabOpacity(float pressure) const;
+  // Ayudante para pinceles suaves
+  void paintSoftStamp(QPainter *painter, const QPointF &point, float size,
+                      float opacity, const QColor &color, float hardness);
 };
 
 } // namespace artflow
+
+#endif // BRUSH_ENGINE_H

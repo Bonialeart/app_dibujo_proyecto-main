@@ -58,6 +58,9 @@ class CanvasItem : public QQuickPaintedItem {
   Q_PROPERTY(QString currentProjectName READ currentProjectName NOTIFY
                  currentProjectNameChanged)
   Q_PROPERTY(QString brushTip READ brushTip NOTIFY brushTipChanged)
+  // Gamma de presión (0.5 = Suave, 1.0 = Lineal, 2.0 = Dura)
+  Q_PROPERTY(float pressureGamma READ pressureGamma WRITE setPressureGamma
+                 NOTIFY pressureGammaChanged)
   Q_PROPERTY(QVariantList availableBrushes READ availableBrushes NOTIFY
                  availableBrushesChanged)
   Q_PROPERTY(QString activeBrushName READ activeBrushName NOTIFY
@@ -157,6 +160,14 @@ public:
                                const QVariantMap &params);
   Q_INVOKABLE QString get_brush_preview(const QString &brushName);
 
+  float pressureGamma() const { return m_pressureGamma; }
+  void setPressureGamma(float gamma) {
+    if (!qFuzzyCompare(m_pressureGamma, gamma)) {
+      m_pressureGamma = gamma;
+      emit pressureGammaChanged();
+    }
+  }
+
 signals:
   void brushSizeChanged();
   void brushColorChanged();
@@ -187,6 +198,7 @@ signals:
   void layersChanged(const QVariantList &layers);
   void availableBrushesChanged();
   void activeBrushNameChanged();
+  void pressureGammaChanged(); // SEÑAL AÑADIDA
 
 protected:
   void mousePressEvent(QMouseEvent *event) override;
@@ -199,6 +211,7 @@ protected:
 private:
   artflow::BrushEngine *m_brushEngine;
   artflow::LayerManager *m_layerManager;
+  float m_pressureGamma = 1.0f; // VARIABLE PRIVADA
 
   int m_brushSize;
   QColor m_brushColor;
@@ -231,13 +244,12 @@ private:
   float m_lastPressure;
   bool m_isDrawing;
 
-  StrokeRenderer *m_renderer;
-  std::vector<artflow::StrokePoint> m_pendingPoints;
+  // Renderizado por software
+  void handleDraw(const QPointF &pos, float pressure);
 
   QVariantList _scanSync();
   void updateLayersList();
   void capture_timelapse_frame();
-  void processDrawing(const QPointF &pos, float pressure, float lastPressure);
 };
 
 #endif // CANVASITEM_H

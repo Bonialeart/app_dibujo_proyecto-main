@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 project(ArtFlowStudio VERSION 1.0.0 LANGUAGES CXX)
 
+message(STATUS "--------------------------------------------------")
+message(STATUS "Compilador C++ detectado: ${CMAKE_CXX_COMPILER}")
+message(STATUS "Version de CMake: ${CMAKE_VERSION}")
+message(STATUS "--------------------------------------------------")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -61,8 +66,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 # Configuración de despliegue para Windows (Copia DLLs automáticamente)
-if(WIN32)
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        WIN32_EXECUTABLE TRUE
-    )
-endif()
+# if(WIN32)
+#    set_target_properties(${PROJECT_NAME} PROPERTIES
+#        WIN32_EXECUTABLE TRUE
+#    )
+# endif()
