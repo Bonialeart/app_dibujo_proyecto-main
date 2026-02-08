@@ -35,6 +35,7 @@ set(CORE_SOURCES
 set(UI_SOURCES
     src/main.cpp
     src/CanvasItem.cpp
+    src/TestCanvas.cpp
     src/ProjectModel.cpp
     src/PreferencesManager.cpp
 )

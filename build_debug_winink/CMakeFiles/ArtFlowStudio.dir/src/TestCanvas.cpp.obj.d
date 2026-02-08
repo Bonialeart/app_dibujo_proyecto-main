@@ -1,10 +1,8 @@
-CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
- E:\app_dibujo_proyecto-main\build_debug_winink\ArtFlowStudio_autogen\mocs_compilation.cpp \
- E:\app_dibujo_proyecto-main\build_debug_winink\ArtFlowStudio_autogen\UVLADIE3JM/moc_CanvasItem.cpp \
- E:/app_dibujo_proyecto-main/src/CanvasItem.h \
- E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qcolor.h \
+CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj: \
+ E:\app_dibujo_proyecto-main\src\TestCanvas.cpp \
+ E:\app_dibujo_proyecto-main\src\TestCanvas.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qimage.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiglobal.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qglobal.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/type_traits \
@@ -155,6 +153,7 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qversiontagging.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qtgui-config.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiexports.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qcolor.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qrgb.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qnamespace.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare.h \
@@ -300,8 +299,12 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qalgorithms.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qstringmatcher.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qrgba64.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qpainter.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpaintdevice.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qwindowdefs.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs_impl.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qfunctionaltools_impl.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qwindowdefs_win.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qrect.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qcheckedint_impl.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qmargins.h \
@@ -309,28 +312,23 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/q20utility.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qsize.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qpoint.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qpixmap.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qpaintdevice.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qwindowdefs.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs_impl.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qfunctionaltools_impl.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qwindowdefs_win.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qcolor.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qshareddata.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qimage.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qpixelformat.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qtransform.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qpolygon.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qregion.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdatastream.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevicebase.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qspan.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cassert \
  C:/Qt/6.10.2/mingw_64/include/QtCore/q20iterator.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qline.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qtextoption.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qevent.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreevent.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qbasictimer.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qabstracteventdispatcher.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qmetatype.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfloat16.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qmath.h \
@@ -347,50 +345,23 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_tree.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_map.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_multimap.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qpen.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qbrush.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qfontinfo.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qfont.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qendian.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qfontvariableaxis.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qfontmetrics.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QPen \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qpen.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QPointF \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qpoint.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QRadialGradient \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qbrush.h \
- E:/app_dibujo_proyecto-main/src/core/cpp/include/layer_manager.h \
- E:/app_dibujo_proyecto-main/src/core/cpp/include/image_buffer.h \
- E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_renderer.h \
- C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLBuffer \
- C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglbuffer.h \
- C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qtopenglglobal.h \
- C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qtopenglexports.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qopengl.h \
- C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/GL/gl.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglext.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLFunctions \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglfunctions.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglcontext.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qobject_impl.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qbindingstorage.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/chrono \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/chrono.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ratio \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ctime \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qset.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qhash.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qnativeinterface.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QSurfaceFormat \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qsurfaceformat.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qeventloop.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qdeadlinetimer.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevice.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qurl.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qtextstream.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qcontiguouscache.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/climits \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qsharedpointer.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qshareddata.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qsharedpointer_impl.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/set \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_set.h \
@@ -399,23 +370,50 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/unordered_set.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qmap.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qshareddata_impl.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qset.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qhash.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qvarlengtharray.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qalloc.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglcontext_platform.h \
- C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLShaderProgram \
- C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglshaderprogram.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qeventpoint.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qvector2d.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qvectornd.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qvector3d.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qvector4d.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qmatrix4x4.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qgenericmatrix.h \
- C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLVertexArrayObject \
- C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglvertexarrayobject.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpointingdevice.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qinputdevice.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qscreen.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QRect \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qrect.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QSize \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qsize.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QSizeF \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QTransform \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qtransform.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qnativeinterface.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qscreen_platform.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qguiapplication.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreapplication.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreapplication_platform.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qinputmethod.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qlocale.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qguiapplication_platform.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qkeysequence.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpainter.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpixmap.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qimage.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qtextoption.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpen.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qbrush.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qfontinfo.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qfont.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qendian.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qfontvariableaxis.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qfontmetrics.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QPointF \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qpoint.h \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/QQuickPaintedItem \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickpainteditem.h \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickitem.h \
@@ -438,112 +436,21 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtQml/qqmlpropertyvaluesource.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdatetime.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qcalendar.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qlocale.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qmetaobject.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qpointer.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qurl.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qversionnumber.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qtyperevision.h \
  C:/Qt/6.10.2/mingw_64/include/QtQml/qqmlregistration.h \
  C:/Qt/6.10.2/mingw_64/include/QtQmlIntegration/qqmlintegration.h \
  C:/Qt/6.10.2/mingw_64/include/QtQml/qqmlcomponent.h \
  C:/Qt/6.10.2/mingw_64/include/QtQml/qqmlerror.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qproperty.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qpropertyprivate.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/experimental/source_location \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qevent.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreevent.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qbasictimer.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qabstracteventdispatcher.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qeventloop.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qdeadlinetimer.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevice.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qeventpoint.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qpointingdevice.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qinputdevice.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qscreen.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QRect \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qrect.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QSize \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qsize.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QSizeF \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QTransform \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qtransform.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qscreen_platform.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qguiapplication.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreapplication.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreapplication_platform.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qinputmethod.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qguiapplication_platform.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qkeysequence.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qaccessible.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qaccessible_base.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QTabletEvent \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qevent.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QVariantList \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantlist.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qtmochelpers.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qtmocconstants.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/q20algorithm.h \
- E:\app_dibujo_proyecto-main\build_debug_winink\ArtFlowStudio_autogen\UVLADIE3JM/moc_PreferencesManager.cpp \
- E:/app_dibujo_proyecto-main/src/PreferencesManager.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qsettings.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QDir \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qdir.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qdirlisting.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qfiledevice.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qfile.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/filesystem \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_fwd.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_path.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/locale \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/locale_facets.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cwctype \
- C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wctype.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/ctype_base.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/ctype_inline.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/locale_facets.tcc \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/locale_facets_nonio.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/time_members.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/messages_members.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/codecvt.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/locale_facets_nonio.tcc \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/locale_conv.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/iomanip \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/quoted_string.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/sstream \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/istream \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ios \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/basic_ios.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/basic_ios.tcc \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ostream \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/ostream.tcc \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/istream.tcc \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/sstream.tcc \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/codecvt \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_dir.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_ops.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qfileinfo.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qtimezone.h \
- E:\app_dibujo_proyecto-main\build_debug_winink\ArtFlowStudio_autogen\UVLADIE3JM/moc_ProjectModel.cpp \
- E:/app_dibujo_proyecto-main/src/ProjectModel.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qabstractitemmodel.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QVector \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qvector.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstring.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QDateTime \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qdatetime.h \
- E:\app_dibujo_proyecto-main\build_debug_winink\ArtFlowStudio_autogen\UVLADIE3JM/moc_TestCanvas.cpp \
- E:/app_dibujo_proyecto-main/src/TestCanvas.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QDebug \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h

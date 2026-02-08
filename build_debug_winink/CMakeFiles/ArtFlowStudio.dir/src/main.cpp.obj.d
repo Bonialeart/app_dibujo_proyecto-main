@@ -560,6 +560,9 @@ CMakeFiles/ArtFlowStudio.dir/src/main.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qstring.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QDateTime \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdatetime.h \
+ E:\app_dibujo_proyecto-main\src\TestCanvas.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QGuiApplication \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qguiapplication.h \
  C:/Qt/6.10.2/mingw_64/include/QtQml/QQmlApplicationEngine \

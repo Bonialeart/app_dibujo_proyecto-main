@@ -10,6 +10,7 @@
 #include <QQuickPaintedItem>
 #include <QTabletEvent>
 #include <QVariantList>
+#include <vector>
 
 class CanvasItem : public QQuickPaintedItem {
   Q_OBJECT
@@ -58,9 +59,9 @@ class CanvasItem : public QQuickPaintedItem {
   Q_PROPERTY(QString currentProjectName READ currentProjectName NOTIFY
                  currentProjectNameChanged)
   Q_PROPERTY(QString brushTip READ brushTip NOTIFY brushTipChanged)
-  // Gamma de presión (0.5 = Suave, 1.0 = Lineal, 2.0 = Dura)
-  Q_PROPERTY(float pressureGamma READ pressureGamma WRITE setPressureGamma
-                 NOTIFY pressureGammaChanged)
+  // Curva de Presión Bezier (P1x, P1y, P2x, P2y)
+  Q_PROPERTY(QVariantList pressureCurvePoints READ pressureCurvePoints WRITE
+                 setCurvePoints NOTIFY pressureCurvePointsChanged)
   Q_PROPERTY(QVariantList availableBrushes READ availableBrushes NOTIFY
                  availableBrushesChanged)
   Q_PROPERTY(QString activeBrushName READ activeBrushName NOTIFY
@@ -160,13 +161,8 @@ public:
                                const QVariantMap &params);
   Q_INVOKABLE QString get_brush_preview(const QString &brushName);
 
-  float pressureGamma() const { return m_pressureGamma; }
-  void setPressureGamma(float gamma) {
-    if (!qFuzzyCompare(m_pressureGamma, gamma)) {
-      m_pressureGamma = gamma;
-      emit pressureGammaChanged();
-    }
-  }
+  QVariantList pressureCurvePoints() const { return m_rawPoints; }
+  void setCurvePoints(const QVariantList &points);
 
 signals:
   void brushSizeChanged();
@@ -198,7 +194,8 @@ signals:
   void layersChanged(const QVariantList &layers);
   void availableBrushesChanged();
   void activeBrushNameChanged();
-  void pressureGammaChanged(); // SEÑAL AÑADIDA
+
+  void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
 
 protected:
   void mousePressEvent(QMouseEvent *event) override;
@@ -211,7 +208,12 @@ protected:
 private:
   artflow::BrushEngine *m_brushEngine;
   artflow::LayerManager *m_layerManager;
-  float m_pressureGamma = 1.0f; // VARIABLE PRIVADA
+
+  // Pressure Logic
+  std::vector<float> m_lut;
+  QVariantList m_rawPoints;
+  void updateLUT(float x1, float y1, float x2, float y2);
+  float applyPressureCurve(float input);
 
   int m_brushSize;
   QColor m_brushColor;

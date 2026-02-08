@@ -2,6 +2,7 @@
 #include "IconProvider.h"
 #include "PreferencesManager.h"
 #include "ProjectModel.h"
+#include "TestCanvas.h"
 #include <QDir>
 #include <QGuiApplication>
 #include <QIcon>
@@ -25,6 +26,7 @@ int main(int argc, char *argv[]) {
 
   // Registro del componente de dibujo nativo
   qmlRegisterType<CanvasItem>("ArtFlow", 1, 0, "QCanvasItem");
+  qmlRegisterType<TestCanvas>("ArtFlow", 1, 0, "TestCanvas");
 
   QQmlApplicationEngine engine;
   engine.addImageProvider(QLatin1String("icons"), new IconProvider());

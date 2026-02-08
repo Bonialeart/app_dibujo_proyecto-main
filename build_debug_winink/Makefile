@@ -274,6 +274,30 @@ src/ProjectModel.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.s
 .PHONY : src/ProjectModel.cpp.s
 
+src/TestCanvas.obj: src/TestCanvas.cpp.obj
+.PHONY : src/TestCanvas.obj
+
+# target to build an object file
+src/TestCanvas.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj
+.PHONY : src/TestCanvas.cpp.obj
+
+src/TestCanvas.i: src/TestCanvas.cpp.i
+.PHONY : src/TestCanvas.i
+
+# target to preprocess a source file
+src/TestCanvas.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.i
+.PHONY : src/TestCanvas.cpp.i
+
+src/TestCanvas.s: src/TestCanvas.cpp.s
+.PHONY : src/TestCanvas.s
+
+# target to generate assembly for a file
+src/TestCanvas.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.s
+.PHONY : src/TestCanvas.cpp.s
+
 src/core/cpp/src/brush_engine.obj: src/core/cpp/src/brush_engine.cpp.obj
 .PHONY : src/core/cpp/src/brush_engine.obj
 
@@ -468,6 +492,9 @@ help:
 	@echo ... src/ProjectModel.obj
 	@echo ... src/ProjectModel.i
 	@echo ... src/ProjectModel.s
+	@echo ... src/TestCanvas.obj
+	@echo ... src/TestCanvas.i
+	@echo ... src/TestCanvas.s
 	@echo ... src/core/cpp/src/brush_engine.obj
 	@echo ... src/core/cpp/src/brush_engine.i
 	@echo ... src/core/cpp/src/brush_engine.s

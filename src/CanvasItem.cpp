@@ -41,6 +41,10 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   // Brush engine initialized in initializer list
 
   m_layerManager->addLayer("Layer 1");
+  // Inicializar curva de presión (Lineal)
+  // Inicializar curva de presión (Lineal)
+  // [x0, y0, ..., xn, yn]
+  setCurvePoints({0.0, 0.0, 0.25, 0.25, 0.75, 0.75, 1.0, 1.0});
   m_activeLayerIndex = 1;
   m_layerManager->setActiveLayer(m_activeLayerIndex);
 
@@ -131,10 +135,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure) {
   settings.dynamicsEnabled = true; // Always enable dynamics for pressure
 
   // Aplicar curva de presión personalizada (Gamma)
-  float effectivePressure = pressure;
-  if (m_pressureGamma != 1.0f && pressure > 0.0f) {
-    effectivePressure = std::pow(pressure, m_pressureGamma);
-  }
+  // Aplicar curva de presión personalizada (Bezier LUT)
+  float effectivePressure = applyPressureCurve(pressure);
 
   m_brushEngine->paintStroke(&painter, m_lastPos, canvasPos, effectivePressure,
                              settings);
@@ -987,4 +989,112 @@ void CanvasItem::capture_timelapse_frame() {
   QImage img(composite.data(), m_canvasWidth, m_canvasHeight,
              QImage::Format_RGBA8888);
   img.save(fileName, "JPG", 85);
+}
+
+// ==================== PRESSURE CURVE LOGIC ====================
+
+void CanvasItem::setCurvePoints(const QVariantList &points) {
+  // Aceptamos lista de puntos [x0, y0, x1, y1, ...]
+  if (points != m_rawPoints && points.size() >= 4 && points.size() % 2 == 0) {
+    m_rawPoints = points;
+
+    struct Point {
+      float input, output;
+    };
+    std::vector<Point> lutPoints;
+
+    // Lógica Estándar profesional (Krita/Photoshop):
+    // uiX = Input Pressure (Tu fuerza física sobre la tableta)
+    // uiY = Output Value (Opacidad/Tamaño resultante en pantalla)
+    //
+    // Comportamiento correcto:
+    // - Curva hacia ARRIBA (Panza arriba) = Más Sensible/Suave (Output alto con
+    // poca fuerza).
+    // - Curva hacia ABAJO (Panza abajo) = Más Duro/Controlado (Output bajo
+    // hasta que aprietas fuerte).
+
+    for (int i = 0; i < points.size(); i += 2) {
+      float uiX = std::clamp((float)points[i].toDouble(), 0.0f, 1.0f);
+      float uiY = std::clamp((float)points[i + 1].toDouble(), 0.0f, 1.0f);
+      lutPoints.push_back({uiX, uiY}); // X es Input
+    }
+
+    // Ordenar por Input (uiX) para garantizar una curva válida sin retrocesos
+    // temporales
+    std::sort(lutPoints.begin(), lutPoints.end(),
+              [](const Point &a, const Point &b) { return a.input < b.input; });
+
+    m_lut.assign(1024, 0.0f);
+
+    if (lutPoints.empty()) {
+      for (int i = 0; i < 1024; ++i)
+        m_lut[i] = i / 1023.0f;
+    } else {
+      for (int i = 0; i < 1024; ++i) {
+        float currentInput = i / 1023.0f;
+        float outputVal = currentInput; // Default
+
+        if (currentInput <= lutPoints.front().input) {
+          // Extrapolar desde 0 si es posible
+          if (lutPoints.front().input > 0.0001f) {
+            float t = currentInput / lutPoints.front().input;
+            outputVal = 0.0f + t * (lutPoints.front().output - 0.0f);
+          } else {
+            outputVal = lutPoints.front().output;
+          }
+        } else if (currentInput >= lutPoints.back().input) {
+          // Extrapolar hacia 1
+          if (lutPoints.back().input < 0.9999f) {
+            float t = (currentInput - lutPoints.back().input) /
+                      (1.0f - lutPoints.back().input);
+            outputVal =
+                lutPoints.back().output + t * (1.0f - lutPoints.back().output);
+          } else {
+            outputVal = lutPoints.back().output;
+          }
+        } else {
+          // Interpolación normal
+          for (size_t k = 0; k < lutPoints.size() - 1; ++k) {
+            if (currentInput >= lutPoints[k].input &&
+                currentInput <= lutPoints[k + 1].input) {
+
+              float range = lutPoints[k + 1].input - lutPoints[k].input;
+              if (range < 0.00001f) {
+                outputVal = lutPoints[k].output;
+              } else {
+                float t = (currentInput - lutPoints[k].input) / range;
+                outputVal = lutPoints[k].output +
+                            t * (lutPoints[k + 1].output - lutPoints[k].output);
+              }
+              break;
+            }
+          }
+        }
+        m_lut[i] = std::clamp(outputVal, 0.0f, 1.0f);
+      }
+    }
+
+    emit pressureCurvePointsChanged();
+  }
+}
+
+// Legacy signature kept for ABI compatibility, but implementation is
+// empty/unused by new logic
+void CanvasItem::updateLUT(float x1, float y1, float x2, float y2) {
+  // No-op or log warning. New logic handles LUT in setCurvePoints.
+  (void)x1;
+  (void)y1;
+  (void)x2;
+  (void)y2;
+}
+
+float CanvasItem::applyPressureCurve(float input) {
+  if (input <= 0.0f)
+    return 0.0f;
+  if (input >= 1.0f)
+    return 1.0f;
+  if (m_lut.empty())
+    return input; // Safety default linear
+  int idx = std::clamp((int)(input * 1023), 0, 1023);
+  return m_lut[idx];
 }

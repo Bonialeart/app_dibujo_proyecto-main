@@ -15,6 +15,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj.d"
   "CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj"
   "CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj.d"
+  "CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj"
+  "CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj.d"
   "CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_engine.cpp.obj"
   "CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_engine.cpp.obj.d"
   "CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/color_utils.cpp.obj"

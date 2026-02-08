@@ -240,11 +240,26 @@ CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.s"
 	C:\Qt\Tools\mingw1310_64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S E:\app_dibujo_proyecto-main\src\CanvasItem.cpp -o CMakeFiles\ArtFlowStudio.dir\src\CanvasItem.cpp.s
 
+CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj: CMakeFiles/ArtFlowStudio.dir/flags.make
+CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj: CMakeFiles/ArtFlowStudio.dir/includes_CXX.rsp
+CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj: E:/app_dibujo_proyecto-main/src/TestCanvas.cpp
+CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj: CMakeFiles/ArtFlowStudio.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj"
+	C:\Qt\Tools\mingw1310_64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj -MF CMakeFiles\ArtFlowStudio.dir\src\TestCanvas.cpp.obj.d -o CMakeFiles\ArtFlowStudio.dir\src\TestCanvas.cpp.obj -c E:\app_dibujo_proyecto-main\src\TestCanvas.cpp
+
+CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.i"
+	C:\Qt\Tools\mingw1310_64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E E:\app_dibujo_proyecto-main\src\TestCanvas.cpp > CMakeFiles\ArtFlowStudio.dir\src\TestCanvas.cpp.i
+
+CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.s"
+	C:\Qt\Tools\mingw1310_64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S E:\app_dibujo_proyecto-main\src\TestCanvas.cpp -o CMakeFiles\ArtFlowStudio.dir\src\TestCanvas.cpp.s
+
 CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj: CMakeFiles/ArtFlowStudio.dir/flags.make
 CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj: CMakeFiles/ArtFlowStudio.dir/includes_CXX.rsp
 CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj: E:/app_dibujo_proyecto-main/src/ProjectModel.cpp
 CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj: CMakeFiles/ArtFlowStudio.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj"
 	C:\Qt\Tools\mingw1310_64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj -MF CMakeFiles\ArtFlowStudio.dir\src\ProjectModel.cpp.obj.d -o CMakeFiles\ArtFlowStudio.dir\src\ProjectModel.cpp.obj -c E:\app_dibujo_proyecto-main\src\ProjectModel.cpp
 
 CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.i: cmake_force
@@ -259,7 +274,7 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: CMakeFiles/ArtFlowS
 CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: CMakeFiles/ArtFlowStudio.dir/includes_CXX.rsp
 CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: E:/app_dibujo_proyecto-main/src/PreferencesManager.cpp
 CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: CMakeFiles/ArtFlowStudio.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj"
 	C:\Qt\Tools\mingw1310_64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj -MF CMakeFiles\ArtFlowStudio.dir\src\PreferencesManager.cpp.obj.d -o CMakeFiles\ArtFlowStudio.dir\src\PreferencesManager.cpp.obj -c E:\app_dibujo_proyecto-main\src\PreferencesManager.cpp
 
 CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.i: cmake_force
@@ -274,7 +289,7 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.
 CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj: CMakeFiles/ArtFlowStudio.dir/includes_CXX.rsp
 CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj: ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp
 CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj: CMakeFiles/ArtFlowStudio.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj"
 	C:\Qt\Tools\mingw1310_64\bin\c++.exe $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj -MF CMakeFiles\ArtFlowStudio.dir\ArtFlowStudio_autogen\YPKJ5OE7LN\qrc_resources.cpp.obj.d -o CMakeFiles\ArtFlowStudio.dir\ArtFlowStudio_autogen\YPKJ5OE7LN\qrc_resources.cpp.obj -c E:\app_dibujo_proyecto-main\build_debug_winink\ArtFlowStudio_autogen\YPKJ5OE7LN\qrc_resources.cpp
 
 CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.i: cmake_force
@@ -296,6 +311,7 @@ ArtFlowStudio_OBJECTS = \
 "CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_renderer.cpp.obj" \
 "CMakeFiles/ArtFlowStudio.dir/src/main.cpp.obj" \
 "CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.obj" \
+"CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj" \
 "CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj" \
 "CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj" \
 "CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj"
@@ -312,6 +328,7 @@ ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/gl_utils.cpp.ob
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_renderer.cpp.obj
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/src/main.cpp.obj
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.obj
+ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj
@@ -328,7 +345,7 @@ ArtFlowStudio.exe: C:/Qt/6.10.2/mingw_64/lib/libQt6Core.a
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/linkLibs.rsp
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/objects1.rsp
 ArtFlowStudio.exe: CMakeFiles/ArtFlowStudio.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Linking CXX executable ArtFlowStudio.exe"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=E:\app_dibujo_proyecto-main\build_debug_winink\CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Linking CXX executable ArtFlowStudio.exe"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles\ArtFlowStudio.dir\link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

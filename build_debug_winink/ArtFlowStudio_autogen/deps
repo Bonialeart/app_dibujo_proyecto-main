@@ -173,6 +173,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qyieldcpu.h \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
+	C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLFunctions \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QPen \
@@ -1118,6 +1119,8 @@ ArtFlowStudio_autogen/timestamp: \
 	E:/app_dibujo_proyecto-main/src/PreferencesManager.h \
 	E:/app_dibujo_proyecto-main/src/ProjectModel.cpp \
 	E:/app_dibujo_proyecto-main/src/ProjectModel.h \
+	E:/app_dibujo_proyecto-main/src/TestCanvas.cpp \
+	E:/app_dibujo_proyecto-main/src/TestCanvas.h \
 	E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
 	E:/app_dibujo_proyecto-main/src/core/cpp/include/image_buffer.h \
 	E:/app_dibujo_proyecto-main/src/core/cpp/include/layer_manager.h \

@@ -842,6 +842,12 @@
 			"MU",
 			"UVLADIE3JM/moc_ProjectModel.cpp",
 			null
+		],
+		[
+			"E:/app_dibujo_proyecto-main/src/TestCanvas.h",
+			"MU",
+			"UVLADIE3JM/moc_TestCanvas.cpp",
+			null
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
@@ -934,6 +940,7 @@
 		[ "E:/app_dibujo_proyecto-main/src/CanvasItem.cpp", "MU", null ],
 		[ "E:/app_dibujo_proyecto-main/src/PreferencesManager.cpp", "MU", null ],
 		[ "E:/app_dibujo_proyecto-main/src/ProjectModel.cpp", "MU", null ],
+		[ "E:/app_dibujo_proyecto-main/src/TestCanvas.cpp", "MU", null ],
 		[
 			"E:/app_dibujo_proyecto-main/src/core/cpp/src/brush_engine.cpp",
 			"MU",

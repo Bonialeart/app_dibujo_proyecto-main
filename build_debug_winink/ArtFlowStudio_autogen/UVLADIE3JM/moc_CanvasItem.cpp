@@ -73,7 +73,7 @@ template <> constexpr inline auto CanvasItem::qt_create_metaobjectdata<qt_meta_t
         "layers",
         "availableBrushesChanged",
         "activeBrushNameChanged",
-        "pressureGammaChanged",
+        "pressureCurvePointsChanged",
         "setBackgroundColor",
         "color",
         "usePreset",
@@ -157,7 +157,7 @@ template <> constexpr inline auto CanvasItem::qt_create_metaobjectdata<qt_meta_t
         "currentProjectPath",
         "currentProjectName",
         "brushTip",
-        "pressureGamma",
+        "pressureCurvePoints",
         "availableBrushes",
         "activeBrushName"
     };
@@ -225,7 +225,7 @@ template <> constexpr inline auto CanvasItem::qt_create_metaobjectdata<qt_meta_t
         QtMocHelpers::SignalData<void()>(33, 2, QMC::AccessPublic, QMetaType::Void),
         // Signal 'activeBrushNameChanged'
         QtMocHelpers::SignalData<void()>(34, 2, QMC::AccessPublic, QMetaType::Void),
-        // Signal 'pressureGammaChanged'
+        // Signal 'pressureCurvePointsChanged'
         QtMocHelpers::SignalData<void()>(35, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'setBackgroundColor'
         QtMocHelpers::MethodData<void(const QString &)>(36, 2, QMC::AccessPublic, QMetaType::Void, {{
@@ -414,8 +414,8 @@ template <> constexpr inline auto CanvasItem::qt_create_metaobjectdata<qt_meta_t
         QtMocHelpers::PropertyData<QString>(117, QMetaType::QString, QMC::DefaultPropertyFlags, 21),
         // property 'brushTip'
         QtMocHelpers::PropertyData<QString>(118, QMetaType::QString, QMC::DefaultPropertyFlags, 22),
-        // property 'pressureGamma'
-        QtMocHelpers::PropertyData<float>(119, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 28),
+        // property 'pressureCurvePoints'
+        QtMocHelpers::PropertyData<QVariantList>(119, 0x80000000 | 29, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag, 28),
         // property 'availableBrushes'
         QtMocHelpers::PropertyData<QVariantList>(120, 0x80000000 | 29, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 26),
         // property 'activeBrushName'
@@ -469,7 +469,7 @@ void CanvasItem::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 25: _t->layersChanged((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
         case 26: _t->availableBrushesChanged(); break;
         case 27: _t->activeBrushNameChanged(); break;
-        case 28: _t->pressureGammaChanged(); break;
+        case 28: _t->pressureCurvePointsChanged(); break;
         case 29: _t->setBackgroundColor((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
         case 30: _t->usePreset((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
         case 31: { bool _r = _t->loadProject((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
@@ -580,7 +580,7 @@ void CanvasItem::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
             return;
         if (QtMocHelpers::indexOfMethod<void (CanvasItem::*)()>(_a, &CanvasItem::activeBrushNameChanged, 27))
             return;
-        if (QtMocHelpers::indexOfMethod<void (CanvasItem::*)()>(_a, &CanvasItem::pressureGammaChanged, 28))
+        if (QtMocHelpers::indexOfMethod<void (CanvasItem::*)()>(_a, &CanvasItem::pressureCurvePointsChanged, 28))
             return;
     }
     if (_c == QMetaObject::ReadProperty) {
@@ -609,7 +609,7 @@ void CanvasItem::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 20: *reinterpret_cast<QString*>(_v) = _t->currentProjectPath(); break;
         case 21: *reinterpret_cast<QString*>(_v) = _t->currentProjectName(); break;
         case 22: *reinterpret_cast<QString*>(_v) = _t->brushTip(); break;
-        case 23: *reinterpret_cast<float*>(_v) = _t->pressureGamma(); break;
+        case 23: *reinterpret_cast<QVariantList*>(_v) = _t->pressureCurvePoints(); break;
         case 24: *reinterpret_cast<QVariantList*>(_v) = _t->availableBrushes(); break;
         case 25: *reinterpret_cast<QString*>(_v) = _t->activeBrushName(); break;
         default: break;
@@ -633,7 +633,7 @@ void CanvasItem::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 12: _t->setCurrentTool(*reinterpret_cast<QString*>(_v)); break;
         case 18: _t->setBrushAngle(*reinterpret_cast<float*>(_v)); break;
         case 19: _t->setCursorRotation(*reinterpret_cast<float*>(_v)); break;
-        case 23: _t->setPressureGamma(*reinterpret_cast<float*>(_v)); break;
+        case 23: _t->setCurvePoints(*reinterpret_cast<QVariantList*>(_v)); break;
         default: break;
         }
     }
@@ -845,7 +845,7 @@ void CanvasItem::activeBrushNameChanged()
 }
 
 // SIGNAL 28
-void CanvasItem::pressureGammaChanged()
+void CanvasItem::pressureCurvePointsChanged()
 {
     QMetaObject::activate(this, &staticMetaObject, 28, nullptr);
 }
