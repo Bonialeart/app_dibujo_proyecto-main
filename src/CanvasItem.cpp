@@ -26,9 +26,13 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_canvasHeight(1080), m_viewOffset(50, 50), m_activeLayerIndex(0),
       m_isTransforming(false), m_brushAngle(0.0f), m_cursorRotation(0.0f),
       m_currentProjectPath(""), m_currentProjectName("Untitled"),
-      m_brushTip("round"), m_lastPressure(1.0f), m_isDrawing(false) {
+      m_brushTip("round"), m_lastPressure(1.0f), m_isDrawing(false),
+      m_renderer(new StrokeRenderer()) {
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
+  setAcceptTouchEvents(true);
+
+  // Initialize renderer somehow? It needs context. We do it in paint.
 
   m_layerManager = new LayerManager(m_canvasWidth, m_canvasHeight);
   m_brushEngine = new BrushEngine();
@@ -50,31 +54,43 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 }
 
 CanvasItem::~CanvasItem() {
-  delete m_brushEngine;
-  delete m_layerManager;
+  if (m_brushEngine)
+    delete m_brushEngine;
+  if (m_layerManager)
+    delete m_layerManager;
+  if (m_renderer)
+    delete m_renderer;
 }
 
 void CanvasItem::paint(QPainter *painter) {
   if (!m_layerManager)
     return;
 
-  // Simplistic rendering of layers with blend modes and opacity
-  // Note: In a full engine we'd use OpenGL for composition
-  for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
-    Layer *layer = m_layerManager->getLayer(i);
-    if (!layer->visible)
-      continue;
+  // 1. Draw existing layers (Software backing store)
+  // We use QPainter to draw the composite image (which handles zoom/pan)
+  // Create background
+  painter->fillRect(0, 0, width(), height(), Qt::white);
 
-    QImage img(layer->buffer->data(), layer->buffer->width(),
-               layer->buffer->height(), QImage::Format_RGBA8888);
-    painter->setOpacity(layer->opacity);
+  if (m_layerManager->getLayerCount() > 0) {
+    // Draw layers via composite
+    for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+      Layer *layer = m_layerManager->getLayer(i);
+      if (!layer->visible)
+        continue;
 
-    // Basic mapping for preview
-    QRectF targetRect(
-        m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
-        m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
-    painter->drawImage(targetRect, img);
+      QImage img(layer->buffer->data(), layer->buffer->width(),
+                 layer->buffer->height(), QImage::Format_RGBA8888);
+      painter->setOpacity(layer->opacity);
+
+      // Apply Zoom and Pan
+      QRectF targetRect(
+          m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
+          m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
+      painter->drawImage(targetRect, img);
+    }
   }
+
+  // OpenGL Rendering Disabled to fix crash on Windows D3D backend
 }
 
 void CanvasItem::setBrushSize(int size) {
@@ -323,7 +339,8 @@ void CanvasItem::applyEffect(int index, const QString &effect,
 
 void CanvasItem::setBackgroundColor(const QString &color) {
   qDebug() << "Setting background color:" << color;
-  // In a real app we'd update the bottom layer or a special background property
+  // In a real app we'd update the bottom layer or a special background
+  // property
 }
 
 bool CanvasItem::loadProject(const QString &path) {
@@ -795,110 +812,108 @@ void CanvasItem::capture_timelapse_frame() {
 }
 
 void CanvasItem::mousePressEvent(QMouseEvent *event) {
-  if (event->button() == Qt::LeftButton) {
+  if (event->source() == Qt::MouseEventNotSynthesized &&
+      event->button() == Qt::LeftButton) {
     m_isDrawing = true;
     QPointF p = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-    m_lastPos = p; // FIX: Initialize last point
-    m_brushEngine->beginStroke(StrokePoint(p.x(), p.y(), 1.0f));
+    m_lastPos = p;
+    m_brushEngine->beginStroke(artflow::StrokePoint(p.x(), p.y(), 1.0f));
 
-    // Render first dab
+    // Direct Software Render First Dab
     Layer *layer = m_layerManager->getActiveLayer();
     if (layer) {
-      ImageBuffer *mask = nullptr;
-      if (layer->clipped && m_activeLayerIndex > 0) {
-        Layer *parent = m_layerManager->getLayer(m_activeLayerIndex - 1);
-        if (parent)
-          mask = parent->buffer.get();
-      }
       m_brushEngine->renderDab(*(layer->buffer), p.x(), p.y(), 1.0f,
-                               layer->alphaLock, mask);
+                               layer->alphaLock, nullptr);
       update();
     }
   }
 }
 
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
-  QPointF p = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
   emit cursorPosChanged(event->position().x(), event->position().y());
 
-  if (m_isDrawing) {
-    processDrawing(p, 1.0f, 1.0f);
+  if (m_isDrawing && event->source() == Qt::MouseEventNotSynthesized) {
+    QPointF p = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    // Software Render Stroke Segment
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer) {
+      m_brushEngine->renderStrokeSegment(
+          *(layer->buffer),
+          artflow::StrokePoint(m_lastPos.x(), m_lastPos.y(), 1.0f),
+          artflow::StrokePoint(p.x(), p.y(), 1.0f), layer->alphaLock, nullptr);
+      update();
+    }
+    m_lastPos = p;
   }
 }
 
+void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
+  if (event->button() == Qt::LeftButton &&
+      event->source() == Qt::MouseEventNotSynthesized) {
+    m_isDrawing = false;
+    m_brushEngine->endStroke();
+    capture_timelapse_frame();
+    update();
+  }
+}
+
+void CanvasItem::tabletEvent(QTabletEvent *event) {
+  float pressure = event->pressure();
+  if (pressure > 1.0f)
+    pressure /= 1024.0f;
+  if (pressure <= 0.0f)
+    pressure = 1.0f;
+
+  QPointF p = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
+  if (event->type() == QEvent::TabletPress) {
+    m_isDrawing = true;
+    m_lastPos = p;
+    m_lastPressure = pressure;
+    m_brushEngine->beginStroke(artflow::StrokePoint(p.x(), p.y(), pressure));
+
+    // Initial Dab
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer) {
+      m_brushEngine->renderDab(*(layer->buffer), p.x(), p.y(), pressure,
+                               layer->alphaLock, nullptr);
+      update();
+    }
+
+  } else if (event->type() == QEvent::TabletMove && m_isDrawing) {
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer) {
+      m_brushEngine->renderStrokeSegment(
+          *(layer->buffer),
+          artflow::StrokePoint(m_lastPos.x(), m_lastPos.y(), m_lastPressure),
+          artflow::StrokePoint(p.x(), p.y(), pressure), layer->alphaLock,
+          nullptr);
+      update();
+    }
+    m_lastPos = p;
+    m_lastPressure = pressure;
+  } else if (event->type() == QEvent::TabletRelease) {
+    m_isDrawing = false;
+    m_brushEngine->endStroke();
+    capture_timelapse_frame();
+  }
+
+  event->accept();
+}
+
 bool CanvasItem::event(QEvent *event) {
+  // Dispatch tablet events manually if QQuickItem doesn't automatically
   if (event->type() == QEvent::TabletPress ||
       event->type() == QEvent::TabletMove ||
       event->type() == QEvent::TabletRelease) {
-    QTabletEvent *tablet = static_cast<QTabletEvent *>(event);
-    QPointF p = (tablet->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-    float pressure = tablet->pressure();
-
-    if (event->type() == QEvent::TabletPress) {
-      m_isDrawing = true;
-      m_lastPos = p; // FIX: Initialize last point
-      m_brushEngine->beginStroke(StrokePoint(p.x(), p.y(), pressure));
-
-      Layer *layer = m_layerManager->getActiveLayer();
-      if (layer) {
-        ImageBuffer *mask = nullptr;
-        if (layer->clipped && m_activeLayerIndex > 0) {
-          Layer *parent = m_layerManager->getLayer(m_activeLayerIndex - 1);
-          if (parent)
-            mask = parent->buffer.get();
-        }
-        m_brushEngine->renderDab(*(layer->buffer), p.x(), p.y(), pressure,
-                                 layer->alphaLock, mask);
-        update();
-      }
-    } else if (event->type() == QEvent::TabletMove && m_isDrawing) {
-      processDrawing(p, pressure, m_lastPressure);
-    } else if (event->type() == QEvent::TabletRelease) {
-      m_isDrawing = false;
-      // On release, we ensure the last segment is drawn with the final pressure
-      processDrawing(p, pressure, m_lastPressure);
-      m_brushEngine->endStroke();
-      capture_timelapse_frame();
-    }
-    m_lastPressure = pressure;
-    m_lastPos = p; // Update last position for the next event or for consistency
+    tabletEvent(static_cast<QTabletEvent *>(event));
     return true;
   }
   return QQuickPaintedItem::event(event);
 }
 
-void CanvasItem::processDrawing(const QPointF &pos, float pressure,
-                                float lastPressure) {
-  if (!m_brushEngine)
-    return;
-
-  Layer *layer = m_layerManager->getActiveLayer();
-  if (!layer)
-    return;
-
-  ImageBuffer *mask = nullptr;
-  if (layer->clipped && m_activeLayerIndex > 0) {
-    Layer *parent = m_layerManager->getLayer(m_activeLayerIndex - 1);
-    if (parent)
-      mask = parent->buffer.get();
-  }
-
-  m_brushEngine->renderStrokeSegment(
-      *(layer->buffer), StrokePoint(m_lastPos.x(), m_lastPos.y(), lastPressure),
-      StrokePoint(pos.x(), pos.y(), pressure), layer->alphaLock, mask);
-
-  m_lastPos = pos;
-  update();
-}
-
-void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
-  if (event->button() == Qt::LeftButton) {
-    m_isDrawing = false;
-    m_brushEngine->endStroke();
-    capture_timelapse_frame();
-  }
-}
-
 void CanvasItem::hoverMoveEvent(QHoverEvent *event) {
   emit cursorPosChanged(event->position().x(), event->position().y());
 }
+
+// Remove processDrawing

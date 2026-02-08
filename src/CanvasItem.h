@@ -3,10 +3,12 @@
 
 #include "core/cpp/include/brush_engine.h"
 #include "core/cpp/include/layer_manager.h"
+#include "core/cpp/include/stroke_renderer.h"
 #include <QColor>
 #include <QImage>
 #include <QPointF>
 #include <QQuickPaintedItem>
+#include <QTabletEvent>
 #include <QVariantList>
 
 class CanvasItem : public QQuickPaintedItem {
@@ -191,6 +193,7 @@ protected:
   void mouseMoveEvent(QMouseEvent *event) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
   void hoverMoveEvent(QHoverEvent *event) override;
+  void tabletEvent(QTabletEvent *event);
   bool event(QEvent *event) override;
 
 private:
@@ -227,6 +230,9 @@ private:
   QPointF m_lastPos;
   float m_lastPressure;
   bool m_isDrawing;
+
+  StrokeRenderer *m_renderer;
+  std::vector<artflow::StrokePoint> m_pendingPoints;
 
   QVariantList _scanSync();
   void updateLayersList();
