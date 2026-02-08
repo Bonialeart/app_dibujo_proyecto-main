@@ -998,90 +998,116 @@ void CanvasItem::setCurvePoints(const QVariantList &points) {
   if (points != m_rawPoints && points.size() >= 4 && points.size() % 2 == 0) {
     m_rawPoints = points;
 
-    struct Point {
-      float input, output;
-    };
-    std::vector<Point> lutPoints;
+    std::vector<std::pair<float, float>> splinePts;
 
-    // Lógica Estándar profesional (Krita/Photoshop):
-    // uiX = Input Pressure (Tu fuerza física sobre la tableta)
-    // uiY = Output Value (Opacidad/Tamaño resultante en pantalla)
-    //
-    // Comportamiento correcto:
-    // - Curva hacia ARRIBA (Panza arriba) = Más Sensible/Suave (Output alto con
-    // poca fuerza).
-    // - Curva hacia ABAJO (Panza abajo) = Más Duro/Controlado (Output bajo
-    // hasta que aprietas fuerte).
-
+    // Interpretación Estándar (Krita/Photoshop):
+    // X = Input Pressure, Y = Output Value
     for (int i = 0; i < points.size(); i += 2) {
       float uiX = std::clamp((float)points[i].toDouble(), 0.0f, 1.0f);
       float uiY = std::clamp((float)points[i + 1].toDouble(), 0.0f, 1.0f);
-      lutPoints.push_back({uiX, uiY}); // X es Input
+      splinePts.push_back({uiX, uiY});
     }
 
-    // Ordenar por Input (uiX) para garantizar una curva válida sin retrocesos
-    // temporales
-    std::sort(lutPoints.begin(), lutPoints.end(),
-              [](const Point &a, const Point &b) { return a.input < b.input; });
+    // Calcular Spline Suave (Monotone Cubic)
+    prepareSpline(splinePts);
 
+    // Generar LUT desde Spline
     m_lut.assign(1024, 0.0f);
-
-    if (lutPoints.empty()) {
-      for (int i = 0; i < 1024; ++i)
-        m_lut[i] = i / 1023.0f;
-    } else {
-      for (int i = 0; i < 1024; ++i) {
-        float currentInput = i / 1023.0f;
-        float outputVal = currentInput; // Default
-
-        if (currentInput <= lutPoints.front().input) {
-          // Extrapolar desde 0 si es posible
-          if (lutPoints.front().input > 0.0001f) {
-            float t = currentInput / lutPoints.front().input;
-            outputVal = 0.0f + t * (lutPoints.front().output - 0.0f);
-          } else {
-            outputVal = lutPoints.front().output;
-          }
-        } else if (currentInput >= lutPoints.back().input) {
-          // Extrapolar hacia 1
-          if (lutPoints.back().input < 0.9999f) {
-            float t = (currentInput - lutPoints.back().input) /
-                      (1.0f - lutPoints.back().input);
-            outputVal =
-                lutPoints.back().output + t * (1.0f - lutPoints.back().output);
-          } else {
-            outputVal = lutPoints.back().output;
-          }
-        } else {
-          // Interpolación normal
-          for (size_t k = 0; k < lutPoints.size() - 1; ++k) {
-            if (currentInput >= lutPoints[k].input &&
-                currentInput <= lutPoints[k + 1].input) {
-
-              float range = lutPoints[k + 1].input - lutPoints[k].input;
-              if (range < 0.00001f) {
-                outputVal = lutPoints[k].output;
-              } else {
-                float t = (currentInput - lutPoints[k].input) / range;
-                outputVal = lutPoints[k].output +
-                            t * (lutPoints[k + 1].output - lutPoints[k].output);
-              }
-              break;
-            }
-          }
-        }
-        m_lut[i] = std::clamp(outputVal, 0.0f, 1.0f);
-      }
+    for (int i = 0; i < 1024; ++i) {
+      m_lut[i] = evaluateSpline(i / 1023.0f);
     }
 
     emit pressureCurvePointsChanged();
   }
 }
 
-// Legacy signature kept for ABI compatibility, but implementation is
-// empty/unused by new logic
+// -----------------------------------------------------------------------
+// Spline Implementation (Algorithm: Monotone Cubic Hermite Spline)
+// -----------------------------------------------------------------------
+void CanvasItem::prepareSpline(
+    const std::vector<std::pair<float, float>> &rawPoints) {
+  if (rawPoints.empty())
+    return;
+
+  // 1. Sort by Input (X)
+  auto points = rawPoints;
+  std::sort(points.begin(), points.end(),
+            [](const auto &a, const auto &b) { return a.first < b.first; });
+
+  int n = points.size();
+  m_splineX.resize(n);
+  m_splineY.resize(n);
+  m_splineM.resize(n);
+
+  for (int i = 0; i < n; ++i) {
+    m_splineX[i] = points[i].first;
+    m_splineY[i] = points[i].second;
+  }
+
+  // 2. Deltas
+  std::vector<double> d(n - 1);
+  for (int i = 0; i < n - 1; ++i) {
+    double dx = m_splineX[i + 1] - m_splineX[i];
+    if (std::abs(dx) < 1e-6)
+      d[i] = 0;
+    else
+      d[i] = (m_splineY[i + 1] - m_splineY[i]) / dx;
+  }
+
+  // 3. Tangents
+  if (n > 1) {
+    m_splineM[0] = d[0];
+    m_splineM[n - 1] = d[n - 2];
+    for (int i = 1; i < n - 1; ++i) {
+      if (d[i - 1] * d[i] <= 0) {
+        m_splineM[i] = 0;
+      } else {
+        m_splineM[i] = (d[i - 1] + d[i]) * 0.5;
+      }
+    }
+  } else {
+    m_splineM[0] = 0;
+  }
+}
+
+float CanvasItem::evaluateSpline(float x) {
+  int n = m_splineX.size();
+  if (n == 0)
+    return x;
+
+  if (x <= m_splineX[0])
+    return (float)m_splineY[0];
+  if (x >= m_splineX[n - 1])
+    return (float)m_splineY[n - 1];
+
+  auto it = std::upper_bound(m_splineX.begin(), m_splineX.end(), x);
+  int i = std::distance(m_splineX.begin(), it) - 1;
+  if (i < 0)
+    i = 0;
+  if (i >= n - 1)
+    i = n - 2;
+
+  double h = m_splineX[i + 1] - m_splineX[i];
+  if (h < 1e-6)
+    return (float)m_splineY[i];
+
+  double t = (x - m_splineX[i]) / h;
+  double t2 = t * t;
+  double t3 = t2 * t;
+
+  double h00 = 2 * t3 - 3 * t2 + 1;
+  double h10 = t3 - 2 * t2 + t;
+  double h01 = -2 * t3 + 3 * t2;
+  double h11 = t3 - t2;
+
+  double y = h00 * m_splineY[i] + h10 * h * m_splineM[i] +
+             h01 * m_splineY[i + 1] + h11 * h * m_splineM[i + 1];
+
+  return std::clamp((float)y, 0.0f, 1.0f);
+}
+
+// Legacy signature kept for ABI compatibility
 void CanvasItem::updateLUT(float x1, float y1, float x2, float y2) {
-  // No-op or log warning. New logic handles LUT in setCurvePoints.
   (void)x1;
   (void)y1;
   (void)x2;

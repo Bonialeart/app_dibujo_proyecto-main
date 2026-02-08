@@ -210,8 +210,17 @@ private:
   artflow::LayerManager *m_layerManager;
 
   // Pressure Logic
+  // Pressure Logic
   std::vector<float> m_lut;
   QVariantList m_rawPoints;
+
+  // Spline Calculation Members
+  std::vector<double> m_splineX;
+  std::vector<double> m_splineY;
+  std::vector<double> m_splineM;
+  void prepareSpline(const std::vector<std::pair<float, float>> &points);
+  float evaluateSpline(float x);
+
   void updateLUT(float x1, float y1, float x2, float y2);
   float applyPressureCurve(float input);
 
