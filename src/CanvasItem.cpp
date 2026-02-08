@@ -6,17 +6,14 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QHoverEvent>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QStandardPaths>
-#include <QSvgRenderer>
 #include <QTabletEvent>
 #include <QUrl>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QtMath>
 
 using namespace artflow;
 
@@ -29,7 +26,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_canvasHeight(1080), m_viewOffset(50, 50), m_activeLayerIndex(0),
       m_isTransforming(false), m_brushAngle(0.0f), m_cursorRotation(0.0f),
       m_currentProjectPath(""), m_currentProjectName("Untitled"),
-      m_brushTip(""), m_isDrawing(false) {
+      m_brushTip("round"), m_lastPressure(1.0f), m_isDrawing(false) {
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
 
@@ -825,7 +822,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   emit cursorPosChanged(event->position().x(), event->position().y());
 
   if (m_isDrawing) {
-    processDrawing(p, 1.0f);
+    processDrawing(p, 1.0f, 1.0f);
   }
 }
 
@@ -855,18 +852,26 @@ bool CanvasItem::event(QEvent *event) {
         update();
       }
     } else if (event->type() == QEvent::TabletMove && m_isDrawing) {
-      processDrawing(p, pressure);
+      processDrawing(p, pressure, m_lastPressure);
     } else if (event->type() == QEvent::TabletRelease) {
       m_isDrawing = false;
+      // On release, we ensure the last segment is drawn with the final pressure
+      processDrawing(p, pressure, m_lastPressure);
       m_brushEngine->endStroke();
       capture_timelapse_frame();
     }
+    m_lastPressure = pressure;
+    m_lastPos = p; // Update last position for the next event or for consistency
     return true;
   }
   return QQuickPaintedItem::event(event);
 }
 
-void CanvasItem::processDrawing(const QPointF &pos, float pressure) {
+void CanvasItem::processDrawing(const QPointF &pos, float pressure,
+                                float lastPressure) {
+  if (!m_brushEngine)
+    return;
+
   Layer *layer = m_layerManager->getActiveLayer();
   if (!layer)
     return;
@@ -879,9 +884,7 @@ void CanvasItem::processDrawing(const QPointF &pos, float pressure) {
   }
 
   m_brushEngine->renderStrokeSegment(
-      *(layer->buffer),
-      StrokePoint(m_lastPos.x(), m_lastPos.y(),
-                  1.0f), // Simplified last pressure
+      *(layer->buffer), StrokePoint(m_lastPos.x(), m_lastPos.y(), lastPressure),
       StrokePoint(pos.x(), pos.y(), pressure), layer->alphaLock, mask);
 
   m_lastPos = pos;

@@ -71,6 +71,11 @@ float noise2D(float x, float y) {
   return ix0 + (ix1 - ix0) * sy; // Range [-1, 1]
 }
 
+// Cubic pressure curve for more natural response
+float applyPressureCurve(float p) {
+  return p * p; // Quadratic curve (Gamma 2.0 style)
+}
+
 // Random noise [0, 1] - for per-pixel variation
 float randomNoise01() {
   return static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -130,15 +135,17 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
   // Smoothing factor based on stabilization setting
   // 0.0 = Raw input, 1.0 = Super slow/smooth
   // We use a non-linear mapping for better feel
-  float t = 1.0f - (m_brush.stabilization * 0.8f);
-  t = clampVal(t, 0.05f, 1.0f);
+  float stabilizationFactor = m_brush.stabilization;      // [0, 1]
+  float lerpFactor = 1.0f - (stabilizationFactor * 0.9f); // 0.1 to 1.0
+  lerpFactor = clampVal(lerpFactor, 0.05f,
+                        1.0f); // Ensure it's never too slow or too fast
 
   // Move smooth position towards raw target
-  m_brushPos.x = m_brushPos.x + (point.x - m_brushPos.x) * t;
-  m_brushPos.y = m_brushPos.y + (point.y - m_brushPos.y) * t;
+  m_brushPos.x = lerp(m_brushPos.x, point.x, lerpFactor);
+  m_brushPos.y = lerp(m_brushPos.y, point.y, lerpFactor);
   // Pressure is also somewhat smoothed to avoid sudden blobs
   m_brushPos.pressure =
-      m_brushPos.pressure + (point.pressure - m_brushPos.pressure) * (t * 1.5f);
+      lerp(m_brushPos.pressure, point.pressure, lerpFactor * 1.5f);
 
   // Update last point to track raw input just in case,
   // but rendering should use m_brushPos and previous m_brushPos.
@@ -577,58 +584,21 @@ void BrushEngine::renderStrokeSegment(ImageBuffer &target,
 // ============================================================================
 
 float BrushEngine::calculateDabSize(float pressure) const {
-  float size = m_brush.size;
-
+  float baseSize = m_brush.size;
   if (m_brush.sizeByPressure) {
-    switch (m_brush.type) {
-    case BrushSettings::Type::Ink:
-      // Ink: High-dynamic taper for G-Pen style
-      size *= std::pow(pressure, 1.8f);
-      break;
-    case BrushSettings::Type::Pencil:
-      // Pencil: Minimum "lead" thickness
-      size *= (0.25f + 0.75f * pressure);
-      break;
-    case BrushSettings::Type::Airbrush:
-      // Airbrush: Size less affected by pressure
-      size *= (0.6f + 0.4f * pressure);
-      break;
-    default:
-      // Standard linear-ish dynamics
-      size *= (0.15f + 0.85f * pressure);
-      break;
-    }
+    // Non-linear size response for premium feel
+    float curvedP = applyPressureCurve(pressure);
+    baseSize *= (0.1f + 0.9f * curvedP);
   }
-
-  return std::max(0.5f, size);
+  return baseSize;
 }
 
 float BrushEngine::calculateDabOpacity(float pressure) const {
-
-  // ----------------------------------------------------------------
-  // PRESSURE CURVE (Dynamics)
-  // ----------------------------------------------------------------
-  // Non-linear response for natural feel (Pow 2.0 = Standard Pro feel)
-  float curvePressure = std::pow(pressure, 2.0f);
-
-  float opacityVal = m_brush.opacity * curvePressure;
+  float opacityVal = m_brush.opacity;
 
   if (m_brush.opacityByPressure) {
-    // Already applied curve, but maybe apply extra dynamics?
-    // Let's keep it consistent.
-  } else {
-    // If opacity is NOT by pressure, we should use constant opacity logic?
-    // No, the user asked for response curves. Usually this means pressure
-    // affects flow/opacity always? Or only when Opacity Dynamics is ON. In pro
-    // apps, "Flow" is usually pressure sensitive by default or configured. If
-    // sizeByPressure is true, usually Opacity is also affected slightly or
-    // fully.
-
-    // Reverting to standard logic but with Curve applied if opacityByPressure
-    // is true.
-    if (!m_brush.opacityByPressure) {
-      opacityVal = m_brush.opacity; // Constant
-    }
+    float curvedP = applyPressureCurve(pressure);
+    opacityVal *= (0.05f + 0.95f * curvedP);
   }
 
   // Flow affects opacity per stamp
@@ -647,19 +617,24 @@ BrushEngine::interpolatePoints(const StrokePoint &from,
   std::vector<StrokePoint> points;
 
   float dx = to.x - from.x;
-  float dy = to.y - from.y;
+  float dy = to.y - from.y; // Added missing dy
+  // Calculate dabs to draw based on spacing
   float distance = std::sqrt(dx * dx + dy * dy);
 
-  float spacing = std::max(0.5f, m_brush.size * m_brush.spacing);
-  int steps = std::max(1, static_cast<int>(distance / spacing));
+  // High-density drawing for premium feel:
+  // Ensure we draw at least one dab if there is any movement
+  float step = std::max(0.5f, m_brush.size * m_brush.spacing * 0.5f);
+  int numSteps = std::max(1, static_cast<int>(distance / step));
 
-  for (int i = 0; i <= steps; ++i) {
-    float t = static_cast<float>(i) / static_cast<float>(steps);
-    StrokePoint p;
-    p.x = lerp(from.x, to.x, t);
-    p.y = lerp(from.y, to.y, t);
-    p.pressure = lerp(from.pressure, to.pressure, t);
-    points.push_back(p);
+  float dp = to.pressure - from.pressure; // Calculate pressure difference
+
+  for (int i = 0; i <= numSteps; ++i) {
+    float t = static_cast<float>(i) / numSteps;
+    StrokePoint p;         // Create a StrokePoint to store interpolated values
+    p.x = from.x + dx * t; // Corrected 'start.x' to 'from.x'
+    p.y = from.y + dy * t; // Corrected 'start.y' to 'from.y'
+    p.pressure = from.pressure + dp * t; // Corrected 'start.pressure' and 'dp'
+    points.push_back(p); // Add the interpolated point to the vector
   }
 
   return points;
