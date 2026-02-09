@@ -29,6 +29,8 @@ set(CORE_SOURCES
     src/core/cpp/src/image_buffer.cpp
     src/core/cpp/src/gl_utils.cpp
     src/core/cpp/src/stroke_renderer.cpp
+    src/core/cpp/src/undo_manager.cpp
+    src/core/cpp/src/stroke_undo_command.cpp
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)

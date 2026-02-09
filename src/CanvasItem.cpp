@@ -40,12 +40,13 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_brushSpacing(0.1f), m_brushStabilization(0.2f), m_brushStreamline(0.0f),
 
       m_brushGrain(0.0f), m_brushWetness(0.0f), m_brushSmudge(0.0f),
-      m_zoomLevel(1.0f), m_currentTool("brush"), m_canvasWidth(1920),
-      m_canvasHeight(1080), m_viewOffset(50, 50), m_activeLayerIndex(0),
-      m_isTransforming(false), m_brushAngle(0.0f), m_cursorRotation(0.0f),
-      m_currentProjectPath(""), m_currentProjectName("Untitled"),
-      m_brushTip("round"), m_lastPressure(1.0f), m_isDrawing(false),
-      m_brushEngine(new BrushEngine()) {
+      m_zoomLevel(1.0f), m_currentToolStr("brush"), m_tool(ToolType::Pen),
+      m_canvasWidth(1920), m_canvasHeight(1080), m_viewOffset(50, 50),
+      m_activeLayerIndex(0), m_isTransforming(false), m_brushAngle(0.0f),
+      m_cursorRotation(0.0f), m_currentProjectPath(""),
+      m_currentProjectName("Untitled"), m_brushTip("round"),
+      m_lastPressure(1.0f), m_isDrawing(false),
+      m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()) {
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
   setAcceptTouchEvents(true);
@@ -56,6 +57,12 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   // but acts as if it's on.
 
   m_layerManager = new LayerManager(m_canvasWidth, m_canvasHeight);
+
+  m_quickShapeTimer = new QTimer(this);
+  m_quickShapeTimer->setSingleShot(true);
+  connect(m_quickShapeTimer, &QTimer::timeout, this,
+          &CanvasItem::detectAndDrawQuickShape);
+
   // Brush engine initialized in initializer list
 
   m_layerManager->addLayer("Layer 1");
@@ -88,6 +95,8 @@ CanvasItem::~CanvasItem() {
     delete m_brushEngine;
   if (m_layerManager)
     delete m_layerManager;
+  if (m_undoManager)
+    delete m_undoManager;
   if (m_impastoShader)
     delete m_impastoShader;
   qDeleteAll(m_layerTextures);
@@ -229,6 +238,45 @@ void CanvasItem::paint(QPainter *painter) {
       }
     }
   }
+
+  // 3. Transform Overlay (Preview)
+  if (m_isTransforming && !m_selectionBuffer.isNull()) {
+    painter->save();
+    // Apply view transform (Pan/Zoom) first
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.x() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+
+    // Apply the user's transformation matrix
+    painter->setTransform(m_transformMatrix, true);
+
+    painter->setRenderHint(QPainter::SmoothPixmapTransform);
+    painter->drawImage(0, 0, m_selectionBuffer);
+
+    // Draw Bounding Box handles
+    painter->setTransform(
+        QTransform()); // Reset for handles (screen space?) or keep in canvas?
+    // Better to draw handles in screen space for consistency
+    painter->restore();
+
+    // Screen space deals for handles
+    painter->save();
+    QRectF screenBox = m_transformMatrix.mapRect(m_transformBox);
+    // ... draw handles ...
+    painter->restore();
+  }
+
+  // 4. Selección (Lasso) Feedback
+  if (!m_selectionPath.isEmpty()) {
+    painter->save();
+    QPen lassoPen(Qt::blue, 1, Qt::DashLine);
+    painter->setPen(lassoPen);
+    painter->drawPath(m_selectionPath);
+
+    // Draw "Marching Ants" effect (simplified DashOffset animation if time
+    // allows) For now, solid dash is enough for proof of concept
+    painter->restore();
+  }
 }
 
 void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
@@ -236,9 +284,21 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   if (!layer || !layer->visible || layer->locked)
     return;
 
+  QPointF lastCanvasPos = m_lastPos;
+
   // Convertir posición de pantalla a canvas
   // Aplicar transformación inversa: (Screen - Offset*Zoom) / Zoom
   QPointF canvasPos = (pos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
+  // FIX: Coordinate synchronization for flipped canvas
+  // If the viewport is flipped, we must mirror the coordinate before passing to
+  // engine
+  if (m_isFlippedH) {
+    canvasPos.setX(m_canvasWidth - canvasPos.x());
+  }
+  if (m_isFlippedV) {
+    canvasPos.setY(m_canvasHeight - canvasPos.y());
+  }
 
   BrushSettings settings = m_brushEngine->getBrush();
   float effectivePressure = pressure; // Ajustar con curva si es necesario
@@ -249,10 +309,9 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
              layer->buffer->height(), QImage::Format_RGBA8888);
 
   // MODO PREMIUM (OpenGL / Shaders)
-  // Revisar si tenemos contexto OpenGL disponible
+  // Usamos OpenGL para TODO si está disponible, es más preciso y rápido
   bool glReady = (QOpenGLContext::currentContext() != nullptr);
-
-  if (glReady && (settings.useTexture || settings.wetness > 0.01f)) {
+  if (glReady) {
     if (!m_pingFBO || m_pingFBO->width() != m_canvasWidth ||
         m_pingFBO->height() != m_canvasHeight) {
       if (m_pingFBO)
@@ -272,14 +331,16 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       m_pingFBO->release();
     }
 
+    // Copiar estado anterior (Ping -> Pong) de forma eficiente (Blit)
+    // Esto evita descargar texturas de GPU a CPU (toImage estÃ¡ prohibido
+    // aquÃ­)
+    QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+
     m_pongFBO->bind();
     QOpenGLPaintDevice device2(m_canvasWidth, m_canvasHeight);
     QPainter fboPainter2(&device2);
-    // Copiar estado anterior
-    fboPainter2.setCompositionMode(QPainter::CompositionMode_Source);
-    fboPainter2.drawImage(0, 0, m_pingFBO->toImage());
 
-    // Dibujar nuevo trazo
+    // Dibujar nuevo trazo sobre el fondo ya copiado
     fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceOver);
     m_brushEngine->paintStroke(
         &fboPainter2, m_lastPos, canvasPos, effectivePressure, settings, tilt,
@@ -290,7 +351,6 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
     layer->dirty = true;
     std::swap(m_pingFBO, m_pongFBO);
-    m_lastPos = canvasPos;
 
     // Liberar contexto?? Causa parpadeo si lo hacemos?
     // Dejémoslo current, Qt lo manejará?
@@ -305,18 +365,20 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
                                velocityFactor);
     painter.end();
     layer->dirty = true;
-    m_lastPos = canvasPos;
   }
 
   // Calculate dirty rect for update (Screen coordinates)
   // We need to determine the bounding box in canvas coords, then map to screen.
-  float margin = settings.size + 2;
-  float minX = std::min(m_lastPos.x(), canvasPos.x()) - margin;
-  float minY = std::min(m_lastPos.y(), canvasPos.y()) - margin;
-  float maxX = std::max(m_lastPos.x(), canvasPos.x()) + margin;
-  float maxY = std::max(m_lastPos.y(), canvasPos.y()) + margin;
+  // Use lastCanvasPos (captured at start) to ensure we cover the whole segment
+  float minX = std::min(lastCanvasPos.x(), canvasPos.x());
+  float minY = std::min(lastCanvasPos.y(), canvasPos.y());
+  float maxX = std::max(lastCanvasPos.x(), canvasPos.x());
+  float maxY = std::max(lastCanvasPos.y(), canvasPos.y());
 
   QRectF canvasRect(minX, minY, maxX - minX, maxY - minY);
+  // Add margin based on brush size
+  float margin = settings.size + 5.0f;
+  canvasRect.adjust(-margin, -margin, margin, margin);
 
   // Transform back to screen for update()
   QRectF screenRect(
@@ -324,11 +386,171 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       canvasRect.y() * m_zoomLevel + m_viewOffset.y() * m_zoomLevel,
       canvasRect.width() * m_zoomLevel, canvasRect.height() * m_zoomLevel);
 
+  // Extra safety for screen clipping
+  screenRect.adjust(-2, -2, 2, 2);
+
   m_lastPos = canvasPos;
   update(screenRect.toAlignedRect());
 }
 
+void CanvasItem::detectAndDrawQuickShape() {
+  if (!m_isDrawing || m_strokePoints.size() < 10)
+    return;
+
+  m_isHoldingForShape = true;
+
+  // 1. ANALYZE SHAPE (BEFORE REVERTING!)
+  QPointF start = m_strokePoints.front();
+  QPointF end = m_strokePoints.back();
+  float distSE = QPointF(start - end).manhattanLength();
+
+  float totalLength = 0;
+  for (size_t i = 1; i < m_strokePoints.size(); ++i) {
+    totalLength +=
+        QPointF(m_strokePoints[i] - m_strokePoints[i - 1]).manhattanLength();
+  }
+
+  // Convert to Canvas Coords
+  QPointF startC = (start - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+  QPointF endC = (end - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+  if (m_isFlippedH) {
+    startC.setX(m_canvasWidth - startC.x());
+    endC.setX(m_canvasWidth - endC.x());
+  }
+  if (m_isFlippedV) {
+    startC.setY(m_canvasHeight - startC.y());
+    endC.setY(m_canvasHeight - endC.y());
+  }
+
+  Layer *layer = m_layerManager->getActiveLayer();
+  bool solved = false;
+
+  if (totalLength < distSE * 1.5f) {
+    // It's a LINE - Revert and Draw
+    if (layer && layer->buffer && m_strokeBeforeBuffer) {
+      layer->buffer->copyFrom(*m_strokeBeforeBuffer);
+    }
+    drawLine(startC, endC);
+    solved = true;
+  } else {
+    // Circle detection
+    QPointF centroid(0, 0);
+    for (const auto &p : m_strokePoints)
+      centroid += p;
+    centroid /= (float)m_strokePoints.size();
+
+    float avgDist = 0;
+    std::vector<float> radii;
+    for (const auto &p : m_strokePoints) {
+      float r = QPointF(p - centroid).manhattanLength();
+      avgDist += r;
+      radii.push_back(r);
+    }
+    avgDist /= (float)radii.size();
+
+    float variance = 0;
+    for (float r : radii)
+      variance += (r - avgDist) * (r - avgDist);
+    variance = std::sqrt(variance / radii.size());
+
+    // Lenient circularity check (45% variance allowed for hand-drawn circles)
+    if (variance < avgDist * 0.45f) {
+      if (layer && layer->buffer && m_strokeBeforeBuffer) {
+        layer->buffer->copyFrom(*m_strokeBeforeBuffer);
+      }
+      QPointF centroidC = (centroid - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+      if (m_isFlippedH)
+        centroidC.setX(m_canvasWidth - centroidC.x());
+      if (m_isFlippedV)
+        centroidC.setY(m_canvasHeight - centroidC.y());
+
+      float maxR = 0;
+      for (float r : radii)
+        maxR = std::max(maxR, r);
+      drawCircle(centroidC, maxR / m_zoomLevel);
+      solved = true;
+    }
+  }
+
+  if (!solved) {
+    m_isHoldingForShape = false;
+    return;
+  }
+
+  // 3. SYNC FBO FROM CPU BUFFER (INSTANT REFRESH)
+  if (m_pingFBO && layer && layer->buffer) {
+    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+               QImage::Format_RGBA8888);
+    m_pingFBO->bind();
+    QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+    QPainter fboPainter(&device);
+    fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+    fboPainter.drawImage(0, 0, img);
+    fboPainter.end();
+    m_pingFBO->release();
+    // Pong already synced via blit if needed, or we just blit now
+    QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+  }
+
+  update();
+}
+
+void CanvasItem::drawLine(const QPointF &p1, const QPointF &p2) {
+  Layer *layer = m_layerManager->getActiveLayer();
+  QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+             QImage::Format_RGBA8888);
+  QPainter painter(&img);
+  painter.setRenderHint(QPainter::Antialiasing);
+  painter.setPen(QPen(m_brushColor, m_brushSize, Qt::SolidLine, Qt::RoundCap));
+  painter.drawLine(p1, p2);
+}
+
+void CanvasItem::drawCircle(const QPointF &center, float radius) {
+  Layer *layer = m_layerManager->getActiveLayer();
+  QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+             QImage::Format_RGBA8888);
+  QPainter painter(&img);
+  painter.setRenderHint(QPainter::Antialiasing);
+  painter.setPen(QPen(m_brushColor, m_brushSize, Qt::SolidLine, Qt::RoundCap));
+  painter.drawEllipse(center, radius, radius);
+}
+
 void CanvasItem::mousePressEvent(QMouseEvent *event) {
+  m_lastMousePos = event->position();
+
+  if (m_tool == ToolType::Hand) {
+    QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
+    return;
+  }
+
+  if (m_tool == ToolType::Eyedropper) {
+    QString color = sampleColor(static_cast<int>(event->position().x()),
+                                static_cast<int>(event->position().y()));
+    setBrushColor(QColor(color));
+    return;
+  }
+
+  if (m_tool == ToolType::Lasso) {
+    m_selectionPath = QPainterPath();
+    m_selectionPath.moveTo(event->position());
+    m_hasSelection = false;
+    update();
+    return;
+  }
+
+  if (m_tool == ToolType::Transform && m_isTransforming) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QRectF transformedBox = m_transformMatrix.mapRect(m_transformBox);
+
+    if (transformedBox.contains(canvasPos)) {
+      m_transformMode = TransformMode::Move;
+      m_transformStartPos = canvasPos;
+      m_initialMatrix = m_transformMatrix;
+      return;
+    }
+  }
+
   if (event->button() == Qt::LeftButton) {
     if (m_isDrawing)
       return; // Already drawing (tablet?)
@@ -336,15 +558,24 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     m_isDrawing = true;
     m_lastPos = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
 
-    float pressure = 1.0f;
-    if (!event->points().isEmpty()) {
-      float p = event->points().first().pressure();
-      if (p > 0.0f)
-        pressure = p;
+    // ... rest of stroke start logic ...
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer && layer->buffer) {
+      m_strokeBeforeBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
     }
 
-    qDebug() << "MOUSE START P:" << pressure;
+    m_brushEngine->resetRemainder();
+    m_strokePoints.clear();
+    m_strokePoints.push_back(event->position());
+    m_holdStartPos = event->position();
+    m_isHoldingForShape = false;
 
+    // Solo iniciar timer si es una herramienta de dibujo
+    if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser) {
+      m_quickShapeTimer->start(800);
+    }
+
+    float pressure = 1.0f;
     handleDraw(event->position(), pressure);
   }
 }
@@ -352,41 +583,120 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   emit cursorPosChanged(event->position().x(), event->position().y());
 
-  if (m_isDrawing) {
-    // INTENTO DE RECUPERAR PRESIÓN DE EVENTO DE RATÓN (FALLBACK)
-    float pressure = 1.0f;
+  if (m_tool == ToolType::Hand && (event->buttons() & Qt::LeftButton)) {
+    QPointF delta = (event->position() - m_lastMousePos) / m_zoomLevel;
+    m_viewOffset += delta;
+    m_lastMousePos = event->position();
+    emit viewOffsetChanged();
+    update();
+    return;
+  }
 
-    // Qt 6.0+ API: points()
+  if (m_tool == ToolType::Eyedropper && (event->buttons() & Qt::LeftButton)) {
+    QString color = sampleColor(static_cast<int>(event->position().x()),
+                                static_cast<int>(event->position().y()));
+    setBrushColor(QColor(color));
+    return;
+  }
+
+  if (m_tool == ToolType::Transform && m_transformMode == TransformMode::Move) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF delta = canvasPos - m_transformStartPos;
+    m_transformMatrix = m_initialMatrix;
+    m_transformMatrix.translate(delta.x(), delta.y());
+    update();
+    return;
+  }
+
+  if (m_tool == ToolType::Lasso && (event->buttons() & Qt::LeftButton)) {
+    m_selectionPath.lineTo(event->position());
+    update();
+    return;
+  }
+
+  if (m_isDrawing) {
+    float pressure = 1.0f;
     if (!event->points().isEmpty()) {
       float p = event->points().first().pressure();
-      if (p > 0.0f) {
+      if (p > 0.0f)
         pressure = p;
-        static bool once = false;
-        if (!once) {
-          qDebug() << "PRESSURE RECOVERED FROM MOUSE EVENT!";
-          once = true;
-        }
-      }
     }
 
-    // Log para depuración si sigue siendo 1.0 (ratón puro)
-    if (pressure == 1.0f && event->source() == Qt::MouseEventNotSynthesized) {
-      // qDebug() << "MOUSE EVENT (No Pressure): 1.0";
-      // Comentado para no saturar logs
+    if (!m_isHoldingForShape) {
+      m_strokePoints.push_back(event->position());
+      float dist =
+          QPointF(event->position() - m_holdStartPos).manhattanLength();
+      if (dist > 25.0f) {
+        m_holdStartPos = event->position();
+        if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser)
+          m_quickShapeTimer->start(800);
+      }
     }
 
     handleDraw(event->position(), pressure);
   }
+  m_lastMousePos = event->position();
 }
 
 void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
-  if (event->button() == Qt::LeftButton &&
-      event->source() == Qt::MouseEventNotSynthesized) {
+  if (m_tool == ToolType::Lasso) {
+    m_selectionPath.closeSubpath();
+    m_hasSelection = !m_selectionPath.isEmpty();
+    update();
+    return;
+  }
+
+  if (m_tool == ToolType::Transform) {
+    m_transformMode = TransformMode::None;
+    update();
+    return;
+  }
+
+  if (m_tool == ToolType::Hand) {
+    QGuiApplication::restoreOverrideCursor();
+    return;
+  }
+
+  if (event->button() == Qt::LeftButton) {
     if (m_isDrawing) {
-      // Elimado el "final dab" que causaba el punto.
+      m_quickShapeTimer->stop();
+      bool wasHolding = m_isHoldingForShape;
       m_isDrawing = false;
-      m_lastPos = QPointF(); // Reset
+      m_isHoldingForShape = false;
+
+      if (m_pingFBO) {
+        if (!wasHolding) {
+          QImage result =
+              m_pingFBO->toImage().convertToFormat(QImage::Format_RGBA8888);
+          Layer *layer = m_layerManager->getActiveLayer();
+          if (layer && layer->buffer) {
+            std::memcpy(layer->buffer->data(), result.bits(),
+                        std::min((size_t)layer->buffer->width() *
+                                     layer->buffer->height() * 4,
+                                 (size_t)result.sizeInBytes()));
+          }
+        }
+        delete m_pingFBO;
+        m_pingFBO = nullptr;
+        delete m_pongFBO;
+        m_pongFBO = nullptr;
+      }
+
+      if (m_strokeBeforeBuffer) {
+        Layer *layer = m_layerManager->getActiveLayer();
+        if (layer && layer->buffer) {
+          auto afterBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+          m_undoManager->pushCommand(std::make_unique<StrokeUndoCommand>(
+              m_layerManager, m_activeLayerIndex,
+              std::move(m_strokeBeforeBuffer), std::move(afterBuffer)));
+        }
+        m_strokeBeforeBuffer.reset();
+      }
+
+      m_lastPos = QPointF();
       capture_timelapse_frame();
+      update();
     }
   }
 }
@@ -411,31 +721,73 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     QPointF p = event->position();
     QPointF canvasPos = (p - m_viewOffset * m_zoomLevel) / m_zoomLevel;
     m_lastPos = canvasPos;
+
+    // Undo Snapshot
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer && layer->buffer) {
+      m_strokeBeforeBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+    }
+
+    m_brushEngine->resetRemainder();
+
+    m_strokePoints.clear();
+    m_strokePoints.push_back(event->position());
+    m_holdStartPos = event->position();
+    m_isHoldingForShape = false;
+    m_quickShapeTimer->start(800);
+
     handleDraw(event->position(), pressure, tiltFactor);
     event->accept();
 
   } else if (event->type() == QEvent::TabletMove && m_isDrawing) {
+    if (m_isDrawing && !m_isHoldingForShape) {
+      m_strokePoints.push_back(event->position());
+      float dist =
+          QPointF(event->position() - m_holdStartPos).manhattanLength();
+      if (dist > 25.0f) { // Increased threshold for jitter
+        m_holdStartPos = event->position();
+        m_quickShapeTimer->start(800);
+      }
+    }
+
     handleDraw(event->position(), pressure, tiltFactor);
     event->accept();
 
   } else if (event->type() == QEvent::TabletRelease) {
+    m_quickShapeTimer->stop();
+    bool wasHolding = m_isHoldingForShape;
     m_isDrawing = false;
+    m_isHoldingForShape = false;
 
     // FINALIZAR TRAZO PREMIUM (Pilar 3): Volcar GPU a CPU
     if (m_pingFBO) {
-      QImage result =
-          m_pingFBO->toImage().convertToFormat(QImage::Format_RGBA8888);
-      Layer *layer = m_layerManager->getActiveLayer();
-      if (layer && layer->buffer) {
-        std::memcpy(layer->buffer->data(), result.bits(),
-                    std::min((size_t)layer->buffer->width() *
-                                 layer->buffer->height() * 4,
-                             (size_t)result.sizeInBytes()));
+      if (!wasHolding) {
+        QImage result =
+            m_pingFBO->toImage().convertToFormat(QImage::Format_RGBA8888);
+        Layer *layer = m_layerManager->getActiveLayer();
+        if (layer && layer->buffer) {
+          std::memcpy(layer->buffer->data(), result.bits(),
+                      std::min((size_t)layer->buffer->width() *
+                                   layer->buffer->height() * 4,
+                               (size_t)result.sizeInBytes()));
+        }
       }
       delete m_pingFBO;
       m_pingFBO = nullptr;
       delete m_pongFBO;
       m_pongFBO = nullptr;
+    }
+
+    // CREATE UNDO COMMAND
+    if (m_strokeBeforeBuffer) {
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->buffer) {
+        auto afterBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+        m_undoManager->pushCommand(std::make_unique<StrokeUndoCommand>(
+            m_layerManager, m_activeLayerIndex, std::move(m_strokeBeforeBuffer),
+            std::move(afterBuffer)));
+      }
+      m_strokeBeforeBuffer.reset();
     }
 
     m_lastPos = QPointF();
@@ -597,25 +949,140 @@ void CanvasItem::setZoomLevel(float zoom) {
   emit zoomLevelChanged();
   update();
 }
+void CanvasItem::setViewOffset(const QPointF &offset) {
+  m_viewOffset = offset;
+  emit viewOffsetChanged();
+  update();
+}
 void CanvasItem::setCurrentTool(const QString &tool) {
-  if (m_currentTool != tool) {
-    m_currentTool = tool;
-    emit currentToolChanged();
+  if (m_currentToolStr == tool)
+    return;
 
-    // Auto-apply default presets for tools
-    if (tool == "pencil")
-      usePreset("Pencil HB");
-    else if (tool == "pen")
-      usePreset("Ink Pen");
-    else if (tool == "brush")
-      usePreset("Oil Paint");
-    else if (tool == "watercolor")
-      usePreset("Watercolor");
-    else if (tool == "airbrush")
-      usePreset("Soft");
-    else if (tool == "eraser")
-      usePreset("Eraser Soft");
+  // Commit transformation if switching away from transform tool
+  if (m_currentToolStr == "transform" && m_isTransforming) {
+    commitTransform();
   }
+
+  m_currentToolStr = tool;
+
+  if (tool == "brush" || tool == "pen" || tool == "pencil" ||
+      tool == "watercolor" || tool == "airbrush")
+    m_tool = ToolType::Pen;
+  else if (tool == "eraser")
+    m_tool = ToolType::Eraser;
+  else if (tool == "lasso")
+    m_tool = ToolType::Lasso;
+  if (tool == "transform") {
+    m_tool = ToolType::Transform;
+    if (m_hasSelection && !m_selectionPath.isEmpty()) {
+      // Start transformation logic: copy selection to buffer
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->buffer) {
+        m_isTransforming = true;
+        m_transformMatrix = QTransform();
+        m_transformBox = m_selectionPath.boundingRect();
+
+        // Capture selection to image
+        QImage full(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                    QImage::Format_RGBA8888);
+        m_selectionBuffer =
+            QImage(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888);
+        m_selectionBuffer.fill(Qt::transparent);
+
+        QPainter p(&m_selectionBuffer);
+        p.setClipPath(m_selectionPath);
+        p.drawImage(0, 0, full);
+        p.end();
+
+        // Clear selection area in original layer (destructive part for now)
+        QPainter p2(&full);
+        p2.setCompositionMode(QPainter::CompositionMode_Clear);
+        p2.setClipPath(m_selectionPath);
+        p2.fillRect(full.rect(), Qt::transparent);
+        p2.end();
+
+        layer->dirty = true;
+      }
+    }
+  } else if (tool == "eyedropper")
+    m_tool = ToolType::Eyedropper;
+  else if (tool == "hand")
+    m_tool = ToolType::Hand;
+  else if (tool == "fill")
+    m_tool = ToolType::Fill;
+
+  emit currentToolChanged();
+
+  // Auto-apply default presets for tools
+  if (tool == "pencil")
+    usePreset("Pencil HB");
+  else if (tool == "pen")
+    usePreset("Ink Pen");
+  else if (tool == "brush")
+    usePreset("Oil Paint");
+  else if (tool == "watercolor")
+    usePreset("Watercolor");
+  else if (tool == "airbrush")
+    usePreset("Soft");
+  else if (tool == "eraser")
+    usePreset("Eraser Soft");
+
+  update();
+}
+
+void CanvasItem::commitTransform() {
+  if (!m_isTransforming || m_selectionBuffer.isNull())
+    return;
+
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (layer && layer->buffer) {
+    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+               QImage::Format_RGBA8888);
+    QPainter p(&img);
+    p.setRenderHint(QPainter::SmoothPixmapTransform);
+    p.setTransform(m_transformMatrix);
+    p.drawImage(0, 0, m_selectionBuffer);
+    p.end();
+    layer->dirty = true;
+  }
+
+  m_isTransforming = false;
+  m_selectionBuffer = QImage();
+  m_selectionPath = QPainterPath();
+  m_hasSelection = false;
+  update();
+}
+
+void CanvasItem::adjustBrushSize(float deltaPercent) {
+  setBrushSize(std::max(1, (int)(m_brushSize * (1.0f + deltaPercent))));
+}
+
+void CanvasItem::adjustBrushOpacity(float deltaPercent) {
+  setBrushOpacity(std::clamp(m_brushOpacity + deltaPercent, 0.0f, 1.0f));
+}
+
+void CanvasItem::wheelEvent(QWheelEvent *event) {
+  QPointF pos = event->position();
+
+  // Unproject to canvas space
+  QPointF canvasPosBefore = (pos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
+  float factor = (event->angleDelta().y() > 0) ? 1.1f : 0.9f;
+  float newZoom = m_zoomLevel * factor;
+
+  if (newZoom < 0.01f)
+    newZoom = 0.01f;
+  if (newZoom > 100.0f)
+    newZoom = 100.0f;
+
+  m_zoomLevel = newZoom;
+
+  // Adjust viewOffset to keep canvasPosBefore under the cursor
+  m_viewOffset = (pos / m_zoomLevel) - canvasPosBefore;
+
+  emit zoomLevelChanged();
+  emit viewOffsetChanged();
+  update();
 }
 
 void CanvasItem::loadRecentProjectsAsync() {
@@ -665,9 +1132,11 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
   // Undo / Redo
   if (ctrl && key == Qt::Key_Z) {
     if (shift)
-      qDebug() << "Redo not implemented yet";
+      redo();
     else
-      qDebug() << "Undo not implemented yet";
+      undo();
+  } else if (ctrl && key == Qt::Key_Y) {
+    redo();
   }
   // Transform
   else if (ctrl && key == Qt::Key_T) {
@@ -682,6 +1151,16 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
   else if (key == Qt::Key_Space) {
     QGuiApplication::setOverrideCursor(QCursor(Qt::OpenHandCursor));
   }
+  // Brush Size/Opacity
+  else if (key == Qt::Key_BracketLeft)
+    adjustBrushSize(-0.1f);
+  else if (key == Qt::Key_BracketRight)
+    adjustBrushSize(0.1f);
+  else if (key == Qt::Key_O) // Optional: Opacity decrease
+    adjustBrushOpacity(-0.1f);
+  else if (key == Qt::Key_P) // Optional: Opacity increase
+    adjustBrushOpacity(0.1f);
+
   // Tool Switches
   else if (key == Qt::Key_B)
     setCurrentTool("brush");
@@ -689,6 +1168,10 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
     setCurrentTool("eraser");
   else if (key == Qt::Key_L)
     setCurrentTool("lasso");
+  else if (key == Qt::Key_H)
+    setCurrentTool("hand");
+  else if (key == Qt::Key_I) // Eyedropper shortcut
+    setCurrentTool("eyedropper");
   else if (key == Qt::Key_V)
     setCurrentTool("move");
 }
@@ -1039,24 +1522,24 @@ void CanvasItem::usePreset(const QString &name) {
     s.textureIntensity = 0.6f;
 
   } else if (name == "Mechanical") {
-    // Precise mechanical pencil
-    setBrushSize(4);
-    setBrushOpacity(0.9f);
-    setBrushHardness(0.9f);
-    setBrushSpacing(0.02f);
-    setBrushStabilization(0.5f);
+    // Precise mechanical pencil - Improved for realism
+    setBrushSize(2.5f); // Thinner by default
+    setBrushOpacity(0.95f);
+    setBrushHardness(0.95f);
+    setBrushSpacing(0.008f); // High density for smooth lines
+    setBrushStabilization(0.3f);
     s.type = BrushSettings::Type::Pencil;
-    s.grain = 0.15f;
+    s.grain = 0.85f; // High grain visibility
     s.opacityByPressure = true;
-    s.sizeByPressure = false; // Mechanical stays consistent size
-    s.jitter = 0.02f;
+    s.sizeByPressure =
+        true; // Real mechanical pencils have slight size dynamics
+    s.jitter = 0.01f;
 
-    // Texture Config
+    // Texture Config (Paper grain)
     s.useTexture = true;
     s.textureName = "paper_grain.png";
-    s.textureScale = 300.0f;   // Finer grain
-    s.textureIntensity = 0.3f; // Less intense
-
+    s.textureScale = 450.0f;    // Very fine grain
+    s.textureIntensity = 0.75f; // Stronger interaction with grain
   }
 
   // ==================== INKING PRESETS ====================
@@ -1366,7 +1849,45 @@ void CanvasItem::capture_timelapse_frame() {
   img.save(fileName, "JPG", 85);
 }
 
+void CanvasItem::undo() {
+  if (m_undoManager && m_undoManager->canUndo()) {
+    m_undoManager->undo();
+    update();
+  }
+}
+
+void CanvasItem::redo() {
+  if (m_undoManager && m_undoManager->canRedo()) {
+    m_undoManager->redo();
+    update();
+  }
+}
+
+bool CanvasItem::canUndo() const {
+  return m_undoManager && m_undoManager->canUndo();
+}
+
+bool CanvasItem::canRedo() const {
+  return m_undoManager && m_undoManager->canRedo();
+}
+
 // ==================== PRESSURE CURVE LOGIC ====================
+
+void CanvasItem::setIsFlippedH(bool flip) {
+  if (m_isFlippedH != flip) {
+    m_isFlippedH = flip;
+    emit isFlippedHChanged();
+    update();
+  }
+}
+
+void CanvasItem::setIsFlippedV(bool flip) {
+  if (m_isFlippedV != flip) {
+    m_isFlippedV = flip;
+    emit isFlippedVChanged();
+    update();
+  }
+}
 
 void CanvasItem::setCurvePoints(const QVariantList &points) {
   // Aceptamos lista de puntos [x0, y0, x1, y1, ...]

@@ -1,5 +1,4 @@
-#ifndef BRUSH_ENGINE_H
-#define BRUSH_ENGINE_H
+#pragma once
 
 #include <QColor>
 #include <QPainter>
@@ -8,7 +7,11 @@
 #include <QRadialGradient>
 #include <cmath>
 #include <cstdint>
+#include <memory>
+#include <string>
 #include <vector>
+
+#include <QString>
 
 namespace artflow {
 
@@ -111,6 +114,7 @@ public:
   const Color &getColor() const;
 
   // Stateful stroke management
+  void resetRemainder() { m_remainder = -1.0f; }
   void beginStroke(const StrokePoint &point);
   void continueStroke(const StrokePoint &point);
   void endStroke();
@@ -130,6 +134,7 @@ private:
 
   // State for continueStroke
   QPointF m_lastPos;
+  float m_remainder = 0.0f;
   mutable Color
       m_cachedColor; // mutable to allow update in const getter if needed
 
@@ -139,5 +144,3 @@ private:
 };
 
 } // namespace artflow
-
-#endif // BRUSH_ENGINE_H

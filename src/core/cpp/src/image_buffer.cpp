@@ -230,22 +230,78 @@ void ImageBuffer::copyFrom(const ImageBuffer &other) {
 }
 
 void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
-                            float opacity) {
-  for (int sy = 0; sy < other.height(); ++sy) {
+                            float opacity, BlendMode mode,
+                            const ImageBuffer *mask) {
+  if (opacity <= 0.001f)
+    return;
+
+  // Clipping regions
+  int startY = std::max(0, -offsetY);
+  int endY = std::min(other.height(), m_height - offsetY);
+  int startX = std::max(0, -offsetX);
+  int endX = std::min(other.width(), m_width - offsetX);
+
+  for (int sy = startY; sy < endY; ++sy) {
     int dy = sy + offsetY;
-    if (dy < 0 || dy >= m_height)
-      continue;
+    uint8_t *dstRow = &m_data[pixelIndex(offsetX + startX, dy)];
+    const uint8_t *srcRow = other.pixelAt(startX, sy);
 
-    for (int sx = 0; sx < other.width(); ++sx) {
-      int dx = sx + offsetX;
-      if (dx < 0 || dx >= m_width)
+    for (int sx = startX; sx < endX; ++sx) {
+      if (srcRow[3] == 0) {
+        dstRow += 4;
+        srcRow += 4;
         continue;
-
-      const uint8_t *srcPixel = other.pixelAt(sx, sy);
-      if (srcPixel && srcPixel[3] > 0) {
-        uint8_t effA = static_cast<uint8_t>(srcPixel[3] * opacity);
-        blendPixel(dx, dy, srcPixel[0], srcPixel[1], srcPixel[2], effA);
       }
+
+      float srcA = (srcRow[3] / 255.0f) * opacity;
+
+      // Apply Clipping Mask if present
+      if (mask) {
+        const uint8_t *mP = mask->pixelAt(sx + offsetX, dy);
+        if (mP) {
+          srcA *= (mP[3] / 255.0f);
+        } else {
+          srcA = 0;
+        }
+      }
+
+      if (srcA <= 0.001f) {
+        dstRow += 4;
+        srcRow += 4;
+        continue;
+      }
+
+      float dstA = dstRow[3] / 255.0f;
+      float outA = srcA + dstA * (1.0f - srcA);
+
+      if (outA > 0.0f) {
+        float invSrcA = 1.0f - srcA;
+        for (int c = 0; c < 3; ++c) {
+          float s = srcRow[c] / 255.0f;
+          float d = dstRow[c] / 255.0f;
+          float result = s; // Default Normal
+
+          // Professional Blend Modes math
+          if (mode == BlendMode::Multiply) {
+            result = s * d;
+          } else if (mode == BlendMode::Screen) {
+            result = 1.0f - (1.0f - s) * (1.0f - d);
+          } else if (mode == BlendMode::Overlay) {
+            result = (d < 0.5f) ? (2.0f * s * d)
+                                : (1.0f - 2.0f * (1.0f - s) * (1.0f - d));
+          }
+
+          // Porter-Duff source-over with blend mode
+          // (mode_result * srcA + dst * dstA * (1-srcA)) / outA
+          float blended = (result * srcA + d * dstA * invSrcA) / outA;
+          dstRow[c] =
+              static_cast<uint8_t>(clampVal(blended * 255.0f, 0.0f, 255.0f));
+        }
+        dstRow[3] = static_cast<uint8_t>(clampVal(outA * 255.0f, 0.0f, 255.0f));
+      }
+
+      dstRow += 4;
+      srcRow += 4;
     }
   }
 }

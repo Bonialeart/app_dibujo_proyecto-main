@@ -25,7 +25,15 @@ import "components"
                     id: mainCanvas
                     anchors.fill: parent
                     visible: isProjectActive
+                    isFlippedH: refWindow.flipH
                     onVisibleChanged: if (visible) Qt.callLater(fitToView)
+
+                    transform: Scale {
+                        origin.x: mainCanvas.width / 2
+                        origin.y: mainCanvas.height / 2
+                        xScale: mainCanvas.isFlippedH ? -1 : 1
+                        yScale: mainCanvas.isFlippedV ? -1 : 1
+                    }
                     
                     // Sombra Dinámica que sigue al papel (y se escala)
                     Rectangle { 
@@ -588,14 +596,10 @@ import "components"
                                                 canvasPage.showToolSettings = false
                                                 canvasPage.showSubTools = false
                                                 
-                                                // If switching to a brush tool, Open Library automatically
-                                                if (index >= 5 && index <= 9) {
-                                                    mainWindow.showBrush = true
-                                                    brushLibrary.autoSelectCategory(model.name)
-                                                    mainWindow.showBrushSettings = false
-                                                } else {
-                                                    mainWindow.showBrush = false
-                                                }
+                                                // If switching to a brush tool, don't open library automatically (User request)
+                                                // Just close any open panels from previous tool
+                                                mainWindow.showBrush = false
+                                                mainWindow.showBrushSettings = false
                                                 
                                                 // Backend Mapping
                                                 // Backend Mapping - Pass EXACT names to Python for Filter Logic

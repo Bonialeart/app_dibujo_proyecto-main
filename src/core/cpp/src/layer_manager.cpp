@@ -165,11 +165,24 @@ void LayerManager::compositeAll(ImageBuffer &output, bool skipPrivate) const {
   output.clear();
 
   // Composite from bottom to top
+  const ImageBuffer *currentBaseBuffer = nullptr;
+
   for (const auto &layer : m_layers) {
-    if (layer->visible) {
-      if (skipPrivate && layer->isPrivate)
-        continue;
-      output.composite(*layer->buffer, 0, 0, layer->opacity);
+    if (!layer->visible)
+      continue;
+    if (skipPrivate && layer->isPrivate)
+      continue;
+
+    if (layer->clipped && currentBaseBuffer) {
+      // Clipping Mask: Blend using the base layer's alpha as a mask
+      output.composite(*layer->buffer, 0, 0, layer->opacity, layer->blendMode,
+                       currentBaseBuffer);
+    } else {
+      // Normal Layer (or Clipping set but no base below)
+      output.composite(*layer->buffer, 0, 0, layer->opacity, layer->blendMode,
+                       nullptr);
+      // This layer becomes the base for any subsequent clipped layers
+      currentBaseBuffer = layer->buffer.get();
     }
   }
 }

@@ -213,8 +213,8 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
   if (useTex) {
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, grainTexId);
-    m_program->setUniformValue("grainTexture", 1);
-    m_program->setUniformValue("useTexture", 1);
+    m_program->setUniformValue("brushTexture", 1);
+    m_program->setUniformValue("uHasTexture", 1);
     m_program->setUniformValue("textureScale", texScale);
     m_program->setUniformValue("textureIntensity", texIntensity);
     m_program->setUniformValue("tilt", tilt);
@@ -232,7 +232,7 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
       m_program->setUniformValue("canvasTexture", 2);
     }
   } else {
-    m_program->setUniformValue("useTexture", 0);
+    m_program->setUniformValue("uHasTexture", 0);
     m_program->setUniformValue("tilt", 0.0f);
     m_program->setUniformValue("velocity", 0.0f);
     m_program->setUniformValue("wetness", 0.0f);

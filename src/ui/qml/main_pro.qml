@@ -877,12 +877,11 @@ Window {
                     showColor = false
                     showLayers = false
                     
-                    // Auto-open library for brush tools
-                    if (activeToolIdx >= 4 && activeToolIdx <= 8) {
-                        mainWindow.showBrush = true
-                    } else {
-                        mainWindow.showBrush = false
-                    }
+                    // UX IMPROVEMENT: Don't open library automatically on tool change
+                    // showBrush = false 
+                    showColor = false
+                    showLayers = false
+                    mainWindow.showBrush = false
                 }
                 property int activeSubToolIdx: 0
                 property bool showSubTools: false
@@ -1069,14 +1068,9 @@ Window {
                                                 canvasPage.showToolSettings = false
                                                 canvasPage.showSubTools = false
                                                 
-                                                // If switching to a brush tool, Open Library automatically
-                                                if (index >= 4 && index <= 8) {
-                                                    mainWindow.showBrush = true
-                                                    brushLibrary.autoSelectCategory(model.name)
-                                                    mainWindow.showBrushSettings = false
-                                                } else {
-                                                    mainWindow.showBrush = false
-                                                }
+                                                // If switching tools, close library (User Request: don't auto-open)
+                                                mainWindow.showBrush = false
+                                                mainWindow.showBrushSettings = false
                                                 
                                                 // Backend Mapping
                                                 // Backend Mapping - Pass EXACT names to Python for Filter Logic

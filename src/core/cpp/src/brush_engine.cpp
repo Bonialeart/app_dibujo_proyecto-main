@@ -1,16 +1,19 @@
 #include "../include/brush_engine.h"
 #include "stroke_renderer.h"
-#include <QCoreApplication> // For applicationDirPath
+#include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
 #include <QImage>
 #include <QMap>
 #include <QOpenGLTexture>
-#include <QPaintEngine> // Added for type check
-#include <algorithm>    // For std::clamp
-#include <cmath>        // For sin
-#include <cstdlib>      // For rand
-#include <vector>       // For std::vector
+#include <QPaintEngine>
+#include <QPainter>
+#include <QPointF>
+#include <QString>
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
+#include <vector>
 
 namespace artflow {
 
@@ -54,15 +57,19 @@ static uint32_t loadTexture(const QString &name) {
     }
   }
 
-  QOpenGLTexture *tex = new QOpenGLTexture(img.mirrored(false, true));
+  // CRÍTICO: Convertir al formato que OpenGL entiende bien (RGBA 8888)
+  QImage glImg =
+      img.convertToFormat(QImage::Format_RGBA8888).mirrored(false, true);
+
+  QOpenGLTexture *tex = new QOpenGLTexture(glImg);
   tex->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
   tex->setMagnificationFilter(QOpenGLTexture::Linear);
-  tex->setWrapMode(QOpenGLTexture::Repeat);
+  tex->setWrapMode(
+      QOpenGLTexture::ClampToEdge); // Evita repetición en los bordes
 
   uint32_t id = tex->textureId();
   g_textureCache[name] = id;
   g_textures.push_back(tex); // Keep alive
-  // ... existing loadTexture ...
   return id;
 }
 
@@ -139,29 +146,27 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   if (!painter)
     return;
 
+  // --- Remainder Management ---
+  // No reiniciamos el resto por distancia, solo si es un trazo explícitamente
+  // nuevo (m_remainder == -1). El CanvasItem se encarga de pasar los puntos
+  // correctos.
+  m_lastPos = currentPoint;
+
   // 1. Calcular Dinámicas
   float effectivePressure = (pressure > 0.0f) ? pressure : 0.5f;
   if (!settings.dynamicsEnabled) {
     effectivePressure = 1.0f;
   }
 
-  // Resolver Textura si es necesario (Lazy loading)
-  // Casting away constness localmente es feo, mejor lo resolvemos antes o
-  // usamos el ID local
   uint32_t currentTextureID = settings.grainTextureID;
   bool isOpenGL = (painter->paintEngine()->type() != QPaintEngine::Raster);
 
-  if (isOpenGL && settings.useTexture && currentTextureID == 0 &&
-      !settings.textureName.isEmpty()) {
-    // Necesitamos cargarla. Pero settings es const.
-    // Usamos variable local.
-    currentTextureID = loadTexture(settings.textureName);
-  }
+  if (isOpenGL) {
+    if (settings.useTexture && currentTextureID == 0 &&
+        !settings.textureName.isEmpty()) {
+      currentTextureID = loadTexture(settings.textureName);
+    }
 
-  // Si usamos texturas (Modo Premium OpenGL) - SOLO si el pintor soporta OpenGL
-  // directamente Si estamos pintando en QImage (Raster), usar fallback para
-  // evitar crash.
-  if (settings.useTexture && isOpenGL) {
     painter->save();
     painter->beginNativePainting();
 
@@ -173,32 +178,36 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     int w = painter->device()->width();
     int h = painter->device()->height();
 
-    // Cálculo de tamaño base
     float currentSize =
         settings.size * (settings.sizeByPressure ? effectivePressure : 1.0f);
     if (currentSize < 1.0f)
       currentSize = 1.0f;
 
-    // Interpolación (Loop)
-    float dist = std::hypot(currentPoint.x() - lastPoint.x(),
-                            currentPoint.y() - lastPoint.y());
-    float stepSize = std::max(1.0f, currentSize * settings.spacing);
-    int steps = static_cast<int>(dist / stepSize);
+    // Interpolación Robusta (Algoritmo de Distancia Acumulada)
+    float dx = currentPoint.x() - lastPoint.x();
+    float dy = currentPoint.y() - lastPoint.y();
+    float dist = std::hypot(dx, dy);
+    float stepSize = std::max(0.5f, currentSize * settings.spacing);
 
-    // Color base con opacidad global (la presión se maneja en el shader)
+    // Si m_remainder < 0, significa que es el primer punto del trazo
+    if (m_remainder < 0.0f) {
+      m_remainder = stepSize; // Forzar dab t=0
+    }
+
+    // Distancia al siguiente dab desde el inicio de este segmento
+    float distanceToDab = stepSize - m_remainder;
+
     QColor c = settings.color;
     c.setAlphaF(c.alphaF() * settings.opacity);
 
-    // Obtener transformación actual (Zoom/Pan) para mapear a píxeles físicos
     QTransform xform = painter->transform();
     float scaleFactor =
         std::sqrt(xform.m11() * xform.m11() + xform.m12() * xform.m12());
 
-    for (int i = 0; i <= steps; ++i) {
-      float t = (steps > 0) ? (float)i / steps : 0.0f;
+    while (distanceToDab <= dist) {
+      float t = (dist > 0.0001f) ? (distanceToDab / dist) : 0.0f;
       QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
 
-      // Mapear al espacio del dispositivo (OpenGL usa coords físicas del FBO)
       QPointF devPt = xform.map(pt);
       float devSize = currentSize * scaleFactor;
 
@@ -207,26 +216,14 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           c, (int)settings.type, w, h, currentTextureID, true,
           settings.textureScale * scaleFactor, settings.textureIntensity, tilt,
           velocity, canvasTexId, wetness, dilution, smudge);
-      // Nota: textureScale también debería considerar el zoom?
-      // Si queremos que el grano sea "estático al lienzo" (papel real), el
-      // grano debe escalar consigo mismo. texture(tex, vWorldPos /
-      // textureScale). vWorldPos viene de brush.vert -> model * aPos. model usa
-      // x,y (devPt). Si hacemos zoom, x,y cambian. Pero textureScale es
-      // constante en world space? Si el papel es físico, al hacer zoom, el
-      // grano se ve más grande. textureScale ajusta la frecuencia. Si pasamos
-      // devPt (píxeles pantalla), la textura se desliza si no ajustamos. Pero
-      // vWorldPos (en vert shader) se calcula en coords pantalla. Para que la
-      // textura esté pegada al CANVAS (y no a la pantalla), necesitamos pasar
-      // el offset del canvas al shader? O usar coordenadas lógicas.
 
-      // Por ahora, dejemos el scale simple. Si hacemos zoom, el grano cambia de
-      // tamaño visualmente (se pixela) si usamos FBO, pero aquí estamos
-      // dibujando trazos. Si usamos SCREEN coords para textura, el grano es
-      // "screen space" (como ruido TV). Para "paper space", lo ideal es fixed
-      // screen space o fixed canvas space. Si scaleFactor aumenta (zoom in),
-      // textureScale debería... Dejémoslo así, el usuario pidió "textura", el
-      // refinamiento de "world space texture" es extra.
+      distanceToDab += stepSize;
     }
+
+    // Actualizar residuo para el siguiente segmento
+    m_remainder = dist - (distanceToDab - stepSize);
+    if (m_remainder < 0)
+      m_remainder = 0;
 
     painter->endNativePainting();
     painter->restore();
@@ -260,24 +257,29 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   // CASO C: Pincel Texturizado en Raster (OIL fallback)
   if (settings.useTexture &&
       painter->paintEngine()->type() == QPaintEngine::Raster) {
-    float dist = std::hypot(currentPoint.x() - lastPoint.x(),
-                            currentPoint.y() - lastPoint.y());
-    // Spacing más denso para textura (evitar huecos)
+    float dx = currentPoint.x() - lastPoint.x();
+    float dy = currentPoint.y() - lastPoint.y();
+    float dist = std::hypot(dx, dy);
     float stepSize = std::max(1.0f, currentSize * settings.spacing * 0.25f);
-    int steps = static_cast<int>(dist / stepSize);
 
-    for (int i = 0; i <= steps; ++i) {
-      float t = (steps > 0) ? (float)i / steps : 0.0f;
+    if (m_remainder < 0.0f)
+      m_remainder = stepSize;
+    float coveredDist = stepSize - m_remainder;
+
+    while (coveredDist <= dist) {
+      float t = (dist > 0.0001f) ? (coveredDist / dist) : 0.0f;
       QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
       paintTexturedRaster(painter, pt, currentSize, currentOpacity,
                           settings.color, settings.textureName);
+      coveredDist += stepSize;
     }
+    m_remainder = dist - (coveredDist - stepSize);
+    if (m_remainder < 0)
+      m_remainder = 0;
     return;
   }
 
-  // Caso A: Pincel Duro (Hard Brush) CONSTANTE - Usamos QPen para rendimiento.
-  // SOLO si el tamaño NO varía por presión. Si varía, usamos interpolación
-  // (abajo).
+  // Caso A: Pincel Duro (Hard Brush) CONSTANTE
   if (settings.hardness > 0.9f && !settings.sizeByPressure) {
     QPen pen;
     pen.setColor(settings.color);
@@ -292,24 +294,25 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   // Caso B: Pincel Suave/Aerógrafo (Soft Brush) - Usamos QRadialGradient
   // interpolado
   else {
-    // Necesitamos interpolar pasos entre los dos puntos para que no se vean
-    // "bolas" separadas
-    float distance = std::hypot(currentPoint.x() - lastPoint.x(),
-                                currentPoint.y() - lastPoint.y());
-    // El paso (step) debe ser una fracción del tamaño del pincel (ej. 10% del
-    // tamaño)
+    float dx = currentPoint.x() - lastPoint.x();
+    float dy = currentPoint.y() - lastPoint.y();
+    float dist = std::hypot(dx, dy);
     float stepSize = std::max(1.0f, currentSize * settings.spacing);
 
-    int steps = static_cast<int>(distance / stepSize);
+    if (m_remainder < 0.0f)
+      m_remainder = stepSize;
+    float coveredDist = stepSize - m_remainder;
 
-    for (int i = 0; i <= steps; ++i) {
-      float t = (steps > 0) ? (float)i / steps : 0.0f;
-      QPointF interpolatedPoint = lastPoint + (currentPoint - lastPoint) * t;
-
-      // Renderizamos un "sello" suave en cada paso
-      paintSoftStamp(painter, interpolatedPoint, currentSize, currentOpacity,
-                     settings.color, settings.hardness);
+    while (coveredDist <= dist) {
+      float t = (dist > 0.0001f) ? (coveredDist / dist) : 0.0f;
+      QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
+      paintSoftStamp(painter, pt, currentSize, currentOpacity, settings.color,
+                     settings.hardness);
+      coveredDist += stepSize;
     }
+    m_remainder = dist - (coveredDist - stepSize);
+    if (m_remainder < 0)
+      m_remainder = 0;
   }
 }
 
@@ -331,6 +334,7 @@ const Color &BrushEngine::getColor() const { return m_cachedColor; }
 
 void BrushEngine::beginStroke(const StrokePoint &point) {
   m_lastPos = QPointF(point.x, point.y);
+  m_remainder = -1.0f; // Flag para forzar primer dab en t=0
   // Ensure renderer exists
   if (!m_renderer) {
     m_renderer = new StrokeRenderer();
@@ -344,20 +348,24 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
 
   QPointF currentPos(point.x, point.y);
 
-  // Interpolation Logic (Simplified from paintStroke)
-  float dist = std::hypot(currentPos.x() - m_lastPos.x(),
-                          currentPos.y() - m_lastPos.y());
+  // Interpolation Logic with Remainder
+  float dx = currentPos.x() - m_lastPos.x();
+  float dy = currentPos.y() - m_lastPos.y();
+  float dist = std::hypot(dx, dy);
 
   float size = m_currentSettings.size;
-  // Apply pressure dynamics
   if (m_currentSettings.sizeByPressure) {
     size *= point.pressure;
   }
 
   float spacing = std::max(1.0f, size * m_currentSettings.spacing);
-  int steps = static_cast<int>(dist / spacing);
 
-  // Opacity by pressure
+  if (m_remainder < 0.0f) {
+    m_remainder = spacing;
+  }
+
+  float coveredDist = spacing - m_remainder;
+
   float opacity = m_currentSettings.opacity;
   if (m_currentSettings.opacityByPressure) {
     opacity *= point.pressure;
@@ -367,29 +375,17 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
   if (m_currentSettings.useTexture && texId == 0 &&
       !m_currentSettings.textureName.isEmpty()) {
     texId = loadTexture(m_currentSettings.textureName);
-    // Optimization: Update settings const cast hack or just use local
   }
 
-  int w = 0, h = 0; // Viewport size unknown?
-  // StrokeRenderer needs viewport size for projection.
-  // We assume beginFrame has been called on StrokeRenderer or we pass 0 and
-  // rely on previous state? Ideally we should pass viewport size. For now
-  // passing 0 might trigger default or we need to query. BUT:
-  // StrokeRenderer::renderStroke takes w, h. Maybe we can assume a default
-  // global size or add setViewport to BrushEngine? "canvasTexId" is also
-  // missing here.
+  int w = 2000; // Hack viewport size
+  int h = 2000;
 
-  // Hack: passing 2000x2000 default or storing it.
-  w = 2000;
-  h = 2000;
-
-  for (int i = 1; i <= steps; ++i) {
-    float t = (float)i / steps;
+  // Render Loop
+  while (coveredDist <= dist) {
+    float t = (dist > 0.0001f) ? (coveredDist / dist) : 0.0f;
     QPointF pt = m_lastPos + (currentPos - m_lastPos) * t;
 
-    // Convert color to generic
     QColor c = m_currentSettings.color;
-    // We already have r,g,b,a in float for renderer but here we pass QColor
     c.setAlphaF(opacity);
 
     m_renderer->renderStroke(
@@ -398,7 +394,14 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         m_currentSettings.textureScale, m_currentSettings.textureIntensity,
         0.0f, 0.0f, 0, m_currentSettings.wetness, m_currentSettings.dilution,
         m_currentSettings.smudge);
+
+    coveredDist += spacing;
   }
+
+  // Update Remainder
+  m_remainder = dist - (coveredDist - spacing);
+  if (m_remainder < 0)
+    m_remainder = 0;
 
   m_lastPos = currentPos;
 }

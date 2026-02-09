@@ -4,18 +4,38 @@
 #include "core/cpp/include/brush_engine.h"
 #include "core/cpp/include/layer_manager.h"
 #include "core/cpp/include/stroke_renderer.h"
+#include "core/cpp/include/stroke_undo_command.h"
+#include "core/cpp/include/undo_manager.h"
 #include <QColor>
 #include <QImage>
+#include <QMap>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLTexture>
+#include <QPainterPath>
 #include <QPointF>
 #include <QQuickPaintedItem>
+#include <QRectF>
 #include <QTabletEvent>
+#include <QTimer>
 #include <QVariantList>
+#include <deque>
 #include <vector>
 
 class CanvasItem : public QQuickPaintedItem {
   Q_OBJECT
+
+public:
+  enum class ToolType {
+    Pen,
+    Eraser,
+    Lasso,
+    Transform,
+    Eyedropper,
+    Hand,
+    Fill,
+    Shape
+  };
+  Q_ENUM(ToolType)
 
   // Properties for QML compatibility
   Q_PROPERTY(
@@ -69,6 +89,17 @@ class CanvasItem : public QQuickPaintedItem {
   Q_PROPERTY(QString currentProjectName READ currentProjectName NOTIFY
                  currentProjectNameChanged)
   Q_PROPERTY(QString brushTip READ brushTip NOTIFY brushTipChanged)
+  Q_PROPERTY(bool isFlippedH READ isFlippedH WRITE setIsFlippedH NOTIFY
+                 isFlippedHChanged)
+  Q_PROPERTY(bool isFlippedV READ isFlippedV WRITE setIsFlippedV NOTIFY
+                 isFlippedVChanged)
+
+  // Aliases for QML compatibility
+  Q_PROPERTY(float canvasScale READ zoomLevel WRITE setZoomLevel NOTIFY
+                 zoomLevelChanged)
+  Q_PROPERTY(QPointF canvasOffset READ viewOffset WRITE setViewOffset NOTIFY
+                 viewOffsetChanged)
+
   // Curva de Presión Bezier (P1x, P1y, P2x, P2y)
   Q_PROPERTY(QVariantList pressureCurvePoints READ pressureCurvePoints WRITE
                  setCurvePoints NOTIFY pressureCurvePointsChanged)
@@ -101,7 +132,7 @@ public:
   float lightElevation() const { return m_lightElevation; }
 
   float zoomLevel() const { return m_zoomLevel; }
-  QString currentTool() const { return m_currentTool; }
+  QString currentTool() const { return m_currentToolStr; }
   int canvasWidth() const { return m_canvasWidth; }
   int canvasHeight() const { return m_canvasHeight; }
   QPointF viewOffset() const { return m_viewOffset; }
@@ -112,6 +143,8 @@ public:
   QString currentProjectPath() const { return m_currentProjectPath; }
   QString currentProjectName() const { return m_currentProjectName; }
   QString brushTip() const { return m_brushTip; }
+  bool isFlippedH() const { return m_isFlippedH; }
+  bool isFlippedV() const { return m_isFlippedV; }
   QVariantList availableBrushes() const { return m_availableBrushes; }
   QString activeBrushName() const { return m_activeBrushName; }
 
@@ -134,7 +167,11 @@ public:
   void setBrushAngle(float value);
   void setCursorRotation(float value);
   void setZoomLevel(float zoom);
+  void setViewOffset(const QPointF &offset);
   void setCurrentTool(const QString &tool);
+  void commitTransform();
+  void setIsFlippedH(bool flip);
+  void setIsFlippedV(bool flip);
   Q_INVOKABLE void setBackgroundColor(const QString &color);
   Q_INVOKABLE void usePreset(const QString &name);
   Q_INVOKABLE bool loadProject(const QString &path);
@@ -148,6 +185,8 @@ public:
   Q_INVOKABLE void resizeCanvas(int w, int h);
   Q_INVOKABLE void setProjectDpi(int dpi);
   Q_INVOKABLE QString sampleColor(int x, int y, int mode = 0);
+  Q_INVOKABLE void adjustBrushSize(float deltaPercent);
+  Q_INVOKABLE void adjustBrushOpacity(float deltaPercent);
   Q_INVOKABLE bool isLayerClipped(int index);
   Q_INVOKABLE void toggleClipping(int index);
   Q_INVOKABLE void toggleAlphaLock(int index);
@@ -161,6 +200,12 @@ public:
   // Color Utilities (HCL support for Pro Sliders)
   Q_INVOKABLE QString hclToHex(float h, float c, float l);
   Q_INVOKABLE QVariantList hexToHcl(const QString &hex);
+
+  // Undo/Redo
+  Q_INVOKABLE void undo();
+  Q_INVOKABLE void redo();
+  Q_INVOKABLE bool canUndo() const;
+  Q_INVOKABLE bool canRedo() const;
 
   // Q_INVOKABLE methods for Python compatibility
   Q_INVOKABLE void loadRecentProjectsAsync();
@@ -214,6 +259,8 @@ signals:
   void layersChanged(const QVariantList &layers);
   void availableBrushesChanged();
   void activeBrushNameChanged();
+  void isFlippedHChanged();
+  void isFlippedVChanged();
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
 
@@ -221,6 +268,7 @@ protected:
   void mousePressEvent(QMouseEvent *event) override;
   void mouseMoveEvent(QMouseEvent *event) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
+  void wheelEvent(QWheelEvent *event) override;
   void hoverMoveEvent(QHoverEvent *event) override;
   void tabletEvent(QTabletEvent *event);
   bool event(QEvent *event) override;
@@ -228,6 +276,8 @@ protected:
 private:
   artflow::BrushEngine *m_brushEngine;
   artflow::LayerManager *m_layerManager;
+  artflow::UndoManager *m_undoManager;
+  std::unique_ptr<artflow::ImageBuffer> m_strokeBeforeBuffer;
 
   // Pressure Logic
   // Pressure Logic
@@ -257,14 +307,16 @@ private:
   float m_brushSmudge;
 
   float m_zoomLevel;
-  QString m_currentTool;
+  QString m_currentToolStr; // QML compatibility
+  ToolType m_tool = ToolType::Pen;
   int m_canvasWidth;
   int m_canvasHeight;
   QPointF m_viewOffset;
   int m_activeLayerIndex;
-  bool m_isTransforming;
   float m_brushAngle;
   float m_cursorRotation;
+  bool m_isFlippedH = false;
+  bool m_isFlippedV = false;
   QString m_currentProjectPath;
   QString m_currentProjectName;
   QString m_brushTip;
@@ -272,8 +324,13 @@ private:
   QString m_activeBrushName;
 
   QPointF m_lastPos;
+  QPointF m_lastMousePos; // For Pan delta
   float m_lastPressure;
   bool m_isDrawing;
+  bool m_isHoldingForShape = false;
+  std::vector<QPointF> m_strokePoints;
+  QTimer *m_quickShapeTimer = nullptr;
+  QPointF m_holdStartPos;
 
   // Premium Rendering (Ping-Pong FBOs)
   QOpenGLFramebufferObject *m_pingFBO = nullptr;
@@ -289,8 +346,25 @@ private:
   // Renderizado por software / OpenGL Engine
   void handleDraw(const QPointF &pos, float pressure, float tilt = 0.0f);
 
+  // QuickShape
+  void detectAndDrawQuickShape();
+  void drawLine(const QPointF &p1, const QPointF &p2);
+  void drawCircle(const QPointF &center, float radius);
+
   QVariantList _scanSync();
   void updateLayersList();
+  // Selection and Transform state
+  QPainterPath m_selectionPath;
+  bool m_hasSelection = false;
+  QImage m_selectionBuffer;
+  QTransform m_transformMatrix;
+  QRectF m_transformBox;
+  bool m_isTransforming = false;
+  enum class TransformMode { None, Move, Scale, Rotate };
+  TransformMode m_transformMode = TransformMode::None;
+  QPointF m_transformStartPos;
+  QTransform m_initialMatrix;
+
   void capture_timelapse_frame();
 };
 
