@@ -20,10 +20,13 @@
 #include <QOpenGLTexture>
 #include <QPainter>
 #include <QPainterPath>
+#include <QQuickItem>
+#include <QQuickPaintedItem> // Ensure base class is known
 #include <QQuickWindow>
 #include <QStandardPaths>
 #include <QStringList>
 #include <QTabletEvent>
+#include <QTimer>
 #include <QUrl>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtMath>
@@ -35,6 +38,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
     : QQuickPaintedItem(parent), m_brushSize(20), m_brushColor(Qt::black),
       m_brushOpacity(1.0f), m_brushFlow(1.0f), m_brushHardness(0.8f),
       m_brushSpacing(0.1f), m_brushStabilization(0.2f), m_brushStreamline(0.0f),
+
       m_brushGrain(0.0f), m_brushWetness(0.0f), m_brushSmudge(0.0f),
       m_zoomLevel(1.0f), m_currentTool("brush"), m_canvasWidth(1920),
       m_canvasHeight(1080), m_viewOffset(50, 50), m_activeLayerIndex(0),

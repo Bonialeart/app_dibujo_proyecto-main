@@ -12,7 +12,111 @@
 namespace artflow {
 
 StrokeRenderer::StrokeRenderer()
-    : m_program(nullptr), m_vbo(QOpenGLBuffer::VertexBuffer) {}
+    : m_program(nullptr), m_vbo(QOpenGLBuffer::VertexBuffer) {
+  m_projection.setToIdentity();
+}
+
+void StrokeRenderer::beginFrame(int width, int height) {
+  if (width <= 0 || height <= 0)
+    return;
+
+  m_viewportWidth = width;
+  m_viewportHeight = height;
+
+  m_projection.setToIdentity();
+  m_projection.ortho(0, width, height, 0, -1, 1);
+
+  // Ensure we are in the correct context if possible, but usually handled by
+  // caller initializeOpenGLFunctions() is called in initialize()
+}
+
+void StrokeRenderer::endFrame() {
+  // Cleanup if needed
+}
+
+void StrokeRenderer::drawDab(float x, float y, float size, float rotation,
+                             float r, float g, float b, float a, float hardness,
+                             float pressure, int mode, int brushType,
+                             float wetness) {
+  // Delegate to renderStroke
+  QColor color;
+  color.setRgbF(r, g, b, a);
+
+  // Basic dab drawing - no advanced texture maps passed here
+  // We use internal m_brushTextureId if available
+  uint32_t brushTex = m_brushTextureId;
+  bool useTex = (brushTex != 0);
+
+  renderStroke(x, y, size, pressure, hardness, color, brushType,
+               m_viewportWidth, m_viewportHeight, brushTex, useTex, 1.0f, 1.0f,
+               0.0f, 0.0f, 0, wetness, 0.0f, 0.0f);
+}
+
+void StrokeRenderer::drawDabPingPong(float x, float y, float size,
+                                     float rotation, float r, float g, float b,
+                                     float a, float hardness, float pressure,
+                                     int mode, int brushType, float wetness,
+                                     unsigned int canvasTex,
+                                     unsigned int wetMap) {
+  QColor color;
+  color.setRgbF(r, g, b, a);
+
+  uint32_t brushTex = m_brushTextureId;
+  bool useTex = (brushTex != 0);
+
+  // For ping pong, we might be using the wet map as the "texture" or similar
+  // specialized logic. For now, we map it to renderStroke's parameters via the
+  // existing "canvasTexId" (which was intended for mixing)
+
+  // Note: renderStroke's signature might need adjustment or we map carefully
+  // renderStroke(..., canvasTexId, wetness, ...)
+
+  // We pass 1.0 for texture scale/intensity as defaults
+  renderStroke(x, y, size, pressure, hardness, color, brushType,
+               m_viewportWidth, m_viewportHeight, brushTex, useTex, 1.0f, 1.0f,
+               0.0f, 0.0f, canvasTex, wetness, 0.0f, 0.0f);
+}
+
+void StrokeRenderer::setBrushTip(const unsigned char *data, int width,
+                                 int height) {
+  if (!data || width <= 0 || height <= 0)
+    return;
+
+  if (m_brushTextureId == 0) {
+    glGenTextures(1, &m_brushTextureId);
+  }
+
+  glBindTexture(GL_TEXTURE_2D, m_brushTextureId);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+               GL_UNSIGNED_BYTE, data);
+}
+
+void StrokeRenderer::setPaperTexture(const unsigned char *data, int width,
+                                     int height) {
+  if (!data || width <= 0 || height <= 0)
+    return;
+
+  if (m_paperTextureId == 0) {
+    glGenTextures(1, &m_paperTextureId);
+  }
+
+  glBindTexture(GL_TEXTURE_2D, m_paperTextureId);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  // Assuming paper is single channel (grayscale) or RGBA?
+  // Python usually sends RGBA or Gray. Let's assume RGBA for safety or check
+  // size. The previous implementation used GL_RGBA
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+               GL_UNSIGNED_BYTE, data);
+}
 
 StrokeRenderer::~StrokeRenderer() {
   if (m_program)

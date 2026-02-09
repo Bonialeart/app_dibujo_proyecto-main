@@ -3,6 +3,9 @@
  * Exposes C++ core to Python via pybind11
  */
 
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
 #include "../brushes/abr_parser.h"
 #include "../canvas/renderer.h"
 #include "brush_engine.h"
@@ -10,8 +13,6 @@
 #include "image_buffer.h"
 #include "layer_manager.h"
 #include "stroke_renderer.h"
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 
 namespace py = pybind11;
 using namespace artflow;

@@ -18,6 +18,13 @@ struct Color {
   Color() : r(0), g(0), b(0), a(255) {}
   Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
       : r(r), g(g), b(b), a(a) {}
+
+  void blend(const Color &other, float factor) {
+    r = static_cast<uint8_t>(r + (other.r - r) * factor);
+    g = static_cast<uint8_t>(g + (other.g - g) * factor);
+    b = static_cast<uint8_t>(b + (other.b - b) * factor);
+    a = static_cast<uint8_t>(a + (other.a - a) * factor);
+  }
 };
 
 // Legacy StrokePoint struct for compatibility
@@ -61,6 +68,11 @@ struct BrushSettings {
   float dilution = 0.0f;         // Pilar 3: Dilución (Agua)
   float smudge = 0.0f;           // Pilar 1: Arrastre
 
+  // Additional members for bindings
+  float rotation = 0.0f;
+  bool rotateWithStroke = false;
+  uint32_t textureId = 0; // Alias/Same as grainTextureID
+
   // Cache e Internal
   uint32_t grainTextureID = 0;
 
@@ -92,25 +104,34 @@ public:
                    float smudge = 0.0f);
 
   // Compatibility methods for CanvasItem integration
-  void setBrush(const BrushSettings &settings) { m_currentSettings = settings; }
+  void setBrush(const BrushSettings &settings); // Implemented in cpp or inline
   BrushSettings getBrush() const { return m_currentSettings; }
-  void setColor(const Color &color) {
-    m_currentSettings.color = QColor(color.r, color.g, color.b, color.a);
-  }
 
-  // Compatibility methods (Empty or mapped)
-  void beginStroke(const StrokePoint &point) { /* Handled in paintStroke now */
-  }
-  void endStroke() { /* Handled in paintStroke now */ }
+  void setColor(const Color &color); // Updated to update cache
+  const Color &getColor() const;
 
-  // Helper to map legacy calls to new engine if needed,
-  // but we will update CanvasItem to call paintStroke directly.
-  // However, keeping these to avoid linker errors if I miss one call.
-  // Ideally CanvasItem should construct QPainter and call paintStroke.
+  // Stateful stroke management
+  void beginStroke(const StrokePoint &point);
+  void continueStroke(const StrokePoint &point);
+  void endStroke();
+
+  // Direct rendering methods exposed to Python
+  void renderDab(float x, float y, float size, float rotation,
+                 const Color &color, float hardness, float pressure,
+                 int brushType, float wetness);
+
+  void renderStrokeSegment(float x1, float y1, float x2, float y2,
+                           float pressure, float tilt, float velocity,
+                           bool useTexture);
 
 private:
   BrushSettings m_currentSettings;
   StrokeRenderer *m_renderer = nullptr;
+
+  // State for continueStroke
+  QPointF m_lastPos;
+  mutable Color
+      m_cachedColor; // mutable to allow update in const getter if needed
 
   // Ayudante para pinceles suaves
   void paintSoftStamp(QPainter *painter, const QPointF &point, float size,

@@ -18,6 +18,17 @@ bindings_dir = os.path.abspath(os.path.join(os.getcwd(), "..", "bindings"))
 canvas_dir = os.path.abspath(os.path.join(os.getcwd(), "..", "canvas"))
 brushes_dir = os.path.abspath(os.path.join(os.getcwd(), "..", "brushes"))
 
+# Configuración de Qt (MinGW hardcoded para Windows)
+QT_PATH = r"C:\Qt\6.10.2\mingw_64"
+qt_include_dirs = [
+    os.path.join(QT_PATH, "include"),
+    os.path.join(QT_PATH, "include", "QtCore"),
+    os.path.join(QT_PATH, "include", "QtGui"),
+    os.path.join(QT_PATH, "include", "QtOpenGL"),
+    os.path.join(QT_PATH, "include", "QtWidgets"), # Potencialmente necesario
+]
+qt_lib_dir = os.path.join(QT_PATH, "lib")
+
 sources = [
     os.path.join(bindings_dir, "python_bindings.cpp"),
     os.path.join(cpp_src_dir, "brush_engine.cpp"),
@@ -33,6 +44,14 @@ sources = [
 # Verificar que los archivos existen (filtro preventivo)
 existing_sources = [f for f in sources if os.path.exists(f)]
 
+# Librerias para linkear
+libs = ["user32", "gdi32", "opengl32"]
+if sys.platform == "win32":
+    # MinGW libraries (libQt6Core.a -> -lQt6Core)
+    libs.extend(["Qt6Core", "Qt6Gui", "Qt6OpenGL", "Qt6Widgets"])
+else:
+    libs.append("GL")
+
 ext_modules = [
     Extension(
         "artflow_native",
@@ -42,10 +61,11 @@ ext_modules = [
             canvas_dir,
             brushes_dir,
             pybind_include,
-        ],
+        ] + qt_include_dirs,
+        library_dirs=[qt_lib_dir],
+        libraries=libs,
         language="c++",
-        extra_compile_args=["/std:c++17", "/DNOMINMAX"] if sys.platform == "win32" else ["-std=c++17"],
-        libraries=["user32", "gdi32", "opengl32"] if sys.platform == "win32" else ["GL"],
+        extra_compile_args=["-std=c++17", "-O3"], # MinGW flags
     ),
 ]
 

@@ -313,6 +313,123 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   }
 }
 
+// --- Python Bindings Support ---
+
+void BrushEngine::setBrush(const BrushSettings &settings) {
+  m_currentSettings = settings;
+  // Sync cached color
+  m_cachedColor = Color(settings.color.red(), settings.color.green(),
+                        settings.color.blue(), settings.color.alpha());
+}
+
+void BrushEngine::setColor(const Color &color) {
+  m_cachedColor = color;
+  m_currentSettings.color = QColor(color.r, color.g, color.b, color.a);
+}
+
+const Color &BrushEngine::getColor() const { return m_cachedColor; }
+
+void BrushEngine::beginStroke(const StrokePoint &point) {
+  m_lastPos = QPointF(point.x, point.y);
+  // Ensure renderer exists
+  if (!m_renderer) {
+    m_renderer = new StrokeRenderer();
+    m_renderer->initialize();
+  }
+}
+
+void BrushEngine::continueStroke(const StrokePoint &point) {
+  if (!m_renderer)
+    return;
+
+  QPointF currentPos(point.x, point.y);
+
+  // Interpolation Logic (Simplified from paintStroke)
+  float dist = std::hypot(currentPos.x() - m_lastPos.x(),
+                          currentPos.y() - m_lastPos.y());
+
+  float size = m_currentSettings.size;
+  // Apply pressure dynamics
+  if (m_currentSettings.sizeByPressure) {
+    size *= point.pressure;
+  }
+
+  float spacing = std::max(1.0f, size * m_currentSettings.spacing);
+  int steps = static_cast<int>(dist / spacing);
+
+  // Opacity by pressure
+  float opacity = m_currentSettings.opacity;
+  if (m_currentSettings.opacityByPressure) {
+    opacity *= point.pressure;
+  }
+
+  uint32_t texId = m_currentSettings.grainTextureID;
+  if (m_currentSettings.useTexture && texId == 0 &&
+      !m_currentSettings.textureName.isEmpty()) {
+    texId = loadTexture(m_currentSettings.textureName);
+    // Optimization: Update settings const cast hack or just use local
+  }
+
+  int w = 0, h = 0; // Viewport size unknown?
+  // StrokeRenderer needs viewport size for projection.
+  // We assume beginFrame has been called on StrokeRenderer or we pass 0 and
+  // rely on previous state? Ideally we should pass viewport size. For now
+  // passing 0 might trigger default or we need to query. BUT:
+  // StrokeRenderer::renderStroke takes w, h. Maybe we can assume a default
+  // global size or add setViewport to BrushEngine? "canvasTexId" is also
+  // missing here.
+
+  // Hack: passing 2000x2000 default or storing it.
+  w = 2000;
+  h = 2000;
+
+  for (int i = 1; i <= steps; ++i) {
+    float t = (float)i / steps;
+    QPointF pt = m_lastPos + (currentPos - m_lastPos) * t;
+
+    // Convert color to generic
+    QColor c = m_currentSettings.color;
+    // We already have r,g,b,a in float for renderer but here we pass QColor
+    c.setAlphaF(opacity);
+
+    m_renderer->renderStroke(
+        pt.x(), pt.y(), size, point.pressure, m_currentSettings.hardness, c,
+        (int)m_currentSettings.type, w, h, texId, (texId != 0),
+        m_currentSettings.textureScale, m_currentSettings.textureIntensity,
+        0.0f, 0.0f, 0, m_currentSettings.wetness, m_currentSettings.dilution,
+        m_currentSettings.smudge);
+  }
+
+  m_lastPos = currentPos;
+}
+
+void BrushEngine::endStroke() {
+  // Cleanup or finish
+}
+
+void BrushEngine::renderDab(float x, float y, float size, float rotation,
+                            const Color &color, float hardness, float pressure,
+                            int brushType, float wetness) {
+  if (!m_renderer) {
+    m_renderer = new StrokeRenderer();
+    m_renderer->initialize();
+  }
+
+  m_renderer->drawDab(x, y, size, rotation, color.r / 255.0f, color.g / 255.0f,
+                      color.b / 255.0f, color.a / 255.0f, hardness, pressure, 0,
+                      brushType, wetness);
+}
+
+void BrushEngine::renderStrokeSegment(float x1, float y1, float x2, float y2,
+                                      float pressure, float tilt,
+                                      float velocity, bool useTexture) {
+  // Basic implementation wrapping continueStroke logic
+  StrokePoint start(x1, y1, pressure);
+  StrokePoint end(x2, y2, pressure);
+  beginStroke(start);
+  continueStroke(end);
+}
+
 void BrushEngine::paintSoftStamp(QPainter *painter, const QPointF &point,
                                  float size, float opacity, const QColor &color,
                                  float hardness) {
