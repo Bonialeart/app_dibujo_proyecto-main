@@ -1,15 +1,28 @@
+// Re-verify includes
 #include "CanvasItem.h"
+#include "PreferencesManager.h"
 #include <QBuffer>
+#include <QCoreApplication>
 #include <QCursor>
 #include <QDebug>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QHoverEvent>
 #include <QMouseEvent>
+#include <QOpenGLContext>
+#include <QOpenGLFramebufferObject>
+#include <QOpenGLFunctions>
+#include <QOpenGLPaintDevice>
+#include <QOpenGLShader>
+#include <QOpenGLShaderProgram>
+#include <QOpenGLTexture>
 #include <QPainter>
 #include <QPainterPath>
+#include <QQuickWindow>
 #include <QStandardPaths>
+#include <QStringList>
 #include <QTabletEvent>
 #include <QUrl>
 #include <QtConcurrent/QtConcurrentRun>
@@ -32,6 +45,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
   setAcceptTouchEvents(true);
+  setRenderTarget(QQuickPaintedItem::FramebufferObject);
 
   // Enable tablet tracking for high-frequency events
   // Note: QQuickItem doesn't have setAttribute(Qt::WA_TabletTracking) directly
@@ -41,17 +55,22 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   // Brush engine initialized in initializer list
 
   m_layerManager->addLayer("Layer 1");
-  // Inicializar curva de presión (Lineal)
-  // Inicializar curva de presión (Lineal)
-  // [x0, y0, ..., xn, yn]
-  setCurvePoints({0.0, 0.0, 0.25, 0.25, 0.75, 0.75, 1.0, 1.0});
+
+  // Cargar curva de presión guardada (Persistencia)
+  // Cargar curva de presión guardada (Persistencia)
+  setCurvePoints(PreferencesManager::instance()->pressureCurve());
   m_activeLayerIndex = 1;
   m_layerManager->setActiveLayer(m_activeLayerIndex);
 
   m_availableBrushes << "Pencil HB" << "Pencil 6B" << "Ink Pen" << "Marker"
                      << "G-Pen" << "Maru Pen" << "Watercolor"
                      << "Watercolor Wet"
-                     << "Oil Paint" << "Acrylic" << "Soft" << "Hard"
+                     << "Oil Paint" << "Acrylic" << "The Blender"
+                     << "Smudge Tool" << "Óleo Classic Flat"
+                     << "Óleo Round Bristle"
+                     << "Óleo Impasto Knife" << "Óleo Dry Scumble"
+                     << "Óleo Wet Blender"
+                     << "Soft" << "Hard"
                      << "Mechanical"
                      << "Eraser Soft" << "Eraser Hard";
   m_activeBrushName = "Pencil HB";
@@ -65,81 +84,225 @@ CanvasItem::~CanvasItem() {
     delete m_brushEngine;
   if (m_layerManager)
     delete m_layerManager;
+  if (m_impastoShader)
+    delete m_impastoShader;
+  qDeleteAll(m_layerTextures);
+  m_layerTextures.clear();
 }
 
 void CanvasItem::paint(QPainter *painter) {
   if (!m_layerManager)
     return;
 
-  // 1. Draw existing layers (Software backing store)
-  // We use QPainter to draw the composite image (which handles zoom/pan)
-  // Create background
+  // 1. Inicializar Shaders Premium si es necesario
+  if (!m_impastoShader) {
+    m_impastoShader = new QOpenGLShaderProgram();
+
+    // Buscar shaders en rutas relativas y absolutas
+    QStringList paths;
+    paths << QCoreApplication::applicationDirPath() + "/shaders/";
+    paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
+    paths << "e:/app_dibujo_proyecto-main/src/core/shaders/";
+
+    QString vertPath, fragPath;
+    for (const QString &path : paths) {
+      if (QFile::exists(path + "brush.vert") &&
+          QFile::exists(path + "impasto.frag")) {
+        vertPath = path + "brush.vert";
+        fragPath = path + "impasto.frag";
+        break;
+      }
+    }
+
+    if (!vertPath.isEmpty()) {
+      m_impastoShader->addShaderFromSourceFile(QOpenGLShader::Vertex, vertPath);
+      m_impastoShader->addShaderFromSourceFile(QOpenGLShader::Fragment,
+                                               fragPath);
+      m_impastoShader->link();
+    } else {
+      qWarning() << "Shaders not found!";
+    }
+  }
+
+  // 2. Fondo Base
   painter->fillRect(0, 0, width(), height(), Qt::white);
 
   if (m_layerManager->getLayerCount() > 0) {
-    // Draw layers via composite
     for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
       Layer *layer = m_layerManager->getLayer(i);
-      if (!layer->visible)
+      if (!layer || !layer->visible)
         continue;
 
       QImage img(layer->buffer->data(), layer->buffer->width(),
                  layer->buffer->height(), QImage::Format_RGBA8888);
-      painter->setOpacity(layer->opacity);
 
-      // Apply Zoom and Pan
+      // Rectángulo de destino con Zoom y Pan (Común)
       QRectF targetRect(
           m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
           m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
-      painter->drawImage(targetRect, img);
+
+      // Intentar usar shaders (Impasto)
+      bool useImpasto = false;
+      // Deshabilitado temporalmente para evitar crash en rendering
+      if (false && m_impastoShader && m_impastoShader->isLinked()) {
+        useImpasto = true;
+      }
+
+      bool renderedWithShader = false;
+      if (useImpasto) {
+        painter->save();
+        painter->setOpacity(layer->opacity);
+        painter->beginNativePainting();
+
+        if (m_impastoShader->bind()) {
+          m_impastoShader->setUniformValue("screenSize",
+                                           QVector2D(width(), height()));
+          m_impastoShader->setUniformValue("reliefStrength",
+                                           m_impastoStrength * 8.0f);
+          m_impastoShader->setUniformValue("impastoShininess",
+                                           m_impastoShininess);
+
+          float radians = m_lightAngle * M_PI / 180.0f;
+          float lx = std::cos(radians);
+          float ly = -std::sin(radians);
+          m_impastoShader->setUniformValue("lightPos",
+                                           QVector3D(lx, ly, m_lightElevation));
+
+          // Textura
+          QOpenGLTexture *tex = m_layerTextures.value(layer);
+          if (!tex) {
+            tex = new QOpenGLTexture(img.flipped(Qt::Vertical));
+            m_layerTextures.insert(layer, tex);
+            layer->dirty = false;
+          } else if (layer->dirty) {
+            tex->setData(img.flipped(Qt::Vertical));
+            layer->dirty = false;
+          }
+
+          tex->bind(0);
+          m_impastoShader->setUniformValue("canvasTexture", 0);
+
+          // Draw Quad
+          float x1 = (targetRect.left() / width()) * 2.0f - 1.0f;
+          float y1 = 1.0f - (targetRect.top() / height()) * 2.0f;
+          float x2 = (targetRect.right() / width()) * 2.0f - 1.0f;
+          float y2 = 1.0f - (targetRect.bottom() / height()) * 2.0f;
+
+          QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+          f->glEnable(GL_BLEND);
+          f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+          GLfloat vertices[] = {x1, y1, 0.0f, 0.0f, x2, y1, 1.0f, 0.0f,
+                                x1, y2, 0.0f, 1.0f, x1, y2, 0.0f, 1.0f,
+                                x2, y1, 1.0f, 0.0f, x2, y2, 1.0f, 1.0f};
+
+          m_impastoShader->enableAttributeArray(0);
+          m_impastoShader->enableAttributeArray(1);
+          m_impastoShader->setAttributeArray(0, GL_FLOAT, vertices, 2,
+                                             4 * sizeof(GLfloat));
+          m_impastoShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2,
+                                             4 * sizeof(GLfloat));
+
+          f->glDrawArrays(GL_TRIANGLES, 0, 6);
+
+          m_impastoShader->disableAttributeArray(0);
+          m_impastoShader->disableAttributeArray(1);
+
+          m_impastoShader->release();
+          tex->release();
+          renderedWithShader = true;
+        }
+        painter->endNativePainting();
+        painter->restore();
+      }
+
+      if (!renderedWithShader) {
+        // Fallback
+        painter->save();
+        painter->setOpacity(layer->opacity);
+        painter->drawImage(targetRect, img);
+        painter->restore();
+      }
     }
   }
 }
 
-void CanvasItem::handleDraw(const QPointF &pos, float pressure) {
+void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   Layer *layer = m_layerManager->getActiveLayer();
   if (!layer || !layer->visible || layer->locked)
     return;
+
+  // Convertir posición de pantalla a canvas
+  // Aplicar transformación inversa: (Screen - Offset*Zoom) / Zoom
+  QPointF canvasPos = (pos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
+  BrushSettings settings = m_brushEngine->getBrush();
+  float effectivePressure = pressure; // Ajustar con curva si es necesario
+  float velocityFactor = 0.0f;        // Calcular velocidad real si es necesario
 
   // Create QImage wrapper around layer buffer
   QImage img(layer->buffer->data(), layer->buffer->width(),
              layer->buffer->height(), QImage::Format_RGBA8888);
 
-  QPainter painter(&img);
-  painter.setRenderHint(QPainter::Antialiasing);
+  // MODO PREMIUM (OpenGL / Shaders)
+  // Revisar si tenemos contexto OpenGL disponible
+  bool glReady = (QOpenGLContext::currentContext() != nullptr);
 
-  // Transform coordinates from Screen to Canvas
-  // Screen = (Canvas - Offset) * Zoom
-  // Canvas = (Screen / Zoom) + Offset
+  if (glReady && (settings.useTexture || settings.wetness > 0.01f)) {
+    if (!m_pingFBO || m_pingFBO->width() != m_canvasWidth ||
+        m_pingFBO->height() != m_canvasHeight) {
+      if (m_pingFBO)
+        delete m_pingFBO;
+      if (m_pongFBO)
+        delete m_pongFBO;
 
-  // BUT WAIT: QPainter on 'img' operates in Image coordinates (Canvas pixel
-  // coordinates). 'pos' coming from mouse/tablet events is in Screen/Item local
-  // coordinates. So we MUST transform 'pos' to 'canvasPos'.
+      m_pingFBO = new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight);
+      m_pongFBO = new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight);
 
-  QPointF canvasPos = (pos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+      m_pingFBO->bind();
+      QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+      QPainter fboPainter(&device);
+      fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+      fboPainter.drawImage(0, 0, img);
+      fboPainter.end();
+      m_pingFBO->release();
+    }
 
-  // Check if it's the start of a stroke
-  if (m_lastPos.isNull()) {
+    m_pongFBO->bind();
+    QOpenGLPaintDevice device2(m_canvasWidth, m_canvasHeight);
+    QPainter fboPainter2(&device2);
+    // Copiar estado anterior
+    fboPainter2.setCompositionMode(QPainter::CompositionMode_Source);
+    fboPainter2.drawImage(0, 0, m_pingFBO->toImage());
+
+    // Dibujar nuevo trazo
+    fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    m_brushEngine->paintStroke(
+        &fboPainter2, m_lastPos, canvasPos, effectivePressure, settings, tilt,
+        velocityFactor, m_pingFBO->texture(), settings.wetness,
+        settings.dilution, settings.smudge);
+    fboPainter2.end();
+    m_pongFBO->release();
+
+    layer->dirty = true;
+    std::swap(m_pingFBO, m_pongFBO);
+    m_lastPos = canvasPos;
+
+    // Liberar contexto?? Causa parpadeo si lo hacemos?
+    // Dejémoslo current, Qt lo manejará?
+    // window()->openglContext()->doneCurrent();
+  } else {
+    // MODO ESTÁNDAR (Raster / Legacy)
+    QPainter painter(&img);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    m_brushEngine->paintStroke(&painter, m_lastPos, canvasPos,
+                               effectivePressure, settings, tilt,
+                               velocityFactor);
+    painter.end();
+    layer->dirty = true;
     m_lastPos = canvasPos;
   }
-
-  // Draw stroke
-  BrushSettings settings = m_brushEngine->getBrush();
-  // Update strict settings from item properties just in case
-  // (Optimization: Only update when properties change, but this ensures sync)
-  settings.size = m_brushSize;
-  settings.opacity = m_brushOpacity;
-  settings.color = m_brushColor;
-  settings.spacing = m_brushSpacing;
-  settings.hardness = m_brushHardness;
-  settings.dynamicsEnabled = true; // Always enable dynamics for pressure
-
-  // Aplicar curva de presión personalizada (Gamma)
-  // Aplicar curva de presión personalizada (Bezier LUT)
-  float effectivePressure = applyPressureCurve(pressure);
-
-  m_brushEngine->paintStroke(&painter, m_lastPos, canvasPos, effectivePressure,
-                             settings);
 
   // Calculate dirty rect for update (Screen coordinates)
   // We need to determine the bounding box in canvas coords, then map to screen.
@@ -226,29 +389,54 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
 
 void CanvasItem::tabletEvent(QTabletEvent *event) {
   float pressure = event->pressure();
-  // Normalizar presión si viene rara (algunas tabletas envían 0-1024, otras
-  // 0-1)
+  // Normalizar presión
   if (pressure > 1.0f)
     pressure /= 1024.0f;
 
+  // CAPTURAR INCLINACIÓN (TILT) - Pilar 1 Premium
+  // xTilt y yTilt suelen devolver grados (-60 a 60).
+  // Obtenemos un factor de 0.0 (vertical) a 1.0 (máxima inclinación)
+  float tiltX = event->xTilt();
+  float tiltY = event->yTilt();
+  float tiltFactor =
+      std::max(std::abs((float)tiltX), std::abs((float)tiltY)) / 60.0f;
+  tiltFactor = std::max(0.0f, std::min(1.0f, tiltFactor));
+
   if (event->type() == QEvent::TabletPress) {
     m_isDrawing = true;
-    qDebug() << "TABLET START: P=" << pressure;
     QPointF p = event->position();
     QPointF canvasPos = (p - m_viewOffset * m_zoomLevel) / m_zoomLevel;
     m_lastPos = canvasPos;
-    handleDraw(event->position(), pressure);
+    handleDraw(event->position(), pressure, tiltFactor);
     event->accept();
 
   } else if (event->type() == QEvent::TabletMove && m_isDrawing) {
-    qDebug() << "TABLET MOVE: P=" << pressure;
-    handleDraw(event->position(), pressure);
+    handleDraw(event->position(), pressure, tiltFactor);
     event->accept();
 
   } else if (event->type() == QEvent::TabletRelease) {
     m_isDrawing = false;
+
+    // FINALIZAR TRAZO PREMIUM (Pilar 3): Volcar GPU a CPU
+    if (m_pingFBO) {
+      QImage result =
+          m_pingFBO->toImage().convertToFormat(QImage::Format_RGBA8888);
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->buffer) {
+        std::memcpy(layer->buffer->data(), result.bits(),
+                    std::min((size_t)layer->buffer->width() *
+                                 layer->buffer->height() * 4,
+                             (size_t)result.sizeInBytes()));
+      }
+      delete m_pingFBO;
+      m_pingFBO = nullptr;
+      delete m_pongFBO;
+      m_pongFBO = nullptr;
+    }
+
     m_lastPos = QPointF();
     capture_timelapse_frame();
+    update(); // Refrescar vista
     event->accept();
   }
 }
@@ -356,6 +544,38 @@ void CanvasItem::setBrushSmudge(float value) {
   s.smudge = value;
   m_brushEngine->setBrush(s);
   emit brushSmudgeChanged();
+}
+
+void CanvasItem::setImpastoShininess(float value) {
+  if (qFuzzyCompare(m_impastoShininess, value))
+    return;
+  m_impastoShininess = value;
+  emit impastoShininessChanged();
+  update();
+}
+
+void CanvasItem::setImpastoStrength(float strength) {
+  if (qFuzzyCompare(m_impastoStrength, strength))
+    return;
+  m_impastoStrength = strength;
+  emit impastoSettingsChanged();
+  update();
+}
+
+void CanvasItem::setLightAngle(float angle) {
+  if (qFuzzyCompare(m_lightAngle, angle))
+    return;
+  m_lightAngle = angle;
+  emit impastoSettingsChanged();
+  update();
+}
+
+void CanvasItem::setLightElevation(float elevation) {
+  if (qFuzzyCompare(m_lightElevation, elevation))
+    return;
+  m_lightElevation = elevation;
+  emit impastoSettingsChanged();
+  update();
 }
 
 void CanvasItem::setBrushAngle(float value) {
@@ -788,6 +1008,13 @@ void CanvasItem::usePreset(const QString &name) {
     s.opacityByPressure = true;
     s.sizeByPressure = true; // Enable size dynamics for better feel
     s.jitter = 0.08f;
+
+    // Texture Config
+    s.useTexture = true;
+    s.textureName = "paper_grain.png";
+    s.textureScale = 200.0f;
+    s.textureIntensity = 0.6f;
+
   } else if (name == "Pencil 6B") {
     // Soft graphite - darker, more grain, softer edge
     setBrushSize(20);
@@ -800,6 +1027,13 @@ void CanvasItem::usePreset(const QString &name) {
     s.opacityByPressure = true;
     s.sizeByPressure = true;
     s.jitter = 0.12f;
+
+    // Texture Config
+    s.useTexture = true;
+    s.textureName = "paper_grain.png";
+    s.textureScale = 200.0f;
+    s.textureIntensity = 0.6f;
+
   } else if (name == "Mechanical") {
     // Precise mechanical pencil
     setBrushSize(4);
@@ -812,6 +1046,13 @@ void CanvasItem::usePreset(const QString &name) {
     s.opacityByPressure = true;
     s.sizeByPressure = false; // Mechanical stays consistent size
     s.jitter = 0.02f;
+
+    // Texture Config
+    s.useTexture = true;
+    s.textureName = "paper_grain.png";
+    s.textureScale = 300.0f;   // Finer grain
+    s.textureIntensity = 0.3f; // Less intense
+
   }
 
   // ==================== INKING PRESETS ====================
@@ -867,6 +1108,13 @@ void CanvasItem::usePreset(const QString &name) {
     s.wetness = 0.5f; // Medium wet
     s.grain = 0.12f;  // Pigment granulation
     s.jitter = 0.06f; // Organic edge
+
+    // Texture Config
+    s.useTexture = true;
+    s.textureName = "watercolor_paper.png";
+    s.textureScale = 80.0f;
+    s.textureIntensity = 0.5f;
+
   } else if (name == "Watercolor Wet") {
     // Wet-on-wet watercolor - very soft, bleeds
     setBrushSize(60);
@@ -877,6 +1125,13 @@ void CanvasItem::usePreset(const QString &name) {
     s.type = BrushSettings::Type::Watercolor;
     s.wetness = 0.95f; // Very wet - color spreads
     s.jitter = 0.1f;   // More organic
+
+    // Texture Config
+    s.useTexture = true;
+    s.textureName = "watercolor_paper.png";
+    s.textureScale = 60.0f; // Larger soft variations
+    s.textureIntensity = 0.4f;
+
   }
 
   // ==================== OIL/PAINTING PRESETS ====================
@@ -891,6 +1146,13 @@ void CanvasItem::usePreset(const QString &name) {
     s.smudge = 0.4f; // Picks up underlying color
     s.grain = 0.6f;  // Canvas texture
     s.sizeByPressure = true;
+
+    // Texture Config
+    s.useTexture = true;
+    s.textureName = "canvas_weave.png";
+    s.textureScale = 150.0f;
+    s.textureIntensity = 0.7f; // Strong texture
+
   } else if (name == "Acrylic") {
     // Acrylic - opaque, less mixing than oil
     setBrushSize(38);
@@ -901,6 +1163,115 @@ void CanvasItem::usePreset(const QString &name) {
     s.type = BrushSettings::Type::Oil;
     s.smudge = 0.25f; // Less color pickup
     s.grain = 0.5f;   // Canvas texture
+    s.sizeByPressure = true;
+
+    // Texture Config
+    s.useTexture = true;
+    s.textureName = "canvas_weave.png";
+    s.textureScale = 150.0f;
+    s.textureIntensity = 0.5f;
+  } else if (name == "The Blender") {
+    // Pro Blender - High wetness, medium smudge for smooth gradients
+    setBrushSize(50);
+    setBrushOpacity(0.6f);
+    setBrushHardness(0.5f);
+    setBrushSpacing(0.02f);
+    s.type = BrushSettings::Type::Oil;
+    s.wetness = 0.8f;
+    s.smudge = 0.3f;
+    s.sizeByPressure = true;
+  } else if (name == "Smudge Tool") {
+    // Pure Smudge - High smudge, no new color (wash effect)
+    setBrushSize(40);
+    setBrushOpacity(1.0f);
+    setBrushHardness(0.3f);
+    setBrushSpacing(0.01f);
+    s.type = BrushSettings::Type::Oil;
+    s.wetness = 0.2f;
+    s.smudge = 0.95f;
+    s.sizeByPressure = true;
+  } else if (name == "Óleo Classic Flat") {
+    setBrushSize(60);
+    setBrushOpacity(1.0f);
+    setBrushHardness(0.9f);
+    setBrushSpacing(0.04f);
+    s.type = BrushSettings::Type::Oil;
+    s.flow = 0.35f;
+    s.wetness = 0.6f;
+    s.smudge = 0.1f;
+    // Impasto Logic (Simulated via Flow/Opacity accumulation in shader)
+
+    s.useTexture = true;
+    s.textureName = "oil_flat_pro.png"; // Pincel Plano
+    s.textureScale = 1.0f;              // 1:1 map to brush tip
+    s.textureIntensity = 1.0f;
+    s.sizeByPressure = true;
+    s.opacityByPressure = false;
+
+  } else if (name == "Óleo Round Bristle") {
+    setBrushSize(45);
+    setBrushOpacity(0.95f);
+    setBrushHardness(0.7f);
+    setBrushSpacing(0.05f);
+    s.type = BrushSettings::Type::Oil;
+    s.flow = 0.4f;
+    s.wetness = 0.75f;
+    s.smudge = 0.2f;
+
+    s.useTexture = true;
+    s.textureName = "oil_filbert_pro.png"; // Pincel Filbert
+    s.textureScale = 1.0f;
+    s.textureIntensity = 1.0f;
+    s.sizeByPressure = true;
+    s.opacityByPressure = true;
+
+  } else if (name == "Óleo Impasto Knife") {
+    setBrushSize(80);
+    setBrushOpacity(1.0f);
+    s.flow = 0.8f;
+    setBrushSpacing(0.02f); // Super denso
+    setBrushHardness(1.0f);
+    s.type = BrushSettings::Type::Oil;
+    s.wetness = 0.1f; // Casi seco, solo arrastra masa
+    s.smudge = 0.8f;  // Arrastre fuerte
+
+    s.useTexture = true;
+    s.textureName = "oil_knife_pro.png"; // Espátula
+    s.textureScale = 1.0f;
+    s.textureIntensity = 1.0f;
+    s.sizeByPressure = false;
+    s.opacityByPressure = false;
+
+  } else if (name == "Óleo Dry Scumble") {
+    setBrushSize(70);
+    setBrushOpacity(0.8f);
+    s.flow = 0.15f;
+    setBrushSpacing(0.08f);
+    setBrushHardness(0.5f);
+    s.type = BrushSettings::Type::Oil;
+    s.wetness = 0.0f;
+    s.smudge = 0.1f;
+
+    s.useTexture = true;
+    s.textureName = "oil_flat_pro.png";
+    s.textureScale = 1.0f;
+    s.textureIntensity = 1.0f; // Max textura
+    s.opacityByPressure = true;
+
+  } else if (name == "Óleo Wet Blender") {
+    setBrushSize(90);
+    setBrushOpacity(0.0f); // Invisible, solo mueve
+    s.flow = 0.5f;
+    setBrushSpacing(0.04f);
+    setBrushHardness(0.2f);
+    s.type = BrushSettings::Type::Oil;
+    s.wetness = 1.0f; // Max humedad
+    s.smudge = 0.95f; // Max arrastre
+
+    s.useTexture = true;
+    s.textureName = "oil_filbert_pro.png";
+    s.textureScale = 1.0f;
+    s.textureIntensity = 0.5f;
     s.sizeByPressure = true;
   }
 

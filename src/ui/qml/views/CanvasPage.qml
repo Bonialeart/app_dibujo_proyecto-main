@@ -256,9 +256,7 @@ import "components"
                     }
                     
                     // Picker Mouse Interaction Overlay
-                    MouseArea {
-                        anchors.fill: parent
-                        enabled: isProjectActive && canvasPage.activeToolIdx === 8
+                        enabled: isProjectActive && canvasPage.activeToolIdx === 11
                         z: 900 // Over canvas
                         cursorShape: Qt.CrossCursor
                         
@@ -363,7 +361,7 @@ import "components"
                     ListElement { name: "hand"; icon: "hand.svg"; label: "Hand"; subTools: [] }
                 }
 
-                property int activeToolIdx: 4 // Default to Pen
+                property int activeToolIdx: 5 // Default to Pen
                 
                 onActiveToolIdxChanged: {
                     if (canvasPage.altPressed) return // Don't reset if switching via ALT
@@ -398,8 +396,8 @@ import "components"
                     showColor = false
                     showLayers = false
                     
-                    // Auto-open library for brush tools
-                    if (activeToolIdx >= 4 && activeToolIdx <= 8) {
+                    // Auto-open library for brush tools (Pen, Pencil, Brush, Airbrush, Eraser)
+                    if (activeToolIdx >= 5 && activeToolIdx <= 9) {
                         mainWindow.showBrush = true
                     } else {
                         mainWindow.showBrush = false
@@ -411,7 +409,7 @@ import "components"
                 property string selectedBrushCategory: "Sketching"
                 
                 // Eyedropper logic
-                property int lastToolIdx: 4
+                property int lastToolIdx: 5
                 property int samplingMode: 0 // 0=Composite, 1=Current Layer
                 property bool altPressed: false
                 
@@ -421,17 +419,17 @@ import "components"
                 property point samplePos: Qt.point(0,0)
                 
                 // Shortcuts
-                Shortcut { sequence: "I"; onActivated: canvasPage.activeToolIdx = 10 }
-                Shortcut { sequence: "B"; onActivated: canvasPage.activeToolIdx = 4 }
-                Shortcut { sequence: "E"; onActivated: canvasPage.activeToolIdx = 8 }
+                Shortcut { sequence: "I"; onActivated: canvasPage.activeToolIdx = 11 }
+                Shortcut { sequence: "B"; onActivated: canvasPage.activeToolIdx = 7 }
+                Shortcut { sequence: "E"; onActivated: canvasPage.activeToolIdx = 9 }
                 
                 // Alt logic: Need to capture Alt press/release
                 focus: isProjectActive
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Alt) {
-                        if (!altPressed && activeToolIdx !== 8) {
+                        if (!altPressed && activeToolIdx !== 11) {
                             lastToolIdx = activeToolIdx
-                            activeToolIdx = 8
+                            activeToolIdx = 11
                             altPressed = true
                         }
                         event.accepted = true
@@ -571,7 +569,7 @@ import "components"
                                             // Handle as Click
                                             if (canvasPage.activeToolIdx === index) {
                                                 // Toggle Logic based on tool type
-                                                if (index >= 4 && index <= 8) {
+                                                if (index >= 5 && index <= 9) {
                                                     // Brushes/Eraser -> Open Brush Library (Gallery) instead of Settings
                                                     mainWindow.showBrush = !mainWindow.showBrush
                                                     if (mainWindow.showBrush) {
@@ -591,7 +589,7 @@ import "components"
                                                 canvasPage.showSubTools = false
                                                 
                                                 // If switching to a brush tool, Open Library automatically
-                                                if (index >= 4 && index <= 8) {
+                                                if (index >= 5 && index <= 9) {
                                                     mainWindow.showBrush = true
                                                     brushLibrary.autoSelectCategory(model.name)
                                                     mainWindow.showBrushSettings = false
@@ -626,6 +624,24 @@ import "components"
                                 }
                             }
                         }
+                        
+                        Rectangle {
+                            width: 24; height: 1
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            color: "#22ffffff"
+                            visible: isProjectActive
+                        }
+                        
+                        SidebarButton {
+                            id: impastoBtn
+                            width: 34; height: 34
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            // iconSource: iconPath("oil.svg") // Si no existe, SidebarButton suele manejar fallbacks o texto
+                            toolTipText: "Efectos de Óleo (Impasto)"
+                            onClicked: {
+                                impastoPanel.visible = !impastoPanel.visible
+                            }
+                        }
                     }
                 }
 
@@ -641,7 +657,7 @@ import "components"
                     color: "#f21c1c1e" // Premium OLED
                     border.color: Qt.rgba(1, 1, 1, 0.12)
                     border.width: 1
-                    visible: isProjectActive && canvasPage.showToolSettings && (canvasPage.activeToolIdx >= 2 && canvasPage.activeToolIdx <= 8)
+                    visible: isProjectActive && canvasPage.showToolSettings && (canvasPage.activeToolIdx >= 3 && canvasPage.activeToolIdx <= 10)
                     
                     z: 500
                     
@@ -778,7 +794,7 @@ import "components"
                         // --- SELECTION ACTIONS (Lasso Tools) ---
                         ColumnLayout {
                             spacing: 12; Layout.fillWidth: true
-                            visible: (canvasPage.activeToolIdx <= 2) && !mainCanvas.selectionEmpty
+                            visible: (canvasPage.activeToolIdx <= 3) && !mainCanvas.selectionEmpty
                             
                             Rectangle {
                                 Layout.fillWidth: true; height: 36; radius: 10
@@ -3537,5 +3553,12 @@ import "components"
                     id: dropOrb
                     dropColor: mainCanvas.brushColor
                     active: false
+                }
+
+                ImpastoControls {
+                    id: impastoPanel
+                    anchors.centerIn: parent
+                    visible: false
+                    targetCanvas: mainCanvas 
                 }
             } // Fin Item (Canvas Page)

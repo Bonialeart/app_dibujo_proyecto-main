@@ -416,6 +416,12 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qimage.h \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLFramebufferObject \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglframebufferobject.h \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLTexture \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopengltexture.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QScopedPointer \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/QQuickPaintedItem \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickpainteditem.h \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickitem.h \
@@ -491,11 +497,6 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/q20algorithm.h \
  E:\app_dibujo_proyecto-main\build_debug_winink\ArtFlowStudio_autogen\UVLADIE3JM/moc_PreferencesManager.cpp \
  E:/app_dibujo_proyecto-main/src/PreferencesManager.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qsettings.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QDir \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdir.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdirlisting.h \
@@ -533,6 +534,11 @@ CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_ops.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfileinfo.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qtimezone.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qsettings.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h \
  E:\app_dibujo_proyecto-main\build_debug_winink\ArtFlowStudio_autogen\UVLADIE3JM/moc_ProjectModel.cpp \
  E:/app_dibujo_proyecto-main/src/ProjectModel.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel \

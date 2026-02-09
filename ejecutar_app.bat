@@ -8,16 +8,31 @@ echo 1. Comprobando entorno...
 set QT_DIR=C:\Qt\6.10.2\mingw_64\bin
 set MINGW_DIR=C:\Qt\Tools\mingw1310_64\bin
 
+set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin
+
 if not exist "%QT_DIR%" (
     echo ERROR CRITICO: No se encuentra Qt en %QT_DIR%
     pause
     exit /b
 )
 
-echo 2. Añandiendo rutas al sistema...
-set PATH=%QT_DIR%;%MINGW_DIR%;%PATH%
+if not exist "%CMAKE_DIR%" (
+    echo ERROR CRITICO: No se encuentra CMake en %CMAKE_DIR%
+    pause
+    exit /b
+)
 
-echo 3. Buscando ejecutable en build_debug_winink...
+echo 2. Añadiendo rutas al sistema...
+set PATH=%QT_DIR%;%MINGW_DIR%;%CMAKE_DIR%;%PATH%
+echo 3. Compilando cambios recientes...
+cmake --build build_debug_winink --config Debug --target ArtFlowStudio
+if %errorlevel% neq 0 (
+    echo ERROR CRITICO: La compilacion fallo. Revisa los errores arriba.
+    pause
+    exit /b
+)
+
+echo 4. Buscando ejecutable en build_debug_winink...
 if not exist "build_debug_winink\ArtFlowStudio.exe" (
     echo ERROR: No se encuentra build_debug_winink\ArtFlowStudio.exe
     if exist "build_debug\ArtFlowStudio.exe" (

@@ -4,6 +4,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QPointF \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QRect \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QScopedPointer \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QSize \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QSizeF \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
@@ -215,10 +216,14 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtNetwork/qtnetworkexports.h \
   C:/Qt/6.10.2/mingw_64/include/QtNetwork/qtnetworkglobal.h \
   C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLBuffer \
+  C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLFramebufferObject \
   C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLShaderProgram \
+  C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLTexture \
   C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLVertexArrayObject \
   C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglbuffer.h \
+  C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglframebufferobject.h \
   C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglshaderprogram.h \
+  C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopengltexture.h \
   C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglvertexarrayobject.h \
   C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qtopenglexports.h \
   C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qtopenglglobal.h \

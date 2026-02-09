@@ -421,4 +421,7 @@ CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_renderer.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_dir.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_ops.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QMatrix4x4 \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qmatrix4x4.h
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qmatrix4x4.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QVector2D \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qvectornd.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QVector3D

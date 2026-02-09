@@ -1,10 +1,9 @@
 CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  E:\app_dibujo_proyecto-main\src\PreferencesManager.cpp \
  E:\app_dibujo_proyecto-main\src\PreferencesManager.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qnamespace.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qcolor.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiglobal.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qglobal.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/type_traits \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/c++config.h \
@@ -152,6 +151,10 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qtresource.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qttranslation.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qversiontagging.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qtgui-config.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiexports.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qrgb.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qnamespace.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qstdlibdetection.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qcomparehelpers.h \
@@ -183,13 +186,19 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/array \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/compare \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qtmetamacros.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs_impl.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qfunctionaltools_impl.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/memory \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_raw_storage_iter.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/align.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/unique_ptr.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/shared_ptr.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstringlist.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qarraydatapointer.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qarraydataops.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qarraydata.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qpair.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/string.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/sec_api/string_s.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcontainertools_impl.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qxptype_traits.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cstring \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/iterator \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stream_iterator.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/iosfwd \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stringfwd.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/postypes.h \
@@ -200,8 +209,17 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/_mingw_stat64.h \
  C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/swprintf.inl \
  C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/sec_api/wchar_s.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/shared_ptr_base.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/allocated_ptr.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/streambuf_iterator.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/streambuf \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/localefwd.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/c++locale.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/clocale \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/locale.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/stdio.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/sec_api/stdio_s.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cctype \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/ctype.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/ios_base.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ext/atomicity.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/gthr.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/gthr-default.h \
@@ -219,37 +237,6 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/pthread_compat.h \
  C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/pthread_unistd.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/atomic_word.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ext/concurrence.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/shared_ptr_atomic.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/backward/auto_ptr.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/pstl/glue_memory_defs.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstring.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qchar.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstringview.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearray.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qrefcount.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qarraydata.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qpair.h \
- C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/string.h \
- C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/sec_api/string_s.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qarraydatapointer.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qarraydataops.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qcontainertools_impl.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qxptype_traits.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cstring \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/iterator \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stream_iterator.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/streambuf_iterator.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/streambuf \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/localefwd.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/c++locale.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/clocale \
- C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/locale.h \
- C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/stdio.h \
- C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/sec_api/stdio_s.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cctype \
- C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/ctype.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/ios_base.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/locale_classes.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/string \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/char_traits.h \
@@ -268,9 +255,26 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/x86_64-w64-mingw32/bits/error_constants.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/stdexcept \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/streambuf.tcc \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/memory \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_raw_storage_iter.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/align.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/unique_ptr.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/shared_ptr.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/shared_ptr_base.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/allocated_ptr.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ext/concurrence.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/shared_ptr_atomic.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/backward/auto_ptr.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/pstl/glue_memory_defs.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/q20functional.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/q20memory.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/q17memory.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qhashfunctions.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstring.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qchar.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstringview.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearray.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qrefcount.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayalgorithms.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/stdarg.h \
  C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/stdarg.h \
@@ -286,20 +290,27 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qstringbuilder.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qstringconverter.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qstringconverter_base.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qhashfunctions.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/numeric \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_numeric.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/pstl/glue_numeric_defs.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qiterator.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearraylist.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstringlist.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qalgorithms.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qstringmatcher.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qrgba64.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QDir \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qdir.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qdirlisting.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qfiledevice.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevice.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevicebase.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs_impl.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qfunctionaltools_impl.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qmetatype.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdatastream.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevicebase.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfloat16.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qmath.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qtformat_impl.h \
@@ -321,9 +332,12 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/chrono.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ratio \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ctime \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qsettings.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qspan.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cassert \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/q20iterator.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qdatetime.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcalendar.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qlocale.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qtextstream.h \
@@ -345,26 +359,6 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qalloc.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/q23utility.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/q20utility.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qcolor.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiglobal.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qtgui-config.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiexports.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qrgb.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qrgba64.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QDir \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qdir.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qdirlisting.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qfiledevice.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevice.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qspan.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cassert \
- C:/Qt/6.10.2/mingw_64/include/QtCore/q20iterator.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qdatetime.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qcalendar.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qlocale.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfile.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/filesystem \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_fwd.h \
@@ -397,4 +391,10 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_dir.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_ops.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfileinfo.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qtimezone.h
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qtimezone.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qsettings.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h

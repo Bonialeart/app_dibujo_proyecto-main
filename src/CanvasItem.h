@@ -6,6 +6,8 @@
 #include "core/cpp/include/stroke_renderer.h"
 #include <QColor>
 #include <QImage>
+#include <QOpenGLFramebufferObject>
+#include <QOpenGLTexture>
 #include <QPointF>
 #include <QQuickPaintedItem>
 #include <QTabletEvent>
@@ -38,6 +40,14 @@ class CanvasItem : public QQuickPaintedItem {
                  brushWetnessChanged)
   Q_PROPERTY(float brushSmudge READ brushSmudge WRITE setBrushSmudge NOTIFY
                  brushSmudgeChanged)
+  Q_PROPERTY(float impastoShininess READ impastoShininess WRITE
+                 setImpastoShininess NOTIFY impastoShininessChanged)
+  Q_PROPERTY(float impastoStrength READ impastoStrength WRITE setImpastoStrength
+                 NOTIFY impastoSettingsChanged)
+  Q_PROPERTY(float lightAngle READ lightAngle WRITE setLightAngle NOTIFY
+                 impastoSettingsChanged)
+  Q_PROPERTY(float lightElevation READ lightElevation WRITE setLightElevation
+                 NOTIFY impastoSettingsChanged)
 
   Q_PROPERTY(
       float zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
@@ -85,6 +95,10 @@ public:
   float brushGrain() const { return m_brushGrain; }
   float brushWetness() const { return m_brushWetness; }
   float brushSmudge() const { return m_brushSmudge; }
+  float impastoShininess() const { return m_impastoShininess; }
+  float impastoStrength() const { return m_impastoStrength; }
+  float lightAngle() const { return m_lightAngle; }
+  float lightElevation() const { return m_lightElevation; }
 
   float zoomLevel() const { return m_zoomLevel; }
   QString currentTool() const { return m_currentTool; }
@@ -113,6 +127,10 @@ public:
   void setBrushGrain(float value);
   void setBrushWetness(float value);
   void setBrushSmudge(float value);
+  void setImpastoShininess(float value);
+  void setImpastoStrength(float strength);
+  void setLightAngle(float angle);
+  void setLightElevation(float elevation);
   void setBrushAngle(float value);
   void setCursorRotation(float value);
   void setZoomLevel(float zoom);
@@ -176,6 +194,8 @@ signals:
   void brushGrainChanged();
   void brushWetnessChanged();
   void brushSmudgeChanged();
+  void impastoShininessChanged();
+  void impastoSettingsChanged();
 
   void zoomLevelChanged();
   void currentToolChanged();
@@ -255,8 +275,19 @@ private:
   float m_lastPressure;
   bool m_isDrawing;
 
-  // Renderizado por software
-  void handleDraw(const QPointF &pos, float pressure);
+  // Premium Rendering (Ping-Pong FBOs)
+  QOpenGLFramebufferObject *m_pingFBO = nullptr;
+  QOpenGLFramebufferObject *m_pongFBO = nullptr;
+  uint32_t m_currentCanvasTexID = 0;
+  QOpenGLShaderProgram *m_impastoShader = nullptr;
+  float m_impastoShininess = 64.0f;
+  float m_impastoStrength = 1.0f;
+  float m_lightAngle = 45.0f;
+  float m_lightElevation = 0.5f;
+  QMap<void *, QOpenGLTexture *> m_layerTextures;
+
+  // Renderizado por software / OpenGL Engine
+  void handleDraw(const QPointF &pos, float pressure, float tilt = 0.0f);
 
   QVariantList _scanSync();
   void updateLayersList();

@@ -33,7 +33,6 @@ struct StrokePoint {
 };
 
 struct BrushSettings {
-  // New fields
   float size = 10.0f;
   float opacity = 1.0f;
   float hardness = 1.0f; // 1.0 = duro, 0.0 = suave
@@ -41,7 +40,6 @@ struct BrushSettings {
   QColor color = Qt::black;
   bool dynamicsEnabled = true; // Activar/desactivar presión
 
-  // Compatibility fields
   enum class Type {
     Round,
     Pencil,
@@ -53,26 +51,45 @@ struct BrushSettings {
     Eraser,
     Custom
   } type = Type::Round;
+
+  // Propiedades Premium
+  bool useTexture = false;
+  QString textureName = "";      // assets/textures/ (e.g. "paper_grain.png")
+  float textureScale = 100.0f;   // Zoom de la textura
+  float textureIntensity = 0.5f; // Fuerza (0.0 a 1.0)
+  float wetness = 0.0f;          // Pilar 3: Mezcla (0 = seco, 1 = húmedo)
+  float dilution = 0.0f;         // Pilar 3: Dilución (Agua)
+  float smudge = 0.0f;           // Pilar 1: Arrastre
+
+  // Cache e Internal
+  uint32_t grainTextureID = 0;
+
+  // Legacy / Otros
   float flow = 1.0f;
   float stabilization = 0.0f;
   float streamline = 0.0f;
-  float grain = 0.0f;
-  float wetness = 0.0f;
-  float smudge = 0.0f;
-  float jitter = 0.0f;
   bool sizeByPressure = true;
   bool opacityByPressure = true;
-  float velocityDynamics = 0.0f;
+  float jitter = 0.0f;
+  float grain = 0.5f;            // For legacy compatibility
+  float velocityDynamics = 0.0f; // For legacy compatibility
 };
+
+class StrokeRenderer; // Forward declaration
 
 class BrushEngine {
 public:
   BrushEngine();
+  ~BrushEngine(); // Needed for unique_ptr cleanup if used, or raw pointer
+                  // delete
 
   // Función principal de dibujo adaptada (QPainter based)
   void paintStroke(QPainter *painter, const QPointF &lastPoint,
                    const QPointF &currentPoint, float pressure,
-                   const BrushSettings &settings);
+                   const BrushSettings &settings, float tilt = 0.0f,
+                   float velocity = 0.0f, uint32_t canvasTexId = 0,
+                   float wetness = 0.0f, float dilution = 0.0f,
+                   float smudge = 0.0f);
 
   // Compatibility methods for CanvasItem integration
   void setBrush(const BrushSettings &settings) { m_currentSettings = settings; }
@@ -93,6 +110,7 @@ public:
 
 private:
   BrushSettings m_currentSettings;
+  StrokeRenderer *m_renderer = nullptr;
 
   // Ayudante para pinceles suaves
   void paintSoftStamp(QPainter *painter, const QPointF &point, float size,

@@ -415,6 +415,12 @@ CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qimage.h \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLFramebufferObject \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglframebufferobject.h \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLTexture \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopengltexture.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QScopedPointer \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/QQuickPaintedItem \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickpainteditem.h \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickitem.h \
@@ -485,13 +491,7 @@ CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantlist.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QBuffer \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qbuffer.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/QCursor \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qcursor.h \
- C:/Qt/6.10.2/mingw_64/include/QtGui/qbitmap.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QDebug \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h \
+ E:\app_dibujo_proyecto-main\src\PreferencesManager.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QDir \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdir.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdirlisting.h \
@@ -529,16 +529,58 @@ CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_ops.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfileinfo.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qtimezone.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qsettings.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QBuffer \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qbuffer.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QCoreApplication \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreapplication.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QCursor \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qcursor.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qbitmap.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QDebug \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QFile \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qfile.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QFileInfo \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfileinfo.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QGuiApplication \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qguiapplication.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QHoverEvent \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLContext \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglcontext.h \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLPaintDevice \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglpaintdevice.h \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLShader \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QPainterPath \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qpainterpath.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h \
+ C:/Qt/6.10.2/mingw_64/include/QtQuick/QQuickWindow \
+ C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickwindow.h \
+ C:/Qt/6.10.2/mingw_64/include/QtQuick/qsgrendererinterface.h \
+ C:/Qt/6.10.2/mingw_64/include/QtQuick/qsgnode.h \
+ C:/Qt/6.10.2/mingw_64/include/QtQuick/qsggeometry.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QRectF \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QMatrix4x4 \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qmatrix4x4.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/float.h \
+ C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/float.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qwindow.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QEvent \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreevent.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QMargins \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qmargins.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qsurface.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qsurfaceformat.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qicon.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qcursor.h \
+ C:/Qt/6.10.2/mingw_64/include/QtQml/qqmldebug.h \
+ C:/Qt/6.10.2/mingw_64/include/QtQml/qqmlinfo.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QStringList \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstringlist.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QUrl \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qurl.h \
  C:/Qt/6.10.2/mingw_64/include/QtConcurrent/QtConcurrentRun \

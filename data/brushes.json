@@ -176,6 +176,24 @@
             "price": 0,
             "preview_image": "previews/anime_brush_set.jpg",
             "download_url": "brushes/anime_brush_set.abr"
+        },
+        {
+            "id": "impasto_pro_pack",
+            "name": "Impasto Pro",
+            "category": "paint",
+            "description": "Pinceles de óleo con textura de cerdas y relieve 3D",
+            "author": "ArtFlow Studio",
+            "brush_count": 1,
+            "file_size": "1MB",
+            "downloads": 0,
+            "rating": 5.0,
+            "price": 0,
+            "brushes": [
+                {
+                    "name": "Óleo Impasto Pro",
+                    "size_range": "10-200px"
+                }
+            ]
         }
     ],
     "featured": [

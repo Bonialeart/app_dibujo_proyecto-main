@@ -50,11 +50,11 @@ Rectangle {
             var b = String(all[i]).toLowerCase()
             var match = false
             
-            if (category === "Sketching" && (b.includes("pencil") || b.includes("hb") || b.includes("6b") || b.includes("mech") || b.includes("eraser"))) match = true
-            else if (category === "Inking" && (b.includes("pen") || b.includes("ink") || b.includes("maru") || b.includes("marker") || b.includes("g-pen"))) match = true
-            else if (category === "Painting" && (b.includes("oil") || b.includes("acrylic") || b.includes("paint"))) match = true
-            else if (category === "Artistic" && (b.includes("water") || b.includes("wash") || b.includes("mineral") || b.includes("blend"))) match = true
-            else if (category === "Airbrushing" && (b.includes("airbrush") || b === "soft" || b === "hard")) match = true
+            if (category === "Sketching" && (b.includes("pencil") || b.includes("hb") || b.includes("6b") || b.includes("mech") || b.includes("eraser") || b.includes("lapiz"))) match = true
+            else if (category === "Inking" && (b.includes("pen") || b.includes("ink") || b.includes("maru") || b.includes("marker") || b.includes("g-pen") || b.includes("tinta"))) match = true
+            else if (category === "Painting" && (b.includes("oil") || b.includes("acrylic") || b.includes("paint") || b.includes("oleo") || b.includes("impasto") || b.includes("acrilico"))) match = true
+            else if (category === "Artistic" && (b.includes("water") || b.includes("wash") || b.includes("mineral") || b.includes("blend") || b.includes("acuarela"))) match = true
+            else if (category === "Airbrushing" && (b.includes("airbrush") || b === "soft" || b === "hard" || b.includes("aerografo"))) match = true
             else if (category === "Imported") {
                 var stdNames = ["pencil", "hb", "6b", "mech", "pen", "ink", "maru", "marker", "oil", "acrylic", "paint", "water", "wash", "mineral", "blend", "airbrush", "eraser", "soft", "hard", "g-pen"]
                 var isStd = false

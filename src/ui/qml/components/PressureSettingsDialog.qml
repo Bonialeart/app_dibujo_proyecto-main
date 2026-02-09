@@ -100,44 +100,90 @@ Popup {
                     var ctx = getContext("2d")
                     var w = width; var h = height
                     ctx.clearRect(0, 0, w, h)
-                    
-                    var pts = root._visualPoints
-                    if (!pts || pts.length < 2) return
+    
+                    var rawPts = root._visualPoints
+                    if (!rawPts || rawPts.length < 2) return
 
-                    // Preparar pares de puntos {x, y}
-                    var pList = []
-                    for(var i=0; i<pts.length; i+=2) {
-                        pList.push({x: pts[i] * w, y: h - (pts[i+1] * h)})
+                    // Parse & Sort
+                    var pts = []
+                    for(var i=0; i<rawPts.length; i+=2) {
+                        pts.push({x: rawPts[i], y: rawPts[i+1]})
                     }
-                    // Ordenar por X
-                    pList.sort(function(a,b){ return a.x - b.x })
-                    
-                    if (pList.length === 0) return;
+                    pts.sort(function(a,b){ return a.x - b.x })
+                    var n = pts.length
+                    if (n < 2) return
 
-                    ctx.strokeStyle = "#00d4aa" // Color Cyan Premium
+                    // Calculate Tangents (Monotone Cubic Hermite)
+                    var d = []
+                    var m = []
+                    for(var i=0; i<n-1; i++) {
+                        var dx = pts[i+1].x - pts[i].x
+                        var dy = pts[i+1].y - pts[i].y
+                        d[i] = (dx < 0.0001) ? 0 : dy/dx
+                    }
+                    if (n > 0) {
+                        m[0] = d[0]
+                        m[n-1] = d[n-2]
+                        for(var i=1; i<n-1; i++) {
+                            if (d[i-1]*d[i] <= 0) m[i] = 0
+                            else m[i] = (d[i-1] + d[i]) * 0.5
+                        }
+                    }
+
+                    // Helper Eval
+                    function evalS(x) {
+                        if (x <= pts[0].x) return pts[0].y
+                        if (x >= pts[n-1].x) return pts[n-1].y
+                        
+                        // Find segment
+                        var i = 0
+                        for(var k=0; k<n-1; k++) {
+                            if (x >= pts[k].x && x <= pts[k+1].x) { i=k; break }
+                        }
+                        
+                        var h_val = pts[i+1].x - pts[i].x
+                        if (h_val < 0.0001) return pts[i].y
+                        
+                        var t = (x - pts[i].x) / h_val
+                        var t2 = t*t
+                        var t3 = t2*t
+                        var h00 = 2*t3 - 3*t2 + 1
+                        var h10 = t3 - 2*t2 + t
+                        var h01 = -2*t3 + 3*t2
+                        var h11 = t3 - t2
+                        return h00*pts[i].y + h10*h_val*m[i] + h01*pts[i+1].y + h11*h_val*m[i+1]
+                    }
+
+                    // Draw Smooth Curve
+                    ctx.strokeStyle = "#00d4aa"
                     ctx.lineWidth = 3
                     ctx.lineCap = "round"
                     ctx.lineJoin = "round"
                     ctx.beginPath()
                     
-                    ctx.moveTo(pList[0].x, pList[0].y)
+                    var startVal = evalS(0)
+                    ctx.moveTo(0, h - (startVal*h))
                     
-                    if (pList.length === 2) {
-                        ctx.lineTo(pList[1].x, pList[1].y)
-                    } else {
-                        // Mejor: Dibujar línea simple pero conectada
-                        for (var i = 1; i < pList.length; i++) {
-                             ctx.lineTo(pList[i].x, pList[i].y)
-                        }
+                    // Draw segments
+                    var step = 2 // px resolution
+                    for(var px=step; px<=w; px+=step) {
+                        var t = px / w
+                        var val = evalS(t)
+                        val = Math.max(0, Math.min(1, val)) // Clamp
+                        ctx.lineTo(px, h - (val*h))
                     }
+                    // Ensure last point
+                    var endVal = Math.max(0, Math.min(1, evalS(1)))
+                    ctx.lineTo(w, h - (endVal*h))
                     
                     ctx.stroke()
                     
-                    ctx.fillStyle = Qt.rgba(0, 0.83, 0.66, 0.1)
-                    ctx.lineTo(pList[pList.length-1].x, h)
-                    ctx.lineTo(pList[0].x, h)
-                    ctx.closePath()
-                    ctx.fill()
+                    // Fill gradient
+                    var grad = ctx.createLinearGradient(0, 0, 0, h)
+                    grad.addColorStop(0, "rgba(0, 212, 170, 0.2)")
+                    grad.addColorStop(1, "rgba(0, 212, 170, 0.0)")
+                    ctx.fillStyle = grad
+                    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill()
                 }
             }
             
@@ -196,6 +242,7 @@ Popup {
                         
                         onReleased: {
                             sortPoints() // Ordenar y limpiar al soltar
+                            savePoints()
                         }
                         
                         // Click derecho borrar
@@ -256,7 +303,11 @@ Popup {
                     Layout.fillWidth: true
                     background: Rectangle { color: "#333"; radius: 4 }
                     contentItem: Text { text: parent.text; color: "white"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: root.currentPoints = [0.0, 0.0, 1.0, 1.0]
+                    onClicked: {
+                        var def = [0.0, 0.0, 1.0, 1.0]
+                        root._visualPoints = def
+                        savePoints()
+                    }
                 }
                 Button {
                     text: "Guardar"
@@ -298,6 +349,7 @@ Popup {
         var pts = clonePoints()
         pts.push(x); pts.push(y);
         _visualPoints = sortPointsArray(pts)
+        savePoints()
     }
     
     function removePoint(idx) {
@@ -311,6 +363,14 @@ Popup {
              }
         }
         _visualPoints = pts
+        savePoints()
+    }
+
+    function savePoints() {
+        // Guardar en persistencia (C++)
+        if (typeof preferencesManager !== "undefined") {
+            preferencesManager.pressureCurve = _visualPoints
+        }
     }
     
     function updatePointJs(idx, x, y, doSort) {

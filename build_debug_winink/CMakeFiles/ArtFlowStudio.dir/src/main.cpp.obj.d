@@ -415,6 +415,12 @@ CMakeFiles/ArtFlowStudio.dir/src/main.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qimage.h \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLFramebufferObject \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglframebufferobject.h \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLTexture \
+ C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopengltexture.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QScopedPointer \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/QQuickPaintedItem \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickpainteditem.h \
  C:/Qt/6.10.2/mingw_64/include/QtQuick/qquickitem.h \

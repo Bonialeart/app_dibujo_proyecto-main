@@ -1,8 +1,15 @@
+#define GL_GLEXT_PROTOTYPES
 #include "../include/stroke_renderer.h"
+#include <QColor>
 #include <QDebug>
 #include <QFile>
 #include <QMatrix4x4>
+#include <QVector2D>
+#include <QVector3D>
 #include <cmath>
+#include <cstdint>
+
+namespace artflow {
 
 StrokeRenderer::StrokeRenderer()
     : m_program(nullptr), m_vbo(QOpenGLBuffer::VertexBuffer) {}
@@ -67,7 +74,11 @@ void StrokeRenderer::initialize() {
 
 void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
                                   float hardness, const QColor &color, int type,
-                                  int width, int height) {
+                                  int width, int height, uint32_t grainTexId,
+                                  bool useTex, float texScale,
+                                  float texIntensity, float tilt,
+                                  float velocity, uint32_t canvasTexId,
+                                  float wetness, float dilution, float smudge) {
   if (!m_program)
     return;
 
@@ -90,6 +101,41 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
   m_program->setUniformValue("hardness", hardness);
   m_program->setUniformValue("brushType", type);
 
+  // -- PREMIUM UNIFORMS --
+  m_program->setUniformValue("u_impastoStrength", 5.0f);
+  m_program->setUniformValue("u_lightDir", QVector3D(-0.5f, -0.5f, 1.0f));
+
+  // Configurar Texturas Premium
+  if (useTex) {
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, grainTexId);
+    m_program->setUniformValue("grainTexture", 1);
+    m_program->setUniformValue("useTexture", 1);
+    m_program->setUniformValue("textureScale", texScale);
+    m_program->setUniformValue("textureIntensity", texIntensity);
+    m_program->setUniformValue("tilt", tilt);
+    m_program->setUniformValue("velocity", velocity);
+
+    // Pilar 3: Mezcla Húmeda y Smudge
+    m_program->setUniformValue("wetness", wetness);
+    m_program->setUniformValue("dilution", dilution);
+    m_program->setUniformValue("smudge", smudge);
+    m_program->setUniformValue("canvasSize", QVector2D(width, height));
+
+    if (wetness > 0.01f || smudge > 0.01f) {
+      glActiveTexture(GL_TEXTURE2);
+      glBindTexture(GL_TEXTURE_2D, canvasTexId);
+      m_program->setUniformValue("canvasTexture", 2);
+    }
+  } else {
+    m_program->setUniformValue("useTexture", 0);
+    m_program->setUniformValue("tilt", 0.0f);
+    m_program->setUniformValue("velocity", 0.0f);
+    m_program->setUniformValue("wetness", 0.0f);
+    m_program->setUniformValue("dilution", 0.0f);
+    m_program->setUniformValue("smudge", 0.0f);
+  }
+
   // Dibujar
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -98,3 +144,5 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
   m_vao.release();
   m_program->release();
 }
+
+} // namespace artflow
