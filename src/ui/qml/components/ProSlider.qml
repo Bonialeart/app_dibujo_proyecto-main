@@ -13,7 +13,7 @@ Item {
     implicitWidth: 60
     implicitHeight: 200
     
-    signal valueChanged(real value)
+    // Signal replaced by automatic property change signal
     
     Column {
         anchors.fill: parent
@@ -59,7 +59,7 @@ Item {
                         var val = 1.0 - (mouseY / height)
                         val = Math.max(0.0, Math.min(1.0, val))
                         root.value = val
-                        root.valueChanged(val)
+                        // Signal emitted automatically by property change
                     }
                 }
                 onPressed: positionChanged(mouse)

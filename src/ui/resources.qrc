@@ -24,5 +24,9 @@
     <file>qml/components/SketchbookCover.qml</file>
     <file>qml/components/VideoExportDialog.qml</file>
     <file>qml/components/PressureSettingsDialog.qml</file>
+    <file>qml/components/BrushSettingsPanel.qml</file>
+    <file>qml/components/PremiumSlider.qml</file>
+    <file>qml/components/ColorStudioDialog.qml</file>
+    <file>qml/views/CanvasPage.qml</file>
 </qresource>
 </RCC>

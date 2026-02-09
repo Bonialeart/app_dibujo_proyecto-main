@@ -43,7 +43,7 @@ echo Si ves "TABLET START P=0.XXX", la presion funciona.
 echo Si ves "MOUSE EVENT", Windows Ink no esta funcionando.
 echo.
 
-"%EXE_PATH%"
+"%EXE_PATH%" > app_output.log 2>&1
 
 echo.
 echo La aplicacion se ha cerrado.

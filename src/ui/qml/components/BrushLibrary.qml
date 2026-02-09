@@ -23,6 +23,7 @@ Rectangle {
 
     signal closeRequested()
     signal importRequested()
+    signal settingsRequested(string brushName)
 
     // Prevent click-through and scroll-through
     MouseArea { 
@@ -391,7 +392,16 @@ Rectangle {
                         id: itemMa
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: { if(root.targetCanvas) { root.targetCanvas.usePreset(modelData); root.closeRequested() } }
+                        onClicked: { 
+                            if(root.targetCanvas) { 
+                                if (parent.isSelected) {
+                                    root.settingsRequested(modelData)
+                                } else {
+                                    root.targetCanvas.usePreset(modelData)
+                                    root.closeRequested() 
+                                }
+                            } 
+                        }
                     }
                 }
             }
@@ -457,7 +467,16 @@ Rectangle {
                         
                         MouseArea {
                             id: gMa; anchors.fill: parent; hoverEnabled: true
-                            onClicked: { if(root.targetCanvas) { root.targetCanvas.usePreset(modelData); root.closeRequested() } }
+                            onClicked: { 
+                                if(root.targetCanvas) { 
+                                    if (parent.isSelected) {
+                                        root.settingsRequested(modelData)
+                                    } else {
+                                        root.targetCanvas.usePreset(modelData)
+                                        root.closeRequested()
+                                    }
+                                } 
+                            }
                         }
                     }
                 }

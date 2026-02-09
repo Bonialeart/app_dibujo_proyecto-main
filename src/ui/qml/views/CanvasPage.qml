@@ -10,7 +10,7 @@ import QtQuick.Effects
 
 
 import ArtFlow 1.0
-import "components"
+import "../components"
 
             Item {
                 id: canvasPage
@@ -21,9 +21,21 @@ import "components"
                 Rectangle { anchors.fill: parent; color: "#121214" }
 
                 // DRAWING CANVAS
-                QCanvasItem {
-                    id: mainCanvas
+                Flickable {
+                    id: canvasFlickable
                     anchors.fill: parent
+                    contentWidth: mainCanvas.width
+                    contentHeight: mainCanvas.height
+                    clip: true
+                    
+                    leftMargin: (width - contentWidth) > 0 ? (width - contentWidth) / 2 : 0
+                    topMargin: (height - contentHeight) > 0 ? (height - contentHeight) / 2 : 0
+
+                    QCanvasItem {
+                        id: mainCanvas
+                        width: canvasWidth * zoomLevel
+                        height: canvasHeight * zoomLevel
+                        // anchors.fill: parent
                     visible: isProjectActive
                     isFlippedH: refWindow.flipH
                     onVisibleChanged: if (visible) Qt.callLater(fitToView)
@@ -287,6 +299,7 @@ import "components"
                             }
                         }
                     } 
+                }
                 }
                 
                 // --- CONTEXT BAR (APPLY/CANCEL TRANSFORM) ---
@@ -650,396 +663,24 @@ import "components"
                 }
 
                 // === TOOL PROPERTIES PANEL (Brush Settings - Premium Floating Panel) ===
-                Rectangle {
-                    width: 250
-                    height: brushPropsLayout.implicitHeight + 40
+                // === TOOL PROPERTIES PANEL (Brush Settings - Premium Floating Panel) ===
+                BrushSettingsPanel {
                     anchors.right: sideToolbar.left
                     anchors.rightMargin: 15
                     anchors.verticalCenter: sideToolbar.verticalCenter
                     
-                    radius: 20
-                    color: "#f21c1c1e" // Premium OLED
-                    border.color: Qt.rgba(1, 1, 1, 0.12)
-                    border.width: 1
                     visible: isProjectActive && canvasPage.showToolSettings && (canvasPage.activeToolIdx >= 3 && canvasPage.activeToolIdx <= 10)
-                    
                     z: 500
                     
-                    // Exit Animation
+                    // Animations
                     opacity: visible ? 1.0 : 0.0
                     scale: visible ? 1.0 : 0.95
                     Behavior on opacity { NumberAnimation { duration: 150 } }
                     Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                     
-                    /* layer.effect: DropShadow {
-                        color: "#80000000"
-                        radius: 15
-                        samples: 30
-                    } */
-
-                    ColumnLayout {
-                        id: brushPropsLayout
-                        anchors.fill: parent
-                        anchors.margins: 20
-                        spacing: 15
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label {
-                                text: toolsModel.get(canvasPage.activeToolIdx).label + " Settings"
-                                color: "white"; font.pixelSize: 15; font.bold: true
-                                Layout.fillWidth: true
-                            }
-                            Text {
-                                text: "×"; color: "#666"; font.pixelSize: 20
-                                MouseArea { anchors.fill: parent; onClicked: canvasPage.showToolSettings = false }
-                            }
-                        }
-
-                        // --- Brush Library (Icons only as requested) ---
-                        ColumnLayout {
-                            spacing: 8; Layout.fillWidth: true
-                            visible: toolsModel.get(canvasPage.activeToolIdx).subTools.count > 0
-                            
-                            ListView {
-                                id: brushLibList
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 300 // Prevent collapse
-                                clip: true
-                                spacing: 12
-                                model: mainCanvas.brushFolders
-                                
-                                Connections {
-                                    target: mainCanvas
-                                    function onAvailableBrushesChanged() {
-                                        console.log("QML: Refreshing Brush Library Model")
-                                        brushLibList.model = 0 // Force clear
-                                        brushLibList.model = mainCanvas.brushFolders // Re-bind
-                                    }
-                                }
-                                function getBrushIcon(brushName) {
-                                    // 1. Check Standard Tools
-                                    for(var i = 0; i < toolsModel.count; i++) {
-                                        var subs = toolsModel.get(i).subTools;
-                                        if (subs) {
-                                            for(var j=0; j < subs.count; j++) {
-                                                if (subs.get(j).label === brushName) {
-                                                    return iconPath(subs.get(j).icon);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    return iconPath("brush.svg");
-                                }
-                                
-                                delegate: ColumnLayout {
-                                    width: ListView.view.width - 10
-                                    spacing: 8
-                                    
-                                    // Header removed as requested by user
-                                    
-                                    // Brushes Flow
-                                    Flow {
-                                        Layout.fillWidth: true
-                                        spacing: 8
-                                        
-                                        Repeater {
-                                            model: modelData.brushes
-                                            delegate: Rectangle {
-                                                width: 44; height: 44; radius: 10
-                                                color: (mainCanvas.activeBrushName === modelData) ? colorAccent : (bhv.containsMouse ? "#22ffffff" : "#11ffffff")
-                                                border.color: (mainCanvas.activeBrushName === modelData) ? "#ffffffff" : "transparent"
-                                                border.width: 1
-                                                
-                                                Image {
-                                                    source: brushLibList.getBrushIcon(modelData)
-                                                    width: 20; height: 20; anchors.centerIn: parent
-                                                    fillMode: Image.PreserveAspectFit
-                                                    mipmap: true
-                                                    opacity: 0.8
-                                                }
-                                                
-                                                MouseArea {
-                                                    id: bhv; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: mainCanvas.usePreset(modelData)
-                                                }
-                                                
-                                                ToolTip.visible: bhv.containsMouse
-                                                ToolTip.text: modelData
-                                                ToolTip.delay: 200
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Import Button Footer
-                            Rectangle {
-                                width: 44; height: 44; radius: 10
-                                color: impHover.containsMouse ? "#22ffffff" : "#11ffffff"
-                                border.color: "#33ffffff"; border.width: 1
-                                Layout.alignment: Qt.AlignLeft
-                                
-                                Text { text: "+"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent; opacity: 0.8 }
-                                
-                                MouseArea {
-                                    id: impHover; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-                                    onClicked: importAbrDialog.open()
-                                }
-                                
-                                ToolTip.visible: impHover.containsMouse
-                                ToolTip.text: "Import .abr Brushes"
-                            }
-                        }
-
-
-                        Rectangle { height: 1; Layout.fillWidth: true; color: "#1affffff" }
-
-                        // --- SELECTION ACTIONS (Lasso Tools) ---
-                        ColumnLayout {
-                            spacing: 12; Layout.fillWidth: true
-                            visible: (canvasPage.activeToolIdx <= 3) && !mainCanvas.selectionEmpty
-                            
-                            Rectangle {
-                                Layout.fillWidth: true; height: 36; radius: 10
-                                color: colorAccent
-                                Text { text: "Transform Selection"; color: "white"; font.bold: true; anchors.centerIn: parent }
-                                MouseArea { anchors.fill: parent; onClicked: mainCanvas.start_transformation() }
-                            }
-                            
-                            Rectangle {
-                                Layout.fillWidth: true; height: 36; radius: 10
-                                color: "#1affffff"
-                                Text { text: "Deselect"; color: "white"; anchors.centerIn: parent }
-                                MouseArea { anchors.fill: parent; onClicked: mainCanvas.clear_selection() }
-                            }
-                        }
-
-                        // --- Eyedropper Settings (Only if index 8) ---
-                        ColumnLayout {
-                            spacing: 12; Layout.fillWidth: true
-                            visible: canvasPage.activeToolIdx === 8
-                            
-                            Label { text: "Sample Source"; color: "#888"; font.pixelSize: 11; font.bold: true }
-                            
-                            Row {
-                                spacing: 4
-                                Repeater {
-                                    model: ["Full Image", "Current Layer"]
-                                    delegate: Rectangle {
-                                        width: 100; height: 32; radius: 8
-                                        color: (index === canvasPage.samplingMode) ? colorAccent : "#1affffff"
-                                        
-                                        Text {
-                                            text: modelData; color: "white"; font.pixelSize: 11; font.bold: index === canvasPage.samplingMode
-                                            anchors.centerIn: parent
-                                        }
-                                        
-                                        MouseArea {
-                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                            onClicked: canvasPage.samplingMode = index
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            Label { 
-                                text: "Tip: Hold Alt while drawing to pick colors quickly."
-                                color: "#666"; font.pixelSize: 10; font.italic: true; 
-                                Layout.topMargin: 5
-                            }
-                        }
-
-                        // --- Brush Settings (Only for Indexes 2-6: Pen, Pencil, Brush, Air, Eraser) ---
-                        ColumnLayout {
-                            spacing: 15; Layout.fillWidth: true
-                            visible: canvasPage.activeToolIdx >= 2 && canvasPage.activeToolIdx <= 6
-
-
-                            // --- Brush Size ---
-                            ColumnLayout {
-                                spacing: 5; Layout.fillWidth: true
-                                RowLayout {
-                                    Label { text: "Size"; color: "#aaa"; font.pixelSize: 11 }
-                                    Item { Layout.fillWidth: true }
-                                    Label { text: Math.round(mainCanvas.brushSize) + " px"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                }
-                                CustomSlider {
-                                    id: sizeSlider; from: 1; to: 500; value: mainCanvas.brushSize
-                                    Layout.fillWidth: true
-                                    onMoved: mainCanvas.brushSize = value
-                                }
-                            }
-
-                            // --- Brush Opacity ---
-                            ColumnLayout {
-                                spacing: 5; Layout.fillWidth: true
-                                RowLayout {
-                                    Label { text: "Opacity"; color: "#aaa"; font.pixelSize: 11 }
-                                    Item { Layout.fillWidth: true }
-                                    Label { text: Math.round(mainCanvas.brushOpacity * 100) + " %"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                }
-                                CustomSlider {
-                                    id: opacitySlider; from: 0; to: 1; value: mainCanvas.brushOpacity
-                                    Layout.fillWidth: true
-                                    onMoved: mainCanvas.brushOpacity = value
-                                }
-                            }
-
-                            // --- Smoothing ---
-                            ColumnLayout {
-                                spacing: 5; Layout.fillWidth: true
-                                RowLayout {
-                                    Label { text: "Smoothing"; color: "#aaa"; font.pixelSize: 11 }
-                                    Item { Layout.fillWidth: true }
-                                    Label { text: Math.round(mainCanvas.brushSmoothing * 100) + " %"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                }
-                                CustomSlider {
-                                    from: 0; to: 0.95; value: mainCanvas.brushSmoothing
-                                    Layout.fillWidth: true
-                                    onMoved: mainCanvas.brushSmoothing = value
-                                }
-                            }
-
-                            // --- Spacing ---
-                            ColumnLayout {
-                                spacing: 5; Layout.fillWidth: true
-                                RowLayout {
-                                    Label { text: "Spacing"; color: "#aaa"; font.pixelSize: 11 }
-                                    Item { Layout.fillWidth: true }
-                                    Label { text: Math.round(mainCanvas.brushSpacing * 100) + " %"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                }
-                                CustomSlider {
-                                    from: 0.01; to: 1.5; value: mainCanvas.brushSpacing
-                                    Layout.fillWidth: true
-                                    onMoved: mainCanvas.brushSpacing = value
-                                }
-                            }
-
-                            // --- Hardness ---
-                            ColumnLayout {
-                                spacing: 5; Layout.fillWidth: true
-                                RowLayout {
-                                    Label { text: "Hardness"; color: "#aaa"; font.pixelSize: 11 }
-                                    Item { Layout.fillWidth: true }
-                                    Label { text: Math.round(mainCanvas.brushHardness * 100) + " %"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                }
-                                CustomSlider {
-                                    from: 0.01; to: 1.0; value: mainCanvas.brushHardness
-                                    Layout.fillWidth: true
-                                    onMoved: mainCanvas.brushHardness = value
-                                }
-                            }
-
-                            // --- Grain / Texture (Graphite Effect) ---
-                            ColumnLayout {
-                                spacing: 5; Layout.fillWidth: true
-                                visible: canvasPage.activeToolIdx === 3 // Only for pencil
-                                RowLayout {
-                                    Label { text: "Graphite Grain"; color: "#aaa"; font.pixelSize: 11 }
-                                    Item { Layout.fillWidth: true }
-                                    Label { text: Math.round(mainCanvas.brushGrain * 100) + " %"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                }
-                                CustomSlider {
-                                    from: 0; to: 1.0; value: mainCanvas.brushGrain
-                                    Layout.fillWidth: true
-                                    onMoved: mainCanvas.brushGrain = value
-                                }
-                            }
-
-                            // --- WATERCOLOR PHYSICS (Premium) ---
-                            ColumnLayout {
-                                spacing: 15; Layout.fillWidth: true
-                                visible: canvasPage.activeToolIdx === 4 || canvasPage.activeToolIdx === 2
-                                
-                                Rectangle { height: 1; Layout.fillWidth: true; color: "#333"; visible: true }
-                                Text { text: "WATERCOLOR PHYSICS"; color: "#666"; font.pixelSize: 10; font.bold: true }
-
-                                // 1. DIFFUSION
-                                ColumnLayout {
-                                    spacing: 5; Layout.fillWidth: true
-                                    RowLayout {
-                                        Label { text: "Diffusion"; color: "#aaa"; font.pixelSize: 11 }
-                                        Item { Layout.fillWidth: true }
-                                        Label { text: Math.round(mainCanvas.brushDiffusion * 100) + "%"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                    }
-                                    Slider {
-                                        from: 0; to: 1.0; value: mainCanvas.brushDiffusion
-                                        Layout.fillWidth: true
-                                        onMoved: mainCanvas.brushDiffusion = value
-                                    }
-                                }
-                                
-                                // 2. GRANULATION
-                                ColumnLayout {
-                                    spacing: 5; Layout.fillWidth: true
-                                    RowLayout {
-                                        Label { text: "Granulation"; color: "#aaa"; font.pixelSize: 11 }
-                                        Item { Layout.fillWidth: true }
-                                        Label { text: Math.round(mainCanvas.brushGranulation * 100) + "%"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                    }
-                                    Slider {
-                                        from: 0; to: 1.0; value: mainCanvas.brushGranulation
-                                        Layout.fillWidth: true
-                                        onMoved: mainCanvas.brushGranulation = value
-                                    }
-                                }
-                            }
-                        }
-
-                        // --- FILL SETTINGS (Index 7) ---
-                        ColumnLayout {
-                            spacing: 15; Layout.fillWidth: true
-                            visible: canvasPage.activeToolIdx === 7
-
-                            Label { 
-                                text: (mainCanvas.fillMode === "lasso") ? "Mode: Lasso Fill" : "Mode: Bucket Fill"
-                                color: "#888"; font.pixelSize: 11; font.bold: true 
-                            }
-                            
-                            // Tolerance Slider
-                             ColumnLayout {
-                                spacing: 5; Layout.fillWidth: true
-                                RowLayout {
-                                    Label { text: "Tolerance"; color: "#aaa"; font.pixelSize: 11 }
-                                    Item { Layout.fillWidth: true }
-                                    Label { text: mainCanvas.fillTolerance; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                }
-                                CustomSlider {
-                                    from: 0; to: 100; value: mainCanvas.fillTolerance
-                                    Layout.fillWidth: true
-                                    onMoved: mainCanvas.fillTolerance = value
-                                }
-                            }
-                            
-                            // Expansion (Gap Close)
-                            ColumnLayout {
-                                spacing: 5; Layout.fillWidth: true
-                                RowLayout {
-                                    Label { text: "Expansion / Gap Close"; color: "#aaa"; font.pixelSize: 11 }
-                                    Item { Layout.fillWidth: true }
-                                    Label { text: mainCanvas.fillExpand + " px"; color: colorAccent; font.pixelSize: 11; font.bold: true }
-                                }
-                                CustomSlider {
-                                    from: 0; to: 10; stepSize: 1; value: mainCanvas.fillExpand
-                                    Layout.fillWidth: true
-                                    onMoved: mainCanvas.fillExpand = value
-                                }
-                            }
-
-                            // Sample All Layers
-                             RowLayout {
-                                CheckBox {
-                                    text: "Sample All Layers"
-                                    checked: mainCanvas.fillSampleAll
-                                    onCheckedChanged: mainCanvas.fillSampleAll = checked
-                                    font.pixelSize: 11
-                                    palette.text: "#ddd"
-                                }
-                            }
-                        }
-
-                    }
+                    targetCanvas: mainCanvas
+                    activeToolIdx: canvasPage.activeToolIdx
+                    colorAccent: canvasPage.colorAccent
                 }
 
                 // === NEW HORIZONTAL SUB-TOOL BAR (Premium Design - Pops out from Sidebar) ===
@@ -2675,6 +2316,10 @@ import "components"
                     
                     onCloseRequested: mainWindow.showBrush = false
                     onImportRequested: importAbrDialog.open()
+                    onSettingsRequested: {
+                        mainWindow.showBrush = false
+                        canvasPage.showToolSettings = true
+                    }
                 }
 
                 // Dimmer background for the modal

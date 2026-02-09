@@ -137,8 +137,21 @@ void CanvasItem::paint(QPainter *painter) {
     }
   }
 
-  // 2. Fondo Base
-  painter->fillRect(0, 0, width(), height(), Qt::white);
+  // 2. Fondo Base (Workspace - Dark Gray)
+  painter->fillRect(0, 0, width(), height(), QColor("#1e1e1e"));
+
+  // Calculate generic target rect for background
+  QRectF paperRect(m_viewOffset.x() * m_zoomLevel,
+                   m_viewOffset.y() * m_zoomLevel, m_canvasWidth * m_zoomLevel,
+                   m_canvasHeight * m_zoomLevel);
+
+  // Draw Paper Background (White)
+  painter->fillRect(paperRect, Qt::white);
+
+  // Draw Drop Shadow (Optional, for better depth)
+  // painter->setPen(Qt::NoPen);
+  // painter->setBrush(QColor(0,0,0,50));
+  // painter->drawRect(paperRect.translated(5, 5));
 
   if (m_layerManager->getLayerCount() > 0) {
     for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
@@ -1181,7 +1194,32 @@ void CanvasItem::handle_key_release(int key) {
     QGuiApplication::restoreOverrideCursor();
   }
 }
-void CanvasItem::fitToView() { qDebug() << "Fitting to view"; }
+void CanvasItem::fitToView() {
+  if (m_canvasWidth <= 0 || m_canvasHeight <= 0 || width() <= 0 ||
+      height() <= 0)
+    return;
+
+  float margin = 40.0f;
+  float availableW = width() - margin * 2;
+  float availableH = height() - margin * 2;
+
+  float scaleX = availableW / m_canvasWidth;
+  float scaleY = availableH / m_canvasHeight;
+  float newZoom = std::min(scaleX, scaleY);
+
+  // Constraints for zoom (don't zoom in too much if canvas is tiny)
+  if (newZoom > 1.0f)
+    newZoom = 1.0f;
+
+  setZoomLevel(newZoom);
+
+  float offsetX = (width() - m_canvasWidth * newZoom) / 2.0f / newZoom;
+  float offsetY = (height() - m_canvasHeight * newZoom) / 2.0f / newZoom;
+
+  setViewOffset(QPointF(offsetX, offsetY));
+
+  update();
+}
 
 void CanvasItem::addLayer() {
   m_layerManager->addLayer("New Layer");
@@ -1235,6 +1273,7 @@ bool CanvasItem::loadProject(const QString &path) {
   emit currentProjectNameChanged();
 
   // In a real app, you'd load layers from file here
+  fitToView();
   return true;
 }
 
@@ -1330,6 +1369,7 @@ void CanvasItem::resizeCanvas(int w, int h) {
   emit canvasWidthChanged();
   emit canvasHeightChanged();
   updateLayersList();
+  fitToView();
   update();
 }
 
