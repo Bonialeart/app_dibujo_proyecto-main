@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 1. Configuración de Qt
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Concurrent OpenGL Svg)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Concurrent OpenGL Svg Widgets QuickEffects ShaderTools)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -31,6 +31,10 @@ set(CORE_SOURCES
     src/core/cpp/src/stroke_renderer.cpp
     src/core/cpp/src/undo_manager.cpp
     src/core/cpp/src/stroke_undo_command.cpp
+    src/core/cpp/src/ColorPicker.cpp
+    src/core/cpp/src/ColorPickerImpl.cpp
+    src/core/cpp/include/ColorPicker.h
+    src/core/cpp/include/ColorPickerImpl.h
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)
@@ -65,6 +69,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Concurrent
     Qt6::OpenGL
     Qt6::Svg
+    Qt6::Widgets
+    Qt6::QuickEffects
+    Qt6::ShaderTools
     opengl32
 )
 

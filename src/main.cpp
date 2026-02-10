@@ -1,4 +1,5 @@
 #include "CanvasItem.h"
+#include "ColorPicker.h"
 #include "IconProvider.h"
 #include "PreferencesManager.h"
 #include "ProjectModel.h"
@@ -27,6 +28,7 @@ int main(int argc, char *argv[]) {
   // Registro del componente de dibujo nativo
   qmlRegisterType<CanvasItem>("ArtFlow", 1, 0, "QCanvasItem");
   qmlRegisterType<TestCanvas>("ArtFlow", 1, 0, "TestCanvas");
+  qmlRegisterType<ColorPicker>("ArtFlow", 1, 0, "ColorPicker");
 
   QQmlApplicationEngine engine;
   engine.addImageProvider(QLatin1String("icons"), new IconProvider());

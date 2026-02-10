@@ -27,6 +27,7 @@
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/ProjectGroupView.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/ProjectNavigator.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/ToastManager.qml",
+		"E:/app_dibujo_proyecto-main/src/ui/qml/components/ImprovedColorSlider.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/LayerDelegate.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/SidebarButton.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/PressureSettingsDialog.qml",

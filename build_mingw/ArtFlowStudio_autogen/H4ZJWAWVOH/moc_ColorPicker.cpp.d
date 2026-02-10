@@ -1,12 +1,19 @@
-E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_BrushManager.cpp: E:/app_dibujo_proyecto-main/src/core/cpp/include/BrushManager.h \
+E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker.cpp: E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h \
   E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QVector \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q17memory.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20functional.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20memory.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20type_traits.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/q20utility.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q23type_traits.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/q23utility.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qalgorithms.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qalloc.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qanystringview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qarraydata.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qarraydataops.h \
@@ -30,8 +37,10 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcontainerfwd.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcontainerinfo.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcontainertools_impl.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qcontiguouscache.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qdarwinhelpers.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qdatastream.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qexceptionhandling.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qflags.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qfloat16.h \
@@ -41,6 +50,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/6.10.2/mingw_64/include/QtCore/qgenericatomic.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qglobal.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qglobalstatic.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qhash.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qhashfunctions.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevicebase.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterable.h \
@@ -49,6 +59,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlogging.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmalloc.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qmap.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmath.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmetacontainer.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmetatype.h \
@@ -65,6 +76,11 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/6.10.2/mingw_64/include/QtCore/qrefcount.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qscopeguard.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qset.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qshareddata.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qshareddata_impl.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qsharedpointer.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qsharedpointer_impl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qstdlibdetection.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qstring.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qstringalgorithms.h \
@@ -89,6 +105,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtdeprecationdefinitions.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtdeprecationmarkers.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtenvironmentvariables.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qtextstream.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtformat_impl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtmetamacros.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtnoop.h \
@@ -101,6 +118,9 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtypeinfo.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtypes.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qutf8stringview.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qvarlengtharray.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qvector.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qversiontagging.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qxptype_traits.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qyieldcpu.h \
@@ -181,10 +201,12 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_list.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_map.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_multimap.h \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_multiset.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_numeric.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_pair.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_raw_storage_iter.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_relops.h \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_set.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_tempbuf.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_tree.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_uninitialized.h \
@@ -197,6 +219,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/uniform_int_dist.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/unique_ptr.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/unordered_map.h \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/unordered_set.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/uses_allocator.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/uses_allocator_args.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/utility.h \
@@ -204,6 +227,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cctype \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cerrno \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/chrono \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/climits \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/clocale \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cmath \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/compare \
@@ -241,6 +265,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/pstl/glue_numeric_defs.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/pstl/pstl_config.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ratio \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/set \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/stdexcept \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/stdlib.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/streambuf \
@@ -263,6 +288,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_Bru
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/type_traits \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/typeinfo \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/unordered_map \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/unordered_set \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/utility \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/variant \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/vector \

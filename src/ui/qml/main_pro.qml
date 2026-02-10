@@ -1147,9 +1147,8 @@ Window {
 
                 ColorStudioDialog {
                     id: colorStudioDialog
-                    anchors.right: sideToolbar.left
-                    anchors.rightMargin: 15
-                    anchors.verticalCenter: sideToolbar.verticalCenter
+                    x: sideToolbar.x - width - 15
+                    y: sideToolbar.y + (sideToolbar.height - height) / 2
                     // Slight offset if Brush Panel is also open? Or Mutual Exclusion?
                     // Mutual exclusion is better for mobile-like UI.
                     
@@ -3253,7 +3252,7 @@ Window {
                 // 3. PANEL DE COLOR - PRO REDESIGN
                 PopOverPanel {
                     id: colorPanel
-                    visible: showColor
+                    visible: false // showColor (DISABLED: Using ColorStudioDialog instead)
                     width: 250; height: 480 // Increased height for better layout
                     anchors.top: parent.top; anchors.topMargin: 56
                     anchors.right: parent.right; anchors.rightMargin: 16
