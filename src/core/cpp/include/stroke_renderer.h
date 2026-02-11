@@ -41,7 +41,7 @@ public:
                     int height, uint32_t grainTexId, bool useTex,
                     float texScale, float texIntensity, float tilt,
                     float velocity, uint32_t canvasTexId, float wetness,
-                    float dilution, float smudge);
+                    float dilution, float smudge, bool isEraser = false);
 
 private:
   QOpenGLShaderProgram *m_program;

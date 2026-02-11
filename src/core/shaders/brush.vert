@@ -1,17 +1,13 @@
 #version 330 core
-layout(location = 0) in vec3 position; // x, y, pressure
+layout(location = 0) in vec2 position; // 0..1 local quad coordinates
+layout(location = 1) in vec2 texCoords;
 
 uniform mat4 projectionMatrix;
-uniform float brushSize;
+uniform mat4 modelMatrix;
 
-out float vPressure;
+out vec2 TexCoords;
 
 void main() {
-    gl_Position = projectionMatrix * vec4(position.xy, 0.0, 1.0);
-    
-    // CORRECCIÓN: Usamos brushSize directamente. 
-    // El motor ya calculó el tamaño con la presión.
-    gl_PointSize = brushSize; 
-    
-    vPressure = position.z;
+    gl_Position = projectionMatrix * modelMatrix * vec4(position, 0.0, 1.0);
+    TexCoords = texCoords;
 }

@@ -328,6 +328,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       settings.type = BrushSettings::Type::Eraser;
       // USAMOS NEGRO OPACO (Define el área de borrado)
       settings.color = QColor(0, 0, 0, 255); 
+      // REDUCIR SPACING para evitar "bolitas" y que el borrado sea fluido
+      settings.spacing = std::min(settings.spacing, 0.08f); 
   }
 
   float effectivePressure = pressure; // Ajustar con curva si es necesario

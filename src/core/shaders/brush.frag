@@ -1,26 +1,35 @@
 #version 330 core
 
-in float vPressure;       
-uniform vec4 color;       
-uniform float hardness;   
-
+in vec2 TexCoords;
 out vec4 FragColor;
 
+uniform vec4 color;
+uniform float pressure;
+uniform float hardness;
+uniform int brushType;
+
+// Texturas (para compatibilidad con el renderer aunque no las usemos todas aun)
+uniform sampler2D brushTexture;
+uniform int uHasTexture;
+
 void main() {
-    // Distancia desde el centro del punto
-    float dist = length(gl_PointCoord - vec2(0.5));
-
-    // Suavizado premium (sin usar 'discard' para evitar rayas horizontales)
-    float mask = 1.0 - smoothstep(0.0, 0.5, dist);
+    // 1. Forma básica: Círculo suave
+    float dist = distance(TexCoords, vec2(0.5));
+    float softAlpha = 1.0 - smoothstep(hardness * 0.4, 0.5, dist);
     
-    // Aplicamos la dureza para que el borde sea más o menos suave
-    float softEdge = 1.0 - smoothstep(hardness * 0.5, 0.5, dist);
+    // 2. Si tiene textura, la multiplicamos
+    if (uHasTexture == 1) {
+        vec4 texSample = texture(brushTexture, TexCoords);
+        // Usamos el alpha o el r (si es escala de grises)
+        float texAlpha = max(texSample.a, texSample.r);
+        softAlpha *= texAlpha;
+    }
 
-    // El Alpha final determina la fuerza del borrado/pincel
-    float finalAlpha = color.a * softEdge * (vPressure > 0.0 ? vPressure : 1.0);
-
-    // Si estamos fuera del radio del pincel, alpha es 0
+    // 3. Resultado final
+    float finalAlpha = color.a * softAlpha * pressure;
+    
+    // Evitamos el 'discard' para mayor estabilidad
     if (dist > 0.5) finalAlpha = 0.0;
-
+    
     FragColor = vec4(color.rgb, finalAlpha);
 }

@@ -211,11 +211,12 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       QPointF devPt = xform.map(pt);
       float devSize = currentSize * scaleFactor;
 
+      bool isEraser = (settings.type == BrushSettings::Type::Eraser);
       m_renderer->renderStroke(
           devPt.x(), devPt.y(), devSize, effectivePressure, settings.hardness,
           c, (int)settings.type, w, h, currentTextureID, true,
           settings.textureScale * scaleFactor, settings.textureIntensity, tilt,
-          velocity, canvasTexId, wetness, dilution, smudge);
+          velocity, canvasTexId, wetness, dilution, smudge, isEraser);
 
       distanceToDab += stepSize;
     }
@@ -233,10 +234,11 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   // --- LÓGICA LEGACY (QPAINTER) ---
 
   if (settings.type == BrushSettings::Type::Eraser) {
-    // Forzamos transparencia total usando el modo Source.
-    // Esto sobreescribe los píxeles existentes con "nada" (transparencia).
-    painter->setCompositionMode(QPainter::CompositionMode_Source);
-    const_cast<BrushSettings&>(settings).color = Qt::transparent;
+    // Usamos DestinationOut para "restar" de la capa actual.
+    // Esto es mucho más suave que 'Source' y evita el efecto de "bolitas".
+    painter->setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    // El color debe ser opaco; su Alpha determinará cuánto se borra.
+    const_cast<BrushSettings&>(settings).color = QColor(0, 0, 0, 255);
   } else {
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
   }

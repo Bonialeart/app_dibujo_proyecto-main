@@ -48,9 +48,10 @@ void StrokeRenderer::drawDab(float x, float y, float size, float rotation,
   uint32_t brushTex = m_brushTextureId;
   bool useTex = (brushTex != 0);
 
+  bool isEraser = (brushType == 7);
   renderStroke(x, y, size, pressure, hardness, color, brushType,
                m_viewportWidth, m_viewportHeight, brushTex, useTex, 1.0f, 1.0f,
-               0.0f, 0.0f, 0, wetness, 0.0f, 0.0f);
+               0.0f, 0.0f, 0, wetness, 0.0f, 0.0f, isEraser);
 }
 
 void StrokeRenderer::drawDabPingPong(float x, float y, float size,
@@ -73,9 +74,10 @@ void StrokeRenderer::drawDabPingPong(float x, float y, float size,
   // renderStroke(..., canvasTexId, wetness, ...)
 
   // We pass 1.0 for texture scale/intensity as defaults
+  bool isEraser = (brushType == 7);
   renderStroke(x, y, size, pressure, hardness, color, brushType,
                m_viewportWidth, m_viewportHeight, brushTex, useTex, 1.0f, 1.0f,
-               0.0f, 0.0f, canvasTex, wetness, 0.0f, 0.0f);
+               0.0f, 0.0f, canvasTex, wetness, 0.0f, 0.0f, isEraser);
 }
 
 void StrokeRenderer::setBrushTip(const unsigned char *data, int width,
@@ -130,37 +132,31 @@ void StrokeRenderer::initialize() {
   // 1. Compilar Shaders
   m_program = new QOpenGLShaderProgram();
 
-  // IMPORTANTE: Asegúrate de que los archivos estén en tu QRC o ruta correcta
-  // Usamos rutas absolutas relativas al proyecto por ahora, o QRC si el usuario
-  // lo pide El usuario dijo ":/shaders/brush.vert". Voy a intentar usar la ruta
-  // local del archivo si no existe en QRC. Pero
-  // QOpenGLShaderProgram::addShaderFromSourceFile espera un path. Si no usamos
-  // QRC, necesitamos la ruta absoluta. Hack: Asumimos que los shaders estan en
-  // e:/app_dibujo_proyecto-main/src/core/shaders/
-
   if (!m_program->addShaderFromSourceFile(
           QOpenGLShader::Vertex,
           "d:/app_dibujo_proyecto-main/src/core/shaders/brush.vert")) {
-    qDebug() << "Drive D fail, trying relative path for Vertex Shader...";
     m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "src/core/shaders/brush.vert");
   }
 
   if (!m_program->addShaderFromSourceFile(
           QOpenGLShader::Fragment,
           "d:/app_dibujo_proyecto-main/src/core/shaders/brush.frag")) {
-    qDebug() << "Drive D fail, trying relative path for Fragment Shader...";
     m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "src/core/shaders/brush.frag");
   }
 
   if (!m_program->link())
     qDebug() << "Error Link Shader:" << m_program->log();
 
-  // 2. Crear Quad (El cuadrado donde dibujamos el círculo del pincel)
+  // 2. Crear Quad Estándar (0.0 a 1.0)
   float vertices[] = {
-      // Pos      // TexCoords
-      0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-
-      0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f};
+      // PosX, PosY, TexU, TexV
+      0.0f, 0.0f, 0.0f, 0.0f,
+      1.0f, 0.0f, 1.0f, 0.0f,
+      0.0f, 1.0f, 0.0f, 1.0f,
+      0.0f, 1.0f, 0.0f, 1.0f,
+      1.0f, 0.0f, 1.0f, 0.0f,
+      1.0f, 1.0f, 1.0f, 1.0f
+  };
 
   m_vao.create();
   m_vao.bind();
@@ -169,16 +165,15 @@ void StrokeRenderer::initialize() {
   m_vbo.bind();
   m_vbo.allocate(vertices, sizeof(vertices));
 
-  // Atributo 0: Posición
+  // Atributos (layout del shader)
+  glEnableVertexAttribArray(0); // Position
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-  glEnableVertexAttribArray(0);
 
-  // Atributo 1: Textura
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
-                        (void *)(2 * sizeof(float)));
-  glEnableVertexAttribArray(1);
+  glEnableVertexAttribArray(1); // TexCoords
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
 
   m_vao.release();
+  m_vbo.release();
 }
 
 void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
@@ -187,22 +182,27 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
                                   bool useTex, float texScale,
                                   float texIntensity, float tilt,
                                   float velocity, uint32_t canvasTexId,
-                                  float wetness, float dilution, float smudge) {
+                                  float wetness, float dilution, float smudge,
+                                  bool isEraser) {
   if (!m_program)
     return;
 
   m_program->bind();
   m_vao.bind();
 
-  // Configurar Uniforms (Enviar datos al Shader)
+  // --- MATRICES DE POSICIONAMIENTO ---
   QMatrix4x4 projection;
   projection.ortho(0, width, height, 0, -1, 1); 
 
+  QMatrix4x4 model;
+  model.translate(x - size / 2, y - size / 2, 0); 
+  model.scale(size, size, 1);
+
   m_program->setUniformValue("projectionMatrix", projection);
-  m_program->setUniformValue("brushSize", size);
+  m_program->setUniformValue("modelMatrix", model);
   m_program->setUniformValue("color", color);
+  m_program->setUniformValue("pressure", pressure);
   m_program->setUniformValue("hardness", hardness);
-  m_program->setUniformValue("brushType", type);
 
   // -- PREMIUM UNIFORMS --
   m_program->setUniformValue("u_impastoStrength", 5.0f);
@@ -239,16 +239,17 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
     m_program->setUniformValue("smudge", 0.0f);
   }
 
-  // -- CONFIGURACIÓN PROFESIONAL DE OPENGL --
+  // --- CONFIGURACIÓN DE MEZCLA DEFINITIVA ---
   glEnable(GL_BLEND);
-  glEnable(GL_PROGRAM_POINT_SIZE);
-  glEnable(GL_POINT_SPRITE); 
+  glDisable(GL_DEPTH_TEST);
   glBlendEquation(GL_FUNC_ADD); 
-  
-  if (type == 7 || type == (int)BrushSettings::Type::Eraser) { 
-    // MODO BORRADOR VERDADERO: Dest = Dest * (1 - AlphaPincel)
-    glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
-    // El color debe ser negro opaco para que el Alpha sea el que mande
+
+  if (isEraser) { 
+    // MODO BORRADOR: Dest = Dest * (1 - SourceAlpha)
+    // El origen no aporta color (GL_ZERO), solo el factor de resta.
+    glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+    
+    // El color negro actúa como máscara (el Alpha es lo que importa)
     m_program->setUniformValue("color", QColor(0, 0, 0, 255));
   } else {
     // MODO PINTAR NORMAL
@@ -256,16 +257,11 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
     m_program->setUniformValue("color", color);
   }
   
-  // Dibujar un único Dab (Sello)
-  GLfloat vertData[] = { (GLfloat)x, (GLfloat)y, (GLfloat)pressure };
-  m_vbo.bind();
-  m_vbo.allocate(vertData, sizeof(vertData));
-  m_program->enableAttributeArray(0);
-  m_program->setAttributeBuffer(0, GL_FLOAT, 0, 3);
-  
-  glDrawArrays(GL_POINTS, 0, 1);
+  // Dibujamos el Quad pre-cargado
+  m_vao.bind();
+  glDrawArrays(GL_TRIANGLES, 0, 6);
+  m_vao.release();
 
-  m_vbo.release();
   m_program->release();
 }
 
