@@ -1108,38 +1108,150 @@ Window {
                             }
                         }
 
-                        // --- COLOR BUTTON ---
+                        // --- PREMIUM DUAL COLOR TOOLBAR BUTTON ---
                         Item { width: 1; height: 8 } // Spacer
                         Rectangle { width: 32; height: 1; color: "#333"; anchors.horizontalCenter: parent.horizontalCenter }
-                        Item { width: 1; height: 8 } // Spacer
+                        Item { width: 1; height: 12 } // Spacer
 
-                        Rectangle {
-                            width: 38; height: 38
-                            radius: 12
-                            color: "transparent"
+                        Item {
+                            width: 52; height: 72 // Increased height for the 3rd orb
                             anchors.horizontalCenter: parent.horizontalCenter
                             
-                            Rectangle {
-                                width: 28; height: 28
-                                radius: 14
-                                anchors.centerIn: parent
-                                color: (mainCanvas && mainCanvas.brushColor) ? mainCanvas.brushColor : "#000"
-                                border.color: "#444"
-                                border.width: 1
+                            // 1. Dual Color Overlap Item
+                            Item {
+                                width: 44; height: 44; anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
                                 
+                                // Slot 1 (Secondary/Back)
                                 Rectangle {
-                                    anchors.fill: parent; radius: 14
-                                    border.color: colorAccent
-                                    border.width: 2
-                                    color: "transparent"
-                                    visible: mainWindow.showColor
+                                    id: barWell1
+                                    width: 26; height: 26; radius: 13
+                                    anchors.right: parent.right; anchors.bottom: parent.bottom
+                                    color: colorStudioDialog.slot1Color
+                                    border.color: "#333"
+                                    border.width: 1
+                                    z: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 5 : 1
+                                    scale: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 1.2 : 1.0
+                                    opacity: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 1.0 : 0.7
+                                    
+                                    Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                                    
+                                    Rectangle {
+                                        anchors.fill: parent; radius: 13; border.color: colorAccent; border.width: 2; color: "transparent"
+                                        visible: colorStudioDialog.activeSlot === 1 && mainWindow.showColor && !colorStudioDialog.isTransparent
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            colorStudioDialog.isTransparent = false
+                                            if (colorStudioDialog.activeSlot !== 1) {
+                                                colorStudioDialog.activeSlot = 1
+                                                mainCanvas.brushColor = colorStudioDialog.slot1Color
+                                            } else {
+                                                mainWindow.showColor = !mainWindow.showColor
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Slot 0 (Primary/Front)
+                                Rectangle {
+                                    id: barWell0
+                                    width: 26; height: 26; radius: 13
+                                    anchors.left: parent.left; anchors.top: parent.top
+                                    color: colorStudioDialog.slot0Color
+                                    border.color: "#333"
+                                    border.width: 1
+                                    z: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 5 : 2
+                                    scale: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 1.2 : 1.0
+                                    opacity: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 1.0 : 0.7
+
+                                    Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                    Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                                    Rectangle {
+                                        anchors.fill: parent; radius: 13; border.color: colorAccent; border.width: 2; color: "transparent"
+                                        visible: colorStudioDialog.activeSlot === 0 && mainWindow.showColor && !colorStudioDialog.isTransparent
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            colorStudioDialog.isTransparent = false
+                                            if (colorStudioDialog.activeSlot !== 0) {
+                                                colorStudioDialog.activeSlot = 0
+                                                mainCanvas.brushColor = colorStudioDialog.slot0Color
+                                            } else {
+                                                mainWindow.showColor = !mainWindow.showColor
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                            
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: mainWindow.showColor = !mainWindow.showColor
+
+                            // 2. Transparency Pill (Clip Studio Style - Rediseño Premium)
+                            Rectangle {
+                                id: transWell
+                                width: 34; height: 18; radius: 9
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: 8
+                                clip: true
+                                
+                                color: colorStudioDialog.isTransparent ? "#FFFFFF" : "#252528"
+                                border.color: colorStudioDialog.isTransparent ? colorAccent : Qt.rgba(1, 1, 1, 0.15)
+                                border.width: colorStudioDialog.isTransparent ? 1.5 : 1
+                                
+                                scale: colorStudioDialog.isTransparent ? 1.1 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                Behavior on color { ColorAnimation { duration: 200 } }
+
+                                // Checkerboard Pattern Background (Sólo visible cuando está activo para un look más limpio)
+                                Canvas {
+                                    anchors.fill: parent
+                                    opacity: colorStudioDialog.isTransparent ? 1.0 : 0.3
+                                    onPaint: {
+                                        var ctx = getContext("2d");
+                                        var sz = 4;
+                                        ctx.fillStyle = "#fff";
+                                        ctx.fillRect(0,0,width,height);
+                                        ctx.fillStyle = "#e0e0e0";
+                                        for(var y=0; y<height; y+=sz) {
+                                            for(var x=0; x<width; x+=sz) {
+                                                if (((x+y)/sz)%2 === 0) ctx.fillRect(x,y,sz,sz);
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Premium Glass Glow
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 9
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: Qt.rgba(1,1,1, 0.2) }
+                                        GradientStop { position: 1.0; color: "transparent" }
+                                    }
+                                    visible: colorStudioDialog.isTransparent
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        colorStudioDialog.isTransparent = !colorStudioDialog.isTransparent
+                                        if (colorStudioDialog.isTransparent) {
+                                            mainCanvas.brushColor = "transparent"
+                                        } else {
+                                            var col = (colorStudioDialog.activeSlot === 0 ? colorStudioDialog.slot0Color : colorStudioDialog.slot1Color)
+                                            mainCanvas.brushColor = col
+                                        }
+                                    }
+                                }
+                                
+                                ToolTip.visible: transHover.containsMouse
+                                ToolTip.text: "Transparency (Brush Eraser Mode)"
+                                MouseArea { id: transHover; anchors.fill: parent; hoverEnabled: true; enabled: false }
                             }
                         }
                     }
@@ -1147,8 +1259,8 @@ Window {
 
                 ColorStudioDialog {
                     id: colorStudioDialog
-                    x: sideToolbar.x - width - 15
-                    y: sideToolbar.y + (sideToolbar.height - height) / 2
+                    x: parent.width - width - 12
+                    y: topBar.y + topBar.height + 6
                     // Slight offset if Brush Panel is also open? Or Mutual Exclusion?
                     // Mutual exclusion is better for mobile-like UI.
                     

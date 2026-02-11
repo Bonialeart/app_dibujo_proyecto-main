@@ -1,5 +1,5 @@
-E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_CanvasItem.cpp: E:/app_dibujo_proyecto-main/src/CanvasItem.h \
-  E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
+D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_CanvasItem.cpp: D:/app_dibujo_proyecto-main/src/CanvasItem.h \
+  D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QMap \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
@@ -473,11 +473,11 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_Can
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/time.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/vadefs.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/common_types.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/image_buffer.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/layer_manager.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_renderer.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_undo_command.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/undo_command.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/undo_manager.h
+  D:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
+  D:/app_dibujo_proyecto-main/src/core/cpp/include/common_types.h \
+  D:/app_dibujo_proyecto-main/src/core/cpp/include/image_buffer.h \
+  D:/app_dibujo_proyecto-main/src/core/cpp/include/layer_manager.h \
+  D:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_renderer.h \
+  D:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_undo_command.h \
+  D:/app_dibujo_proyecto-main/src/core/cpp/include/undo_command.h \
+  D:/app_dibujo_proyecto-main/src/core/cpp/include/undo_manager.h

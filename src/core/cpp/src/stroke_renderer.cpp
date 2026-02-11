@@ -1,5 +1,6 @@
 #define GL_GLEXT_PROTOTYPES
 #include "../include/stroke_renderer.h"
+#include "../include/brush_engine.h"
 #include <QColor>
 #include <QDebug>
 #include <QFile>
@@ -139,13 +140,17 @@ void StrokeRenderer::initialize() {
 
   if (!m_program->addShaderFromSourceFile(
           QOpenGLShader::Vertex,
-          "e:/app_dibujo_proyecto-main/src/core/shaders/brush.vert"))
-    qDebug() << "Error Vertex Shader:" << m_program->log();
+          "d:/app_dibujo_proyecto-main/src/core/shaders/brush.vert")) {
+    qDebug() << "Drive D fail, trying relative path for Vertex Shader...";
+    m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "src/core/shaders/brush.vert");
+  }
 
   if (!m_program->addShaderFromSourceFile(
           QOpenGLShader::Fragment,
-          "e:/app_dibujo_proyecto-main/src/core/shaders/brush.frag"))
-    qDebug() << "Error Fragment Shader:" << m_program->log();
+          "d:/app_dibujo_proyecto-main/src/core/shaders/brush.frag")) {
+    qDebug() << "Drive D fail, trying relative path for Fragment Shader...";
+    m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "src/core/shaders/brush.frag");
+  }
 
   if (!m_program->link())
     qDebug() << "Error Link Shader:" << m_program->log();
@@ -242,7 +247,14 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
 
   // Dibujar
   glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  // Using explicit enum value to ensure sync between header and renderer logic
+  if (type == (int)BrushSettings::Type::Eraser) { 
+    // DestinationOut: result = 0 * src + (1 - src_alpha) * dst
+    // This removes alpha from the destination based on the source alpha
+    glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+  } else {
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  }
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
   m_vao.release();

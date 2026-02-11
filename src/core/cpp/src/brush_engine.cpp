@@ -233,7 +233,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   // --- LÓGICA LEGACY (QPAINTER) ---
 
   if (settings.type == BrushSettings::Type::Eraser) {
-    painter->setCompositionMode(QPainter::CompositionMode_Clear);
+    painter->setCompositionMode(QPainter::CompositionMode_DestinationOut);
   } else {
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
   }

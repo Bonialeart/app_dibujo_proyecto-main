@@ -93,7 +93,6 @@ void ColorPickerModal::hide() {
 void ColorPickerModal::setActiveColor(const Color &color) {
   activeColor_ = color;
   primaryColor_ = color;
-  addToHistory(color);
 
   if (onColorChanged_) {
     onColorChanged_(color);
@@ -103,7 +102,6 @@ void ColorPickerModal::setActiveColor(const Color &color) {
 void ColorPickerModal::setPrimaryColor(const Color &color) {
   primaryColor_ = color;
   activeColor_ = color;
-  addToHistory(color);
 
   if (onColorChanged_) {
     onColorChanged_(color);
@@ -149,17 +147,29 @@ std::vector<Color> ColorPickerModal::generateShades(int count) {
 }
 
 void ColorPickerModal::addToHistory(const Color &color) {
-  // Check if color already exists in history
-  for (const auto &c : colorHistory_) {
-    if (std::abs(c.r - color.r) < 0.01f && std::abs(c.g - color.g) < 0.01f &&
-        std::abs(c.b - color.b) < 0.01f) {
-      return; // Color already in history
-    }
+  // 1. Convert to hex for a stable unique ID
+  std::string newHex = color.toHex();
+  
+  // 2. Search for the color in history using both float tolerance AND hex string
+  auto it = std::find_if(colorHistory_.begin(), colorHistory_.end(), [&](const Color &c) {
+      // Check hex first (fastest and most user-perceived equality)
+      if (c.toHex() == newHex) return true;
+      
+      // Float comparison with slightly more relaxed tolerance for premium sliders
+      return std::abs(c.r - color.r) < 0.03f && 
+             std::abs(c.g - color.g) < 0.03f &&
+             std::abs(c.b - color.b) < 0.03f;
+  });
+
+  // 3. If it exists, remove it so we can move it to the front
+  if (it != colorHistory_.end()) {
+      colorHistory_.erase(it);
   }
 
+  // 4. Always insert a clean version (from hex if possible to unify values) at the front
   colorHistory_.insert(colorHistory_.begin(), color);
 
-  // Keep only last MAX_HISTORY colors
+  // 5. Keep only last MAX_HISTORY colors
   if (colorHistory_.size() > MAX_HISTORY) {
     colorHistory_.resize(MAX_HISTORY);
   }

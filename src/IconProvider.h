@@ -32,8 +32,8 @@ public:
     searchPaths << QCoreApplication::applicationDirPath() +
                        "/../../src/assets/icons/" + fileName;
     // Rutas absolutas del proyecto (para desarrollo)
-    searchPaths << "e:/app_dibujo_proyecto-main/src/assets/icons/" + fileName;
-    searchPaths << "e:/app_dibujo_proyecto-main/assets/icons/" + fileName;
+    searchPaths << "d:/app_dibujo_proyecto-main/src/assets/icons/" + fileName;
+    searchPaths << "d:/app_dibujo_proyecto-main/assets/icons/" + fileName;
     // Rutas relativas al directorio de trabajo actual (Qt Creator suele usar el
     // directorio de build)
     searchPaths << QDir::currentPath() + "/src/assets/icons/" + fileName;

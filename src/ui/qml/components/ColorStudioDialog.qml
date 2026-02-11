@@ -16,7 +16,31 @@ Popup {
     modal: false
     dim: false
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-    margins: 10
+    property real yOffset: 0
+    
+    // --- POSITIONING ---
+    // Margin 0 at top to allow precise positioning from parent
+    topMargin: 0
+    leftMargin: 10
+    rightMargin: 10
+    bottomMargin: 10
+    
+    // Elegant entrance/exit (using yOffset to avoid binding drift)
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 400; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "yOffset"; from: -30; to: 0; duration: 500; easing.type: Easing.OutBack }
+            NumberAnimation { property: "scale"; from: 0.92; to: 1.0; duration: 450; easing.type: Easing.OutQuart }
+        }
+    }
+    
+    exit: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 250; easing.type: Easing.InCubic }
+            NumberAnimation { property: "yOffset"; from: 0; to: -20; duration: 300; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; from: 1.0; to: 0.95; duration: 250; easing.type: Easing.InCubic }
+        }
+    }
     
     // --- THEME & COLORS ---
     property color accentColor: "#8E7CC3"  // Soft Purple
@@ -35,16 +59,42 @@ Popup {
     // --- DATA BINDING ---
     property var targetCanvas: null
     property color currentColor: targetCanvas ? targetCanvas.brushColor : "#8E7CC3"
-    property color secondaryColor: "#FFFFFF"
+    
+    // --- DUAL COLOR SYSTEM ---
+    property int activeSlot: 0
+    property bool isTransparent: false
+    property color slot0Color: "#8E7CC3"
+    property color slot1Color: "#FFFFFF"
     
     property real h: 0.0
     property real s: 0.0
     property real v: 1.0
     
+    onActiveSlotChanged: {
+        if (!internalUpdate) {
+            internalUpdate = true
+            isTransparent = false // Switching slots disables transparency
+            var col = (activeSlot === 0 ? slot0Color : slot1Color)
+            h = col.hsvHue
+            s = col.hsvSaturation
+            v = col.hsvValue
+            // Update canvas AND parent-level currentColor if they exist
+            if (targetCanvas) targetCanvas.brushColor = col
+            internalUpdate = false
+        }
+    }
+
+    onIsTransparentChanged: {
+        if (!internalUpdate) {
+            updateColor()
+        }
+    }
+    
     Component.onCompleted: {
         h = currentColor.hsvHue
         s = currentColor.hsvSaturation
         v = currentColor.hsvValue
+        slot0Color = currentColor
     }
 
     onCurrentColorChanged: {
@@ -52,6 +102,8 @@ Popup {
             h = currentColor.hsvHue
             s = currentColor.hsvSaturation
             v = currentColor.hsvValue
+            if (activeSlot === 0) slot0Color = currentColor
+            else slot1Color = currentColor
         }
     }
 
@@ -59,13 +111,57 @@ Popup {
     function updateColor() {
         internalUpdate = true
         var newColor = Qt.hsva(h, s, v, 1.0)
-        currentColor = newColor
-        if (targetCanvas) targetCanvas.brushColor = newColor
+        
+        if (activeSlot === 0) slot0Color = newColor
+        else slot1Color = newColor
+        
+        if (targetCanvas) {
+            if (isTransparent) targetCanvas.brushColor = "transparent"
+            else targetCanvas.brushColor = newColor
+        }
         internalUpdate = false
     }
 
+    // --- SIGNAL CONNECTIONS ---
+    Connections {
+        target: root.targetCanvas
+        function onStrokeStarted(col) {
+            root.addToHistory()
+        }
+    }
+
     function addToHistory() {
-        backend.addToHistory(currentColor)
+        var c = root.currentColor
+        
+        // Función de comparación ultra-robusta
+        var areEqual = function(c1, c2) {
+            var col1 = Qt.color(c1)
+            var col2 = Qt.color(c2)
+            
+            // 1. Comparación por HEX redondeado (evita ruidos de precisión float)
+            var toHex6 = function(col) {
+                var r = Math.round(col.r * 255).toString(16).padStart(2, '0')
+                var g = Math.round(col.g * 255).toString(16).padStart(2, '0')
+                var b = Math.round(col.b * 255).toString(16).padStart(2, '0')
+                return ("#" + r + g + b).toUpperCase()
+            }
+            
+            if (toHex6(col1) === toHex6(col2)) return true
+            
+            // 2. Comparación directa de Qt (Fallback)
+            if (col1 === col2) return true
+            
+            return false
+        }
+        
+        var hist = backend.history
+        for (var i = 0; i < hist.length; i++) {
+            if (areEqual(hist[i], c)) {
+                return // Duplicado detectado, ignorar
+            }
+        }
+        
+        backend.addToHistory(c)
     }
 
     function getCMYK() {
@@ -93,15 +189,41 @@ Popup {
     signal closeRequested()
 
     background: Rectangle {
-        color: root.bgColor
-        radius: 24
-        border.color: root.borderColor
-        border.width: 1
+        color: "#E6121214" // Slightly translucent for glass effect
+        radius: 28
+        border.color: "#3A3A3C"
+        border.width: 1.5
+        
+        transform: Translate { y: root.yOffset }
+        
+        // Premium Linear Gradient for the background depth
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#1C1C1E" }
+            GradientStop { position: 1.0; color: "#121214" }
+        }
+
         layer.enabled: true
-        layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 40; shadowColor: "#CC000000"; shadowVerticalOffset: 15 }
+        layer.effect: MultiEffect { 
+            shadowEnabled: true 
+            shadowBlur: 50 
+            shadowColor: "#E0000000" 
+            shadowVerticalOffset: 20 
+        }
+        
+        // Subtle highlight line at the very top edge
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 1
+            height: 1
+            radius: parent.radius
+            color: "#40FFFFFF"
+        }
     }
 
     contentItem: Item {
+        transform: Translate { y: root.yOffset }
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 18
@@ -134,10 +256,134 @@ Popup {
                             visible: viewStack.currentIndex !== 2 // Hide in Sliders to match foto
                         }
                     }
+                    // --- PREMIUM DUAL COLOR WELLS ---
                     Item {
-                        width: 60; height: 40
-                        Rectangle { width: 30; height: 30; radius: 15; color: root.secondaryColor; anchors.right: parent.right; anchors.bottom: parent.bottom; border.color: "#20FFFFFF"; border.width: 1.5; MouseArea { anchors.fill: parent; onClicked: { var t=root.currentColor; root.currentColor=root.secondaryColor; root.secondaryColor=t } } }
-                        Rectangle { width: 38; height: 38; radius: 19; color: root.currentColor; anchors.left: parent.left; anchors.top: parent.top; border.color: "white"; border.width: 2.5 }
+                        width: 76; height: 44
+                        
+                        // Slot 1 (Secondary/Back)
+                        Rectangle {
+                            id: well1
+                            width: 32; height: 32; radius: 16
+                            x: activeSlot === 1 ? 4 : 36
+                            y: activeSlot === 1 ? 4 : 8
+                            z: activeSlot === 1 ? 10 : 5
+                            
+                            color: root.slot1Color
+                            border.color: activeSlot === 1 ? "white" : "#20FFFFFF"
+                            border.width: activeSlot === 1 ? 2.5 : 1.5
+                            opacity: activeSlot === 1 ? 1.0 : 0.6
+                            
+                            Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
+                            Behavior on y { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
+                            Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                            Behavior on opacity { NumberAnimation { duration: 200 } }
+                            
+                            scale: activeSlot === 1 ? 1.15 : 0.85
+                            
+                            layer.enabled: activeSlot === 1
+                            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 12; shadowColor: "#A0000000" }
+                            
+                            MouseArea {
+                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (activeSlot !== 1) {
+                                        activeSlot = 1
+                                        root.internalUpdate = true
+                                        root.h = root.slot1Color.hsvHue
+                                        root.s = root.slot1Color.hsvSaturation
+                                        root.v = root.slot1Color.hsvValue
+                                        if (root.targetCanvas) root.targetCanvas.brushColor = root.slot1Color
+                                        root.internalUpdate = false
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Slot 0 (Primary/Front)
+                        Rectangle {
+                            id: well0
+                            width: 32; height: 32; radius: 16
+                            x: activeSlot === 0 ? 4 : 36
+                            y: activeSlot === 0 ? 4 : 8
+                            z: activeSlot === 0 ? 10 : 5
+                            
+                            color: root.slot0Color
+                            border.color: activeSlot === 0 ? "white" : "#20FFFFFF"
+                            border.width: activeSlot === 0 ? 2.5 : 1.5
+                            opacity: activeSlot === 0 ? 1.0 : 0.6
+                            
+                            Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
+                            Behavior on y { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
+                            Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                            Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                            scale: activeSlot === 0 ? 1.15 : 0.85
+                            
+                            layer.enabled: activeSlot === 0
+                            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 12; shadowColor: "#A0000000" }
+
+                            MouseArea {
+                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (activeSlot !== 0) {
+                                        activeSlot = 0
+                                        root.internalUpdate = true
+                                        root.h = root.slot0Color.hsvHue
+                                        root.s = root.slot0Color.hsvSaturation
+                                        root.v = root.slot0Color.hsvValue
+                                        if (root.targetCanvas) root.targetCanvas.brushColor = root.slot0Color
+                                        root.internalUpdate = false
+                                    } else {
+                                        root.addToHistory()
+                                        saveAnim.restart()
+                                    }
+                                }
+                                SequentialAnimation {
+                                    id: saveAnim
+                                    NumberAnimation { target: well0; property: "scale"; from: 1.15; to: 1.4; duration: 100 }
+                                    NumberAnimation { target: well0; property: "scale"; from: 1.4; to: 1.15; duration: 150 }
+                                }
+                            }
+                        }
+                        
+                        // Swap Micro-Button
+                        Rectangle {
+                            id: swapBtnRect
+                            width: 20; height: 20; radius: 10
+                            color: "#2C2C2E"
+                            border.color: "#3A3A3C"
+                            anchors.right: parent.right; anchors.top: parent.top
+                            anchors.margins: -2
+                            z: 25
+                            Text { text: "⇆"; color: "white"; font.pixelSize: 10; anchors.centerIn: parent }
+                            MouseArea {
+                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    var t = root.slot0Color
+                                    root.slot0Color = root.slot1Color
+                                    root.slot1Color = t
+                                    
+                                    // Refresh logic for active slot
+                                    root.internalUpdate = true
+                                    var activeCol = (activeSlot === 0 ? root.slot0Color : root.slot1Color)
+                                    root.h = activeCol.hsvHue
+                                    root.s = activeCol.hsvSaturation
+                                    root.v = activeCol.hsvValue
+                                    if (root.targetCanvas) root.targetCanvas.brushColor = activeCol
+                                    root.internalUpdate = false
+                                    
+                                    swapPulse.restart()
+                                }
+                                onPressed: swapBtnRect.scale = 0.8
+                                onReleased: swapBtnRect.scale = 1.0
+                            }
+                            SequentialAnimation {
+                                id: swapPulse
+                                NumberAnimation { target: swapBtnRect; property: "rotation"; from: 0; to: 180; duration: 300; easing.type: Easing.OutBack }
+                                PropertyAction { target: swapBtnRect; property: "rotation"; value: 0 }
+                            }
+                            Behavior on scale { NumberAnimation { duration: 100 } }
+                        }
                     }
                     Text { text: "⋮"; color: "#666"; font.pixelSize: 22; Layout.alignment: Qt.AlignVCenter }
                 }
@@ -176,52 +422,95 @@ Popup {
                         
                         // SV SQUARE (Rounded properly)
                         Rectangle {
+                                id: svSquare
                             Layout.fillWidth: true; Layout.fillHeight: true
-                            radius: 18; clip: true; color: Qt.hsva(root.h, 1, 1, 1)
-                            Rectangle { anchors.fill: parent; gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: "white" } GradientStop { position: 1; color: "transparent" } } }
-                            Rectangle { anchors.fill: parent; gradient: Gradient { orientation: Gradient.Vertical; GradientStop { position: 0; color: "transparent" } GradientStop { position: 1; color: "black" } } }
+                            radius: 20
+                            color: Qt.hsva(root.h, 1, 1, 1)
                             
-                            // Cursor
+                            // Forzamos el redondeo premium asegurando que el efecto de sombra no oculte el contenido
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                shadowEnabled: true
+                                shadowBlur: 15
+                                shadowColor: "#40000000"
+                                shadowVerticalOffset: 4
+                            }
+                            
+                            // Capa de Saturación (Blanco a Transparente)
+                            Rectangle { 
+                                anchors.fill: parent
+                                radius: 20
+                                gradient: Gradient { 
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0; color: "white" } 
+                                    GradientStop { position: 1; color: "transparent" } 
+                                } 
+                            }
+                            
+                            // Capa de Valor (Transparente a Negro)
+                            Rectangle { 
+                                anchors.fill: parent
+                                radius: 20
+                                gradient: Gradient { 
+                                    orientation: Gradient.Vertical
+                                    GradientStop { position: 0; color: "transparent" } 
+                                    GradientStop { position: 1; color: "black" } 
+                                } 
+                            }
+                            
+                            // Borde sutil interno para premium feel
                             Rectangle {
-                                x: root.s * parent.width - 12; y: (1.0 - root.v) * parent.height - 12; width: 24; height: 24; radius: 12
+                                anchors.fill: parent
+                                radius: 20
+                                color: "transparent"
+                                border.color: "#30FFFFFF"
+                                border.width: 1
+                            }
+                            
+                            // Cursor (Constreñido para que no se salga nunca)
+                            Rectangle {
+                                x: root.s * (parent.width - 24)
+                                y: (1.0 - root.v) * (parent.height - 24)
+                                width: 24; height: 24; radius: 12
                                 color: "transparent"; border.color: "white"; border.width: 2.5
                                 Rectangle { anchors.centerIn: parent; width: 18; height: 18; radius: 9; color: "transparent"; border.color: "black"; border.width: 1 }
+                                layer.enabled: true; layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 5; shadowColor: "#80000000" }
                             }
-                            MouseArea { anchors.fill: parent; onPressed: updatePos(mouse); onPositionChanged: if(pressed) updatePos(mouse)
+                            
+                            MouseArea { 
+                                anchors.fill: parent; onPressed: updatePos(mouse); onPositionChanged: if(pressed) updatePos(mouse)
                                 function updatePos(m) { root.s = Math.max(0, Math.min(1, m.x/width)); root.v = Math.max(0, Math.min(1, 1.0-m.y/height)); root.updateColor() }
-                                onReleased: root.addToHistory()
                             }
                         }
                         
-                        // HUE SLIDER (PERFECCIONADO)
+                        // HUE SLIDER (PERFECCIONADO CON GRADIENTE REAL)
                         Item {
-                            Layout.fillWidth: true; Layout.preferredHeight: 30
+                            Layout.fillWidth: true; Layout.preferredHeight: 32
                             Rectangle {
-                                width: parent.width; height: 6; radius: 3; anchors.centerIn: parent; clip: true
-                                ShaderEffect {
-                                    anchors.fill: parent
-                                    fragmentShader: "
-                                        varying highp vec2 qt_TexCoord0;
-                                        uniform lowp float qt_Opacity;
-                                        vec3 hsb2rgb(in vec3 c){
-                                            vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0, 0.0, 1.0);
-                                            rgb = rgb*rgb*(3.0-2.0*rgb);
-                                            return c.z * mix(vec3(1.0), rgb, c.y);
-                                        }
-                                        void main(){ gl_FragColor = vec4(hsb2rgb(vec3(qt_TexCoord0.x, 1.0, 1.0)), 1.0) * qt_Opacity; }
-                                    "
+                                width: parent.width; height: 10; radius: 5; anchors.centerIn: parent
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0.00; color: "#FF0000" }
+                                    GradientStop { position: 0.17; color: "#FFFF00" }
+                                    GradientStop { position: 0.33; color: "#00FF00" }
+                                    GradientStop { position: 0.50; color: "#00FFFF" }
+                                    GradientStop { position: 0.67; color: "#0000FF" }
+                                    GradientStop { position: 0.83; color: "#FF00FF" }
+                                    GradientStop { position: 1.00; color: "#FF0000" }
                                 }
+                                border.color: "#20FFFFFF"
+                                border.width: 1
                             }
-                            // Knob
+                            // Knob (Constreñido para que no se salga del slider)
                             Rectangle {
-                                x: root.h * parent.width - 12; anchors.verticalCenter: parent.verticalCenter
+                                x: root.h * (parent.width - 24)
+                                anchors.verticalCenter: parent.verticalCenter
                                 width: 24; height: 24; radius: 12; color: "white"
                                 Rectangle { anchors.centerIn: parent; width: 18; height: 18; radius: 9; color: Qt.hsva(root.h,1,1,1); border.color: "black"; border.width: 1 }
                                 layer.enabled: true; layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 8; shadowColor: "#80000000" }
                             }
                             MouseArea { anchors.fill: parent; onPressed: uiHue(mouse); onPositionChanged: if(pressed) uiHue(mouse)
                                 function uiHue(m) { root.h = Math.max(0, Math.min(1, m.x/width)); root.updateColor() }
-                                onReleased: root.addToHistory()
                             }
                         }
                     }
@@ -293,7 +582,9 @@ Popup {
                             }
                             onPressed: updateHue(mouse)
                             onPositionChanged: if(pressed) updateHue(mouse)
-                            onReleased: root.addToHistory()
+                            onReleased: {
+                                // Manual history is now handled by painting or direct click
+                            }
                         }
                         
                         // Hue Selector Knob
@@ -346,7 +637,9 @@ Popup {
                                 }
                                 onPressed: upSV(mouse)
                                 onPositionChanged: if(pressed) upSV(mouse)
-                                onReleased: root.addToHistory()
+                                onReleased: {
+                                    // Manual history is now handled by painting or direct click
+                                }
                             }
                         }
                     }
@@ -522,11 +815,48 @@ Popup {
                             }
                         }
                         
-                        // HISTORY
+                        // HISTORY (Refinado y Premium)
                         Item {
-                            GridLayout { anchors.fill: parent; columns: 6; rowSpacing: 6; columnSpacing: 6
-                                Repeater { model: backend.history
-                                    Rectangle { Layout.preferredWidth: 42; Layout.preferredHeight: 42; radius: 8; color: modelData; border.width: 1; border.color: "#30FFFFFF"; MouseArea { anchors.fill: parent; onClicked: root.currentColor = parent.color } }
+                            ScrollView {
+                                anchors.fill: parent
+                                anchors.margins: 2
+                                clip: true
+                                
+                                Flow {
+                                    id: historyFlow
+                                    width: parent.width
+                                    spacing: 10
+                                    
+                                    Repeater { 
+                                        model: backend.history
+                                        Rectangle { 
+                                            width: 42; height: 42; radius: 10
+                                            color: modelData
+                                            border.width: 1
+                                            border.color: "#30FFFFFF"
+                                            
+                                            layer.enabled: true
+                                            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 8; shadowColor: "#60000000" }
+                                            
+                                            MouseArea { 
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: root.currentColor = modelData
+                                                onPressed: parent.scale = 0.92
+                                                onReleased: parent.scale = 1.0
+                                            }
+                                            
+                                            Behavior on scale { NumberAnimation { duration: 100 } }
+                                        }
+                                    }
+                                }
+                                
+                                Text {
+                                    visible: backend.history.length === 0
+                                    text: "Your history is empty"
+                                    color: "#444"
+                                    anchors.centerIn: parent
+                                    font.pixelSize: 12
                                 }
                             }
                         }

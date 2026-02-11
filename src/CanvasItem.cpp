@@ -115,7 +115,7 @@ void CanvasItem::paint(QPainter *painter) {
     QStringList paths;
     paths << QCoreApplication::applicationDirPath() + "/shaders/";
     paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
-    paths << "e:/app_dibujo_proyecto-main/src/core/shaders/";
+    paths << "d:/app_dibujo_proyecto-main/src/core/shaders/";
 
     QString vertPath, fragPath;
     for (const QString &path : paths) {
@@ -304,8 +304,6 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   QPointF canvasPos = (pos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
 
   // FIX: Coordinate synchronization for flipped canvas
-  // If the viewport is flipped, we must mirror the coordinate before passing to
-  // engine
   if (m_isFlippedH) {
     canvasPos.setX(m_canvasWidth - canvasPos.x());
   }
@@ -314,6 +312,17 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   }
 
   BrushSettings settings = m_brushEngine->getBrush();
+  
+  // FIX: Support "Transparent Color" as Eraser (Clip Studio Style)
+  // Also check if the tool itself is explicitly an eraser
+  bool isTransparentMode = (m_brushColor.alpha() < 5);
+  if (isTransparentMode || m_tool == ToolType::Eraser) {
+      settings.type = BrushSettings::Type::Eraser;
+      // Use black color with the requested brush opacity so the erasing 
+      // strength correctly follows the opacity slider and pressure.
+      settings.color = Qt::black; 
+  }
+
   float effectivePressure = pressure; // Ajustar con curva si es necesario
   float velocityFactor = 0.0f;        // Calcular velocidad real si es necesario
 
@@ -582,6 +591,11 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     m_strokePoints.push_back(event->position());
     m_holdStartPos = event->position();
     m_isHoldingForShape = false;
+    
+    // Emitir señal de que se ha empezado a pintar con el color actual
+    if (m_tool == ToolType::Pen) {
+      emit strokeStarted(m_brushColor);
+    }
 
     // Solo iniciar timer si es una herramienta de dibujo
     if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser) {
@@ -747,6 +761,12 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     m_strokePoints.push_back(event->position());
     m_holdStartPos = event->position();
     m_isHoldingForShape = false;
+    
+    // Emitir señal de que se ha empezado a pintar con el color actual
+    if (m_tool == ToolType::Pen) {
+      emit strokeStarted(m_brushColor);
+    }
+    
     m_quickShapeTimer->start(800);
 
     handleDraw(event->position(), pressure, tiltFactor);

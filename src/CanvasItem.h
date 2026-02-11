@@ -263,6 +263,7 @@ signals:
   void isFlippedVChanged();
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
+  void strokeStarted(const QColor &color);
 
 protected:
   void mousePressEvent(QMouseEvent *event) override;
