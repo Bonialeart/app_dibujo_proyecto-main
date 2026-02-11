@@ -52,7 +52,14 @@ void main() {
     
     // 3. Lógica de Pincel Húmedo (Wet Mix / Smudge)
     vec4 finalColor = color;
-    float finalAlpha = color.a * dabAlpha * pressure;
+    
+    // Si es un borrador (brushType 7), el color no importa con GL_ZERO, pero lo ponemos a cero
+    if (brushType == 7) {
+        finalColor.rgb = vec3(1.0, 0.0, 0.0); // Debug: Red
+    }
+    
+    // El Alpha final es lo que determinará CUÁNTO se borra
+    float finalAlpha = finalColor.a * dabAlpha * pressure;
     
     // Pulir bordes para evitar "puntos fantasma"
     if (finalAlpha < 0.005) discard;

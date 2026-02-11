@@ -89,6 +89,7 @@ public:
   Q_PROPERTY(QString currentProjectName READ currentProjectName NOTIFY
                  currentProjectNameChanged)
   Q_PROPERTY(QString brushTip READ brushTip NOTIFY brushTipChanged)
+  Q_PROPERTY(bool isEraser READ isEraser WRITE setIsEraser NOTIFY isEraserChanged)
   Q_PROPERTY(bool isFlippedH READ isFlippedH WRITE setIsFlippedH NOTIFY
                  isFlippedHChanged)
   Q_PROPERTY(bool isFlippedV READ isFlippedV WRITE setIsFlippedV NOTIFY
@@ -145,6 +146,7 @@ public:
   QString brushTip() const { return m_brushTip; }
   bool isFlippedH() const { return m_isFlippedH; }
   bool isFlippedV() const { return m_isFlippedV; }
+  bool isEraser() const { return m_isEraser; }
   QVariantList availableBrushes() const { return m_availableBrushes; }
   QString activeBrushName() const { return m_activeBrushName; }
 
@@ -172,6 +174,7 @@ public:
   void commitTransform();
   void setIsFlippedH(bool flip);
   void setIsFlippedV(bool flip);
+  void setIsEraser(bool eraser);
   Q_INVOKABLE void setBackgroundColor(const QString &color);
   Q_INVOKABLE void usePreset(const QString &name);
   Q_INVOKABLE bool loadProject(const QString &path);
@@ -256,6 +259,7 @@ signals:
   void brushTipChanged();
   void cursorPosChanged(float x, float y);
   void projectsLoaded(const QVariantList &projects);
+  void isEraserChanged();
   void layersChanged(const QVariantList &layers);
   void availableBrushesChanged();
   void activeBrushNameChanged();
@@ -318,6 +322,7 @@ private:
   float m_cursorRotation;
   bool m_isFlippedH = false;
   bool m_isFlippedV = false;
+  bool m_isEraser = false;
   QString m_currentProjectPath;
   QString m_currentProjectName;
   QString m_brushTip;

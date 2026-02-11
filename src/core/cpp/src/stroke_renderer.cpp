@@ -247,14 +247,17 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
 
   // Dibujar
   glEnable(GL_BLEND);
-  // Using explicit enum value to ensure sync between header and renderer logic
-  if (type == (int)BrushSettings::Type::Eraser) { 
-    // DestinationOut: result = 0 * src + (1 - src_alpha) * dst
-    // This removes alpha from the destination based on the source alpha
-    glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendEquation(GL_FUNC_ADD);
+  
+  if (type == 7 || type == (int)BrushSettings::Type::Eraser) { 
+    // DEBUG: Forzamos rojo. Si el blending funciona, NO deberíamos ver rojo, sino transparencia.
+    m_program->setUniformValue("color", QColor(255, 0, 0)); 
+    // DestinationOut
+    glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
   } else {
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
   }
+  
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
   m_vao.release();

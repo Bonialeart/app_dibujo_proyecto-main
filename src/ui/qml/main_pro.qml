@@ -1240,6 +1240,7 @@ Window {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         colorStudioDialog.isTransparent = !colorStudioDialog.isTransparent
+                                        mainCanvas.isEraser = colorStudioDialog.isTransparent
                                         if (colorStudioDialog.isTransparent) {
                                             mainCanvas.brushColor = "transparent"
                                         } else {

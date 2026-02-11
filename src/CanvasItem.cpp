@@ -68,8 +68,17 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_layerManager->addLayer("Layer 1");
 
   // Cargar curva de presión guardada (Persistencia)
-  // Cargar curva de presión guardada (Persistencia)
   setCurvePoints(PreferencesManager::instance()->pressureCurve());
+  
+  // Sincronizar niveles de deshacer (Undo Levels)
+  m_undoManager->setMaxLevels(PreferencesManager::instance()->undoLevels());
+  
+  // Escuchar cambios en preferencias para actualizar el sistema en tiempo real
+  connect(PreferencesManager::instance(), &PreferencesManager::settingsChanged, this, [this]() {
+      m_undoManager->setMaxLevels(PreferencesManager::instance()->undoLevels());
+      // Aquí podrías añadir otros updates (ej: gpuAcceleration si fuera dinámico)
+  });
+
   m_activeLayerIndex = 1;
   m_layerManager->setActiveLayer(m_activeLayerIndex);
 
@@ -137,7 +146,7 @@ void CanvasItem::paint(QPainter *painter) {
     }
   }
 
-  // 2. Fondo Base (Workspace - Dark Gray)
+  // 2. Fondo Base (Workspace - Dark Grey)
   painter->fillRect(0, 0, width(), height(), QColor("#1e1e1e"));
 
   // Calculate generic target rect for background
@@ -313,13 +322,13 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
   BrushSettings settings = m_brushEngine->getBrush();
   
-  // FIX: Support "Transparent Color" as Eraser (Clip Studio Style)
-  // Also check if the tool itself is explicitly an eraser
-  bool isTransparentMode = (m_brushColor.alpha() < 5);
-  if (isTransparentMode || m_tool == ToolType::Eraser) {
+  // FIX: Support explicit Eraser Mode and "Transparent Color" (Clip Studio Style)
+  bool isTransparentColor = (m_brushColor.alpha() < 5);
+  if (m_isEraser || isTransparentColor || m_tool == ToolType::Eraser) {
       settings.type = BrushSettings::Type::Eraser;
-      // Use black color with the requested brush opacity so the erasing 
-      // strength correctly follows the opacity slider and pressure.
+      // Use opaque black as the source. 
+      // In DestinationOut, the RGB doesn't matter much with GL_ZERO, 
+      // but the Alpha is the mask.
       settings.color = Qt::black; 
   }
 
@@ -354,8 +363,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     }
 
     // Copiar estado anterior (Ping -> Pong) de forma eficiente (Blit)
-    // Esto evita descargar texturas de GPU a CPU (toImage estÃ¡ prohibido
-    // aquÃ­)
+    // Esto evita descargar texturas de GPU a CPU
     QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
 
     m_pongFBO->bind();
@@ -363,7 +371,9 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     QPainter fboPainter2(&device2);
 
     // Dibujar nuevo trazo sobre el fondo ya copiado
+    // Si es borrador, el renderer gestionará el blend mode específico
     fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
     m_brushEngine->paintStroke(
         &fboPainter2, m_lastPos, canvasPos, effectivePressure, settings, tilt,
         velocityFactor, m_pingFBO->texture(), settings.wetness,
@@ -373,14 +383,14 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
     layer->dirty = true;
     std::swap(m_pingFBO, m_pongFBO);
-
-    // Liberar contexto?? Causa parpadeo si lo hacemos?
-    // Dejémoslo current, Qt lo manejará?
-    // window()->openglContext()->doneCurrent();
   } else {
     // MODO ESTÁNDAR (Raster / Legacy)
     QPainter painter(&img);
     painter.setRenderHint(QPainter::Antialiasing);
+
+    if (settings.type == BrushSettings::Type::Eraser) {
+        painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    }
 
     m_brushEngine->paintStroke(&painter, m_lastPos, canvasPos,
                                effectivePressure, settings, tilt,
@@ -987,6 +997,24 @@ void CanvasItem::setViewOffset(const QPointF &offset) {
   emit viewOffsetChanged();
   update();
 }
+void CanvasItem::setIsEraser(bool eraser) {
+  if (m_isEraser == eraser)
+    return;
+  m_isEraser = eraser;
+  // If we are in eraser mode, we should also update the engine's brush type
+  BrushSettings s = m_brushEngine->getBrush();
+  if (m_isEraser) {
+    s.type = BrushSettings::Type::Eraser;
+  } else {
+    // Return to a default type or have a way to restore?
+    // For now, assume most drawing is 'Round' or 'Custom'
+    // but better to not force it here. handleDraw will handle the override.
+  }
+  m_brushEngine->setBrush(s);
+  emit isEraserChanged();
+  update();
+}
+
 void CanvasItem::setCurrentTool(const QString &tool) {
   if (m_currentToolStr == tool)
     return;

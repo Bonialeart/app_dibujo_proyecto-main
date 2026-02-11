@@ -37,24 +37,33 @@ Popup {
     property int currentCategoryIndex: 0
 
     // --- TEMP STATE (Buffer for Cancel) ---
-    // Initialize with safe defaults, overwritten on Open
     property bool tempGpuEnabled: true
     property int tempUndoLevels: 50
     property int tempMemLimit: 70
     property bool tempSwitchTool: true
     property int tempSwitchDelay: 500
     property string tempLanguage: "en"
+    property bool tempShowOutline: true
+    property bool tempShowCrosshair: true
+    property string tempTabletMode: "WindowsInk"
+    property int tempDragDist: 3
+    property bool tempAutoSave: true
 
     readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
     
     onOpened: {
-        // Load fresh values from Manager
         if (typeof preferencesManager !== "undefined") {
             tempGpuEnabled = preferencesManager.gpuAcceleration
             tempUndoLevels = preferencesManager.undoLevels
             tempLanguage = preferencesManager.language
-            // tempMemLimit = preferencesManager.get("memory_limit")
+            tempMemLimit = preferencesManager.memoryUsageLimit
+            tempShowOutline = preferencesManager.cursorShowOutline
+            tempShowCrosshair = preferencesManager.cursorShowCrosshair
+            tempTabletMode = preferencesManager.tabletInputMode
+            tempSwitchDelay = preferencesManager.toolSwitchDelay
+            tempDragDist = preferencesManager.dragDistance
+            tempAutoSave = preferencesManager.autoSaveEnabled
         }
     }
     
@@ -63,6 +72,13 @@ Popup {
             preferencesManager.gpuAcceleration = tempGpuEnabled
             preferencesManager.undoLevels = tempUndoLevels
             preferencesManager.language = tempLanguage
+            preferencesManager.memoryUsageLimit = tempMemLimit
+            preferencesManager.cursorShowOutline = tempShowOutline
+            preferencesManager.cursorShowCrosshair = tempShowCrosshair
+            preferencesManager.tabletInputMode = tempTabletMode
+            preferencesManager.toolSwitchDelay = tempSwitchDelay
+            preferencesManager.dragDistance = tempDragDist
+            preferencesManager.autoSaveEnabled = tempAutoSave
             
             toastManager.show(root.qs("saved"), "success")
         }
@@ -390,8 +406,16 @@ Popup {
                             width: parent.width
                             SettingsGroup {
                                 title: "Cursor Shape"
-                                CheckBoxOption { text: "Brush Size Outline"; checked: true }
-                                CheckBoxOption { text: "Crosshair in Center"; checked: true }
+                                CheckBoxOption { 
+                                    text: "Brush Size Outline"; 
+                                    checked: root.tempShowOutline
+                                    onCheckedChanged: root.tempShowOutline = checked
+                                }
+                                CheckBoxOption { 
+                                    text: "Crosshair in Center"; 
+                                    checked: root.tempShowCrosshair
+                                    onCheckedChanged: root.tempShowCrosshair = checked
+                                }
                             }
                          }
                     }
@@ -403,8 +427,16 @@ Popup {
                             id: tabletCol; width: parent.width
                             SettingsGroup {
                                 title: "Input Mode"
-                                CheckBoxOption { text: "Use Windows Ink"; checked: true }
-                                CheckBoxOption { text: "Wintab (Legacy)"; checked: false }
+                                CheckBoxOption { 
+                                    text: "Use Windows Ink"; 
+                                    checked: root.tempTabletMode === "WindowsInk"
+                                    onCheckedChanged: if(checked) root.tempTabletMode = "WindowsInk"
+                                }
+                                CheckBoxOption { 
+                                    text: "Wintab (Legacy)"; 
+                                    checked: root.tempTabletMode === "Wintab"
+                                    onCheckedChanged: if(checked) root.tempTabletMode = "Wintab"
+                                }
                             }
                         }
                     }
@@ -491,14 +523,22 @@ Popup {
                             
                             SettingsGroup {
                                 title: "Switch Tool Temporarily"
-                                CheckBoxOption { text: "Switch tool temporarily by pressing and holding shortcut key"; checked: root.tempSwitchTool }
+                                CheckBoxOption { 
+                                    text: "Switch tool temporarily by pressing and holding shortcut key"; 
+                                    checked: root.tempSwitchTool 
+                                    onCheckedChanged: root.tempSwitchTool = checked
+                                }
                                 RowLayout {
                                     Layout.leftMargin: 24
                                     Text { text: "Length of keypress to switch tools:"; color: colorTextMuted }
                                     TextField { 
-                                        text: "500"; palette.text: "white"; palette.base: colorInput
+                                        text: root.tempSwitchDelay.toString(); palette.text: "white"; palette.base: colorInput
                                         Layout.preferredWidth: 60
                                         background: Rectangle { color: colorInput; border.color: colorBorder; radius: 4 }
+                                        onTextChanged: {
+                                            var val = parseInt(text)
+                                            if (!isNaN(val)) root.tempSwitchDelay = val
+                                        }
                                     }
                                     Text { text: "ms"; color: colorTextMuted }
                                 }
@@ -508,8 +548,13 @@ Popup {
                                 title: "Options"
                                 RowLayout {
                                     Text { text: "Minimum drag distance:"; color: colorTextMuted; Layout.preferredWidth: 150 }
-                                    TextField { text: "3"; Layout.preferredWidth: 60; color: "white"
+                                    TextField { 
+                                        text: root.tempDragDist.toString(); Layout.preferredWidth: 60; color: "white"
                                         background: Rectangle { color: colorInput; border.color: colorBorder; radius: 4 }
+                                        onTextChanged: {
+                                            var val = parseInt(text)
+                                            if (!isNaN(val)) root.tempDragDist = val
+                                        }
                                     }
                                 }
                                 CheckBoxOption { text: "Use fast view while navigating canvas"; checked: false }
@@ -524,7 +569,20 @@ Popup {
                     }
                     
                     // 6. FILE
-                    Item { Text { text: "File Settings"; color: "white"; anchors.centerIn: parent } }
+                    ScrollView {
+                        contentHeight: fileCol.height
+                        ColumnLayout {
+                            id: fileCol; width: parent.width
+                            SettingsGroup {
+                                title: "Save Options"
+                                CheckBoxOption { 
+                                    text: "Enable Auto-Save (Every 5 minutes)"; 
+                                    checked: root.tempAutoSave
+                                    onCheckedChanged: root.tempAutoSave = checked
+                                }
+                            }
+                        }
+                    }
                     
                     // 7. COLOR
                     Item { Text { text: "Color Settings"; color: "white"; anchors.centerIn: parent } }
@@ -547,6 +605,13 @@ Popup {
                     text: "Restore Defaults"
                     flat: true
                     palette.buttonText: colorTextMuted
+                    onClicked: {
+                        if (typeof preferencesManager !== "undefined") {
+                            preferencesManager.resetDefaults()
+                            root.close()
+                            toastManager.show("Settings reset to defaults", "info")
+                        }
+                    }
                 }
                 
                 Item { Layout.fillWidth: true }

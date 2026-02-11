@@ -1,9 +1,12 @@
 D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_PreferencesManager.cpp: D:/app_dibujo_proyecto-main/src/PreferencesManager.h \
   D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QDir \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QVariantList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q17memory.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20functional.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20iterator.h \
@@ -132,6 +135,7 @@ D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_Pre
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtypes.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qutf8stringview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantlist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvarlengtharray.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qversiontagging.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qxptype_traits.h \

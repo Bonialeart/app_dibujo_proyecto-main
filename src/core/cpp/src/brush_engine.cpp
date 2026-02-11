@@ -59,7 +59,7 @@ static uint32_t loadTexture(const QString &name) {
 
   // CRÍTICO: Convertir al formato que OpenGL entiende bien (RGBA 8888)
   QImage glImg =
-      img.convertToFormat(QImage::Format_RGBA8888).mirrored(false, true);
+      img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical);
 
   QOpenGLTexture *tex = new QOpenGLTexture(glImg);
   tex->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
@@ -440,7 +440,6 @@ void BrushEngine::paintSoftStamp(QPainter *painter, const QPointF &point,
   painter->setOpacity(opacity);
 
   QRadialGradient gradient(point, size / 2.0);
-
   // Color central (sólido)
   QColor centerColor = color;
   gradient.setColorAt(0.0, centerColor);

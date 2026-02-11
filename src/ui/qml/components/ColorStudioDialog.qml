@@ -109,15 +109,23 @@ Popup {
 
     property bool internalUpdate: false
     function updateColor() {
+        if (internalUpdate) return
         internalUpdate = true
+        
         var newColor = Qt.hsva(h, s, v, 1.0)
         
         if (activeSlot === 0) slot0Color = newColor
         else slot1Color = newColor
         
         if (targetCanvas) {
-            if (isTransparent) targetCanvas.brushColor = "transparent"
-            else targetCanvas.brushColor = newColor
+            // FIX: If transparency is active, DO NOT send hsv color to canvas.
+            // Canvas should remain in "transparent" mode (eraser).
+            targetCanvas.isEraser = isTransparent
+            if (isTransparent) {
+                targetCanvas.brushColor = "transparent"
+            } else {
+                targetCanvas.brushColor = newColor
+            }
         }
         internalUpdate = false
     }
