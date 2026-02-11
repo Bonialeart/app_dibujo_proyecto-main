@@ -326,10 +326,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   bool isTransparentColor = (m_brushColor.alpha() < 5);
   if (m_isEraser || isTransparentColor || m_tool == ToolType::Eraser) {
       settings.type = BrushSettings::Type::Eraser;
-      // Use opaque black as the source. 
-      // In DestinationOut, the RGB doesn't matter much with GL_ZERO, 
-      // but the Alpha is the mask.
-      settings.color = Qt::black; 
+      // USAMOS NEGRO OPACO (Define el área de borrado)
+      settings.color = QColor(0, 0, 0, 255); 
   }
 
   float effectivePressure = pressure; // Ajustar con curva si es necesario

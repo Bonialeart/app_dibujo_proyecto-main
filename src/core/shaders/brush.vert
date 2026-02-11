@@ -1,23 +1,17 @@
 #version 330 core
-layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aTexCoords;
+layout(location = 0) in vec3 position; // x, y, pressure
 
-out vec2 TexCoords;
-out vec2 vWorldPos;
-out vec2 vCanvasUV; // <--- NUEVO: Coordenada UV global
+uniform mat4 projectionMatrix;
+uniform float brushSize;
 
-uniform mat4 model;
-uniform mat4 projection;
-uniform vec2 canvasSize; // <--- NUEVO: Tamaño lienzo
+out float vPressure;
 
 void main() {
-    TexCoords = aTexCoords;
-    gl_Position = projection * model * vec4(aPos, 0.0, 1.0);
+    gl_Position = projectionMatrix * vec4(position.xy, 0.0, 1.0);
     
-    vec4 worldPos4 = model * vec4(aPos, 0.0, 1.0);
-    vWorldPos = worldPos4.xy;
+    // CORRECCIÓN: Usamos brushSize directamente. 
+    // El motor ya calculó el tamaño con la presión.
+    gl_PointSize = brushSize; 
     
-    // Normalizar a 0.0 - 1.0 para muestreo de canvasTexture
-    // Asumimos que worldPos está en píxeles del lienzo
-    vCanvasUV = vWorldPos / canvasSize;
+    vPressure = position.z;
 }

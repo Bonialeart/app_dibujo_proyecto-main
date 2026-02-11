@@ -196,17 +196,11 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
 
   // Configurar Uniforms (Enviar datos al Shader)
   QMatrix4x4 projection;
-  projection.ortho(0, width, height, 0, -1,
-                   1); // Sistema de coordenadas 2D (0,0 arriba-izq)
+  projection.ortho(0, width, height, 0, -1, 1); 
 
-  QMatrix4x4 model;
-  model.translate(x - size / 2, y - size / 2, 0); // Centrar
-  model.scale(size, size, 1);                     // Escalar
-
-  m_program->setUniformValue("projection", projection);
-  m_program->setUniformValue("model", model);
+  m_program->setUniformValue("projectionMatrix", projection);
+  m_program->setUniformValue("brushSize", size);
   m_program->setUniformValue("color", color);
-  m_program->setUniformValue("pressure", pressure); // ¡AQUÍ ESTÁ LA PRESIÓN!
   m_program->setUniformValue("hardness", hardness);
   m_program->setUniformValue("brushType", type);
 
@@ -245,22 +239,33 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
     m_program->setUniformValue("smudge", 0.0f);
   }
 
-  // Dibujar
+  // -- CONFIGURACIÓN PROFESIONAL DE OPENGL --
   glEnable(GL_BLEND);
-  glBlendEquation(GL_FUNC_ADD);
+  glEnable(GL_PROGRAM_POINT_SIZE);
+  glEnable(GL_POINT_SPRITE); 
+  glBlendEquation(GL_FUNC_ADD); 
   
   if (type == 7 || type == (int)BrushSettings::Type::Eraser) { 
-    // DEBUG: Forzamos rojo. Si el blending funciona, NO deberíamos ver rojo, sino transparencia.
-    m_program->setUniformValue("color", QColor(255, 0, 0)); 
-    // DestinationOut
-    glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+    // MODO BORRADOR VERDADERO: Dest = Dest * (1 - AlphaPincel)
+    glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+    // El color debe ser negro opaco para que el Alpha sea el que mande
+    m_program->setUniformValue("color", QColor(0, 0, 0, 255));
   } else {
+    // MODO PINTAR NORMAL
     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    m_program->setUniformValue("color", color);
   }
   
-  glDrawArrays(GL_TRIANGLES, 0, 6);
+  // Dibujar un único Dab (Sello)
+  GLfloat vertData[] = { (GLfloat)x, (GLfloat)y, (GLfloat)pressure };
+  m_vbo.bind();
+  m_vbo.allocate(vertData, sizeof(vertData));
+  m_program->enableAttributeArray(0);
+  m_program->setAttributeBuffer(0, GL_FLOAT, 0, 3);
+  
+  glDrawArrays(GL_POINTS, 0, 1);
 
-  m_vao.release();
+  m_vbo.release();
   m_program->release();
 }
 

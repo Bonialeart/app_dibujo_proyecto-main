@@ -233,7 +233,10 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   // --- LÓGICA LEGACY (QPAINTER) ---
 
   if (settings.type == BrushSettings::Type::Eraser) {
-    painter->setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    // Forzamos transparencia total usando el modo Source.
+    // Esto sobreescribe los píxeles existentes con "nada" (transparencia).
+    painter->setCompositionMode(QPainter::CompositionMode_Source);
+    const_cast<BrushSettings&>(settings).color = Qt::transparent;
   } else {
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
   }
