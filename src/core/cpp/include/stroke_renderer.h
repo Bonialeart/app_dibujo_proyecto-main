@@ -38,13 +38,22 @@ public:
   void setBrushTip(const unsigned char *data, int width, int height);
   void setPaperTexture(const unsigned char *data, int width, int height);
 
-  // Render a single stroke point with premium shaders
+  // Premium rendering with dual texture support
   void renderStroke(float x, float y, float size, float pressure,
                     float hardness, const QColor &color, int type, int width,
-                    int height, uint32_t grainTexId, bool useTex,
-                    float texScale, float texIntensity, float tilt,
-                    float velocity, uint32_t canvasTexId, float wetness,
-                    float dilution, float smudge, bool isEraser = false);
+                    int height,
+                    // Grain texture
+                    uint32_t grainTexId, bool hasGrain, float grainScale,
+                    float grainIntensity,
+                    // Tip texture
+                    uint32_t tipTexId, bool hasTip, float tipRotation,
+                    // Dynamics
+                    float tilt, float velocity, float flow,
+                    // Wet Mix Engine
+                    uint32_t canvasTexId, float wetness, float dilution,
+                    float smudge,
+                    // Mode
+                    bool isEraser = false);
 
 private:
   QOpenGLShaderProgram *m_program;

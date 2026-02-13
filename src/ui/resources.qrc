@@ -27,6 +27,7 @@
     <file>qml/components/BrushSettingsPanel.qml</file>
     <file>qml/components/PremiumSlider.qml</file>
     <file>qml/components/ImprovedColorSlider.qml</file>
+    <file>qml/components/BrushStudioDialog.qml</file>
     <file>qml/components/ColorStudioDialog.qml</file>
     <file>qml/views/CanvasPage.qml</file>
 </qresource>

@@ -2,16 +2,21 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QDateTime \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QDir \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/QJsonArray \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/QJsonObject \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/QMap \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QPointF \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QRect \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/QRectF \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QScopedPointer \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QSize \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QSizeF \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/QTimer \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QVariantList \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/QVector \
@@ -42,6 +47,8 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearraylist.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayview.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qcalendar.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qcborcommon.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qcborvalue.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qchar.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qcheckedint_impl.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare.h \
@@ -84,6 +91,11 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevicebase.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qiterable.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qiterator.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonarray.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qjsondocument.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonobject.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonparseerror.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonvalue.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qlatin1stringview.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qline.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
@@ -113,6 +125,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qpropertyprivate.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qrect.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qrefcount.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qregularexpression.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qscopeguard.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qset.h \
@@ -150,6 +163,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qtenvironmentvariables.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qtextstream.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qtformat_impl.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/qtimer.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qtimezone.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qtmetamacros.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qtnoop.h \
@@ -164,6 +178,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qtypes.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qurl.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qutf8stringview.h \
+	C:/Qt/6.10.2/mingw_64/include/QtCore/quuid.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantlist.h \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qvarlengtharray.h \
@@ -177,6 +192,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLFunctions \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
+	C:/Qt/6.10.2/mingw_64/include/QtGui/QPainterPath \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QPen \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QRadialGradient \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QSurfaceFormat \
@@ -207,6 +223,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglfunctions.h \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/qpaintdevice.h \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/qpainter.h \
+	C:/Qt/6.10.2/mingw_64/include/QtGui/qpainterpath.h \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/qpen.h \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/qpixelformat.h \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/qpixmap.h \
@@ -812,6 +829,14 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickControls2/Qt6QuickControls2Targets-relwithdebinfo.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickControls2/Qt6QuickControls2Targets.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickControls2/Qt6QuickControls2VersionlessAliasTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickEffects/Qt6QuickEffectsAdditionalTargetInfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickEffects/Qt6QuickEffectsConfig.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickEffects/Qt6QuickEffectsConfigVersion.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickEffects/Qt6QuickEffectsConfigVersionImpl.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickEffects/Qt6QuickEffectsDependencies.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickEffects/Qt6QuickEffectsTargets-relwithdebinfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickEffects/Qt6QuickEffectsTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickEffects/Qt6QuickEffectsVersionlessAliasTargets.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickTemplates2/Qt6QuickTemplates2AdditionalTargetInfo.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickTemplates2/Qt6QuickTemplates2Config.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickTemplates2/Qt6QuickTemplates2ConfigVersion.cmake \
@@ -828,6 +853,23 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickTools/Qt6QuickToolsTargets-relwithdebinfo.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickTools/Qt6QuickToolsTargets.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6QuickTools/Qt6QuickToolsVersionlessTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsAdditionalTargetInfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsConfig.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsConfigVersion.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsConfigVersionImpl.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsDependencies.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsTargets-relwithdebinfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsVersionlessAliasTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsMacros.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsToolsAdditionalTargetInfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsToolsConfig.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsToolsConfigVersion.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsToolsConfigVersionImpl.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsToolsDependencies.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsToolsTargets-relwithdebinfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsToolsTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderToolsTools/Qt6ShaderToolsToolsVersionlessTargets.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Svg/Qt6SvgAdditionalTargetInfo.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Svg/Qt6SvgConfig.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Svg/Qt6SvgConfigVersion.cmake \
@@ -836,6 +878,28 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Svg/Qt6SvgTargets-relwithdebinfo.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Svg/Qt6SvgTargets.cmake \
 	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Svg/Qt6SvgVersionlessAliasTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6QModernWindowsStylePluginAdditionalTargetInfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6QModernWindowsStylePluginConfig.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6QModernWindowsStylePluginTargets-relwithdebinfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6QModernWindowsStylePluginTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsAdditionalTargetInfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsConfig.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsConfigVersion.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsConfigVersionImpl.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsDependencies.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsMacros.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsPlugins.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsTargets-relwithdebinfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6Widgets/Qt6WidgetsVersionlessAliasTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6WidgetsTools/Qt6WidgetsToolsAdditionalTargetInfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6WidgetsTools/Qt6WidgetsToolsConfig.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6WidgetsTools/Qt6WidgetsToolsConfigVersion.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6WidgetsTools/Qt6WidgetsToolsConfigVersionImpl.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6WidgetsTools/Qt6WidgetsToolsDependencies.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6WidgetsTools/Qt6WidgetsToolsTargets-relwithdebinfo.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6WidgetsTools/Qt6WidgetsToolsTargets.cmake \
+	C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6WidgetsTools/Qt6WidgetsToolsVersionlessTargets.cmake \
 	C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCXXInformation.cmake \
 	C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCheckCompilerFlagCommonPatterns.cmake \
 	C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCommonLanguageInclude.cmake \
@@ -893,6 +957,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/cpp_type_traits.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/cxxabi_forced.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/cxxabi_init_exception.h \
+	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/deque.tcc \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/enable_special_members.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/erase_if.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/exception.h \
@@ -946,6 +1011,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_algobase.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_bvector.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_construct.h \
+	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_deque.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_function.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_heap.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_iterator.h \
@@ -996,6 +1062,7 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cwctype \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/debug/assertions.h \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/debug/debug.h \
+	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/deque \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/exception \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/experimental/source_location \
 	C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ext/aligned_buffer.h \
@@ -1126,16 +1193,29 @@ ArtFlowStudio_autogen/timestamp: \
 	E:/app_dibujo_proyecto-main/src/ProjectModel.h \
 	E:/app_dibujo_proyecto-main/src/TestCanvas.cpp \
 	E:/app_dibujo_proyecto-main/src/TestCanvas.h \
+	E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h \
+	E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPickerImpl.h \
 	E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
+	E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_preset.h \
+	E:/app_dibujo_proyecto-main/src/core/cpp/include/common_types.h \
 	E:/app_dibujo_proyecto-main/src/core/cpp/include/image_buffer.h \
 	E:/app_dibujo_proyecto-main/src/core/cpp/include/layer_manager.h \
 	E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_renderer.h \
+	E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_undo_command.h \
+	E:/app_dibujo_proyecto-main/src/core/cpp/include/undo_command.h \
+	E:/app_dibujo_proyecto-main/src/core/cpp/include/undo_manager.h \
+	E:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPicker.cpp \
+	E:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPickerImpl.cpp \
 	E:/app_dibujo_proyecto-main/src/core/cpp/src/brush_engine.cpp \
+	E:/app_dibujo_proyecto-main/src/core/cpp/src/brush_preset.cpp \
+	E:/app_dibujo_proyecto-main/src/core/cpp/src/brush_preset_manager.cpp \
 	E:/app_dibujo_proyecto-main/src/core/cpp/src/color_utils.cpp \
 	E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp \
 	E:/app_dibujo_proyecto-main/src/core/cpp/src/image_buffer.cpp \
 	E:/app_dibujo_proyecto-main/src/core/cpp/src/layer_manager.cpp \
 	E:/app_dibujo_proyecto-main/src/core/cpp/src/stroke_renderer.cpp \
+	E:/app_dibujo_proyecto-main/src/core/cpp/src/stroke_undo_command.cpp \
+	E:/app_dibujo_proyecto-main/src/core/cpp/src/undo_manager.cpp \
 	E:/app_dibujo_proyecto-main/src/main.cpp \
 	E:/app_dibujo_proyecto-main/src/ui/resources.qrc \
 	C:/Qt/Tools/CMake_64/bin/cmake.exe

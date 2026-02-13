@@ -2,6 +2,7 @@
 #define CANVASITEM_H
 
 #include "core/cpp/include/brush_engine.h"
+#include "core/cpp/include/brush_preset.h"
 #include "core/cpp/include/layer_manager.h"
 #include "core/cpp/include/stroke_renderer.h"
 #include "core/cpp/include/stroke_undo_command.h"
@@ -110,6 +111,10 @@ public:
   Q_PROPERTY(QString activeBrushName READ activeBrushName NOTIFY
                  activeBrushNameChanged)
 
+  // ── Brush Studio editing state ──
+  Q_PROPERTY(
+      bool isEditingBrush READ isEditingBrush NOTIFY isEditingBrushChanged)
+
 public:
   explicit CanvasItem(QQuickItem *parent = nullptr);
   ~CanvasItem() override;
@@ -150,6 +155,7 @@ public:
   bool isEraser() const { return m_isEraser; }
   QVariantList availableBrushes() const { return m_availableBrushes; }
   QString activeBrushName() const { return m_activeBrushName; }
+  bool isEditingBrush() const { return m_isEditingBrush; }
 
   // Setters
   void setBrushSize(int size);
@@ -227,6 +233,39 @@ public:
   Q_INVOKABLE void applyEffect(int index, const QString &effect,
                                const QVariantMap &params);
   Q_INVOKABLE QString get_brush_preview(const QString &brushName);
+  Q_INVOKABLE QVariantList getBrushesForCategory(const QString &category);
+
+  // ══════════════════════════════════════════════════════════════
+  // Brush Studio — Property Bridge API
+  // ══════════════════════════════════════════════════════════════
+  // Editing lifecycle
+  Q_INVOKABLE void beginBrushEdit(const QString &brushName);
+  Q_INVOKABLE void cancelBrushEdit();
+  Q_INVOKABLE void applyBrushEdit();
+  Q_INVOKABLE void saveAsCopyBrush(const QString &newName);
+  Q_INVOKABLE void resetBrushToDefault();
+
+  // Generic property getter/setter for ALL brush studio properties
+  // category: "stroke", "shape", "grain", "wetmix", "color", "dynamics",
+  // "rendering", "customize", "meta"
+  Q_INVOKABLE QVariant getBrushProperty(const QString &category,
+                                        const QString &key);
+  Q_INVOKABLE void setBrushProperty(const QString &category, const QString &key,
+                                    const QVariant &value);
+
+  // Get all properties for a category as a JS object (for initializing QML
+  // controls)
+  Q_INVOKABLE QVariantMap getBrushCategoryProperties(const QString &category);
+
+  // Drawing Pad preview
+  Q_INVOKABLE void clearPreviewPad();
+  Q_INVOKABLE void previewPadBeginStroke(float x, float y, float pressure);
+  Q_INVOKABLE void previewPadContinueStroke(float x, float y, float pressure);
+  Q_INVOKABLE void previewPadEndStroke();
+  Q_INVOKABLE QString getPreviewPadImage();
+
+  // Stamp preview (single brush stamp for sidebar thumbnail)
+  Q_INVOKABLE QString getStampPreview();
 
   QVariantList pressureCurvePoints() const { return m_rawPoints; }
   void setCurvePoints(const QVariantList &points);
@@ -269,6 +308,12 @@ signals:
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
+
+  // Brush Studio signals
+  void isEditingBrushChanged();
+  void editingPresetChanged();
+  void brushPropertyChanged(const QString &category, const QString &key);
+  void previewPadUpdated();
   void requestToolIdx(int index);
 
 protected:
@@ -331,6 +376,17 @@ private:
   QString m_brushTip;
   QVariantList m_availableBrushes;
   QString m_activeBrushName;
+
+  // ── Brush Studio editing state ──
+  bool m_isEditingBrush = false;
+  artflow::BrushPreset m_editingPreset; // Working copy being edited
+  artflow::BrushPreset m_resetPoint;    // Original state for "Reset"
+  QImage m_previewPadImage;             // Offscreen drawing pad
+  QPointF m_previewLastPos;
+  bool m_previewIsDrawing = false;
+
+  // Internal helper: apply editing preset to brush engine for live preview
+  void applyEditingPresetToEngine();
 
   QPointF m_lastPos;
   QPointF m_lastMousePos; // For Pan delta

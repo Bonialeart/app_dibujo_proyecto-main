@@ -28,9 +28,6 @@ void StrokeRenderer::beginFrame(int width, int height) {
 
   m_projection.setToIdentity();
   m_projection.ortho(0, width, height, 0, -1, 1);
-
-  // Ensure we are in the correct context if possible, but usually handled by
-  // caller initializeOpenGLFunctions() is called in initialize()
 }
 
 void StrokeRenderer::endFrame() {
@@ -41,19 +38,20 @@ void StrokeRenderer::drawDab(float x, float y, float size, float rotation,
                              float r, float g, float b, float a, float hardness,
                              float pressure, int mode, int brushType,
                              float wetness) {
-  // Delegate to renderStroke
   QColor color;
   color.setRgbF(r, g, b, a);
 
-  // Basic dab drawing - no advanced texture maps passed here
-  // We use internal m_brushTextureId if available
   uint32_t brushTex = m_brushTextureId;
-  bool useTex = (brushTex != 0);
+  bool hasTip = (brushTex != 0);
 
   bool isEraser = (brushType == 7);
   renderStroke(x, y, size, pressure, hardness, color, brushType,
-               m_viewportWidth, m_viewportHeight, brushTex, useTex, 1.0f, 1.0f,
-               0.0f, 0.0f, 0, wetness, 0.0f, 0.0f, isEraser);
+               m_viewportWidth, m_viewportHeight, 0, false, 1.0f,
+               0.0f,                       // No grain
+               brushTex, hasTip, rotation, // Tip
+               0.0f, 0.0f, 1.0f,           // No dynamics, flow=1
+               0, wetness, 0.0f, 0.0f,     // Wet mix
+               isEraser);
 }
 
 void StrokeRenderer::drawDabPingPong(float x, float y, float size,
@@ -66,20 +64,16 @@ void StrokeRenderer::drawDabPingPong(float x, float y, float size,
   color.setRgbF(r, g, b, a);
 
   uint32_t brushTex = m_brushTextureId;
-  bool useTex = (brushTex != 0);
+  bool hasTip = (brushTex != 0);
 
-  // For ping pong, we might be using the wet map as the "texture" or similar
-  // specialized logic. For now, we map it to renderStroke's parameters via the
-  // existing "canvasTexId" (which was intended for mixing)
-
-  // Note: renderStroke's signature might need adjustment or we map carefully
-  // renderStroke(..., canvasTexId, wetness, ...)
-
-  // We pass 1.0 for texture scale/intensity as defaults
   bool isEraser = (brushType == 7);
   renderStroke(x, y, size, pressure, hardness, color, brushType,
-               m_viewportWidth, m_viewportHeight, brushTex, useTex, 1.0f, 1.0f,
-               0.0f, 0.0f, canvasTex, wetness, 0.0f, 0.0f, isEraser);
+               m_viewportWidth, m_viewportHeight, 0, false, 1.0f,
+               0.0f,                           // No grain
+               brushTex, hasTip, 0.0f,         // Tip
+               0.0f, 0.0f, 1.0f,               // No dynamics, flow=1
+               canvasTex, wetness, 0.0f, 0.0f, // Wet mix
+               isEraser);
 }
 
 void StrokeRenderer::setBrushTip(const unsigned char *data, int width,
@@ -116,9 +110,6 @@ void StrokeRenderer::setPaperTexture(const unsigned char *data, int width,
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-  // Assuming paper is single channel (grayscale) or RGBA?
-  // Python usually sends RGBA or Gray. Let's assume RGBA for safety or check
-  // size. The previous implementation used GL_RGBA
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, data);
 }
@@ -131,7 +122,7 @@ StrokeRenderer::~StrokeRenderer() {
 void StrokeRenderer::initialize() {
   initializeOpenGLFunctions();
 
-  // 1. Compilar Shaders
+  // 1. Compile Shaders
   m_program = new QOpenGLShaderProgram();
 
   // Search for shaders in common paths
@@ -155,6 +146,7 @@ void StrokeRenderer::initialize() {
     if (QFile::exists(p) &&
         m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, p)) {
       vertLoaded = true;
+      qDebug() << "Vertex shader loaded from:" << p;
       break;
     }
   }
@@ -164,6 +156,7 @@ void StrokeRenderer::initialize() {
     if (QFile::exists(p) &&
         m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, p)) {
       fragLoaded = true;
+      qDebug() << "Fragment shader loaded from:" << p;
       break;
     }
   }
@@ -171,7 +164,7 @@ void StrokeRenderer::initialize() {
   if (!vertLoaded || !fragLoaded || !m_program->link())
     qDebug() << "Error Link Shader:" << m_program->log();
 
-  // 2. Crear Quad Estándar (0.0 a 1.0)
+  // 2. Create Standard Quad (0.0 to 1.0)
   float vertices[] = {// PosX, PosY, TexU, TexV
                       0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
                       0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f,
@@ -184,7 +177,7 @@ void StrokeRenderer::initialize() {
   m_vbo.bind();
   m_vbo.allocate(vertices, sizeof(vertices));
 
-  // Atributos (layout del shader)
+  // Attributes (shader layout)
   glEnableVertexAttribArray(0); // Position
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
 
@@ -196,14 +189,20 @@ void StrokeRenderer::initialize() {
   m_vbo.release();
 }
 
-void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
-                                  float hardness, const QColor &color, int type,
-                                  int width, int height, uint32_t grainTexId,
-                                  bool useTex, float texScale,
-                                  float texIntensity, float tilt,
-                                  float velocity, uint32_t canvasTexId,
-                                  float wetness, float dilution, float smudge,
-                                  bool isEraser) {
+void StrokeRenderer::renderStroke(
+    float x, float y, float size, float pressure, float hardness,
+    const QColor &color, int type, int width, int height,
+    // Grain
+    uint32_t grainTexId, bool hasGrain, float grainScale, float grainIntensity,
+    // Tip
+    uint32_t tipTexId, bool hasTip, float tipRotation,
+    // Dynamics
+    float tilt, float velocity, float flow,
+    // Wet Mix
+    uint32_t canvasTexId, float wetness, float dilution, float smudge,
+    // Mode
+    bool isEraser) {
+
   if (!m_program)
     return;
 
@@ -214,7 +213,7 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
   if (type == 7)
     isEraser = true;
 
-  // --- MATRICES DE POSICIONAMIENTO ---
+  // --- POSITIONING MATRICES ---
   QMatrix4x4 projection;
   projection.ortho(0, width, height, 0, -1, 1);
 
@@ -224,65 +223,73 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
 
   m_program->setUniformValue("projectionMatrix", projection);
   m_program->setUniformValue("modelMatrix", model);
-  m_program->setUniformValue("color", color);
   m_program->setUniformValue("pressure", pressure);
   m_program->setUniformValue("hardness", hardness);
+  m_program->setUniformValue("flow", flow);
+  m_program->setUniformValue("brushType", type);
   m_program->setUniformValue("uDabPos", QVector2D(x, y));
   m_program->setUniformValue("uDabSize", size);
+  m_program->setUniformValue("tipRotation", tipRotation);
 
-  // -- PREMIUM UNIFORMS --
-  m_program->setUniformValue("u_impastoStrength", 5.0f);
-  m_program->setUniformValue("u_lightDir", QVector3D(-0.5f, -0.5f, 1.0f));
+  // === TEXTURE UNIT ALLOCATION ===
+  // Unit 0: Tip Texture (brush shape)
+  // Unit 1: Grain Texture (paper grain)
+  // Unit 2: Canvas Texture (ping-pong for wet mix)
 
-  // Configurar Texturas Premium
-  if (useTex) {
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, grainTexId);
-    m_program->setUniformValue("brushTexture", 1);
-    m_program->setUniformValue("uHasTexture", 1);
-    m_program->setUniformValue("textureScale", texScale);
-    m_program->setUniformValue("textureIntensity", texIntensity);
-    m_program->setUniformValue("tilt", tilt);
-    m_program->setUniformValue("velocity", velocity);
-
-    // Pilar 3: Mezcla Húmeda y Smudge
-    m_program->setUniformValue("wetness", wetness);
-    m_program->setUniformValue("dilution", dilution);
-    m_program->setUniformValue("smudge", smudge);
-    m_program->setUniformValue("canvasSize", QVector2D(width, height));
-
-    if (wetness > 0.01f || smudge > 0.01f) {
-      glActiveTexture(GL_TEXTURE2);
-      glBindTexture(GL_TEXTURE_2D, canvasTexId);
-      m_program->setUniformValue("canvasTexture", 2);
-    }
+  // --- TIP TEXTURE (Shape) — Local UV mapping in shader ---
+  if (hasTip && tipTexId != 0) {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tipTexId);
+    m_program->setUniformValue("tipTexture", 0);
+    m_program->setUniformValue("uHasTip", 1);
   } else {
-    m_program->setUniformValue("uHasTexture", 0);
-    m_program->setUniformValue("tilt", 0.0f);
-    m_program->setUniformValue("velocity", 0.0f);
-    m_program->setUniformValue("wetness", 0.0f);
-    m_program->setUniformValue("dilution", 0.0f);
-    m_program->setUniformValue("smudge", 0.0f);
+    m_program->setUniformValue("uHasTip", 0);
   }
 
-  // --- CONFIGURACIÓN DE MEZCLA DEFINITIVA ---
+  // --- GRAIN TEXTURE (Paper) — Global canvas mapping in shader ---
+  if (hasGrain && grainTexId != 0) {
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, grainTexId);
+    m_program->setUniformValue("grainTexture", 1);
+    m_program->setUniformValue("uHasGrain", 1);
+    m_program->setUniformValue("grainScale", grainScale);
+    m_program->setUniformValue("grainIntensity", grainIntensity);
+  } else {
+    m_program->setUniformValue("uHasGrain", 0);
+    m_program->setUniformValue("grainScale", 1.0f);
+    m_program->setUniformValue("grainIntensity", 0.0f);
+  }
+
+  // --- WET MIX ENGINE — Canvas texture for paint mixing ---
+  m_program->setUniformValue("wetness", wetness);
+  m_program->setUniformValue("dilution", dilution);
+  m_program->setUniformValue("smudge", smudge);
+  m_program->setUniformValue("canvasSize", QVector2D(width, height));
+
+  if ((wetness > 0.01f || smudge > 0.01f) && canvasTexId != 0) {
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, canvasTexId);
+    m_program->setUniformValue("canvasTexture", 2);
+  }
+
+  // --- BLEND MODE ---
   glEnable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
   glBlendEquation(GL_FUNC_ADD);
 
   if (isEraser) {
-    // MODO BORRADOR: Dest = Dest * (1 - SourceAlpha)
+    // ERASER MODE: Dest = Dest * (1 - SourceAlpha)
     glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
                         GL_ONE_MINUS_SRC_ALPHA);
     m_program->setUniformValue("color", QColor(0, 0, 0, 255));
   } else {
-    // MODO PINTAR NORMAL - PREMULTIPLIED
+    // NORMAL PAINT MODE — PREMULTIPLIED ALPHA
     glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
                         GL_ONE_MINUS_SRC_ALPHA);
     m_program->setUniformValue("color", color);
   }
 
-  // Dibujamos el Quad pre-cargado
+  // Draw the pre-loaded quad
   m_vao.bind();
   glDrawArrays(GL_TRIANGLES, 0, 6);
   m_vao.release();

@@ -64,17 +64,78 @@ struct BrushSettings {
 
   // Propiedades Premium
   bool useTexture = false;
-  QString textureName = "";      // assets/textures/ (e.g. "paper_grain.png")
-  float textureScale = 100.0f;   // Zoom de la textura
-  float textureIntensity = 0.5f; // Fuerza (0.0 a 1.0)
+  QString textureName = "";      // Grain texture: assets/textures/
+  float textureScale = 100.0f;   // Zoom de la textura de grano
+  float textureIntensity = 0.5f; // Fuerza del grano (0.0 a 1.0)
   float wetness = 0.0f;          // Pilar 3: Mezcla (0 = seco, 1 = húmedo)
   float dilution = 0.0f;         // Pilar 3: Dilución (Agua)
   float smudge = 0.0f;           // Pilar 1: Arrastre
 
+  // Dual Texture System: Brush Tip (Shape)
+  QString tipTextureName = ""; // Tip shape: assets/textures/ or brushes/
+  uint32_t tipTextureID = 0;   // OpenGL texture ID for tip
+
   // Additional members for bindings
   float rotation = 0.0f;
+  float tipRotation = 0.0f; // Rotation of the brush tip in radians
   bool rotateWithStroke = false;
   uint32_t textureId = 0; // Alias/Same as grainTextureID
+
+  // === NEW BRUSH STUDIO FIELDS ===
+  // Shape
+  float roundness = 1.0f;
+  bool flipX = false;
+  bool flipY = false;
+  bool invertShape = false;
+  bool randomizeShape = false;
+  int count = 1;
+  float countJitter = 0.0f;
+  float shapeContrast = 1.0f;
+  float shapeBlur = 0.0f;
+
+  // Grain
+  bool invertGrain = false;
+  float grainOverlap = 0.0f;
+  float grainBlur = 0.0f;
+  float grainMotionBlur = 0.0f;
+  float grainMotionBlurAngle = 0.0f;
+  bool grainRandomOffset = false;
+  QString grainBlendMode = "multiply";
+  float grainBright = 0.0f;
+  float grainCon = 1.0f;
+
+  // Jitter
+  float jitterLateral = 0.0f;
+  float jitterLinear = 0.0f;
+  float posJitterX = 0.0f;
+  float posJitterY = 0.0f;
+  float rotationJitter = 0.0f;
+  float roundnessJitter = 0.0f;
+  float sizeJitter = 0.0f;
+  float opacityJitter = 0.0f;
+
+  // Taper
+  float taperStart = 0.0f;
+  float taperEnd = 0.0f;
+  float taperSize = 0.0f;
+  float fallOff = 0.0f;
+  float distance = 1.0f;
+
+  // Color Dynamics
+  float hueJitter = 0.0f;
+  float satJitter = 0.0f;
+  float lightJitter = 0.0f;
+  float darkJitter = 0.0f;
+  float strokeHueJitter = 0.0f;
+  float strokeSatJitter = 0.0f;
+  float strokeLightJitter = 0.0f;
+  float strokeDarkJitter = 0.0f;
+  bool useSecondaryColor = false;
+
+  // Wet Mix
+  float pressurePigment = 0.0f;
+  float pullPressure = 0.0f;
+  float wetJitter = 0.0f;
 
   // Cache e Internal
   uint32_t grainTextureID = 0;
@@ -114,7 +175,11 @@ public:
   const Color &getColor() const;
 
   // Stateful stroke management
-  void resetRemainder() { m_remainder = -1.0f; }
+  // Stateful stroke management
+  void resetRemainder() {
+    m_remainder = -1.0f;
+    m_accumulatedDistance = 0.0f;
+  }
   void beginStroke(const StrokePoint &point);
   void continueStroke(const StrokePoint &point);
   void endStroke();
@@ -135,6 +200,8 @@ private:
   // State for continueStroke
   QPointF m_lastPos;
   float m_remainder = 0.0f;
+  float m_accumulatedDistance =
+      0.0f; // Track total stroke length for taper/falloff
   mutable Color
       m_cachedColor; // mutable to allow update in const getter if needed
 

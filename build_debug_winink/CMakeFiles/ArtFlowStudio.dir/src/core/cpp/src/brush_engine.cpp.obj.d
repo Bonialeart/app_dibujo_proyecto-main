@@ -358,6 +358,8 @@ CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_engine.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qpoint.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QRadialGradient \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qbrush.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstring.h \
  E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_renderer.h \
  C:/Qt/6.10.2/mingw_64/include/QtOpenGL/QOpenGLBuffer \
  C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglbuffer.h \

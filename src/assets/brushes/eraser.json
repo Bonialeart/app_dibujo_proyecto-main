@@ -1,0 +1,56 @@
+{
+    "name": "Eraser",
+    "icon": "ER",
+    "brushes": [
+        {
+            "meta": {
+                "uuid": "er-soft-001",
+                "name": "Eraser Soft",
+                "category": "Eraser"
+            },
+            "stroke": {
+                "spacing": 0.08
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                }
+            },
+            "customize": {
+                "default_size": 45,
+                "default_opacity": 0.85,
+                "default_hardness": 0.15
+            }
+        },
+        {
+            "meta": {
+                "uuid": "er-hard-001",
+                "name": "Eraser Hard",
+                "category": "Eraser"
+            },
+            "stroke": {
+                "spacing": 0.03
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                }
+            },
+            "customize": {
+                "default_size": 22,
+                "default_opacity": 1.0,
+                "default_hardness": 0.98
+            }
+        }
+    ]
+}

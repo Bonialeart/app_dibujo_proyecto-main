@@ -1910,7 +1910,7 @@ Window {
                             MouseArea { 
                                 id: brushSettingsMouse
                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: { showBrushSettings = !showBrushSettings; showBrush = false; showLayers = false; showColor = false }
+                                onClicked: { brushStudioDialog.open(); showBrush = false; showLayers = false; showColor = false }
                             }
                         }
                         
@@ -2938,9 +2938,13 @@ Window {
                     
                     onCloseRequested: mainWindow.showBrush = false
                     onImportRequested: importAbrDialog.open()
-                    onSettingsRequested: {
+                    onSettingsRequested: function(brushName) {
                         mainWindow.showBrush = false
-                        canvasPage.showToolSettings = true
+                        brushStudioDialog.open()
+                    }
+                    onEditBrushRequested: function(brushName) {
+                        mainWindow.showBrush = false
+                        brushStudioDialog.open()
                     }
                 }
 
@@ -4037,6 +4041,14 @@ Window {
             mainCanvas.setBackgroundColor(newColor)
             newProjectDialog.bgFill = newColor
         }
+    }
+
+    // === BRUSH STUDIO DIALOG (PREMIUM FULL-SCREEN EDITOR) ===
+    BrushStudioDialog {
+        id: brushStudioDialog
+        targetCanvas: mainCanvas
+        colorAccent: mainWindow.colorAccent
+        z: 20000
     }
         
     // === DIALOGO NUEVO PROYECTO (PREMIUM REDESIGN V2) ===

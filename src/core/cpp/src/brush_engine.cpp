@@ -37,9 +37,12 @@ static uint32_t loadTexture(const QString &name) {
     }
   }
 
+  qDebug() << "BrushEngine: Loading texture:" << name << "from" << path;
+
   QImage img(path);
   if (img.isNull()) {
-    qDebug() << "Texture not found, generating procedural:" << name;
+    qDebug() << "Texture not found or failed to load:" << name << "at" << path;
+    qDebug() << "Generating procedural fallback for:" << name;
     img = QImage(512, 512, QImage::Format_RGBA8888);
     img.fill(Qt::white);
 
@@ -57,7 +60,7 @@ static uint32_t loadTexture(const QString &name) {
     }
   }
 
-  // CRÍTICO: Convertir al formato que OpenGL entiende bien (RGBA 8888)
+  // CRUCIAL: Convert to format OpenGL understands well (RGBA 8888)
   QImage glImg =
       img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical);
 
@@ -134,8 +137,6 @@ BrushEngine::BrushEngine() {}
 BrushEngine::~BrushEngine() {
   if (m_renderer)
     delete m_renderer;
-  // Note: textures in g_textures leak until app exit, which is acceptable for
-  // this singleton-like usage
 }
 
 void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
@@ -146,26 +147,41 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   if (!painter)
     return;
 
-  // --- Remainder Management ---
-  // No reiniciamos el resto por distancia, solo si es un trazo explícitamente
-  // nuevo (m_remainder == -1). El CanvasItem se encarga de pasar los puntos
-  // correctos.
   m_lastPos = currentPoint;
 
-  // 1. Calcular Dinámicas
+  // 1. Calculate Dynamics
   float effectivePressure = (pressure > 0.0f) ? pressure : 0.5f;
   if (!settings.dynamicsEnabled) {
     effectivePressure = 1.0f;
   }
 
-  uint32_t currentTextureID = settings.grainTextureID;
   bool isOpenGL = (painter->paintEngine()->type() != QPaintEngine::Raster);
 
+  static bool hasLoggedMode = false;
+  if (!hasLoggedMode) {
+    qDebug() << "BrushEngine: paintStroke mode:"
+             << (isOpenGL ? "OpenGL" : "Raster");
+    hasLoggedMode = true;
+  }
+
   if (isOpenGL) {
-    if (settings.useTexture && currentTextureID == 0 &&
+    // === LOAD TEXTURES (lazy, cached) ===
+    uint32_t grainTexID = settings.grainTextureID;
+    uint32_t tipTexID = settings.tipTextureID;
+
+    // Load grain texture if needed
+    if (settings.useTexture && grainTexID == 0 &&
         !settings.textureName.isEmpty()) {
-      currentTextureID = loadTexture(settings.textureName);
+      grainTexID = loadTexture(settings.textureName);
     }
+
+    // Load tip texture if needed
+    if (tipTexID == 0 && !settings.tipTextureName.isEmpty()) {
+      tipTexID = loadTexture(settings.tipTextureName);
+    }
+
+    bool hasGrain = (grainTexID != 0 && settings.useTexture);
+    bool hasTip = (tipTexID != 0);
 
     painter->save();
     painter->beginNativePainting();
@@ -183,18 +199,16 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     if (currentSize < 1.0f)
       currentSize = 1.0f;
 
-    // Interpolación Robusta (Algoritmo de Distancia Acumulada)
+    // Robust Interpolation (Cumulative Distance Algorithm)
     float dx = currentPoint.x() - lastPoint.x();
     float dy = currentPoint.y() - lastPoint.y();
     float dist = std::hypot(dx, dy);
     float stepSize = std::max(0.5f, currentSize * settings.spacing);
 
-    // Si m_remainder < 0, significa que es el primer punto del trazo
     if (m_remainder < 0.0f) {
-      m_remainder = stepSize; // Forzar dab t=0
+      m_remainder = stepSize; // Force dab at t=0
     }
 
-    // Distancia al siguiente dab desde el inicio de este segmento
     float distanceToDab = stepSize - m_remainder;
 
     QColor c = settings.color;
@@ -208,117 +222,202 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       float t = (dist > 0.0001f) ? (distanceToDab / dist) : 0.0f;
       QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
 
-      QPointF devPt = xform.map(pt);
-      float devSize = currentSize * scaleFactor;
+      // Progress within stroke
+      float totalDist = m_accumulatedDistance + distanceToDab;
 
-      bool isEraser = (settings.type == BrushSettings::Type::Eraser);
-      m_renderer->renderStroke(
-          devPt.x(), devPt.y(), devSize, effectivePressure, settings.hardness,
-          c, (int)settings.type, w, h, currentTextureID, true,
-          settings.textureScale * scaleFactor, settings.textureIntensity, tilt,
-          velocity, canvasTexId, wetness, dilution, smudge, isEraser);
+      // Taper and Falloff
+      float sizeMultiplier = 1.0f;
+      float opacityMultiplier = 1.0f;
+
+      if (settings.taperStart > 0.0f && totalDist < settings.taperStart) {
+        sizeMultiplier = totalDist / settings.taperStart;
+      }
+      if (settings.fallOff > 0.0f) {
+        opacityMultiplier =
+            std::max(0.0f, 1.0f - (totalDist / settings.fallOff));
+      }
+
+      QPointF devPt = xform.map(pt);
+      float devSizeBase = currentSize * scaleFactor * sizeMultiplier;
+      float opacityBase = c.alphaF() * opacityMultiplier;
+
+      // Loop for Count (Stamp stacking)
+      int count = std::max(1, settings.count);
+      for (int k = 0; k < count; ++k) {
+        // Jitters
+        float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+        if (settings.posJitterX > 0)
+          jX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX *
+               devSizeBase;
+        if (settings.posJitterY > 0)
+          jY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY *
+               devSizeBase;
+        if (settings.sizeJitter > 0)
+          jSize = 1.0f +
+                  ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
+        if (settings.rotationJitter > 0)
+          jRot = ((std::rand() % 2001 - 1000) / 1000.0f) *
+                 settings.rotationJitter * 3.14159f;
+        if (settings.opacityJitter > 0)
+          jOpac =
+              1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
+
+        QColor finalColor = c;
+        finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
+
+        // Basic Color Dynamics
+        if (settings.hueJitter > 0 || settings.satJitter > 0) {
+          float h, s, l, a;
+          finalColor.getHslF(&h, &s, &l, &a);
+          h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                                settings.hueJitter,
+                        1.0f);
+          if (h < 0)
+            h += 1.0f;
+          s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                                 settings.satJitter,
+                         0.0f, 1.0f);
+          finalColor.setHslF(h, s, l, a);
+        }
+
+        bool isEraser = (settings.type == BrushSettings::Type::Eraser);
+        m_renderer->renderStroke(
+            devPt.x() + jX, devPt.y() + jY, devSizeBase * jSize,
+            effectivePressure, settings.hardness, finalColor,
+            (int)settings.type, w, h,
+            // Grain
+            grainTexID, hasGrain, settings.textureScale * scaleFactor,
+            settings.textureIntensity,
+            // Tip
+            tipTexID, hasTip, settings.tipRotation + jRot,
+            // Dynamics
+            tilt, velocity, settings.flow,
+            // Wet Mix
+            canvasTexId, wetness, dilution, smudge,
+            // Mode
+            isEraser);
+      }
 
       distanceToDab += stepSize;
     }
 
-    // Actualizar residuo para el siguiente segmento
+    // Update state
+    m_accumulatedDistance += dist;
     m_remainder = dist - (distanceToDab - stepSize);
     if (m_remainder < 0)
       m_remainder = 0;
 
     painter->endNativePainting();
     painter->restore();
-    return; // Salimos, ya dibujamos
+    return;
   }
 
-  // --- LÓGICA LEGACY (QPAINTER) ---
+  // --- LEGACY PATH (QPAINTER) ---
 
   if (settings.type == BrushSettings::Type::Eraser) {
-    // Usamos CompositionMode_Source con color transparente para un borrado
-    // garantizado
     painter->setCompositionMode(QPainter::CompositionMode_Source);
-    // El color DEBE ser transparente total para borrar
-    const_cast<BrushSettings &>(settings).color = QColor(0, 0, 0, 0);
   } else {
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
   }
 
-  // Adaptación: La presión afecta el tamaño (logarítmico o lineal)
   float currentSize =
       settings.size * (settings.sizeByPressure ? effectivePressure : 1.0f);
-  // Evitar tamaños invisibles
   if (currentSize < 1.0f)
     currentSize = 1.0f;
 
-  // Adaptación: La presión afecta la opacidad
   float currentOpacity =
       settings.opacity *
       (settings.opacityByPressure ? effectivePressure : 1.0f);
-  // Limitar opacidad máxima
   if (currentOpacity > 1.0f)
     currentOpacity = 1.0f;
 
-  // 2. Renderizado (Rendering)
-  // CASO C: Pincel Texturizado en Raster (OIL fallback)
-  if (settings.useTexture &&
-      painter->paintEngine()->type() == QPaintEngine::Raster) {
-    float dx = currentPoint.x() - lastPoint.x();
-    float dy = currentPoint.y() - lastPoint.y();
-    float dist = std::hypot(dx, dy);
-    float stepSize = std::max(1.0f, currentSize * settings.spacing * 0.25f);
+  float dx = currentPoint.x() - lastPoint.x();
+  float dy = currentPoint.y() - lastPoint.y();
+  float dist = std::hypot(dx, dy);
+  float stepSize = std::max(0.5f, currentSize * settings.spacing);
 
-    if (m_remainder < 0.0f)
-      m_remainder = stepSize;
-    float coveredDist = stepSize - m_remainder;
+  if (m_remainder < 0.0f)
+    m_remainder = stepSize;
+  float distanceToDab = stepSize - m_remainder;
 
-    while (coveredDist <= dist) {
-      float t = (dist > 0.0001f) ? (coveredDist / dist) : 0.0f;
-      QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
-      paintTexturedRaster(painter, pt, currentSize, currentOpacity,
-                          settings.color, settings.textureName);
-      coveredDist += stepSize;
+  QColor baseColor = settings.color;
+
+  while (distanceToDab <= dist) {
+    float t = (dist > 0.0001f) ? (distanceToDab / dist) : 0.0f;
+    QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
+
+    // Progress within stroke
+    float totalDist = m_accumulatedDistance + distanceToDab;
+
+    // Taper and Falloff
+    float sizeMultiplier = 1.0f;
+    float opacityMultiplier = 1.0f;
+
+    if (settings.taperStart > 0.0f && totalDist < settings.taperStart) {
+      sizeMultiplier = totalDist / settings.taperStart;
     }
-    m_remainder = dist - (coveredDist - stepSize);
-    if (m_remainder < 0)
-      m_remainder = 0;
-    return;
-  }
-
-  // Caso A: Pincel Duro (Hard Brush) CONSTANTE
-  if (settings.hardness > 0.9f && !settings.sizeByPressure) {
-    QPen pen;
-    pen.setColor(settings.color);
-    pen.setWidthF(currentSize);
-    pen.setCapStyle(Qt::RoundCap);
-    pen.setJoinStyle(Qt::RoundJoin);
-
-    painter->setOpacity(currentOpacity);
-    painter->setPen(pen);
-    painter->drawLine(lastPoint, currentPoint);
-  }
-  // Caso B: Pincel Suave/Aerógrafo (Soft Brush) - Usamos QRadialGradient
-  // interpolado
-  else {
-    float dx = currentPoint.x() - lastPoint.x();
-    float dy = currentPoint.y() - lastPoint.y();
-    float dist = std::hypot(dx, dy);
-    float stepSize = std::max(1.0f, currentSize * settings.spacing);
-
-    if (m_remainder < 0.0f)
-      m_remainder = stepSize;
-    float coveredDist = stepSize - m_remainder;
-
-    while (coveredDist <= dist) {
-      float t = (dist > 0.0001f) ? (coveredDist / dist) : 0.0f;
-      QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
-      paintSoftStamp(painter, pt, currentSize, currentOpacity, settings.color,
-                     settings.hardness);
-      coveredDist += stepSize;
+    if (settings.fallOff > 0.0f) {
+      opacityMultiplier = std::max(0.0f, 1.0f - (totalDist / settings.fallOff));
     }
-    m_remainder = dist - (coveredDist - stepSize);
-    if (m_remainder < 0)
-      m_remainder = 0;
+
+    float dabSize = currentSize * sizeMultiplier;
+    float dabOpacity = currentOpacity * opacityMultiplier;
+
+    // Loop for Count (Stamp stacking)
+    int count = std::max(1, settings.count);
+    for (int k = 0; k < count; ++k) {
+      // Jitters
+      float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+      if (settings.posJitterX > 0)
+        jX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX *
+             dabSize;
+      if (settings.posJitterY > 0)
+        jY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY *
+             dabSize;
+      if (settings.sizeJitter > 0)
+        jSize = 1.0f +
+                ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
+      if (settings.opacityJitter > 0)
+        jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
+
+      QPointF finalPt = pt + QPointF(jX, jY);
+      float finalSize = std::max(0.1f, dabSize * jSize);
+      float finalOpacity = std::clamp(dabOpacity * jOpac, 0.0f, 1.0f);
+
+      QColor finalColor = baseColor;
+
+      // Basic Color Dynamics
+      if (settings.hueJitter > 0 || settings.satJitter > 0) {
+        float h, s, l, a;
+        finalColor.getHslF(&h, &s, &l, &a);
+        h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                              settings.hueJitter,
+                      1.0f);
+        if (h < 0)
+          h += 1.0f;
+        s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                               settings.satJitter,
+                       0.0f, 1.0f);
+        finalColor.setHslF(h, s, l, a);
+      }
+
+      if (settings.useTexture && !settings.textureName.isEmpty()) {
+        paintTexturedRaster(painter, finalPt, finalSize, finalOpacity,
+                            finalColor, settings.textureName);
+      } else {
+        paintSoftStamp(painter, finalPt, finalSize, finalOpacity, finalColor,
+                       settings.hardness);
+      }
+    }
+
+    distanceToDab += stepSize;
   }
+
+  // Update state
+  m_accumulatedDistance += dist;
+  m_remainder = dist - (distanceToDab - stepSize);
+  if (m_remainder < 0)
+    m_remainder = 0;
 }
 
 // --- Python Bindings Support ---
@@ -339,8 +438,8 @@ const Color &BrushEngine::getColor() const { return m_cachedColor; }
 
 void BrushEngine::beginStroke(const StrokePoint &point) {
   m_lastPos = QPointF(point.x, point.y);
-  m_remainder = -1.0f; // Flag para forzar primer dab en t=0
-  // Ensure renderer exists
+  m_remainder = -1.0f;
+  m_accumulatedDistance = 0.0f;
   if (!m_renderer) {
     m_renderer = new StrokeRenderer();
     m_renderer->initialize();
@@ -353,7 +452,6 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
 
   QPointF currentPos(point.x, point.y);
 
-  // Interpolation Logic with Remainder
   float dx = currentPos.x() - m_lastPos.x();
   float dy = currentPos.y() - m_lastPos.y();
   float dist = std::hypot(dx, dy);
@@ -376,11 +474,20 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
     opacity *= point.pressure;
   }
 
-  uint32_t texId = m_currentSettings.grainTextureID;
-  if (m_currentSettings.useTexture && texId == 0 &&
+  // Load textures
+  uint32_t grainTexId = m_currentSettings.grainTextureID;
+  if (m_currentSettings.useTexture && grainTexId == 0 &&
       !m_currentSettings.textureName.isEmpty()) {
-    texId = loadTexture(m_currentSettings.textureName);
+    grainTexId = loadTexture(m_currentSettings.textureName);
   }
+
+  uint32_t tipTexId = m_currentSettings.tipTextureID;
+  if (tipTexId == 0 && !m_currentSettings.tipTextureName.isEmpty()) {
+    tipTexId = loadTexture(m_currentSettings.tipTextureName);
+  }
+
+  bool hasGrain = (grainTexId != 0 && m_currentSettings.useTexture);
+  bool hasTip = (tipTexId != 0);
 
   int w = m_renderer ? m_renderer->viewportWidth() : 2000;
   int h = m_renderer ? m_renderer->viewportHeight() : 2000;
@@ -395,19 +502,87 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
     float t = (dist > 0.0001f) ? (coveredDist / dist) : 0.0f;
     QPointF pt = m_lastPos + (currentPos - m_lastPos) * t;
 
-    QColor c = m_currentSettings.color;
-    c.setAlphaF(opacity);
+    float totalDist = m_accumulatedDistance + coveredDist;
 
-    bool isEraser = (m_currentSettings.type == BrushSettings::Type::Eraser);
-    m_renderer->renderStroke(
-        pt.x(), pt.y(), size, point.pressure, m_currentSettings.hardness, c,
-        (int)m_currentSettings.type, w, h, texId, (texId != 0),
-        m_currentSettings.textureScale, m_currentSettings.textureIntensity,
-        0.0f, 0.0f, 0, m_currentSettings.wetness, m_currentSettings.dilution,
-        m_currentSettings.smudge, isEraser);
+    // Taper and Falloff
+    float sizeMultiplier = 1.0f;
+    float opacityMultiplier = 1.0f;
+
+    if (m_currentSettings.taperStart > 0.0f &&
+        totalDist < m_currentSettings.taperStart) {
+      sizeMultiplier = totalDist / m_currentSettings.taperStart;
+    }
+    if (m_currentSettings.fallOff > 0.0f) {
+      opacityMultiplier =
+          std::max(0.0f, 1.0f - (totalDist / m_currentSettings.fallOff));
+    }
+
+    float devSizeBase = size * sizeMultiplier;
+    float opacityBase = opacity * opacityMultiplier;
+
+    // Loop for Count (Stamp stacking)
+    int count = std::max(1, m_currentSettings.count);
+    for (int k = 0; k < count; ++k) {
+      // Jitters
+      float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+      if (m_currentSettings.posJitterX > 0)
+        jX = ((std::rand() % 2001 - 1000) / 1000.0f) *
+             m_currentSettings.posJitterX * devSizeBase;
+      if (m_currentSettings.posJitterY > 0)
+        jY = ((std::rand() % 2001 - 1000) / 1000.0f) *
+             m_currentSettings.posJitterY * devSizeBase;
+      if (m_currentSettings.sizeJitter > 0)
+        jSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                           m_currentSettings.sizeJitter;
+      if (m_currentSettings.rotationJitter > 0)
+        jRot = ((std::rand() % 2001 - 1000) / 1000.0f) *
+               m_currentSettings.rotationJitter * 3.14159f;
+      if (m_currentSettings.opacityJitter > 0)
+        jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) *
+                           m_currentSettings.opacityJitter;
+
+      QColor finalColor = m_currentSettings.color;
+      finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
+
+      // Basic Color Dynamics
+      if (m_currentSettings.hueJitter > 0 || m_currentSettings.satJitter > 0) {
+        float h, s, l, a;
+        finalColor.getHslF(&h, &s, &l, &a);
+        h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                              m_currentSettings.hueJitter,
+                      1.0f);
+        if (h < 0)
+          h += 1.0f;
+        s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                               m_currentSettings.satJitter,
+                       0.0f, 1.0f);
+        finalColor.setHslF(h, s, l, a);
+      }
+
+      bool isEraser = (m_currentSettings.type == BrushSettings::Type::Eraser);
+      m_renderer->renderStroke(
+          pt.x() + jX, pt.y() + jY, devSizeBase * jSize, point.pressure,
+          m_currentSettings.hardness, finalColor, (int)m_currentSettings.type,
+          w, h,
+          // Grain
+          grainTexId, hasGrain, m_currentSettings.textureScale,
+          m_currentSettings.textureIntensity,
+          // Tip
+          tipTexId, hasTip, m_currentSettings.tipRotation + jRot,
+          // Dynamics
+          0.0f, 0.0f, m_currentSettings.flow,
+          // Wet Mix
+          0, m_currentSettings.wetness, m_currentSettings.dilution,
+          m_currentSettings.smudge,
+          // Mode
+          isEraser);
+    }
 
     coveredDist += spacing;
   }
+
+  // Update State
+  m_accumulatedDistance += dist;
 
   // Update Remainder
   m_remainder = dist - (coveredDist - spacing);
@@ -437,7 +612,6 @@ void BrushEngine::renderDab(float x, float y, float size, float rotation,
 void BrushEngine::renderStrokeSegment(float x1, float y1, float x2, float y2,
                                       float pressure, float tilt,
                                       float velocity, bool useTexture) {
-  // Basic implementation wrapping continueStroke logic
   StrokePoint start(x1, y1, pressure);
   StrokePoint end(x2, y2, pressure);
   beginStroke(start);
@@ -451,14 +625,10 @@ void BrushEngine::paintSoftStamp(QPainter *painter, const QPointF &point,
   painter->setOpacity(opacity);
 
   QRadialGradient gradient(point, size / 2.0);
-  // Color central (sólido)
   QColor centerColor = color;
   gradient.setColorAt(0.0, centerColor);
-
-  // Inicio del desvanecimiento (basado en dureza)
   gradient.setColorAt(hardness, centerColor);
 
-  // Borde exterior (transparente)
   QColor outerColor = color;
   outerColor.setAlpha(0);
   gradient.setColorAt(1.0, outerColor);
@@ -466,7 +636,6 @@ void BrushEngine::paintSoftStamp(QPainter *painter, const QPointF &point,
   QBrush brush(gradient);
   painter->setBrush(brush);
 
-  // Dibujar el círculo del gradiente
   painter->drawEllipse(point, size / 2.0, size / 2.0);
 }
 

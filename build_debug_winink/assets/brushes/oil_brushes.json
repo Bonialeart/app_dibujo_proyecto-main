@@ -1,0 +1,172 @@
+{
+    "name": "Oil Brushes",
+    "icon": "OL",
+    "brushes": [
+        {
+            "meta": {
+                "uuid": "ol-flat-001",
+                "name": "Óleo Classic Flat",
+                "category": "Oil Brushes"
+            },
+            "shape": {
+                "tip_texture": "oil_flat_pro.png"
+            },
+            "stroke": {
+                "spacing": 0.04
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.2,
+                    "pressure_curve": "linear"
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.6,
+                "pull": 0.1
+            },
+            "customize": {
+                "default_size": 60,
+                "default_opacity": 1.0,
+                "default_hardness": 0.9,
+                "default_flow": 0.35
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-bristle-001",
+                "name": "Óleo Round Bristle",
+                "category": "Oil Brushes"
+            },
+            "shape": {
+                "tip_texture": "oil_filbert_pro.png"
+            },
+            "stroke": {
+                "spacing": 0.05
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.15,
+                    "pressure_curve": "soft"
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0,
+                    "pressure_curve": "linear"
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.75,
+                "pull": 0.2
+            },
+            "customize": {
+                "default_size": 45,
+                "default_opacity": 0.95,
+                "default_hardness": 0.7,
+                "default_flow": 0.4
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-knife-001",
+                "name": "Óleo Impasto Knife",
+                "category": "Oil Brushes"
+            },
+            "shape": {
+                "tip_texture": "oil_knife_pro.png"
+            },
+            "stroke": {
+                "spacing": 0.02
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.1,
+                "pull": 0.8
+            },
+            "customize": {
+                "default_size": 80,
+                "default_opacity": 1.0,
+                "default_hardness": 1.0,
+                "default_flow": 0.8
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-scumble-001",
+                "name": "Óleo Dry Scumble",
+                "category": "Oil Brushes"
+            },
+            "shape": {
+                "tip_texture": "oil_flat_pro.png"
+            },
+            "stroke": {
+                "spacing": 0.08
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0,
+                    "pressure_curve": "linear"
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.0,
+                "pull": 0.1
+            },
+            "customize": {
+                "default_size": 70,
+                "default_opacity": 0.8,
+                "default_hardness": 0.5,
+                "default_flow": 0.15
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-wetblend-001",
+                "name": "Óleo Wet Blender",
+                "category": "Oil Brushes"
+            },
+            "shape": {
+                "tip_texture": "oil_filbert_pro.png"
+            },
+            "stroke": {
+                "spacing": 0.04
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.1,
+                    "pressure_curve": "soft"
+                }
+            },
+            "wet_mix": {
+                "wetness": 1.0,
+                "pull": 0.95
+            },
+            "customize": {
+                "default_size": 90,
+                "default_opacity": 0.0,
+                "default_hardness": 0.2,
+                "default_flow": 0.5
+            }
+        }
+    ]
+}

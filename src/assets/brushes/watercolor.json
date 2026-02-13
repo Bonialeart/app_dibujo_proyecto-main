@@ -1,0 +1,70 @@
+{
+    "name": "Watercolor",
+    "icon": "WC",
+    "brushes": [
+        {
+            "meta": {
+                "uuid": "wc-classic-001",
+                "name": "Watercolor",
+                "category": "Watercolor"
+            },
+            "grain": {
+                "texture": "watercolor_paper.png",
+                "scale": 80.0,
+                "intensity": 0.5
+            },
+            "stroke": {
+                "spacing": 0.08,
+                "streamline": 0.45
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.1,
+                    "pressure_curve": "soft",
+                    "jitter": 0.06
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.5
+            },
+            "customize": {
+                "default_size": 50,
+                "default_opacity": 0.3,
+                "default_hardness": 0.15
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-wet-001",
+                "name": "Watercolor Wet",
+                "category": "Watercolor"
+            },
+            "grain": {
+                "texture": "watercolor_paper.png",
+                "scale": 60.0,
+                "intensity": 0.4
+            },
+            "stroke": {
+                "spacing": 0.1,
+                "streamline": 0.5
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.1,
+                    "pressure_curve": "ease_out",
+                    "jitter": 0.1
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.95
+            },
+            "customize": {
+                "default_size": 60,
+                "default_opacity": 0.25,
+                "default_hardness": 0.05
+            }
+        }
+    ]
+}

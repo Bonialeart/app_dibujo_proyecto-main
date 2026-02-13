@@ -274,6 +274,78 @@ src/ProjectModel.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.s
 .PHONY : src/ProjectModel.cpp.s
 
+src/TestCanvas.obj: src/TestCanvas.cpp.obj
+.PHONY : src/TestCanvas.obj
+
+# target to build an object file
+src/TestCanvas.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj
+.PHONY : src/TestCanvas.cpp.obj
+
+src/TestCanvas.i: src/TestCanvas.cpp.i
+.PHONY : src/TestCanvas.i
+
+# target to preprocess a source file
+src/TestCanvas.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.i
+.PHONY : src/TestCanvas.cpp.i
+
+src/TestCanvas.s: src/TestCanvas.cpp.s
+.PHONY : src/TestCanvas.s
+
+# target to generate assembly for a file
+src/TestCanvas.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.s
+.PHONY : src/TestCanvas.cpp.s
+
+src/core/cpp/src/ColorPicker.obj: src/core/cpp/src/ColorPicker.cpp.obj
+.PHONY : src/core/cpp/src/ColorPicker.obj
+
+# target to build an object file
+src/core/cpp/src/ColorPicker.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/ColorPicker.cpp.obj
+.PHONY : src/core/cpp/src/ColorPicker.cpp.obj
+
+src/core/cpp/src/ColorPicker.i: src/core/cpp/src/ColorPicker.cpp.i
+.PHONY : src/core/cpp/src/ColorPicker.i
+
+# target to preprocess a source file
+src/core/cpp/src/ColorPicker.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/ColorPicker.cpp.i
+.PHONY : src/core/cpp/src/ColorPicker.cpp.i
+
+src/core/cpp/src/ColorPicker.s: src/core/cpp/src/ColorPicker.cpp.s
+.PHONY : src/core/cpp/src/ColorPicker.s
+
+# target to generate assembly for a file
+src/core/cpp/src/ColorPicker.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/ColorPicker.cpp.s
+.PHONY : src/core/cpp/src/ColorPicker.cpp.s
+
+src/core/cpp/src/ColorPickerImpl.obj: src/core/cpp/src/ColorPickerImpl.cpp.obj
+.PHONY : src/core/cpp/src/ColorPickerImpl.obj
+
+# target to build an object file
+src/core/cpp/src/ColorPickerImpl.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/ColorPickerImpl.cpp.obj
+.PHONY : src/core/cpp/src/ColorPickerImpl.cpp.obj
+
+src/core/cpp/src/ColorPickerImpl.i: src/core/cpp/src/ColorPickerImpl.cpp.i
+.PHONY : src/core/cpp/src/ColorPickerImpl.i
+
+# target to preprocess a source file
+src/core/cpp/src/ColorPickerImpl.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/ColorPickerImpl.cpp.i
+.PHONY : src/core/cpp/src/ColorPickerImpl.cpp.i
+
+src/core/cpp/src/ColorPickerImpl.s: src/core/cpp/src/ColorPickerImpl.cpp.s
+.PHONY : src/core/cpp/src/ColorPickerImpl.s
+
+# target to generate assembly for a file
+src/core/cpp/src/ColorPickerImpl.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/ColorPickerImpl.cpp.s
+.PHONY : src/core/cpp/src/ColorPickerImpl.cpp.s
+
 src/core/cpp/src/brush_engine.obj: src/core/cpp/src/brush_engine.cpp.obj
 .PHONY : src/core/cpp/src/brush_engine.obj
 
@@ -297,6 +369,54 @@ src/core/cpp/src/brush_engine.s: src/core/cpp/src/brush_engine.cpp.s
 src/core/cpp/src/brush_engine.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_engine.cpp.s
 .PHONY : src/core/cpp/src/brush_engine.cpp.s
+
+src/core/cpp/src/brush_preset.obj: src/core/cpp/src/brush_preset.cpp.obj
+.PHONY : src/core/cpp/src/brush_preset.obj
+
+# target to build an object file
+src/core/cpp/src/brush_preset.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_preset.cpp.obj
+.PHONY : src/core/cpp/src/brush_preset.cpp.obj
+
+src/core/cpp/src/brush_preset.i: src/core/cpp/src/brush_preset.cpp.i
+.PHONY : src/core/cpp/src/brush_preset.i
+
+# target to preprocess a source file
+src/core/cpp/src/brush_preset.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_preset.cpp.i
+.PHONY : src/core/cpp/src/brush_preset.cpp.i
+
+src/core/cpp/src/brush_preset.s: src/core/cpp/src/brush_preset.cpp.s
+.PHONY : src/core/cpp/src/brush_preset.s
+
+# target to generate assembly for a file
+src/core/cpp/src/brush_preset.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_preset.cpp.s
+.PHONY : src/core/cpp/src/brush_preset.cpp.s
+
+src/core/cpp/src/brush_preset_manager.obj: src/core/cpp/src/brush_preset_manager.cpp.obj
+.PHONY : src/core/cpp/src/brush_preset_manager.obj
+
+# target to build an object file
+src/core/cpp/src/brush_preset_manager.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_preset_manager.cpp.obj
+.PHONY : src/core/cpp/src/brush_preset_manager.cpp.obj
+
+src/core/cpp/src/brush_preset_manager.i: src/core/cpp/src/brush_preset_manager.cpp.i
+.PHONY : src/core/cpp/src/brush_preset_manager.i
+
+# target to preprocess a source file
+src/core/cpp/src/brush_preset_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_preset_manager.cpp.i
+.PHONY : src/core/cpp/src/brush_preset_manager.cpp.i
+
+src/core/cpp/src/brush_preset_manager.s: src/core/cpp/src/brush_preset_manager.cpp.s
+.PHONY : src/core/cpp/src/brush_preset_manager.s
+
+# target to generate assembly for a file
+src/core/cpp/src/brush_preset_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_preset_manager.cpp.s
+.PHONY : src/core/cpp/src/brush_preset_manager.cpp.s
 
 src/core/cpp/src/color_utils.obj: src/core/cpp/src/color_utils.cpp.obj
 .PHONY : src/core/cpp/src/color_utils.obj
@@ -418,6 +538,54 @@ src/core/cpp/src/stroke_renderer.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_renderer.cpp.s
 .PHONY : src/core/cpp/src/stroke_renderer.cpp.s
 
+src/core/cpp/src/stroke_undo_command.obj: src/core/cpp/src/stroke_undo_command.cpp.obj
+.PHONY : src/core/cpp/src/stroke_undo_command.obj
+
+# target to build an object file
+src/core/cpp/src/stroke_undo_command.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_undo_command.cpp.obj
+.PHONY : src/core/cpp/src/stroke_undo_command.cpp.obj
+
+src/core/cpp/src/stroke_undo_command.i: src/core/cpp/src/stroke_undo_command.cpp.i
+.PHONY : src/core/cpp/src/stroke_undo_command.i
+
+# target to preprocess a source file
+src/core/cpp/src/stroke_undo_command.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_undo_command.cpp.i
+.PHONY : src/core/cpp/src/stroke_undo_command.cpp.i
+
+src/core/cpp/src/stroke_undo_command.s: src/core/cpp/src/stroke_undo_command.cpp.s
+.PHONY : src/core/cpp/src/stroke_undo_command.s
+
+# target to generate assembly for a file
+src/core/cpp/src/stroke_undo_command.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_undo_command.cpp.s
+.PHONY : src/core/cpp/src/stroke_undo_command.cpp.s
+
+src/core/cpp/src/undo_manager.obj: src/core/cpp/src/undo_manager.cpp.obj
+.PHONY : src/core/cpp/src/undo_manager.obj
+
+# target to build an object file
+src/core/cpp/src/undo_manager.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/undo_manager.cpp.obj
+.PHONY : src/core/cpp/src/undo_manager.cpp.obj
+
+src/core/cpp/src/undo_manager.i: src/core/cpp/src/undo_manager.cpp.i
+.PHONY : src/core/cpp/src/undo_manager.i
+
+# target to preprocess a source file
+src/core/cpp/src/undo_manager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/undo_manager.cpp.i
+.PHONY : src/core/cpp/src/undo_manager.cpp.i
+
+src/core/cpp/src/undo_manager.s: src/core/cpp/src/undo_manager.cpp.s
+.PHONY : src/core/cpp/src/undo_manager.s
+
+# target to generate assembly for a file
+src/core/cpp/src/undo_manager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\ArtFlowStudio.dir\build.make CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/undo_manager.cpp.s
+.PHONY : src/core/cpp/src/undo_manager.cpp.s
+
 src/main.obj: src/main.cpp.obj
 .PHONY : src/main.obj
 
@@ -468,9 +636,24 @@ help:
 	@echo ... src/ProjectModel.obj
 	@echo ... src/ProjectModel.i
 	@echo ... src/ProjectModel.s
+	@echo ... src/TestCanvas.obj
+	@echo ... src/TestCanvas.i
+	@echo ... src/TestCanvas.s
+	@echo ... src/core/cpp/src/ColorPicker.obj
+	@echo ... src/core/cpp/src/ColorPicker.i
+	@echo ... src/core/cpp/src/ColorPicker.s
+	@echo ... src/core/cpp/src/ColorPickerImpl.obj
+	@echo ... src/core/cpp/src/ColorPickerImpl.i
+	@echo ... src/core/cpp/src/ColorPickerImpl.s
 	@echo ... src/core/cpp/src/brush_engine.obj
 	@echo ... src/core/cpp/src/brush_engine.i
 	@echo ... src/core/cpp/src/brush_engine.s
+	@echo ... src/core/cpp/src/brush_preset.obj
+	@echo ... src/core/cpp/src/brush_preset.i
+	@echo ... src/core/cpp/src/brush_preset.s
+	@echo ... src/core/cpp/src/brush_preset_manager.obj
+	@echo ... src/core/cpp/src/brush_preset_manager.i
+	@echo ... src/core/cpp/src/brush_preset_manager.s
 	@echo ... src/core/cpp/src/color_utils.obj
 	@echo ... src/core/cpp/src/color_utils.i
 	@echo ... src/core/cpp/src/color_utils.s
@@ -486,6 +669,12 @@ help:
 	@echo ... src/core/cpp/src/stroke_renderer.obj
 	@echo ... src/core/cpp/src/stroke_renderer.i
 	@echo ... src/core/cpp/src/stroke_renderer.s
+	@echo ... src/core/cpp/src/stroke_undo_command.obj
+	@echo ... src/core/cpp/src/stroke_undo_command.i
+	@echo ... src/core/cpp/src/stroke_undo_command.s
+	@echo ... src/core/cpp/src/undo_manager.obj
+	@echo ... src/core/cpp/src/undo_manager.i
+	@echo ... src/core/cpp/src/undo_manager.s
 	@echo ... src/main.obj
 	@echo ... src/main.i
 	@echo ... src/main.s

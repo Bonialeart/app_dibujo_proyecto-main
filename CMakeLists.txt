@@ -24,6 +24,8 @@ include_directories(
 # 3. Fuentes del Core (Ya existentes)
 set(CORE_SOURCES
     src/core/cpp/src/brush_engine.cpp
+    src/core/cpp/src/brush_preset.cpp
+    src/core/cpp/src/brush_preset_manager.cpp
     src/core/cpp/src/layer_manager.cpp
     src/core/cpp/src/color_utils.cpp
     src/core/cpp/src/image_buffer.cpp

@@ -1,5 +1,7 @@
 E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_CanvasItem.cpp: E:/app_dibujo_proyecto-main/src/CanvasItem.h \
   E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QJsonArray \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QJsonObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QMap \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
@@ -39,6 +41,8 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_Can
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearraylist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcalendar.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qcborcommon.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qcborvalue.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qchar.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcheckedint_impl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare.h \
@@ -76,6 +80,11 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_Can
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevicebase.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterable.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterator.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonarray.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsondocument.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonobject.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonparseerror.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonvalue.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlatin1stringview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qline.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
@@ -105,6 +114,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_Can
   C:/Qt/6.10.2/mingw_64/include/QtCore/qpropertyprivate.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qrect.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qrefcount.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qregularexpression.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qscopeguard.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qset.h \
@@ -154,6 +164,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_Can
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtypes.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qurl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qutf8stringview.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/quuid.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantlist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvarlengtharray.h \
@@ -474,6 +485,7 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_Can
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/vadefs.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h \
   E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
+  E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_preset.h \
   E:/app_dibujo_proyecto-main/src/core/cpp/include/common_types.h \
   E:/app_dibujo_proyecto-main/src/core/cpp/include/image_buffer.h \
   E:/app_dibujo_proyecto-main/src/core/cpp/include/layer_manager.h \

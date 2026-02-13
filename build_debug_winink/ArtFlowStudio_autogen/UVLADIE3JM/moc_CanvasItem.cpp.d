@@ -1,12 +1,18 @@
 E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/moc_CanvasItem.cpp: E:/app_dibujo_proyecto-main/src/CanvasItem.h \
   E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/moc_predefs.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QJsonArray \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QJsonObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QMap \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QPointF \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QRect \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QRectF \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QScopedPointer \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QSize \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QSizeF \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QTimer \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QVariantList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q17memory.h \
@@ -35,6 +41,8 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearraylist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcalendar.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qcborcommon.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qcborvalue.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qchar.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcheckedint_impl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare.h \
@@ -72,6 +80,11 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevicebase.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterable.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterator.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonarray.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsondocument.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonobject.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonparseerror.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qjsonvalue.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlatin1stringview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qline.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
@@ -101,6 +114,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtCore/qpropertyprivate.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qrect.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qrefcount.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qregularexpression.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qscopeguard.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qset.h \
@@ -136,6 +150,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtenvironmentvariables.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtextstream.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtformat_impl.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qtimer.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtmetamacros.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtnoop.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtpreprocessorsupport.h \
@@ -149,6 +164,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtypes.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qurl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qutf8stringview.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/quuid.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantlist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvarlengtharray.h \
@@ -160,6 +176,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLFunctions \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/QPainterPath \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QPen \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QRadialGradient \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QSurfaceFormat \
@@ -190,6 +207,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglfunctions.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qpaintdevice.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qpainter.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qpainterpath.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qpen.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qpixelformat.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qpixmap.h \
@@ -270,6 +288,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/cpp_type_traits.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/cxxabi_forced.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/cxxabi_init_exception.h \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/deque.tcc \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/enable_special_members.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/erase_if.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/exception.h \
@@ -310,6 +329,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_algobase.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_bvector.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_construct.h \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_deque.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_function.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_heap.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/stl_iterator.h \
@@ -358,6 +378,7 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cwchar \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/debug/assertions.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/debug/debug.h \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/deque \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/exception \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/experimental/source_location \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/ext/aligned_buffer.h \
@@ -464,6 +485,11 @@ E:/app_dibujo_proyecto-main/build_debug_winink/ArtFlowStudio_autogen/UVLADIE3JM/
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/vadefs.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h \
   E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
+  E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_preset.h \
+  E:/app_dibujo_proyecto-main/src/core/cpp/include/common_types.h \
   E:/app_dibujo_proyecto-main/src/core/cpp/include/image_buffer.h \
   E:/app_dibujo_proyecto-main/src/core/cpp/include/layer_manager.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_renderer.h
+  E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_renderer.h \
+  E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_undo_command.h \
+  E:/app_dibujo_proyecto-main/src/core/cpp/include/undo_command.h \
+  E:/app_dibujo_proyecto-main/src/core/cpp/include/undo_manager.h

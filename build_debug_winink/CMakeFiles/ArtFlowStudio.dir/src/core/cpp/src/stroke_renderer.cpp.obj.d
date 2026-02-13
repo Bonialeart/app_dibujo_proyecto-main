@@ -381,15 +381,52 @@ CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_renderer.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtOpenGL/qopenglvertexarrayobject.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qobject.h \
+ E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpainter.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpixmap.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpaintdevice.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qcolor.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qimage.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpixelformat.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qtransform.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpolygon.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qregion.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qspan.h \
+ C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cassert \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/q20iterator.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qline.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qtextoption.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpen.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qbrush.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qfontinfo.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qfont.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qendian.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qfontvariableaxis.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qfontmetrics.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QPen \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qpen.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QPointF \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qpoint.h \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/QRadialGradient \
+ C:/Qt/6.10.2/mingw_64/include/QtGui/qbrush.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstring.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QCoreApplication \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreapplication.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreevent.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qbasictimer.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qabstracteventdispatcher.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qeventloop.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qdeadlinetimer.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreapplication_platform.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qcoreapplication.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QDebug \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QFile \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfile.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qfiledevice.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qiodevice.h \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qspan.h \
- C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cassert \
- C:/Qt/6.10.2/mingw_64/include/QtCore/q20iterator.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/filesystem \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_fwd.h \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_path.h \
@@ -422,6 +459,8 @@ CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_renderer.cpp.obj: \
  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/fs_ops.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QMatrix4x4 \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qmatrix4x4.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QStringList \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstringlist.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QVector2D \
  C:/Qt/6.10.2/mingw_64/include/QtGui/qvectornd.h \
  C:/Qt/6.10.2/mingw_64/include/QtGui/QVector3D

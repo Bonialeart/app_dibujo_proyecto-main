@@ -1,6 +1,7 @@
 // Re-verify includes
 #include "CanvasItem.h"
 #include "PreferencesManager.h"
+#include "core/cpp/include/brush_preset_manager.h"
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QCursor>
@@ -85,18 +86,34 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_activeLayerIndex = 1;
   m_layerManager->setActiveLayer(m_activeLayerIndex);
 
-  m_availableBrushes << "Pencil HB" << "Pencil 6B" << "Ink Pen" << "Marker"
-                     << "G-Pen" << "Maru Pen" << "Watercolor"
-                     << "Watercolor Wet"
-                     << "Oil Paint" << "Acrylic" << "The Blender"
-                     << "Smudge Tool" << "Óleo Classic Flat"
-                     << "Óleo Round Bristle"
-                     << "Óleo Impasto Knife" << "Óleo Dry Scumble"
-                     << "Óleo Wet Blender"
-                     << "Soft" << "Hard"
-                     << "Mechanical"
-                     << "Eraser Soft" << "Eraser Hard";
-  m_activeBrushName = "Pencil HB";
+  // === Data-Driven Brush Loading ===
+  auto *bpm = artflow::BrushPresetManager::instance();
+
+  // Try loading JSON presets from disk
+  QStringList searchPaths;
+  searchPaths << "src/assets/brushes"
+              << QCoreApplication::applicationDirPath() + "/assets/brushes"
+              << QCoreApplication::applicationDirPath() +
+                     "/../src/assets/brushes";
+  for (const QString &p : searchPaths) {
+    if (QDir(p).exists()) {
+      bpm->loadFromDirectory(p);
+      break;
+    }
+  }
+
+  // Fallback to built-in defaults if no JSON loaded
+  if (bpm->allPresets().empty()) {
+    bpm->loadDefaults();
+  }
+
+  // Populate available brushes list from manager
+  QStringList names = bpm->brushNames();
+  for (const QString &n : names) {
+    m_availableBrushes << n;
+  }
+
+  m_activeBrushName = names.isEmpty() ? "Pencil HB" : names.first();
   usePreset(m_activeBrushName);
 
   updateLayersList();
@@ -390,8 +407,80 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     settings.spacing = std::min(settings.spacing, 0.05f);
   }
 
-  float effectivePressure = pressure; // Ajustar con curva si es necesario
-  float velocityFactor = 0.0f;        // Calcular velocidad real si es necesario
+  float effectivePressure = pressure;
+  float velocityFactor = 0.0f;
+
+  // === PER-PRESET DYNAMICS EVALUATION ===
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *activePreset = bpm->findByName(m_activeBrushName);
+
+  if (!activePreset) {
+    static int logCount = 0;
+    if (logCount++ % 100 == 0) {
+      qDebug() << "handleDraw: No preset found for" << m_activeBrushName;
+    }
+  } else {
+    static QString lastLogged = "";
+    if (m_activeBrushName != lastLogged) {
+      qDebug() << "handleDraw: Using preset" << m_activeBrushName
+               << "TipTexture:" << activePreset->shape.tipTexture;
+      lastLogged = m_activeBrushName;
+    }
+  }
+
+  if (activePreset &&
+      !(m_isEraser || isTransparentColor || m_tool == ToolType::Eraser)) {
+    // Evaluate pressure through the preset's response curve LUT
+    float rawPressure = std::clamp(pressure, 0.0f, 1.0f);
+
+    // SIZE dynamics: evaluate curve and apply range
+    float sizeT = activePreset->sizeDynamics.evaluate(rawPressure);
+    float sizeMultiplier = sizeT; // 0..1 multiplier for brush size
+    settings.size = m_brushSize * sizeMultiplier;
+    if (settings.size < 0.5f)
+      settings.size = 0.5f;
+
+    // OPACITY dynamics
+    if (activePreset->opacityDynamics.minLimit < 0.99f) {
+      float opacT = activePreset->opacityDynamics.evaluate(rawPressure);
+      settings.opacity = m_brushOpacity * opacT;
+    }
+
+    // FLOW dynamics
+    if (activePreset->flowDynamics.minLimit < 0.99f) {
+      float flowT = activePreset->flowDynamics.evaluate(rawPressure);
+      settings.flow = m_brushFlow * flowT;
+    }
+
+    // VELOCITY dynamics
+    float dx = canvasPos.x() - lastCanvasPos.x();
+    float dy = canvasPos.y() - lastCanvasPos.y();
+    float strokeDist = std::hypot(dx, dy);
+    // Normalize velocity: ~0.0 at rest, ~1.0 at fast movement
+    velocityFactor = std::clamp(strokeDist / 50.0f, 0.0f, 1.0f);
+
+    if (std::abs(activePreset->sizeDynamics.velocityInfluence) > 0.01f) {
+      float velMod =
+          activePreset->sizeDynamics.velocityInfluence * velocityFactor;
+      settings.size *= (1.0f + velMod);
+      if (settings.size < 0.5f)
+        settings.size = 0.5f;
+    }
+
+    // JITTER (position scatter)
+    if (activePreset->sizeDynamics.jitter > 0.01f) {
+      float j = activePreset->sizeDynamics.jitter;
+      settings.jitter = j;
+    }
+
+    // Let paintStroke know we've already applied dynamics
+    effectivePressure = rawPressure;
+    settings.sizeByPressure = false;    // We handled it
+    settings.opacityByPressure = false; // We handled it
+  } else {
+    // Apply global pressure curve for erasers or when no preset is active
+    effectivePressure = applyPressureCurve(pressure);
+  }
 
   // Create QImage wrapper around layer buffer (Use RGBA8888_Premultiplied)
   QImage img(layer->buffer->data(), layer->buffer->width(),
@@ -471,8 +560,9 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   }
 
   // Calculate dirty rect for update (Screen coordinates)
-  // We need to determine the bounding box in canvas coords, then map to screen.
-  // Use lastCanvasPos (captured at start) to ensure we cover the whole segment
+  // We need to determine the bounding box in canvas coords, then map to
+  // screen. Use lastCanvasPos (captured at start) to ensure we cover the
+  // whole segment
   float minX = std::min(lastCanvasPos.x(), canvasPos.x());
   float minY = std::min(lastCanvasPos.y(), canvasPos.y());
   float maxX = std::max(lastCanvasPos.x(), canvasPos.x());
@@ -1210,8 +1300,8 @@ void CanvasItem::setCurrentTool(const QString &tool) {
   else if (tool == "transform" || tool == "move") {
     m_tool = ToolType::Transform;
     // Ya no 'levantamos' el contenido aquí para evitar recuadros azules
-    // inmediatos y destrucción accidental de trazos previos. La lógica se movió
-    // a mousePressEvent.
+    // inmediatos y destrucción accidental de trazos previos. La lógica se
+    // movió a mousePressEvent.
   } else if (tool == "eyedropper")
     m_tool = ToolType::Eyedropper;
   else if (tool == "hand")
@@ -1741,8 +1831,26 @@ void CanvasItem::usePreset(const QString &name) {
   m_activeBrushName = name;
   emit activeBrushNameChanged();
 
+  // === DATA-DRIVEN PRESET LOOKUP ===
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *preset = bpm->findByName(name);
+
+  if (!preset) {
+    qDebug() << "usePreset: Preset not found:" << name;
+    return;
+  }
+
+  // Apply preset values to CanvasItem properties
+  setBrushSize(static_cast<int>(preset->defaultSize));
+  setBrushOpacity(preset->defaultOpacity);
+  setBrushHardness(preset->defaultHardness);
+  setBrushSpacing(preset->stroke.spacing);
+  setBrushStabilization(preset->stroke.streamline);
+
+  // Apply to engine's BrushSettings via the legacy adapter
   BrushSettings s = m_brushEngine->getBrush();
-  // Reset all dynamics to defaults
+
+  // Reset to clean state
   s.wetness = 0.0f;
   s.smudge = 0.0f;
   s.jitter = 0.0f;
@@ -1753,326 +1861,816 @@ void CanvasItem::usePreset(const QString &name) {
   s.sizeByPressure = false;
   s.velocityDynamics = 0.0f;
 
-  // ==================== PENCIL PRESETS ====================
-  if (name == "Pencil HB") {
-    // Classic graphite pencil - medium hardness, subtle grain
-    setBrushSize(8); // Slightly bigger default
-    setBrushOpacity(0.7f);
-    setBrushHardness(0.2f);
-    setBrushSpacing(0.05f);
-    setBrushStabilization(0.25f);
-    s.type = BrushSettings::Type::Pencil;
-    s.grain = 0.65f;
-    s.opacityByPressure = true;
-    s.sizeByPressure = true; // Enable size dynamics for better feel
-    s.jitter = 0.08f;
+  // Apply preset through the bridge adapter
+  preset->applyToLegacy(s);
 
-    // Texture Config
-    s.useTexture = true;
-    s.textureName = "paper_grain.png";
-    s.textureScale = 200.0f;
-    s.textureIntensity = 0.6f;
-
-  } else if (name == "Pencil 6B") {
-    // Soft graphite - darker, more grain, softer edge
-    setBrushSize(20);
-    setBrushOpacity(0.9f);
-    setBrushHardness(0.4f);
-    setBrushSpacing(0.04f);
-    setBrushStabilization(0.1f);
-    s.type = BrushSettings::Type::Pencil;
-    s.grain = 0.95f;
-    s.opacityByPressure = true;
-    s.sizeByPressure = true;
-    s.jitter = 0.12f;
-
-    // Texture Config
-    s.useTexture = true;
-    s.textureName = "paper_grain.png";
-    s.textureScale = 200.0f;
-    s.textureIntensity = 0.6f;
-
-  } else if (name == "Mechanical") {
-    // Precise mechanical pencil - Improved for realism
-    setBrushSize(2.5f); // Thinner by default
-    setBrushOpacity(0.95f);
-    setBrushHardness(0.95f);
-    setBrushSpacing(0.008f); // High density for smooth lines
-    setBrushStabilization(0.3f);
-    s.type = BrushSettings::Type::Pencil;
-    s.grain = 0.85f; // High grain visibility
-    s.opacityByPressure = true;
-    s.sizeByPressure =
-        true; // Real mechanical pencils have slight size dynamics
-    s.jitter = 0.01f;
-
-    // Texture Config (Paper grain)
-    s.useTexture = true;
-    s.textureName = "paper_grain.png";
-    s.textureScale = 450.0f;    // Very fine grain
-    s.textureIntensity = 0.75f; // Stronger interaction with grain
-  }
-
-  // ==================== INKING PRESETS ====================
-  else if (name == "Ink Pen") {
-    // Classic ink pen - smooth, pressure-sensitive size
-    setBrushSize(12);
-    setBrushOpacity(1.0f);
-    setBrushHardness(1.0f);
-    setBrushSpacing(0.015f);
-    setBrushStabilization(0.75f);
-    s.type = BrushSettings::Type::Ink;
-    s.sizeByPressure = true;
-    s.velocityDynamics = -0.2f; // Slightly thinner when drawing fast
-  } else if (name == "G-Pen") {
-    // Manga-style G-Pen - dramatic pressure taper
-    setBrushSize(18);
-    setBrushOpacity(1.0f);
-    setBrushHardness(0.98f);
-    setBrushSpacing(0.01f);
-    setBrushStabilization(0.8f);
-    s.type = BrushSettings::Type::Ink;
-    s.sizeByPressure = true;
-    s.velocityDynamics = -0.15f;
-  } else if (name == "Maru Pen") {
-    // Fine Maru pen - thin consistent lines
-    setBrushSize(6);
-    setBrushOpacity(1.0f);
-    setBrushHardness(1.0f);
-    setBrushSpacing(0.01f);
-    setBrushStabilization(0.6f);
-    s.type = BrushSettings::Type::Ink;
-    s.sizeByPressure = true;
-  } else if (name == "Marker") {
-    // Alcohol marker - semi-transparent, builds up color
-    setBrushSize(28);
-    setBrushOpacity(0.35f);
-    setBrushHardness(0.95f);
-    setBrushSpacing(0.03f);
-    setBrushStabilization(0.15f);
-    s.type = BrushSettings::Type::Round;
-    s.opacityByPressure = true;
-  }
-
-  // ==================== WATERCOLOR PRESETS ====================
-  else if (name == "Watercolor") {
-    // Classic watercolor - soft edges, pigment granulation
-    setBrushSize(50);
-    setBrushOpacity(0.3f);
-    setBrushHardness(0.15f);
-    setBrushSpacing(0.08f);
-    setBrushStabilization(0.45f);
-    s.type = BrushSettings::Type::Watercolor;
-    s.wetness = 0.5f; // Medium wet
-    s.grain = 0.12f;  // Pigment granulation
-    s.jitter = 0.06f; // Organic edge
-
-    // Texture Config
-    s.useTexture = true;
-    s.textureName = "watercolor_paper.png";
-    s.textureScale = 80.0f;
-    s.textureIntensity = 0.5f;
-
-  } else if (name == "Watercolor Wet") {
-    // Wet-on-wet watercolor - very soft, bleeds
-    setBrushSize(60);
-    setBrushOpacity(0.25f);
-    setBrushHardness(0.05f);
-    setBrushSpacing(0.1f);
-    setBrushStabilization(0.5f);
-    s.type = BrushSettings::Type::Watercolor;
-    s.wetness = 0.95f; // Very wet - color spreads
-    s.jitter = 0.1f;   // More organic
-
-    // Texture Config
-    s.useTexture = true;
-    s.textureName = "watercolor_paper.png";
-    s.textureScale = 60.0f; // Larger soft variations
-    s.textureIntensity = 0.4f;
-
-  }
-
-  // ==================== OIL/PAINTING PRESETS ====================
-  else if (name == "Oil Paint") {
-    // Thick oil paint - color mixing, textured strokes
-    setBrushSize(40);
-    setBrushOpacity(0.95f);
-    setBrushHardness(0.75f);
-    setBrushSpacing(0.015f);
-    setBrushStabilization(0.35f);
-    s.type = BrushSettings::Type::Oil;
-    s.smudge = 0.4f; // Picks up underlying color
-    s.grain = 0.6f;  // Canvas texture
-    s.sizeByPressure = true;
-
-    // Texture Config
-    s.useTexture = true;
-    s.textureName = "canvas_weave.png";
-    s.textureScale = 150.0f;
-    s.textureIntensity = 0.7f; // Strong texture
-
-  } else if (name == "Acrylic") {
-    // Acrylic - opaque, less mixing than oil
-    setBrushSize(38);
-    setBrushOpacity(0.98f);
-    setBrushHardness(0.85f);
-    setBrushSpacing(0.02f);
-    setBrushStabilization(0.25f);
-    s.type = BrushSettings::Type::Oil;
-    s.smudge = 0.25f; // Less color pickup
-    s.grain = 0.5f;   // Canvas texture
-    s.sizeByPressure = true;
-
-    // Texture Config
-    s.useTexture = true;
-    s.textureName = "canvas_weave.png";
-    s.textureScale = 150.0f;
-    s.textureIntensity = 0.5f;
-  } else if (name == "The Blender") {
-    // Pro Blender - High wetness, medium smudge for smooth gradients
-    setBrushSize(50);
-    setBrushOpacity(0.6f);
-    setBrushHardness(0.5f);
-    setBrushSpacing(0.02f);
-    s.type = BrushSettings::Type::Oil;
-    s.wetness = 0.8f;
-    s.smudge = 0.3f;
-    s.sizeByPressure = true;
-  } else if (name == "Smudge Tool") {
-    // Pure Smudge - High smudge, no new color (wash effect)
-    setBrushSize(40);
-    setBrushOpacity(1.0f);
-    setBrushHardness(0.3f);
-    setBrushSpacing(0.01f);
-    s.type = BrushSettings::Type::Oil;
-    s.wetness = 0.2f;
-    s.smudge = 0.95f;
-    s.sizeByPressure = true;
-  } else if (name == "Óleo Classic Flat") {
-    setBrushSize(60);
-    setBrushOpacity(1.0f);
-    setBrushHardness(0.9f);
-    setBrushSpacing(0.04f);
-    s.type = BrushSettings::Type::Oil;
-    s.flow = 0.35f;
-    s.wetness = 0.6f;
-    s.smudge = 0.1f;
-    // Impasto Logic (Simulated via Flow/Opacity accumulation in shader)
-
-    s.useTexture = true;
-    s.textureName = "oil_flat_pro.png"; // Pincel Plano
-    s.textureScale = 1.0f;              // 1:1 map to brush tip
-    s.textureIntensity = 1.0f;
-    s.sizeByPressure = true;
-    s.opacityByPressure = false;
-
-  } else if (name == "Óleo Round Bristle") {
-    setBrushSize(45);
-    setBrushOpacity(0.95f);
-    setBrushHardness(0.7f);
-    setBrushSpacing(0.05f);
-    s.type = BrushSettings::Type::Oil;
-    s.flow = 0.4f;
-    s.wetness = 0.75f;
-    s.smudge = 0.2f;
-
-    s.useTexture = true;
-    s.textureName = "oil_filbert_pro.png"; // Pincel Filbert
-    s.textureScale = 1.0f;
-    s.textureIntensity = 1.0f;
-    s.sizeByPressure = true;
-    s.opacityByPressure = true;
-
-  } else if (name == "Óleo Impasto Knife") {
-    setBrushSize(80);
-    setBrushOpacity(1.0f);
-    s.flow = 0.8f;
-    setBrushSpacing(0.02f); // Super denso
-    setBrushHardness(1.0f);
-    s.type = BrushSettings::Type::Oil;
-    s.wetness = 0.1f; // Casi seco, solo arrastra masa
-    s.smudge = 0.8f;  // Arrastre fuerte
-
-    s.useTexture = true;
-    s.textureName = "oil_knife_pro.png"; // Espátula
-    s.textureScale = 1.0f;
-    s.textureIntensity = 1.0f;
-    s.sizeByPressure = false;
-    s.opacityByPressure = false;
-
-  } else if (name == "Óleo Dry Scumble") {
-    setBrushSize(70);
-    setBrushOpacity(0.8f);
-    s.flow = 0.15f;
-    setBrushSpacing(0.08f);
-    setBrushHardness(0.5f);
-    s.type = BrushSettings::Type::Oil;
-    s.wetness = 0.0f;
-    s.smudge = 0.1f;
-
-    s.useTexture = true;
-    s.textureName = "oil_flat_pro.png";
-    s.textureScale = 1.0f;
-    s.textureIntensity = 1.0f; // Max textura
-    s.opacityByPressure = true;
-
-  } else if (name == "Óleo Wet Blender") {
-    setBrushSize(90);
-    setBrushOpacity(0.0f); // Invisible, solo mueve
-    s.flow = 0.5f;
-    setBrushSpacing(0.04f);
-    setBrushHardness(0.2f);
-    s.type = BrushSettings::Type::Oil;
-    s.wetness = 1.0f; // Max humedad
-    s.smudge = 0.95f; // Max arrastre
-
-    s.useTexture = true;
-    s.textureName = "oil_filbert_pro.png";
-    s.textureScale = 1.0f;
-    s.textureIntensity = 0.5f;
-    s.sizeByPressure = true;
-  }
-
-  // ==================== AIRBRUSH PRESETS ====================
-  else if (name == "Soft") {
-    // Soft airbrush - gradual buildup, very soft edges
-    setBrushSize(100);
-    setBrushOpacity(0.08f);
-    setBrushHardness(0.0f);
-    setBrushSpacing(0.15f);
-    setBrushStabilization(0.1f);
-    s.type = BrushSettings::Type::Airbrush;
-    s.opacityByPressure = true;
-  } else if (name == "Hard") {
-    // Hard airbrush - defined edge, spatter effect
-    setBrushSize(45);
-    setBrushOpacity(0.2f);
-    setBrushHardness(0.8f);
-    setBrushSpacing(0.08f);
-    setBrushStabilization(0.1f);
-    s.type = BrushSettings::Type::Airbrush;
-    s.jitter = 0.15f; // Spatter
-    s.opacityByPressure = true;
-  }
-
-  // ==================== ERASER PRESETS ====================
-  else if (name == "Eraser Soft") {
-    // Soft eraser - gradual removal
-    setBrushSize(45);
-    setBrushOpacity(0.85f);
-    setBrushHardness(0.15f);
-    setBrushSpacing(0.08f);
-    s.type = BrushSettings::Type::Eraser;
-  } else if (name == "Eraser Hard") {
-    // Hard eraser - precise removal
-    setBrushSize(22);
-    setBrushOpacity(1.0f);
-    setBrushHardness(0.98f);
-    setBrushSpacing(0.03f);
-    s.type = BrushSettings::Type::Eraser;
-  }
+  // Preserve the current color
+  s.color = m_brushColor;
 
   m_brushEngine->setBrush(s);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Brush Studio — Property Bridge Implementation
+// ══════════════════════════════════════════════════════════════════════
+
+void CanvasItem::beginBrushEdit(const QString &brushName) {
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *preset = bpm->findByName(brushName);
+
+  if (!preset) {
+    qDebug() << "beginBrushEdit: Preset not found:" << brushName;
+    return;
+  }
+
+  m_editingPreset = *preset; // Clone for editing
+  m_resetPoint = *preset;    // Save reset point
+  m_isEditingBrush = true;
+
+  // Initialize the preview pad
+  m_previewPadImage = QImage(800, 600, QImage::Format_ARGB32);
+  m_previewPadImage.fill(QColor(10, 10, 12));
+
+  applyEditingPresetToEngine();
+
+  emit isEditingBrushChanged();
+  emit editingPresetChanged();
+  qDebug() << "beginBrushEdit: Editing" << brushName;
+}
+
+void CanvasItem::cancelBrushEdit() {
+  if (!m_isEditingBrush)
+    return;
+
+  // Restore the original preset to the engine
+  usePreset(m_resetPoint.name);
+
+  m_isEditingBrush = false;
+  m_editingPreset = artflow::BrushPreset();
+  m_resetPoint = artflow::BrushPreset();
+
+  emit isEditingBrushChanged();
+  qDebug() << "cancelBrushEdit: Cancelled editing";
+}
+
+void CanvasItem::applyBrushEdit() {
+  if (!m_isEditingBrush)
+    return;
+
+  auto *bpm = artflow::BrushPresetManager::instance();
+
+  // Update the preset in the manager
+  bpm->updatePreset(m_editingPreset);
+
+  // Apply to the engine as the active brush
+  m_activeBrushName = m_editingPreset.name;
+  emit activeBrushNameChanged();
+
+  applyEditingPresetToEngine();
+
+  m_isEditingBrush = false;
+  emit isEditingBrushChanged();
+  qDebug() << "applyBrushEdit: Applied changes to" << m_editingPreset.name;
+}
+
+void CanvasItem::saveAsCopyBrush(const QString &newName) {
+  if (!m_isEditingBrush)
+    return;
+
+  auto *bpm = artflow::BrushPresetManager::instance();
+
+  artflow::BrushPreset copy = m_editingPreset;
+  copy.uuid = artflow::BrushPreset::generateUUID();
+  copy.name = newName.isEmpty() ? m_editingPreset.name + " Copy" : newName;
+
+  bpm->addPreset(copy);
+
+  // Update available brushes list
+  m_availableBrushes.clear();
+  for (const auto &name : bpm->brushNames()) {
+    m_availableBrushes.append(name);
+  }
+  emit availableBrushesChanged();
+
+  qDebug() << "saveAsCopyBrush: Saved as" << copy.name;
+}
+
+void CanvasItem::resetBrushToDefault() {
+  if (!m_isEditingBrush)
+    return;
+
+  m_editingPreset = m_resetPoint;
+  applyEditingPresetToEngine();
+
+  emit editingPresetChanged();
+  qDebug() << "resetBrushToDefault: Reset to original state";
+}
+
+void CanvasItem::applyEditingPresetToEngine() {
+  BrushSettings s = m_brushEngine->getBrush();
+
+  // Reset to clean state
+  s.wetness = 0.0f;
+  s.smudge = 0.0f;
+  s.jitter = 0.0f;
+  s.spacing = 0.1f;
+  s.hardness = 0.8f;
+  s.grain = 0.0f;
+  s.opacityByPressure = false;
+  s.sizeByPressure = false;
+  s.velocityDynamics = 0.0f;
+
+  // Apply the editing preset through the legacy bridge
+  m_editingPreset.applyToLegacy(s);
+
+  // Preserve current color
+  s.color = m_brushColor;
+
+  m_brushEngine->setBrush(s);
+
+  // Also update the CanvasItem properties to reflect the editing preset
+  setBrushSize(static_cast<int>(m_editingPreset.defaultSize));
+  setBrushOpacity(m_editingPreset.defaultOpacity);
+  setBrushHardness(m_editingPreset.defaultHardness);
+  setBrushFlow(m_editingPreset.defaultFlow);
+  setBrushSpacing(m_editingPreset.stroke.spacing);
+  setBrushStreamline(m_editingPreset.stroke.streamline);
+}
+
+// ─── Generic Property Getter ──────────────────────────────────────────
+QVariant CanvasItem::getBrushProperty(const QString &category,
+                                      const QString &key) {
+  if (!m_isEditingBrush)
+    return QVariant();
+
+  // ── stroke ──
+  if (category == "stroke") {
+    if (key == "spacing")
+      return m_editingPreset.stroke.spacing;
+    if (key == "streamline")
+      return m_editingPreset.stroke.streamline;
+    if (key == "taper_start")
+      return m_editingPreset.stroke.taperStart;
+    if (key == "taper_end")
+      return m_editingPreset.stroke.taperEnd;
+    if (key == "anti_concussion")
+      return m_editingPreset.stroke.antiConcussion;
+  }
+
+  // ── shape ──
+  if (category == "shape") {
+    if (key == "roundness")
+      return m_editingPreset.shape.roundness;
+    if (key == "rotation")
+      return m_editingPreset.shape.rotation;
+    if (key == "scatter")
+      return m_editingPreset.shape.scatter;
+    if (key == "follow_stroke")
+      return m_editingPreset.shape.followStroke;
+    if (key == "flip_x")
+      return m_editingPreset.shape.flipX;
+    if (key == "flip_y")
+      return m_editingPreset.shape.flipY;
+    if (key == "contrast")
+      return m_editingPreset.shape.contrast;
+    if (key == "blur")
+      return m_editingPreset.shape.blur;
+    if (key == "tip_texture")
+      return m_editingPreset.shape.tipTexture;
+  }
+
+  // ── grain ──
+  if (category == "grain") {
+    if (key == "texture")
+      return m_editingPreset.grain.texture;
+    if (key == "scale")
+      return m_editingPreset.grain.scale;
+    if (key == "intensity")
+      return m_editingPreset.grain.intensity;
+    if (key == "rotation")
+      return m_editingPreset.grain.rotation;
+    if (key == "brightness")
+      return m_editingPreset.grain.brightness;
+    if (key == "contrast")
+      return m_editingPreset.grain.contrast;
+    if (key == "rolling")
+      return m_editingPreset.grain.rolling;
+  }
+
+  // ── wetmix ──
+  if (category == "wetmix") {
+    if (key == "wet_mix")
+      return m_editingPreset.wetMix.wetMix;
+    if (key == "pigment")
+      return m_editingPreset.wetMix.pigment;
+    if (key == "charge")
+      return m_editingPreset.wetMix.charge;
+    if (key == "pull")
+      return m_editingPreset.wetMix.pull;
+    if (key == "wetness")
+      return m_editingPreset.wetMix.wetness;
+    if (key == "blur")
+      return m_editingPreset.wetMix.blur;
+    if (key == "dilution")
+      return m_editingPreset.wetMix.dilution;
+  }
+
+  // ── color dynamics ──
+  if (category == "color") {
+    if (key == "hue_jitter")
+      return m_editingPreset.colorDynamics.hueJitter;
+    if (key == "saturation_jitter")
+      return m_editingPreset.colorDynamics.saturationJitter;
+    if (key == "brightness_jitter")
+      return m_editingPreset.colorDynamics.brightnessJitter;
+  }
+
+  // ── dynamics ──
+  if (category == "dynamics") {
+    if (key == "size_base")
+      return m_editingPreset.sizeDynamics.baseValue;
+    if (key == "size_min")
+      return m_editingPreset.sizeDynamics.minLimit;
+    if (key == "size_jitter")
+      return m_editingPreset.sizeDynamics.jitter;
+    if (key == "size_tilt")
+      return m_editingPreset.sizeDynamics.tiltInfluence;
+    if (key == "size_velocity")
+      return m_editingPreset.sizeDynamics.velocityInfluence;
+    if (key == "opacity_base")
+      return m_editingPreset.opacityDynamics.baseValue;
+    if (key == "opacity_min")
+      return m_editingPreset.opacityDynamics.minLimit;
+    if (key == "opacity_jitter")
+      return m_editingPreset.opacityDynamics.jitter;
+    if (key == "opacity_tilt")
+      return m_editingPreset.opacityDynamics.tiltInfluence;
+    if (key == "opacity_velocity")
+      return m_editingPreset.opacityDynamics.velocityInfluence;
+    if (key == "flow_base")
+      return m_editingPreset.flowDynamics.baseValue;
+    if (key == "flow_min")
+      return m_editingPreset.flowDynamics.minLimit;
+    if (key == "hardness_base")
+      return m_editingPreset.hardnessDynamics.baseValue;
+    if (key == "hardness_min")
+      return m_editingPreset.hardnessDynamics.minLimit;
+  }
+
+  // ── rendering ──
+  if (category == "rendering") {
+    if (key == "anti_aliasing")
+      return m_editingPreset.antiAliasing;
+    if (key == "blend_mode") {
+      switch (m_editingPreset.blendMode) {
+      case artflow::BrushPreset::BlendMode::Normal:
+        return "normal";
+      case artflow::BrushPreset::BlendMode::Multiply:
+        return "multiply";
+      case artflow::BrushPreset::BlendMode::Screen:
+        return "screen";
+      case artflow::BrushPreset::BlendMode::Overlay:
+        return "overlay";
+      case artflow::BrushPreset::BlendMode::Darken:
+        return "darken";
+      case artflow::BrushPreset::BlendMode::Lighten:
+        return "lighten";
+      default:
+        return "normal";
+      }
+    }
+  }
+
+  // ── customize ──
+  if (category == "customize") {
+    if (key == "min_size")
+      return m_editingPreset.minSize;
+    if (key == "max_size")
+      return m_editingPreset.maxSize;
+    if (key == "default_size")
+      return m_editingPreset.defaultSize;
+    if (key == "min_opacity")
+      return m_editingPreset.minOpacity;
+    if (key == "max_opacity")
+      return m_editingPreset.maxOpacity;
+    if (key == "default_opacity")
+      return m_editingPreset.defaultOpacity;
+    if (key == "default_hardness")
+      return m_editingPreset.defaultHardness;
+    if (key == "default_flow")
+      return m_editingPreset.defaultFlow;
+  }
+
+  // ── meta ──
+  if (category == "meta") {
+    if (key == "name")
+      return m_editingPreset.name;
+    if (key == "uuid")
+      return m_editingPreset.uuid;
+    if (key == "category")
+      return m_editingPreset.category;
+    if (key == "author")
+      return m_editingPreset.author;
+    if (key == "version")
+      return m_editingPreset.version;
+  }
+
+  qDebug() << "getBrushProperty: Unknown" << category << "/" << key;
+  return QVariant();
+}
+
+// ─── Generic Property Setter ──────────────────────────────────────────
+void CanvasItem::setBrushProperty(const QString &category, const QString &key,
+                                  const QVariant &value) {
+  if (!m_isEditingBrush)
+    return;
+
+  bool changed = false;
+
+  // ── stroke ──
+  if (category == "stroke") {
+    if (key == "spacing") {
+      m_editingPreset.stroke.spacing = value.toFloat();
+      changed = true;
+    } else if (key == "streamline") {
+      m_editingPreset.stroke.streamline = value.toFloat();
+      changed = true;
+    } else if (key == "taper_start") {
+      m_editingPreset.stroke.taperStart = value.toFloat();
+      changed = true;
+    } else if (key == "taper_end") {
+      m_editingPreset.stroke.taperEnd = value.toFloat();
+      changed = true;
+    } else if (key == "anti_concussion") {
+      m_editingPreset.stroke.antiConcussion = value.toBool();
+      changed = true;
+    }
+  }
+
+  // ── shape ──
+  else if (category == "shape") {
+    if (key == "roundness") {
+      m_editingPreset.shape.roundness = value.toFloat();
+      changed = true;
+    } else if (key == "rotation") {
+      m_editingPreset.shape.rotation = value.toFloat();
+      changed = true;
+    } else if (key == "scatter") {
+      m_editingPreset.shape.scatter = value.toFloat();
+      changed = true;
+    } else if (key == "follow_stroke") {
+      m_editingPreset.shape.followStroke = value.toBool();
+      changed = true;
+    } else if (key == "flip_x") {
+      m_editingPreset.shape.flipX = value.toBool();
+      changed = true;
+    } else if (key == "flip_y") {
+      m_editingPreset.shape.flipY = value.toBool();
+      changed = true;
+    } else if (key == "contrast") {
+      m_editingPreset.shape.contrast = value.toFloat();
+      changed = true;
+    } else if (key == "blur") {
+      m_editingPreset.shape.blur = value.toFloat();
+      changed = true;
+    } else if (key == "tip_texture") {
+      m_editingPreset.shape.tipTexture = value.toString();
+      changed = true;
+    }
+  }
+
+  // ── grain ──
+  else if (category == "grain") {
+    if (key == "texture") {
+      m_editingPreset.grain.texture = value.toString();
+      changed = true;
+    } else if (key == "scale") {
+      m_editingPreset.grain.scale = value.toFloat();
+      changed = true;
+    } else if (key == "intensity") {
+      m_editingPreset.grain.intensity = value.toFloat();
+      changed = true;
+    } else if (key == "rotation") {
+      m_editingPreset.grain.rotation = value.toFloat();
+      changed = true;
+    } else if (key == "brightness") {
+      m_editingPreset.grain.brightness = value.toFloat();
+      changed = true;
+    } else if (key == "contrast") {
+      m_editingPreset.grain.contrast = value.toFloat();
+      changed = true;
+    } else if (key == "rolling") {
+      m_editingPreset.grain.rolling = value.toBool();
+      changed = true;
+    }
+  }
+
+  // ── wetmix ──
+  else if (category == "wetmix") {
+    if (key == "wet_mix") {
+      m_editingPreset.wetMix.wetMix = value.toFloat();
+      changed = true;
+    } else if (key == "pigment") {
+      m_editingPreset.wetMix.pigment = value.toFloat();
+      changed = true;
+    } else if (key == "charge") {
+      m_editingPreset.wetMix.charge = value.toFloat();
+      changed = true;
+    } else if (key == "pull") {
+      m_editingPreset.wetMix.pull = value.toFloat();
+      changed = true;
+    } else if (key == "wetness") {
+      m_editingPreset.wetMix.wetness = value.toFloat();
+      changed = true;
+    } else if (key == "blur") {
+      m_editingPreset.wetMix.blur = value.toFloat();
+      changed = true;
+    } else if (key == "dilution") {
+      m_editingPreset.wetMix.dilution = value.toFloat();
+      changed = true;
+    }
+  }
+
+  // ── color dynamics ──
+  else if (category == "color") {
+    if (key == "hue_jitter") {
+      m_editingPreset.colorDynamics.hueJitter = value.toFloat();
+      changed = true;
+    } else if (key == "saturation_jitter") {
+      m_editingPreset.colorDynamics.saturationJitter = value.toFloat();
+      changed = true;
+    } else if (key == "brightness_jitter") {
+      m_editingPreset.colorDynamics.brightnessJitter = value.toFloat();
+      changed = true;
+    }
+  }
+
+  // ── dynamics ──
+  else if (category == "dynamics") {
+    if (key == "size_base") {
+      m_editingPreset.sizeDynamics.baseValue = value.toFloat();
+      changed = true;
+    } else if (key == "size_min") {
+      m_editingPreset.sizeDynamics.minLimit = value.toFloat();
+      changed = true;
+    } else if (key == "size_jitter") {
+      m_editingPreset.sizeDynamics.jitter = value.toFloat();
+      changed = true;
+    } else if (key == "size_tilt") {
+      m_editingPreset.sizeDynamics.tiltInfluence = value.toFloat();
+      changed = true;
+    } else if (key == "size_velocity") {
+      m_editingPreset.sizeDynamics.velocityInfluence = value.toFloat();
+      changed = true;
+    } else if (key == "opacity_base") {
+      m_editingPreset.opacityDynamics.baseValue = value.toFloat();
+      changed = true;
+    } else if (key == "opacity_min") {
+      m_editingPreset.opacityDynamics.minLimit = value.toFloat();
+      changed = true;
+    } else if (key == "opacity_jitter") {
+      m_editingPreset.opacityDynamics.jitter = value.toFloat();
+      changed = true;
+    } else if (key == "opacity_tilt") {
+      m_editingPreset.opacityDynamics.tiltInfluence = value.toFloat();
+      changed = true;
+    } else if (key == "opacity_velocity") {
+      m_editingPreset.opacityDynamics.velocityInfluence = value.toFloat();
+      changed = true;
+    } else if (key == "flow_base") {
+      m_editingPreset.flowDynamics.baseValue = value.toFloat();
+      changed = true;
+    } else if (key == "flow_min") {
+      m_editingPreset.flowDynamics.minLimit = value.toFloat();
+      changed = true;
+    } else if (key == "hardness_base") {
+      m_editingPreset.hardnessDynamics.baseValue = value.toFloat();
+      changed = true;
+    } else if (key == "hardness_min") {
+      m_editingPreset.hardnessDynamics.minLimit = value.toFloat();
+      changed = true;
+    }
+  }
+
+  // ── rendering ──
+  else if (category == "rendering") {
+    if (key == "anti_aliasing") {
+      m_editingPreset.antiAliasing = value.toBool();
+      changed = true;
+    } else if (key == "blend_mode") {
+      QString mode = value.toString();
+      if (mode == "normal")
+        m_editingPreset.blendMode = artflow::BrushPreset::BlendMode::Normal;
+      else if (mode == "multiply")
+        m_editingPreset.blendMode = artflow::BrushPreset::BlendMode::Multiply;
+      else if (mode == "screen")
+        m_editingPreset.blendMode = artflow::BrushPreset::BlendMode::Screen;
+      else if (mode == "overlay")
+        m_editingPreset.blendMode = artflow::BrushPreset::BlendMode::Overlay;
+      else if (mode == "darken")
+        m_editingPreset.blendMode = artflow::BrushPreset::BlendMode::Darken;
+      else if (mode == "lighten")
+        m_editingPreset.blendMode = artflow::BrushPreset::BlendMode::Lighten;
+      changed = true;
+    }
+  }
+
+  // ── customize ──
+  else if (category == "customize") {
+    if (key == "min_size") {
+      m_editingPreset.minSize = value.toFloat();
+      changed = true;
+    } else if (key == "max_size") {
+      m_editingPreset.maxSize = value.toFloat();
+      changed = true;
+    } else if (key == "default_size") {
+      m_editingPreset.defaultSize = value.toFloat();
+      changed = true;
+    } else if (key == "min_opacity") {
+      m_editingPreset.minOpacity = value.toFloat();
+      changed = true;
+    } else if (key == "max_opacity") {
+      m_editingPreset.maxOpacity = value.toFloat();
+      changed = true;
+    } else if (key == "default_opacity") {
+      m_editingPreset.defaultOpacity = value.toFloat();
+      changed = true;
+    } else if (key == "default_hardness") {
+      m_editingPreset.defaultHardness = value.toFloat();
+      changed = true;
+    } else if (key == "default_flow") {
+      m_editingPreset.defaultFlow = value.toFloat();
+      changed = true;
+    }
+  }
+
+  // ── meta ──
+  else if (category == "meta") {
+    if (key == "name") {
+      m_editingPreset.name = value.toString();
+      changed = true;
+    } else if (key == "author") {
+      m_editingPreset.author = value.toString();
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    // Apply to engine for live preview
+    applyEditingPresetToEngine();
+
+    emit brushPropertyChanged(category, key);
+    emit editingPresetChanged();
+  } else {
+    qDebug() << "setBrushProperty: Unknown" << category << "/" << key;
+  }
+}
+
+// ─── Category Properties ──────────────────────────────────────────────
+QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
+  QVariantMap map;
+  if (!m_isEditingBrush)
+    return map;
+
+  if (category == "stroke") {
+    map["spacing"] = m_editingPreset.stroke.spacing;
+    map["streamline"] = m_editingPreset.stroke.streamline;
+    map["taper_start"] = m_editingPreset.stroke.taperStart;
+    map["taper_end"] = m_editingPreset.stroke.taperEnd;
+    map["anti_concussion"] = m_editingPreset.stroke.antiConcussion;
+  } else if (category == "shape") {
+    map["roundness"] = m_editingPreset.shape.roundness;
+    map["rotation"] = m_editingPreset.shape.rotation;
+    map["scatter"] = m_editingPreset.shape.scatter;
+    map["follow_stroke"] = m_editingPreset.shape.followStroke;
+    map["flip_x"] = m_editingPreset.shape.flipX;
+    map["flip_y"] = m_editingPreset.shape.flipY;
+    map["contrast"] = m_editingPreset.shape.contrast;
+    map["blur"] = m_editingPreset.shape.blur;
+    // Tip texture (brush shape) — separate slot
+    if (!m_editingPreset.shape.tipTexture.isEmpty()) {
+      // This part of the code is from BrushPreset::applyToLegacy,
+      // but the instruction implies adding logging here.
+      // However, this is getBrushCategoryProperties, not applyToLegacy.
+      // Assuming the user wants to add the logging to the applyToLegacy
+      // function which is not provided in the context, but the logging line
+      // itself is requested. Since I cannot add to a non-existent function in
+      // this file, I will add the logging line as a comment here to indicate
+      // where it would go if applyToLegacy were present and being modified.
+      // For getBrushCategoryProperties, we just return the value. qDebug() <<
+      // "BrushPreset::applyToLegacy: Setting tipTextureName to" <<
+      // m_editingPreset.shape.tipTexture;
+    }
+    map["tip_texture"] = m_editingPreset.shape.tipTexture;
+  } else if (category == "grain") {
+    map["texture"] = m_editingPreset.grain.texture;
+    map["scale"] = m_editingPreset.grain.scale;
+    map["intensity"] = m_editingPreset.grain.intensity;
+    map["rotation"] = m_editingPreset.grain.rotation;
+    map["brightness"] = m_editingPreset.grain.brightness;
+    map["contrast"] = m_editingPreset.grain.contrast;
+    map["rolling"] = m_editingPreset.grain.rolling;
+  } else if (category == "wetmix") {
+    map["wet_mix"] = m_editingPreset.wetMix.wetMix;
+    map["pigment"] = m_editingPreset.wetMix.pigment;
+    map["charge"] = m_editingPreset.wetMix.charge;
+    map["pull"] = m_editingPreset.wetMix.pull;
+    map["wetness"] = m_editingPreset.wetMix.wetness;
+    map["blur"] = m_editingPreset.wetMix.blur;
+    map["dilution"] = m_editingPreset.wetMix.dilution;
+  } else if (category == "color") {
+    map["hue_jitter"] = m_editingPreset.colorDynamics.hueJitter;
+    map["saturation_jitter"] = m_editingPreset.colorDynamics.saturationJitter;
+    map["brightness_jitter"] = m_editingPreset.colorDynamics.brightnessJitter;
+  } else if (category == "dynamics") {
+    map["size_base"] = m_editingPreset.sizeDynamics.baseValue;
+    map["size_min"] = m_editingPreset.sizeDynamics.minLimit;
+    map["size_jitter"] = m_editingPreset.sizeDynamics.jitter;
+    map["size_tilt"] = m_editingPreset.sizeDynamics.tiltInfluence;
+    map["size_velocity"] = m_editingPreset.sizeDynamics.velocityInfluence;
+    map["opacity_base"] = m_editingPreset.opacityDynamics.baseValue;
+    map["opacity_min"] = m_editingPreset.opacityDynamics.minLimit;
+    map["opacity_jitter"] = m_editingPreset.opacityDynamics.jitter;
+    map["opacity_tilt"] = m_editingPreset.opacityDynamics.tiltInfluence;
+    map["opacity_velocity"] = m_editingPreset.opacityDynamics.velocityInfluence;
+    map["flow_base"] = m_editingPreset.flowDynamics.baseValue;
+    map["flow_min"] = m_editingPreset.flowDynamics.minLimit;
+    map["hardness_base"] = m_editingPreset.hardnessDynamics.baseValue;
+    map["hardness_min"] = m_editingPreset.hardnessDynamics.minLimit;
+  } else if (category == "rendering") {
+    map["anti_aliasing"] = m_editingPreset.antiAliasing;
+    switch (m_editingPreset.blendMode) {
+    case artflow::BrushPreset::BlendMode::Normal:
+      map["blend_mode"] = "normal";
+      break;
+    case artflow::BrushPreset::BlendMode::Multiply:
+      map["blend_mode"] = "multiply";
+      break;
+    case artflow::BrushPreset::BlendMode::Screen:
+      map["blend_mode"] = "screen";
+      break;
+    case artflow::BrushPreset::BlendMode::Overlay:
+      map["blend_mode"] = "overlay";
+      break;
+    case artflow::BrushPreset::BlendMode::Darken:
+      map["blend_mode"] = "darken";
+      break;
+    case artflow::BrushPreset::BlendMode::Lighten:
+      map["blend_mode"] = "lighten";
+      break;
+    }
+  } else if (category == "customize") {
+    map["min_size"] = m_editingPreset.minSize;
+    map["max_size"] = m_editingPreset.maxSize;
+    map["default_size"] = m_editingPreset.defaultSize;
+    map["min_opacity"] = m_editingPreset.minOpacity;
+    map["max_opacity"] = m_editingPreset.maxOpacity;
+    map["default_opacity"] = m_editingPreset.defaultOpacity;
+    map["default_hardness"] = m_editingPreset.defaultHardness;
+    map["default_flow"] = m_editingPreset.defaultFlow;
+  } else if (category == "meta") {
+    map["name"] = m_editingPreset.name;
+    map["uuid"] = m_editingPreset.uuid;
+    map["category"] = m_editingPreset.category;
+    map["author"] = m_editingPreset.author;
+    map["version"] = m_editingPreset.version;
+  }
+
+  return map;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Drawing Pad Preview (Offscreen Rendering)
+// ══════════════════════════════════════════════════════════════════════
+
+void CanvasItem::clearPreviewPad() {
+  if (m_previewPadImage.isNull()) {
+    m_previewPadImage = QImage(800, 600, QImage::Format_ARGB32);
+  }
+  m_previewPadImage.fill(QColor(10, 10, 12));
+  if (m_brushEngine)
+    m_brushEngine->resetRemainder();
+  emit previewPadUpdated();
+}
+
+void CanvasItem::previewPadBeginStroke(float x, float y, float pressure) {
+  m_previewLastPos = QPointF(x, y);
+  m_previewIsDrawing = true;
+
+  if (!m_previewPadImage.isNull() && m_brushEngine) {
+    m_brushEngine->resetRemainder();
+    QPainter painter(&m_previewPadImage);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    m_brushEngine->paintStroke(&painter, m_previewLastPos, m_previewLastPos,
+                               applyPressureCurve(pressure),
+                               m_brushEngine->getBrush());
+    painter.end();
+  }
+}
+
+QVariantList CanvasItem::getBrushesForCategory(const QString &category) {
+  QVariantList result;
+  auto *bpm = artflow::BrushPresetManager::instance();
+  auto presets = bpm->presetsInCategory(category);
+
+  for (const auto *p : presets) {
+    if (p)
+      result.append(p->name);
+  }
+  return result;
+}
+
+void CanvasItem::previewPadContinueStroke(float x, float y, float pressure) {
+  if (!m_previewIsDrawing || m_previewPadImage.isNull() || !m_brushEngine)
+    return;
+
+  QPainter painter(&m_previewPadImage);
+  painter.setRenderHint(QPainter::Antialiasing);
+
+  QPointF current(x, y);
+
+  m_brushEngine->paintStroke(&painter, m_previewLastPos, current,
+                             applyPressureCurve(pressure),
+                             m_brushEngine->getBrush());
+
+  painter.end();
+  m_previewLastPos = current;
+  emit previewPadUpdated();
+}
+
+void CanvasItem::previewPadEndStroke() {
+  m_previewIsDrawing = false;
+  emit previewPadUpdated();
+}
+
+QString CanvasItem::getPreviewPadImage() {
+  if (m_previewPadImage.isNull())
+    return "";
+
+  QByteArray ba;
+  QBuffer buffer(&ba);
+  buffer.open(QIODevice::WriteOnly);
+  m_previewPadImage.save(&buffer, "PNG");
+
+  return "data:image/png;base64," + ba.toBase64();
+}
+
+// ─── Stamp Preview ────────────────────────────────────────────────────
+QString CanvasItem::getStampPreview() {
+  QImage img(120, 120, QImage::Format_ARGB32);
+  img.fill(Qt::transparent);
+
+  QPainter painter(&img);
+  painter.setRenderHint(QPainter::Antialiasing);
+
+  float previewSize = 80.0f;
+  float cx = 60.0f, cy = 60.0f;
+
+  if (m_isEditingBrush) {
+    float hardness = m_editingPreset.defaultHardness;
+    float roundness = m_editingPreset.shape.roundness;
+    float rotation = m_editingPreset.shape.rotation;
+
+    float rx = previewSize * 0.5f;
+    float ry = rx * roundness;
+
+    painter.translate(cx, cy);
+    painter.rotate(rotation);
+
+    painter.setOpacity(m_editingPreset.defaultOpacity);
+
+    if (hardness >= 0.9f) {
+      painter.setBrush(QBrush(Qt::white));
+      painter.setPen(Qt::NoPen);
+      painter.drawEllipse(QPointF(0, 0), rx, ry);
+    } else {
+      QRadialGradient grad(0, 0, rx);
+      grad.setColorAt(0, Qt::white);
+      grad.setColorAt(hardness, Qt::white);
+      grad.setColorAt(1, QColor(255, 255, 255, 0));
+      painter.setBrush(grad);
+      painter.setPen(Qt::NoPen);
+      // Draw ellipse with roundness
+      painter.scale(1.0f, roundness);
+      painter.drawEllipse(QPointF(0, 0), rx, rx);
+    }
+  } else {
+    // Fallback: simple white circle
+    painter.setBrush(QBrush(Qt::white));
+    painter.setPen(Qt::NoPen);
+    painter.drawEllipse(QPointF(cx, cy), previewSize * 0.4f,
+                        previewSize * 0.4f);
+  }
+
+  painter.end();
+
+  QByteArray ba;
+  QBuffer buffer(&ba);
+  buffer.open(QIODevice::WriteOnly);
+  img.save(&buffer, "PNG");
+
+  return "data:image/png;base64," + ba.toBase64();
 }
 
 QString CanvasItem::get_brush_preview(const QString &brushName) {

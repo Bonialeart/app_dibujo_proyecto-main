@@ -397,4 +397,10 @@ CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj: \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QSettings \
  C:/Qt/6.10.2/mingw_64/include/QtCore/qsettings.h \
  C:/Qt/6.10.2/mingw_64/include/QtCore/QStandardPaths \
- C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qstandardpaths.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QVariantList \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantlist.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
+ C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h

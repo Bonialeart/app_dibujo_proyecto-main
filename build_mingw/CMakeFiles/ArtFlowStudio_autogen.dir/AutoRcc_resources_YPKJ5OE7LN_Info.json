@@ -31,6 +31,7 @@
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/LayerDelegate.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/SidebarButton.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/PressureSettingsDialog.qml",
+		"E:/app_dibujo_proyecto-main/src/ui/qml/components/BrushStudioDialog.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/SmartCursor.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/NewSketchbookDialog.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/DashboardView.qml",
