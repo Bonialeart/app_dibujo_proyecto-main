@@ -118,15 +118,16 @@ Popup {
         else slot1Color = newColor
         
         if (targetCanvas) {
-            // FIX: If transparency is active, DO NOT send hsv color to canvas.
-            // Canvas should remain in "transparent" mode (eraser).
-            targetCanvas.isEraser = isTransparent
             if (isTransparent) {
+                targetCanvas.isEraser = true
                 targetCanvas.brushColor = "transparent"
             } else {
+                targetCanvas.isEraser = false
                 targetCanvas.brushColor = newColor
             }
         }
+        
+        colorSelected(newColor)
         internalUpdate = false
     }
 

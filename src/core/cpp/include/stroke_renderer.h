@@ -20,6 +20,9 @@ public:
   void beginFrame(int width, int height);
   void endFrame();
 
+  int viewportWidth() const { return m_viewportWidth; }
+  int viewportHeight() const { return m_viewportHeight; }
+
   // Basic Rendering
   void drawDab(float x, float y, float size, float rotation, float r, float g,
                float b, float a, float hardness, float pressure, int mode,

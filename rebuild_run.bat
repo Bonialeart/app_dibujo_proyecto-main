@@ -15,3 +15,4 @@ if %errorlevel% neq 0 (
 echo Running ArtFlowStudio...
 build_mingw\ArtFlowStudio.exe
 echo Exit Code: %ERRORLEVEL%
+pause

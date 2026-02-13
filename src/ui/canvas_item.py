@@ -144,6 +144,8 @@ class QCanvasItem(QQuickPaintedItem, DrawingEngineMixin, FillToolMixin, Selectio
     currentProjectNameChanged = pyqtSignal()
     currentProjectPathChanged = pyqtSignal()
     currentBrushNameChanged = pyqtSignal()
+    requestToolIdx = pyqtSignal(int)
+    isEraserChanged = pyqtSignal(bool)
 
     def _prepare_magnetic_map(self):
         """Genera un mapa de bordes (Canny) de la capa activa."""
@@ -282,6 +284,7 @@ class QCanvasItem(QQuickPaintedItem, DrawingEngineMixin, FillToolMixin, Selectio
         # View State (Panning / Zoom)
         self._view_offset = QPointF(50, 50)
         self._zoom_level = 1.0
+        self._is_eraser = False
         self._is_saving = False # Guard for saving process
         
         # Brush/Tool State
@@ -853,6 +856,9 @@ class QCanvasItem(QQuickPaintedItem, DrawingEngineMixin, FillToolMixin, Selectio
                 pass
             else:
                 self.currentTool = target_tool
+            
+            # Sync isEraser property
+            self.isEraser = (target_tool == "eraser")
 
         # 5. Modo de Mezcla
         blend_str = p.get("blend", "Normal")
@@ -2829,6 +2835,22 @@ class QCanvasItem(QQuickPaintedItem, DrawingEngineMixin, FillToolMixin, Selectio
             self._update_native_cursor()
             self.currentToolChanged.emit(tool)
             self.availableBrushesChanged.emit()
+            
+            # Map tool name to UI index for synchronization
+            mapping = {"selection": 0, "shapes": 1, "lasso": 2, "magnetic_lasso": 3, "move": 4, 
+                       "pen": 5, "pencil": 6, "brush": 7, "airbrush": 8, "eraser": 9, "fill": 10, "picker": 11, "hand": 12}
+            if tool in mapping:
+                self.requestToolIdx.emit(mapping[tool])
+
+    @pyqtProperty(bool, notify=isEraserChanged)
+    def isEraser(self): return getattr(self, '_is_eraser', False)
+    @isEraser.setter
+    def isEraser(self, val):
+        if getattr(self, '_is_eraser', False) != val:
+            self._is_eraser = val
+            self.isEraserChanged.emit(val)
+            print(f"Eraser Mode: {val}")
+            self.update()
 
     @pyqtProperty(bool, notify=isTransformingChanged)
     def isTransforming(self): return self._is_transforming

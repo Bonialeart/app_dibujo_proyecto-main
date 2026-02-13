@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
 import QtQuick.Effects
+import Qt.labs.platform 1.1 // For ColorDialog
 
 // import QtWebEngine
 // import Qt5Compat.GraphicalEffects
@@ -20,10 +21,17 @@ Window {
     color: "#050507"
     
     onWidthChanged: if(isProjectActive) mainCanvas.fitToView()
-    onHeightChanged: if(isProjectActive) mainCanvas.fitToView()
-
-
     // Global Keyboard Handler (Centralized)
+    
+    // Global Color Dialog for Background Editing
+    ColorDialog {
+        id: globalBgColorDialog
+        title: "Edit Background Color"
+        onAccepted: {
+            mainCanvas.setBackgroundColor(color)
+        }
+    }
+
     // Global Keyboard Handler (Centralized)
     FocusScope {
         id: globalKeys
@@ -511,6 +519,11 @@ Window {
                     visible: isProjectActive
                     onVisibleChanged: if (visible) Qt.callLater(fitToView)
                     
+                    onRequestToolIdx: (idx) => { canvasPage.activeToolIdx = idx }
+                    onIsEraserChanged: { 
+                        colorStudioDialog.isTransparent = mainCanvas.isEraser 
+                    }
+                    
                     // Sombra Dinámica que sigue al papel (y se escala)
                     Rectangle { 
                         z: -1; 
@@ -743,7 +756,7 @@ Window {
                     // Picker Mouse Interaction Overlay
                     MouseArea {
                         anchors.fill: parent
-                        enabled: isProjectActive && canvasPage.activeToolIdx === 8
+                        enabled: isProjectActive && canvasPage.activeToolIdx === 11 // FIXED: Picker is index 11
                         z: 900 // Over canvas
                         cursorShape: Qt.CrossCursor
                         
@@ -850,7 +863,7 @@ Window {
                     ListElement { name: "hand"; icon: "hand.svg"; label: "Hand"; subTools: [] }
                 }
 
-                property int activeToolIdx: 4 // Default to Pen
+                property int activeToolIdx: 7 // Default to Brush (was 4/Move)
                 
                 onActiveToolIdxChanged: {
                     if (canvasPage.altPressed) return // Don't reset if switching via ALT
@@ -906,18 +919,18 @@ Window {
                 property bool isSampling: false
                 property point samplePos: Qt.point(0,0)
                 
-                // Shortcuts
-                Shortcut { sequence: "I"; onActivated: canvasPage.activeToolIdx = 10 }
-                Shortcut { sequence: "B"; onActivated: canvasPage.activeToolIdx = 4 }
-                Shortcut { sequence: "E"; onActivated: canvasPage.activeToolIdx = 8 }
+                // Shortcuts (FIXED INDICES & BEHAVIOR)
+                Shortcut { sequence: "I"; onActivated: canvasPage.activeToolIdx = 11 }
+                Shortcut { sequence: "B"; onActivated: canvasPage.activeToolIdx = 7 }
+                Shortcut { sequence: "E"; onActivated: mainCanvas.isEraser = !mainCanvas.isEraser }
                 
                 // Alt logic: Need to capture Alt press/release
                 focus: isProjectActive
                 Keys.onPressed: (event) => {
                     if (event.key === Qt.Key_Alt) {
-                        if (!altPressed && activeToolIdx !== 8) {
+                        if (!altPressed && activeToolIdx !== 11) { // FIXED: Picker is 11
                             lastToolIdx = activeToolIdx
-                            activeToolIdx = 8
+                            activeToolIdx = 11 // FIXED: Picker is 11
                             altPressed = true
                         }
                         event.accepted = true
@@ -1144,7 +1157,7 @@ Window {
                                     MouseArea {
                                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            colorStudioDialog.isTransparent = false
+                                            mainCanvas.isEraser = false
                                             if (colorStudioDialog.activeSlot !== 1) {
                                                 colorStudioDialog.activeSlot = 1
                                                 mainCanvas.brushColor = colorStudioDialog.slot1Color
@@ -1178,7 +1191,7 @@ Window {
                                     MouseArea {
                                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            colorStudioDialog.isTransparent = false
+                                            mainCanvas.isEraser = false
                                             if (colorStudioDialog.activeSlot !== 0) {
                                                 colorStudioDialog.activeSlot = 0
                                                 mainCanvas.brushColor = colorStudioDialog.slot0Color
@@ -1239,14 +1252,7 @@ Window {
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        colorStudioDialog.isTransparent = !colorStudioDialog.isTransparent
-                                        mainCanvas.isEraser = colorStudioDialog.isTransparent
-                                        if (colorStudioDialog.isTransparent) {
-                                            mainCanvas.brushColor = "transparent"
-                                        } else {
-                                            var col = (colorStudioDialog.activeSlot === 0 ? colorStudioDialog.slot0Color : colorStudioDialog.slot1Color)
-                                            mainCanvas.brushColor = col
-                                        }
+                                        mainCanvas.isEraser = !mainCanvas.isEraser
                                     }
                                 }
                                 
@@ -3284,6 +3290,7 @@ Window {
                         
                         delegate: LayerDelegate {
                             // Delegate logic extracted to src/ui/qml/components/LayerDelegate.qml
+                            onRequestBackgroundEdit: bgColorDialog.open()
                         }
                         
                         // Footer: Drop Zone for moving layers to bottom
@@ -3833,63 +3840,202 @@ Window {
 
 
 
-    // === POPUP DE COLOR DE FONDO ===
+    // === POPUP DE COLOR DE FONDO (PREMIUM REDESIGN) ===
     Popup {
         id: bgColorDialog
         anchors.centerIn: Overlay.overlay
-        width: 320; height: 280
+        width: 340; height: 380
         modal: true
         focus: true
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         
+        // Glassmorphism Background
         background: Rectangle {
-            color: "#1c1c1e"
+            color: "#cc1c1c1e" // Semi-transparent dark
             radius: 16
-            border.color: "#3a3a3c"; border.width: 1
+            border.color: "#333"
+            border.width: 1
+            layer.enabled: true
+            
+            // Subtle Shadow
+            Rectangle {
+                anchors.fill: parent
+                z: -1
+                color: "black"
+                opacity: 0.5
+                radius: 16
+                anchors.margins: -10
+            }
         }
         
-        contentItem: Column {
-            spacing: 15
-            padding: 20
+        contentItem: ColumnLayout {
+            spacing: 0
+            anchors.fill: parent
+            anchors.margins: 20
             
+            // Header
             Text {
-                text: "Background Color"
+                text: "Canvas Background"
                 color: "#fff"
-                font.pixelSize: 16
-                font.weight: Font.Medium
+                font.pixelSize: 18
+                font.weight: Font.DemiBold
+                Layout.alignment: Qt.AlignHCenter
+                Layout.bottomMargin: 20
             }
             
-            // Preview
+            // Current Selection Preview
             Rectangle {
-                width: 260; height: 50
-                radius: 10
-                color: "white"
-                border.color: "#333"
+                Layout.fillWidth: true
+                Layout.preferredHeight: 60
+                radius: 12
+                color: "transparent"
+                border.color: "#444"
+                border.width: 1
+                clip: true
+                
+                // Checkerboard for transparency
+                Image {
+                   source: "qrc:/assets/checker.png" // Fallback or generate
+                   anchors.fill: parent
+                   fillMode: Image.Tile
+                   visible: true
+                   opacity: 0.2
+                }
+                
+                // The actual color
+                Rectangle {
+                    anchors.fill: parent
+                    color: newProjectDialog.bgFill // Bind to current selection if possible, or we need to read from canvas
+                    // Since we can't easily read back from canvas in this setup without a property, 
+                    // we'll assume the interaction sets it.
+                }
+                
+                // Hex Code
+                Text {
+                    anchors.centerIn: parent
+                    text: newProjectDialog.bgFill
+                    color: (Qt.color(newProjectDialog.bgFill).hslLightness > 0.5) ? "black" : "white"
+                    font.bold: true
+                }
             }
             
-            Text { text: "Presets"; color: "#888"; font.pixelSize: 11 }
+            Item { Layout.preferredHeight: 20 }
             
-            // Colores Presets
-            Grid {
-                columns: 7
-                spacing: 8
+            Text { 
+                text: "PRESETS"
+                color: "#666"
+                font.pixelSize: 10
+                font.weight: Font.Bold
+                font.letterSpacing: 1.2
+                Layout.fillWidth: true
+            }
+            
+            Item { Layout.preferredHeight: 10 }
+            
+            // Presets Grid
+            GridLayout {
+                columns: 5
+                rowSpacing: 10
+                columnSpacing: 10
+                Layout.alignment: Qt.AlignHCenter
+                
                 Repeater {
-                    model: ["#ffffff", "#f5f5dc", "#e8e8e8", "#add8e6", "#ffe4e1", "#d8bfd8", "#000000",
-                            "#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff", "#9b59b6", "#e74c3c", "#1abc9c"]
+                    model: ["#ffffff", "#f5f5f7", "#e5e5ea", "#d1d1d6", "#c7c7cc",
+                            "#8e8e93", "#000000", "#ff3b30", "#ff9500", "#ffcc00",
+                            "#34c759", "#00c7be", "#30b0c7", "#32ade6", "#007aff",
+                            "#5856d6", "#af52de", "#ff2d55", "#a2845e"]
+                    
                     Rectangle {
-                        width: 32; height: 32; radius: 8
+                        Layout.preferredWidth: 36
+                        Layout.preferredHeight: 36
+                        radius: 18 // Circle
                         color: modelData
-                        border.color: "#444"; border.width: 1
+                        border.color: "#333"
+                        border.width: 1
+                        
+                        scale: mouseAreaPreset.containsMouse ? 1.1 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 100 } }
+                        
                         MouseArea {
+                            id: mouseAreaPreset
                             anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 mainCanvas.setBackgroundColor(modelData)
-                                bgColorDialog.close()
+                                newProjectDialog.bgFill = modelData // Keep track for UI
+                                // Don't close immediately, let user experiment
                             }
                         }
                     }
                 }
+                
+                // Custom Color Button (Plus)
+                Rectangle {
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    radius: 18
+                    color: "#2c2c2e"
+                    border.color: "#555"
+                    border.width: 1
+                    
+                    Text { 
+                        text: "+"
+                        color: "#fff"
+                        font.pixelSize: 18
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: -1
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            bgColorDialog.close()
+                            backgroundColorStudio.open()
+                        }
+                    }
+                }
             }
+            
+            Item { Layout.fillHeight: true }
+            
+            // Close Button
+            Button {
+                text: "Done"
+                Layout.fillWidth: true
+                Layout.preferredHeight: 40
+                
+                background: Rectangle {
+                    color: parent.down ? "#0062cc" : "#007aff"
+                    radius: 10
+                }
+                contentItem: Text {
+                    text: parent.text
+                    color: "white"
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: bgColorDialog.close()
+            }
+        }
+    }
+
+    // === ADVANCED BACKGROUND COLOR PICKER ===
+    ColorStudioDialog {
+        id: backgroundColorStudio
+        modal: true
+        targetCanvas: null // Manual handling to avoid affecting brush
+        
+        // Initial color sync
+        onOpened: {
+            currentColor = newProjectDialog.bgFill
+        }
+        
+        onColorSelected: (newColor) => {
+            mainCanvas.setBackgroundColor(newColor)
+            newProjectDialog.bgFill = newColor
         }
     }
         
@@ -4559,7 +4705,8 @@ Window {
                             
                             // === BACKGROUND ===
                             Column {
-                                Layout.fillWidth: true; spacing: 8
+                                Layout.fillWidth: true
+                                spacing: 8
                                 
                                 Text { text: "Background"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
                                 
@@ -4581,7 +4728,6 @@ Window {
                                             border.color: newProjectDialog.bgFill == modelData.c ? colorAccent : "#333"
                                             border.width: newProjectDialog.bgFill == modelData.c ? 2 : 1
                                             
-                                            // Checkerboard for transparent
                                             Grid {
                                                 visible: modelData.c === "transparent"
                                                 anchors.fill: parent; anchors.margins: 5
@@ -4596,23 +4742,46 @@ Window {
                                             }
                                             
                                             MouseArea {
-                                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                id: bgHover
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                                 onClicked: newProjectDialog.bgFill = modelData.c
                                             }
                                             
                                             ToolTip.visible: bgHover.containsMouse
                                             ToolTip.text: modelData.label
                                             ToolTip.delay: 500
-                                            
-                                            MouseArea {
-                                                id: bgHover
-                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: newProjectDialog.bgFill = modelData.c
-                                            }
                                         }
+                                    }
+
+                                    // Custom Color Button
+                                    Rectangle {
+                                        id: customBgBtn
+                                        width: 36; height: 36; radius: 8
+                                        color: "#2a2a2e"
+                                        border.color: customBgHover.containsMouse ? colorAccent : "#333"
+                                        border.width: 1
+                                        Text { text: "+"; color: "#888"; anchors.centerIn: parent; font.pixelSize: 18 }
+                                        MouseArea { 
+                                            id: customBgHover
+                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onClicked: newProjectColorPicker.open() 
+                                        }
+                                        ToolTip.visible: customBgHover.containsMouse
+                                        ToolTip.text: "Custom Color"
+                                        ToolTip.delay: 500
                                     }
                                 }
                             }
+                            
+                            // Color Dialog (Qt Labs)
+                            ColorDialog {
+                                id: newProjectColorPicker
+                                title: "Select Background Color"
+                                onAccepted: {
+                                    newProjectDialog.bgFill = color
+                                }
+                            }
+
                             
                             Item { Layout.fillHeight: true }
                             

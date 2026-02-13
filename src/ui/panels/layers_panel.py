@@ -161,6 +161,7 @@ class LayersPanel(QWidget):
         # Layer list
         self.layer_list = QListWidget()
         self.layer_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.layer_list.itemSelectionChanged.connect(self._on_selection_changed)
         self.layer_list.setStyleSheet("""
             QListWidget {
                 background: #1a1a2e;
@@ -181,6 +182,19 @@ class LayersPanel(QWidget):
             }
         """)
         layout.addWidget(self.layer_list, 1)
+    
+    layer_selected = pyqtSignal(int)
+    layer_added = pyqtSignal()
+    layer_deleted = pyqtSignal(int)
+
+    def _on_selection_changed(self):
+        """Manejar cambio de selección en la lista."""
+        current_row = self.layer_list.currentRow()
+        if current_row >= 0:
+            # En la lista, el índice 0 es la capa de ARRIBA
+            # Pero en el motor, el índice 0 suele ser la capa de ABAJO
+            # Por ahora emitiremos el índice tal cual y lo mapearemos si es necesario
+            self.layer_selected.emit(current_row)
         
         # Layer actions
         actions = QHBoxLayout()
@@ -232,7 +246,9 @@ class LayersPanel(QWidget):
     def _add_layer(self):
         """Add a new layer."""
         count = self.layer_list.count()
-        self._add_layer_item(f"Layer {count + 1}")
+        name = f"Layer {count + 1}"
+        self._add_layer_item(name)
+        self.layer_added.emit() # Notificar al canvas
     
     def _add_layer_item(self, name: str):
         """Add a layer item to the list."""
@@ -243,9 +259,12 @@ class LayersPanel(QWidget):
         
         self.layer_list.insertItem(0, item)
         self.layer_list.setItemWidget(item, widget)
+        # Seleccionar automáticamente la nueva capa
+        self.layer_list.setCurrentItem(item)
     
     def _delete_layer(self):
         """Delete selected layer."""
         current = self.layer_list.currentRow()
         if current >= 0 and self.layer_list.count() > 1:
             self.layer_list.takeItem(current)
+            self.layer_deleted.emit(current) # Notificar al canvas

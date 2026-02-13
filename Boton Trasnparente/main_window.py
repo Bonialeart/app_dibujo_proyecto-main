@@ -375,11 +375,6 @@ class MainWindow(QMainWindow):
         self.brushes_panel.size_changed.connect(self._on_brush_size_changed)
         self.brushes_panel.opacity_changed.connect(self._on_brush_opacity_changed)
         self.brushes_panel.brush_changed.connect(self._on_brush_changed)
-        
-        # Layers (NUEVA CONEXIÓN)
-        self.layers_panel.layer_selected.connect(self.canvas_panel.canvas.set_active_layer)
-        self.layers_panel.layer_added.connect(lambda: self.canvas_panel.canvas.add_layer(f"Capa {len(self.canvas_panel.canvas.layers) + 1}"))
-        self.layers_panel.layer_deleted.connect(self._on_layer_deleted) # Opcional: manejar borrado
     
     def _apply_styles(self):
         """Apply clean, modern styling."""
@@ -606,15 +601,6 @@ class MainWindow(QMainWindow):
     def _activate_eraser_mode(self):
         """Activar modo borrador (atajo de teclado E)."""
         self.colors_panel.eraser_btn.set_eraser_mode(True)
-    
-    def _on_layer_deleted(self, index: int):
-        """Manejar cuando se borra una capa en el panel."""
-        if hasattr(self.canvas_panel, 'canvas'):
-            if 0 <= index < len(self.canvas_panel.canvas.layers):
-                self.canvas_panel.canvas.layers.pop(index)
-                # Re-seleccionar una activa si es necesario
-                self.canvas_panel.canvas.active_layer_index = 0
-                self.canvas_panel.canvas.update()
     
     def _on_brush_size_changed(self, size: int):
         """Update brush size."""

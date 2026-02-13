@@ -89,7 +89,8 @@ public:
   Q_PROPERTY(QString currentProjectName READ currentProjectName NOTIFY
                  currentProjectNameChanged)
   Q_PROPERTY(QString brushTip READ brushTip NOTIFY brushTipChanged)
-  Q_PROPERTY(bool isEraser READ isEraser WRITE setIsEraser NOTIFY isEraserChanged)
+  Q_PROPERTY(
+      bool isEraser READ isEraser WRITE setIsEraser NOTIFY isEraserChanged)
   Q_PROPERTY(bool isFlippedH READ isFlippedH WRITE setIsFlippedH NOTIFY
                  isFlippedHChanged)
   Q_PROPERTY(bool isFlippedV READ isFlippedV WRITE setIsFlippedV NOTIFY
@@ -259,7 +260,7 @@ signals:
   void brushTipChanged();
   void cursorPosChanged(float x, float y);
   void projectsLoaded(const QVariantList &projects);
-  void isEraserChanged();
+  void isEraserChanged(bool eraser);
   void layersChanged(const QVariantList &layers);
   void availableBrushesChanged();
   void activeBrushNameChanged();
@@ -268,6 +269,7 @@ signals:
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
+  void requestToolIdx(int index);
 
 protected:
   void mousePressEvent(QMouseEvent *event) override;
@@ -320,6 +322,7 @@ private:
   int m_activeLayerIndex;
   float m_brushAngle;
   float m_cursorRotation;
+  QColor m_backgroundColor; // Background color state
   bool m_isFlippedH = false;
   bool m_isFlippedV = false;
   bool m_isEraser = false;

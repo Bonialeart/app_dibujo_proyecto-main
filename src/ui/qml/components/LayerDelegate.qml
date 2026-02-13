@@ -13,6 +13,9 @@ Item {
     // External References
     property var layersListRef: ListView.view 
     
+    // Signals
+    signal requestBackgroundEdit()
+    
     // Layer Data (extracted from model for easier binding)
     property int layerIndex: listModel.layerId
     property string layerName: listModel.name
@@ -168,7 +171,7 @@ Item {
                     mainCanvas.setActiveLayer(layerIndex)
                     
                     if (layerType === "background") {
-                        bgColorDialog.open()
+                        layerDelegate.requestBackgroundEdit()
                     } else {
                         // Open Context Menu logic
                         var idx = layerIndex

@@ -43,9 +43,9 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_zoomLevel(1.0f), m_currentToolStr("brush"), m_tool(ToolType::Pen),
       m_canvasWidth(1920), m_canvasHeight(1080), m_viewOffset(50, 50),
       m_activeLayerIndex(0), m_isTransforming(false), m_brushAngle(0.0f),
-      m_cursorRotation(0.0f), m_currentProjectPath(""),
-      m_currentProjectName("Untitled"), m_brushTip("round"),
-      m_lastPressure(1.0f), m_isDrawing(false),
+      m_cursorRotation(0.0f), m_backgroundColor(Qt::transparent),
+      m_currentProjectPath(""), m_currentProjectName("Untitled"),
+      m_brushTip("round"), m_lastPressure(1.0f), m_isDrawing(false),
       m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()) {
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
@@ -69,15 +69,18 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 
   // Cargar curva de presión guardada (Persistencia)
   setCurvePoints(PreferencesManager::instance()->pressureCurve());
-  
+
   // Sincronizar niveles de deshacer (Undo Levels)
   m_undoManager->setMaxLevels(PreferencesManager::instance()->undoLevels());
-  
+
   // Escuchar cambios en preferencias para actualizar el sistema en tiempo real
-  connect(PreferencesManager::instance(), &PreferencesManager::settingsChanged, this, [this]() {
-      m_undoManager->setMaxLevels(PreferencesManager::instance()->undoLevels());
-      // Aquí podrías añadir otros updates (ej: gpuAcceleration si fuera dinámico)
-  });
+  connect(PreferencesManager::instance(), &PreferencesManager::settingsChanged,
+          this, [this]() {
+            m_undoManager->setMaxLevels(
+                PreferencesManager::instance()->undoLevels());
+            // Aquí podrías añadir otros updates (ej: gpuAcceleration si fuera
+            // dinámico)
+          });
 
   m_activeLayerIndex = 1;
   m_layerManager->setActiveLayer(m_activeLayerIndex);
@@ -154,8 +157,33 @@ void CanvasItem::paint(QPainter *painter) {
                    m_viewOffset.y() * m_zoomLevel, m_canvasWidth * m_zoomLevel,
                    m_canvasHeight * m_zoomLevel);
 
-  // Draw Paper Background (White)
-  painter->fillRect(paperRect, Qt::white);
+  // DIBUJAR CHECKERBOARD (Patrón de transparencia)
+  // Usamos QImage en lugar de QPixmap para evitar crasheos en hilos de
+  // renderizado (Thread Safety)
+  int checkerSize = 20 * m_zoomLevel;
+  if (checkerSize < 5)
+    checkerSize = 5;
+
+  QImage checkerImg(checkerSize * 2, checkerSize * 2, QImage::Format_ARGB32);
+  checkerImg.fill(Qt::white);
+  QPainter pt(&checkerImg);
+  pt.fillRect(0, 0, checkerSize, checkerSize, QColor(220, 220, 220));
+  pt.fillRect(checkerSize, checkerSize, checkerSize, checkerSize,
+              QColor(220, 220, 220));
+  pt.end();
+
+  painter->save();
+  painter->setBrush(QBrush(checkerImg));
+  painter->setBrushOrigin(m_viewOffset.x() * m_zoomLevel,
+                          m_viewOffset.y() * m_zoomLevel);
+  painter->setPen(Qt::NoPen);
+  painter->drawRect(paperRect);
+  painter->restore();
+
+  // Draw Background Color (if not transparent)
+  if (m_backgroundColor.alpha() > 0) {
+    painter->fillRect(paperRect, m_backgroundColor);
+  }
 
   // Draw Drop Shadow (Optional, for better depth)
   // painter->setPen(Qt::NoPen);
@@ -169,12 +197,32 @@ void CanvasItem::paint(QPainter *painter) {
         continue;
 
       QImage img(layer->buffer->data(), layer->buffer->width(),
-                 layer->buffer->height(), QImage::Format_RGBA8888);
+                 layer->buffer->height(),
+                 QImage::Format_RGBA8888_Premultiplied);
 
       // Rectángulo de destino con Zoom y Pan (Común)
       QRectF targetRect(
           m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
           m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
+
+      bool renderedWithShader = false;
+      // DIBUJAR VISTA PREVIA DE OPENGL (FBO) si estamos dibujando en esta capa
+      if (m_isDrawing && i == m_activeLayerIndex && m_pingFBO) {
+        painter->save();
+
+        // Grab FBO image and correctly mark as premultiplied to avoid
+        // Double-Alpha bug
+        QImage fboImg =
+            m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888);
+        fboImg.reinterpretAsFormat(QImage::Format_RGBA8888_Premultiplied);
+
+        painter->setRenderHint(QPainter::SmoothPixmapTransform);
+        painter->setRenderHint(QPainter::Antialiasing);
+        painter->setOpacity(layer->opacity);
+        painter->drawImage(targetRect, fboImg);
+        painter->restore();
+        renderedWithShader = true;
+      }
 
       // Intentar usar shaders (Impasto)
       bool useImpasto = false;
@@ -183,7 +231,6 @@ void CanvasItem::paint(QPainter *painter) {
         useImpasto = true;
       }
 
-      bool renderedWithShader = false;
       if (useImpasto) {
         painter->save();
         painter->setOpacity(layer->opacity);
@@ -266,7 +313,7 @@ void CanvasItem::paint(QPainter *painter) {
     painter->save();
     // Apply view transform (Pan/Zoom) first
     painter->translate(m_viewOffset.x() * m_zoomLevel,
-                       m_viewOffset.x() * m_zoomLevel);
+                       m_viewOffset.y() * m_zoomLevel);
     painter->scale(m_zoomLevel, m_zoomLevel);
 
     // Apply the user's transformation matrix
@@ -291,12 +338,17 @@ void CanvasItem::paint(QPainter *painter) {
   // 4. Selección (Lasso) Feedback
   if (!m_selectionPath.isEmpty()) {
     painter->save();
-    QPen lassoPen(Qt::blue, 1, Qt::DashLine);
+    // Transformar de Canvas a Pantalla para el feedback
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+
+    QPen lassoPen(Qt::blue, 1 / m_zoomLevel, Qt::DashLine);
     painter->setPen(lassoPen);
     painter->drawPath(m_selectionPath);
 
     // Draw "Marching Ants" effect (simplified DashOffset animation if time
-    // allows) For now, solid dash is enough for proof of concept
+    // allows)
     painter->restore();
   }
 }
@@ -321,23 +373,29 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   }
 
   BrushSettings settings = m_brushEngine->getBrush();
-  
-  // FIX: Support explicit Eraser Mode and "Transparent Color" (Clip Studio Style)
+
+  // FIX: Support explicit Eraser Mode and "Transparent Color" (Clip Studio
+  // Style)
   bool isTransparentColor = (m_brushColor.alpha() < 5);
   if (m_isEraser || isTransparentColor || m_tool == ToolType::Eraser) {
-      settings.type = BrushSettings::Type::Eraser;
-      // USAMOS NEGRO OPACO (Define el área de borrado)
-      settings.color = QColor(0, 0, 0, 255); 
-      // REDUCIR SPACING para evitar "bolitas" y que el borrado sea fluido
-      settings.spacing = std::min(settings.spacing, 0.08f); 
+    settings.type = BrushSettings::Type::Eraser;
+    // MÁSCARA DE BORRADO (Negro puro para la máscara de transparencia)
+    settings.color = QColor(0, 0, 0, 255);
+    // LIMPIEZA TOTAL: El borrador no debe tener texturas ni ruido
+    settings.useTexture = false;
+    settings.jitter = 0.0f;
+    settings.grain = 0.0f;
+    settings.hardness = 0.95f;
+    // REDUCIR SPACING para evitar "bolitas" y que el borrado sea fluido
+    settings.spacing = std::min(settings.spacing, 0.05f);
   }
 
   float effectivePressure = pressure; // Ajustar con curva si es necesario
   float velocityFactor = 0.0f;        // Calcular velocidad real si es necesario
 
-  // Create QImage wrapper around layer buffer
+  // Create QImage wrapper around layer buffer (Use RGBA8888_Premultiplied)
   QImage img(layer->buffer->data(), layer->buffer->width(),
-             layer->buffer->height(), QImage::Format_RGBA8888);
+             layer->buffer->height(), QImage::Format_RGBA8888_Premultiplied);
 
   // MODO PREMIUM (OpenGL / Shaders)
   // Usamos OpenGL para TODO si está disponible, es más preciso y rápido
@@ -350,10 +408,23 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       if (m_pongFBO)
         delete m_pongFBO;
 
-      m_pingFBO = new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight);
-      m_pongFBO = new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight);
+      // EXPLICIT FORMAT with Alpha support and 0 samples (Stable)
+      QOpenGLFramebufferObjectFormat format;
+      format.setInternalTextureFormat(GL_RGBA8);
+      format.setSamples(0);
+      format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
 
+      m_pingFBO =
+          new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
+      m_pongFBO =
+          new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
+
+      // Initialize with current layer content
       m_pingFBO->bind();
+      QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+      f->glClearColor(0, 0, 0, 0);
+      f->glClear(GL_COLOR_BUFFER_BIT);
+
       QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
       QPainter fboPainter(&device);
       fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
@@ -389,7 +460,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     if (settings.type == BrushSettings::Type::Eraser) {
-        painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+      painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
     }
 
     m_brushEngine->paintStroke(&painter, m_lastPos, canvasPos,
@@ -564,28 +635,83 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
   if (m_tool == ToolType::Lasso) {
     m_selectionPath = QPainterPath();
-    m_selectionPath.moveTo(event->position());
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    m_selectionPath.moveTo(canvasPos);
     m_hasSelection = false;
     update();
     return;
   }
 
-  if (m_tool == ToolType::Transform && m_isTransforming) {
+  if (m_tool == ToolType::Transform) {
     QPointF canvasPos =
         (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-    QRectF transformedBox = m_transformMatrix.mapRect(m_transformBox);
 
-    if (transformedBox.contains(canvasPos)) {
-      m_transformMode = TransformMode::Move;
-      m_transformStartPos = canvasPos;
-      m_initialMatrix = m_transformMatrix;
-      return;
+    // Si ya estamos transformando, ver si clicamos dentro para mover
+    if (m_isTransforming) {
+      QRectF transformedBox = m_transformMatrix.mapRect(m_transformBox);
+      if (transformedBox.contains(canvasPos)) {
+        m_transformMode = TransformMode::Move;
+        m_transformStartPos = canvasPos;
+        m_initialMatrix = m_transformMatrix;
+        return;
+      } else {
+        // Clic fuera -> Confirmar y terminar
+        commitTransform();
+      }
+    }
+
+    // Si NO estamos transformando, empezar ahora al hacer clic
+    if (!m_isTransforming) {
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->buffer) {
+        // Si no hay selección previa, seleccionar todo
+        if (!m_hasSelection || m_selectionPath.isEmpty()) {
+          m_selectionPath = QPainterPath();
+          m_selectionPath.addRect(0, 0, m_canvasWidth, m_canvasHeight);
+          m_hasSelection = true;
+        }
+
+        m_isTransforming = true;
+        m_transformMatrix = QTransform();
+        m_transformBox = m_selectionPath.boundingRect();
+
+        QImage full(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                    QImage::Format_RGBA8888);
+        m_selectionBuffer =
+            QImage(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888);
+        m_selectionBuffer.fill(Qt::transparent);
+
+        QPainter p(&m_selectionBuffer);
+        p.setClipPath(m_selectionPath);
+        p.drawImage(0, 0, full);
+        p.end();
+
+        QPainter p2(&full);
+        p2.setCompositionMode(QPainter::CompositionMode_Clear);
+        p2.setClipPath(m_selectionPath);
+        p2.fillRect(full.rect(), Qt::transparent);
+        p2.end();
+
+        layer->dirty = true;
+        m_transformMode = TransformMode::Move;
+        m_transformStartPos = canvasPos;
+        m_initialMatrix = m_transformMatrix;
+        update();
+        return;
+      }
     }
   }
 
   if (event->button() == Qt::LeftButton) {
     if (m_isDrawing)
       return; // Already drawing (tablet?)
+
+    // Evitar que herramientas de NO DIBUJO pinten accidentalmente
+    if (m_tool != ToolType::Pen && m_tool != ToolType::Eraser &&
+        m_tool != ToolType::Fill && m_tool != ToolType::Shape) {
+      return;
+    }
 
     m_isDrawing = true;
     m_lastPos = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
@@ -601,7 +727,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     m_strokePoints.push_back(event->position());
     m_holdStartPos = event->position();
     m_isHoldingForShape = false;
-    
+
     // Emitir señal de que se ha empezado a pintar con el color actual
     if (m_tool == ToolType::Pen) {
       emit strokeStarted(m_brushColor);
@@ -647,7 +773,9 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   }
 
   if (m_tool == ToolType::Lasso && (event->buttons() & Qt::LeftButton)) {
-    m_selectionPath.lineTo(event->position());
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    m_selectionPath.lineTo(canvasPos);
     update();
     return;
   }
@@ -704,8 +832,12 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
 
       if (m_pingFBO) {
         if (!wasHolding) {
+          // Correctly convert FBO data to layer buffer without
+          // double-premultiplying
           QImage result =
-              m_pingFBO->toImage().convertToFormat(QImage::Format_RGBA8888);
+              m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888);
+          result.reinterpretAsFormat(QImage::Format_RGBA8888_Premultiplied);
+
           Layer *layer = m_layerManager->getActiveLayer();
           if (layer && layer->buffer) {
             std::memcpy(layer->buffer->data(), result.bits(),
@@ -734,6 +866,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
       m_lastPos = QPointF();
       capture_timelapse_frame();
       update();
+      updateLayersList(); // Update thumbnails after stroke
     }
   }
 }
@@ -754,6 +887,12 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
   tiltFactor = std::max(0.0f, std::min(1.0f, tiltFactor));
 
   if (event->type() == QEvent::TabletPress) {
+    // Evitar que herramientas de NO DIBUJO pinten accidentalmente
+    if (m_tool != ToolType::Pen && m_tool != ToolType::Eraser &&
+        m_tool != ToolType::Fill && m_tool != ToolType::Shape) {
+      return;
+    }
+
     m_isDrawing = true;
     QPointF p = event->position();
     QPointF canvasPos = (p - m_viewOffset * m_zoomLevel) / m_zoomLevel;
@@ -771,12 +910,12 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     m_strokePoints.push_back(event->position());
     m_holdStartPos = event->position();
     m_isHoldingForShape = false;
-    
+
     // Emitir señal de que se ha empezado a pintar con el color actual
     if (m_tool == ToolType::Pen) {
       emit strokeStarted(m_brushColor);
     }
-    
+
     m_quickShapeTimer->start(800);
 
     handleDraw(event->position(), pressure, tiltFactor);
@@ -806,7 +945,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     if (m_pingFBO) {
       if (!wasHolding) {
         QImage result =
-            m_pingFBO->toImage().convertToFormat(QImage::Format_RGBA8888);
+            m_pingFBO->toImage(true).convertToFormat(QImage::Format_ARGB32);
         Layer *layer = m_layerManager->getActiveLayer();
         if (layer && layer->buffer) {
           std::memcpy(layer->buffer->data(), result.bits(),
@@ -835,7 +974,8 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
 
     m_lastPos = QPointF();
     capture_timelapse_frame();
-    update(); // Refrescar vista
+    update();           // Refrescar vista
+    updateLayersList(); // Update thumbnails after stroke
     event->accept();
   }
 }
@@ -1001,6 +1141,12 @@ void CanvasItem::setIsEraser(bool eraser) {
   if (m_isEraser == eraser)
     return;
   m_isEraser = eraser;
+  if (m_isEraser) {
+    emit requestToolIdx(9);
+  } else {
+    // Re-sync current tool index if disabled
+    setCurrentTool(m_currentToolStr);
+  }
   // If we are in eraser mode, we should also update the engine's brush type
   BrushSettings s = m_brushEngine->getBrush();
   if (m_isEraser) {
@@ -1011,7 +1157,7 @@ void CanvasItem::setIsEraser(bool eraser) {
     // but better to not force it here. handleDraw will handle the override.
   }
   m_brushEngine->setBrush(s);
-  emit isEraserChanged();
+  emit isEraserChanged(m_isEraser);
   update();
 }
 
@@ -1026,6 +1172,34 @@ void CanvasItem::setCurrentTool(const QString &tool) {
 
   m_currentToolStr = tool;
 
+  // Sync QML toolbar index
+  if (tool == "selection")
+    emit requestToolIdx(0);
+  else if (tool == "shapes")
+    emit requestToolIdx(1);
+  else if (tool == "lasso")
+    emit requestToolIdx(2);
+  else if (tool == "magnetic_lasso")
+    emit requestToolIdx(3);
+  else if (tool == "move")
+    emit requestToolIdx(4);
+  else if (tool == "pen")
+    emit requestToolIdx(5);
+  else if (tool == "pencil")
+    emit requestToolIdx(6);
+  else if (tool == "brush")
+    emit requestToolIdx(7);
+  else if (tool == "airbrush")
+    emit requestToolIdx(8);
+  else if (tool == "eraser")
+    emit requestToolIdx(9);
+  else if (tool == "fill")
+    emit requestToolIdx(10);
+  else if (tool == "eyedropper" || tool == "picker")
+    emit requestToolIdx(11);
+  else if (tool == "hand")
+    emit requestToolIdx(12);
+
   if (tool == "brush" || tool == "pen" || tool == "pencil" ||
       tool == "watercolor" || tool == "airbrush")
     m_tool = ToolType::Pen;
@@ -1033,38 +1207,11 @@ void CanvasItem::setCurrentTool(const QString &tool) {
     m_tool = ToolType::Eraser;
   else if (tool == "lasso")
     m_tool = ToolType::Lasso;
-  if (tool == "transform") {
+  else if (tool == "transform" || tool == "move") {
     m_tool = ToolType::Transform;
-    if (m_hasSelection && !m_selectionPath.isEmpty()) {
-      // Start transformation logic: copy selection to buffer
-      Layer *layer = m_layerManager->getActiveLayer();
-      if (layer && layer->buffer) {
-        m_isTransforming = true;
-        m_transformMatrix = QTransform();
-        m_transformBox = m_selectionPath.boundingRect();
-
-        // Capture selection to image
-        QImage full(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                    QImage::Format_RGBA8888);
-        m_selectionBuffer =
-            QImage(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888);
-        m_selectionBuffer.fill(Qt::transparent);
-
-        QPainter p(&m_selectionBuffer);
-        p.setClipPath(m_selectionPath);
-        p.drawImage(0, 0, full);
-        p.end();
-
-        // Clear selection area in original layer (destructive part for now)
-        QPainter p2(&full);
-        p2.setCompositionMode(QPainter::CompositionMode_Clear);
-        p2.setClipPath(m_selectionPath);
-        p2.fillRect(full.rect(), Qt::transparent);
-        p2.end();
-
-        layer->dirty = true;
-      }
-    }
+    // Ya no 'levantamos' el contenido aquí para evitar recuadros azules
+    // inmediatos y destrucción accidental de trazos previos. La lógica se movió
+    // a mousePressEvent.
   } else if (tool == "eyedropper")
     m_tool = ToolType::Eyedropper;
   else if (tool == "hand")
@@ -1098,7 +1245,7 @@ void CanvasItem::commitTransform() {
   Layer *layer = m_layerManager->getActiveLayer();
   if (layer && layer->buffer) {
     QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-               QImage::Format_RGBA8888);
+               QImage::Format_ARGB32);
     QPainter p(&img);
     p.setRenderHint(QPainter::SmoothPixmapTransform);
     p.setTransform(m_transformMatrix);
@@ -1309,8 +1456,26 @@ void CanvasItem::applyEffect(int index, const QString &effect,
 }
 
 void CanvasItem::setBackgroundColor(const QString &color) {
-  qDebug() << "Setting background color:" << color;
-  // In a real app we'd update the bottom layer or a special background property
+  QColor newColor(color);
+  if (newColor.isValid()) {
+    m_backgroundColor = newColor;
+
+    // Also update any Background layer
+    if (m_layerManager) {
+      for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+        Layer *l = m_layerManager->getLayer(i);
+        if (l && l->type == Layer::Type::Background) {
+          // Swap R and B for QImage::Format_ARGB32 (BGRA)
+          l->buffer->fill(newColor.blue(), newColor.green(), newColor.red(),
+                          255); // Force opaque for background layer
+          l->dirty = true;      // Mark dirty for rendering
+          updateLayersList();   // Refresh UI thumbnails
+        }
+      }
+    }
+
+    update();
+  }
 }
 
 bool CanvasItem::loadProject(const QString &path) {
@@ -1383,17 +1548,35 @@ void CanvasItem::updateLayersList() {
     layer["type"] = (i == 0) ? "background" : "drawing";
 
     // Add thumbnail if active or requested (real app would cache these)
-    if (i == m_activeLayerIndex || i == 0) {
+    // Add thumbnail for ALL layers
+    if (l->buffer && l->buffer->width() > 0 && l->buffer->height() > 0) {
       int tw = 60, th = 40;
-      QImage full(l->buffer->data(), m_canvasWidth, m_canvasHeight,
-                  QImage::Format_RGBA8888);
+      // Use QImage wrapper around existing buffer (no copy yet)
+      QImage full(l->buffer->data(), l->buffer->width(), l->buffer->height(),
+                  QImage::Format_ARGB32);
+
+      // Debug logging
+      if (l->buffer->width() > 0 && l->buffer->height() > 0) {
+        uint32_t *pixels = reinterpret_cast<uint32_t *>(l->buffer->data());
+        qDebug() << "Layer:" << i << "Buf:" << l->buffer->width() << "x"
+                 << l->buffer->height()
+                 << "Pixel[0]:" << QString::number(pixels[0], 16)
+                 << "Pixel[Center]:"
+                 << QString::number(
+                        pixels[l->buffer->width() * l->buffer->height() / 2],
+                        16);
+      }
+
+      // Scale down (high quality)
       QImage thumb =
           full.scaled(tw, th, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
       QByteArray ba;
       QBuffer buffer(&ba);
       buffer.open(QIODevice::WriteOnly);
       thumb.save(&buffer, "PNG");
-      layer["thumbnail"] = "data:image/png;base64," + ba.toBase64();
+      QString b64 = QString::fromLatin1(ba.toBase64());
+      layer["thumbnail"] = "data:image/png;base64," + b64;
     } else {
       layer["thumbnail"] = "";
     }

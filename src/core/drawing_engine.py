@@ -583,9 +583,18 @@ class DrawingEngineMixin:
             else:
                 f_op = self._brush_opacity * pressure; jx, jy = 0, 0
                 if self._brush_grain > 0.1: j_amt = width * 0.05; jx, jy = np.random.uniform(-j_amt, j_amt), np.random.uniform(-j_amt, j_amt)
-                painter.save(); painter.translate(pt.x() + jx, pt.y() + jy); painter.setOpacity(f_op); painter.setCompositionMode(self._brush_blend_mode)
+                painter.save(); painter.translate(pt.x() + jx, pt.y() + jy); painter.setOpacity(f_op)
+                
+                # ERASER FIX: Use DestinationOut if tool is eraser OR isEraser property is True
+                if self._current_tool == "eraser" or getattr(self, "_is_eraser", False):
+                    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationOut)
+                    draw_color = QColor(0, 0, 0, 255) # Color doesn't matter for DestinationOut as long as alpha is high
+                else:
+                    painter.setCompositionMode(self._brush_blend_mode)
+                    draw_color = color
+                    
                 s_w, s_h = dab_size, int(dab_size * getattr(self, "_brush_roundness", 1.0))
-                painter.drawImage(QRectF(-s_w/2, -s_h/2, s_w, s_h), self._get_brush_stamp(dab_size, color)); painter.restore()
+                painter.drawImage(QRectF(-s_w/2, -s_h/2, s_w, s_h), self._get_brush_stamp(dab_size, draw_color)); painter.restore()
 
     @pyqtSlot(str, result=int)
     def importABR(self, file_url):

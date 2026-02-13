@@ -120,8 +120,6 @@ class EraserButton(QPushButton):
             self._is_eraser_mode = enabled
             self.setChecked(enabled)
             self._update_style()
-            # Emitir para sincronizar con el resto de la app
-            self.eraser_toggled.emit(enabled)
 
 
 class TransparentPatternButton(QPushButton):
@@ -190,21 +188,10 @@ class ColorsPanel(QWidget):
         self.previous_color_btn.color_selected.connect(self._swap_colors)
         main_colors_layout.addWidget(self.previous_color_btn)
         
-        # Botones de Herramientas de "Color" (Borrador y Transparencia)
-        tool_buttons_layout = QVBoxLayout()
-        tool_buttons_layout.setSpacing(4)
-        
         # Botón de borrador
-        self.eraser_btn = EraserButton(32)
+        self.eraser_btn = EraserButton(50)
         self.eraser_btn.eraser_toggled.connect(self._on_eraser_toggled)
-        tool_buttons_layout.addWidget(self.eraser_btn)
-        
-        # Botón de transparencia (Krita style)
-        self.trans_btn = TransparentPatternButton(32)
-        self.trans_btn.clicked.connect(self._on_transparency_clicked)
-        tool_buttons_layout.addWidget(self.trans_btn)
-        
-        main_colors_layout.addLayout(tool_buttons_layout)
+        main_colors_layout.addWidget(self.eraser_btn)
         
         main_colors_layout.addStretch()
         layout.addLayout(main_colors_layout)
@@ -283,13 +270,6 @@ class ColorsPanel(QWidget):
     
     def _set_current_color(self, color: QColor):
         """Establecer color actual y emitir señal."""
-        # Al seleccionar un color, DESACTIVAMOS el borrador automáticamente
-        if self.eraser_btn._is_eraser_mode:
-            self.eraser_btn.set_eraser_mode(False)
-            self.eraser_mode_changed.emit(False)
-            # Reset visual del botón de transparencia también
-            self.trans_btn.setStyleSheet("")
-            
         # Guardar color anterior
         self._previous_color = self._current_color
         self._current_color = color
@@ -297,6 +277,11 @@ class ColorsPanel(QWidget):
         # Actualizar botones
         self.current_color_btn.set_color(color)
         self.previous_color_btn.set_color(self._previous_color)
+        
+        # Desactivar modo borrador al seleccionar un color
+        if self.eraser_btn._is_eraser_mode:
+            self.eraser_btn.set_eraser_mode(False)
+            self.eraser_mode_changed.emit(False)
         
         # Emitir señal
         self.color_changed.emit(color)
@@ -320,27 +305,11 @@ class ColorsPanel(QWidget):
         """Manejar activación/desactivación del borrador."""
         self.eraser_mode_changed.emit(is_eraser)
         
-        # Sincronizar el botón de transparencia
-        if is_eraser:
-            self.trans_btn.setStyleSheet("border: 3px solid #00ffcc; border-radius: 16px; background: transparent;")
-        else:
-            self.trans_btn.setStyleSheet("")
-            
         # Feedback visual
-        print(f"🧹 Modo Borrador {'ACTIVADO' if is_eraser else 'DESACTIVADO'}")
-
-    def _on_transparency_clicked(self):
-        """Manejar clic en el botón de transparencia (estilo Krita)."""
-        # Togglear el borrador a través del botón principal
-        is_now_eraser = not self.eraser_btn._is_eraser_mode
-        self.eraser_btn.set_eraser_mode(is_now_eraser)
-        self.eraser_mode_changed.emit(is_now_eraser)
-        
-        # Feedback visual para el botón de transparencia
-        if is_now_eraser:
-            self.trans_btn.setStyleSheet("border: 3px solid #00ffcc; border-radius: 16px; background: transparent;")
+        if is_eraser:
+            print("🧹 Modo Borrador ACTIVADO")
         else:
-            self.trans_btn.setStyleSheet("")
+            print("🖌️ Modo Pincel ACTIVADO")
     
     def get_current_color(self) -> QColor:
         """Obtener color actual."""

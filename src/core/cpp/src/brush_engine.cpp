@@ -64,8 +64,8 @@ static uint32_t loadTexture(const QString &name) {
   QOpenGLTexture *tex = new QOpenGLTexture(glImg);
   tex->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
   tex->setMagnificationFilter(QOpenGLTexture::Linear);
-  tex->setWrapMode(
-      QOpenGLTexture::ClampToEdge); // Evita repetición en los bordes
+  tex->setWrapMode(QOpenGLTexture::Repeat); // Allow texture tiling
+  tex->generateMipMaps(); // CRITICAL: Avoid black/low-res dots
 
   uint32_t id = tex->textureId();
   g_textureCache[name] = id;
@@ -234,11 +234,11 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   // --- LÓGICA LEGACY (QPAINTER) ---
 
   if (settings.type == BrushSettings::Type::Eraser) {
-    // Usamos DestinationOut para "restar" de la capa actual.
-    // Esto es mucho más suave que 'Source' y evita el efecto de "bolitas".
-    painter->setCompositionMode(QPainter::CompositionMode_DestinationOut);
-    // El color debe ser opaco; su Alpha determinará cuánto se borra.
-    const_cast<BrushSettings&>(settings).color = QColor(0, 0, 0, 255);
+    // Usamos CompositionMode_Source con color transparente para un borrado
+    // garantizado
+    painter->setCompositionMode(QPainter::CompositionMode_Source);
+    // El color DEBE ser transparente total para borrar
+    const_cast<BrushSettings &>(settings).color = QColor(0, 0, 0, 0);
   } else {
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
   }
@@ -382,8 +382,13 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
     texId = loadTexture(m_currentSettings.textureName);
   }
 
-  int w = 2000; // Hack viewport size
-  int h = 2000;
+  int w = m_renderer ? m_renderer->viewportWidth() : 2000;
+  int h = m_renderer ? m_renderer->viewportHeight() : 2000;
+
+  if (w <= 0)
+    w = 2000;
+  if (h <= 0)
+    h = 2000;
 
   // Render Loop
   while (coveredDist <= dist) {
@@ -393,12 +398,13 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
     QColor c = m_currentSettings.color;
     c.setAlphaF(opacity);
 
+    bool isEraser = (m_currentSettings.type == BrushSettings::Type::Eraser);
     m_renderer->renderStroke(
         pt.x(), pt.y(), size, point.pressure, m_currentSettings.hardness, c,
         (int)m_currentSettings.type, w, h, texId, (texId != 0),
         m_currentSettings.textureScale, m_currentSettings.textureIntensity,
         0.0f, 0.0f, 0, m_currentSettings.wetness, m_currentSettings.dilution,
-        m_currentSettings.smudge);
+        m_currentSettings.smudge, isEraser);
 
     coveredDist += spacing;
   }

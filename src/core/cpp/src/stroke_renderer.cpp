@@ -2,9 +2,11 @@
 #include "../include/stroke_renderer.h"
 #include "../include/brush_engine.h"
 #include <QColor>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
 #include <QMatrix4x4>
+#include <QStringList>
 #include <QVector2D>
 #include <QVector3D>
 #include <cmath>
@@ -132,31 +134,48 @@ void StrokeRenderer::initialize() {
   // 1. Compilar Shaders
   m_program = new QOpenGLShaderProgram();
 
-  if (!m_program->addShaderFromSourceFile(
-          QOpenGLShader::Vertex,
-          "d:/app_dibujo_proyecto-main/src/core/shaders/brush.vert")) {
-    m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, "src/core/shaders/brush.vert");
+  // Search for shaders in common paths
+  QStringList vertPaths, fragPaths;
+  vertPaths << QCoreApplication::applicationDirPath() + "/shaders/brush.vert"
+            << QCoreApplication::applicationDirPath() +
+                   "/../src/core/shaders/brush.vert"
+            << "e:/app_dibujo_proyecto-main/src/core/shaders/brush.vert"
+            << "d:/app_dibujo_proyecto-main/src/core/shaders/brush.vert"
+            << ":/shaders/brush.vert";
+
+  fragPaths << QCoreApplication::applicationDirPath() + "/shaders/brush.frag"
+            << QCoreApplication::applicationDirPath() +
+                   "/../src/core/shaders/brush.frag"
+            << "e:/app_dibujo_proyecto-main/src/core/shaders/brush.frag"
+            << "d:/app_dibujo_proyecto-main/src/core/shaders/brush.frag"
+            << ":/shaders/brush.frag";
+
+  bool vertLoaded = false;
+  for (const QString &p : vertPaths) {
+    if (QFile::exists(p) &&
+        m_program->addShaderFromSourceFile(QOpenGLShader::Vertex, p)) {
+      vertLoaded = true;
+      break;
+    }
   }
 
-  if (!m_program->addShaderFromSourceFile(
-          QOpenGLShader::Fragment,
-          "d:/app_dibujo_proyecto-main/src/core/shaders/brush.frag")) {
-    m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, "src/core/shaders/brush.frag");
+  bool fragLoaded = false;
+  for (const QString &p : fragPaths) {
+    if (QFile::exists(p) &&
+        m_program->addShaderFromSourceFile(QOpenGLShader::Fragment, p)) {
+      fragLoaded = true;
+      break;
+    }
   }
 
-  if (!m_program->link())
+  if (!vertLoaded || !fragLoaded || !m_program->link())
     qDebug() << "Error Link Shader:" << m_program->log();
 
   // 2. Crear Quad Estándar (0.0 a 1.0)
-  float vertices[] = {
-      // PosX, PosY, TexU, TexV
-      0.0f, 0.0f, 0.0f, 0.0f,
-      1.0f, 0.0f, 1.0f, 0.0f,
-      0.0f, 1.0f, 0.0f, 1.0f,
-      0.0f, 1.0f, 0.0f, 1.0f,
-      1.0f, 0.0f, 1.0f, 0.0f,
-      1.0f, 1.0f, 1.0f, 1.0f
-  };
+  float vertices[] = {// PosX, PosY, TexU, TexV
+                      0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+                      0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f,
+                      1.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f};
 
   m_vao.create();
   m_vao.bind();
@@ -170,7 +189,8 @@ void StrokeRenderer::initialize() {
   glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
 
   glEnableVertexAttribArray(1); // TexCoords
-  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+                        (void *)(2 * sizeof(float)));
 
   m_vao.release();
   m_vbo.release();
@@ -190,12 +210,16 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
   m_program->bind();
   m_vao.bind();
 
+  // Force isEraser if type is 7 (Safety)
+  if (type == 7)
+    isEraser = true;
+
   // --- MATRICES DE POSICIONAMIENTO ---
   QMatrix4x4 projection;
-  projection.ortho(0, width, height, 0, -1, 1); 
+  projection.ortho(0, width, height, 0, -1, 1);
 
   QMatrix4x4 model;
-  model.translate(x - size / 2, y - size / 2, 0); 
+  model.translate(x - size / 2, y - size / 2, 0);
   model.scale(size, size, 1);
 
   m_program->setUniformValue("projectionMatrix", projection);
@@ -203,6 +227,8 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
   m_program->setUniformValue("color", color);
   m_program->setUniformValue("pressure", pressure);
   m_program->setUniformValue("hardness", hardness);
+  m_program->setUniformValue("uDabPos", QVector2D(x, y));
+  m_program->setUniformValue("uDabSize", size);
 
   // -- PREMIUM UNIFORMS --
   m_program->setUniformValue("u_impastoStrength", 5.0f);
@@ -242,21 +268,20 @@ void StrokeRenderer::renderStroke(float x, float y, float size, float pressure,
   // --- CONFIGURACIÓN DE MEZCLA DEFINITIVA ---
   glEnable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
-  glBlendEquation(GL_FUNC_ADD); 
+  glBlendEquation(GL_FUNC_ADD);
 
-  if (isEraser) { 
+  if (isEraser) {
     // MODO BORRADOR: Dest = Dest * (1 - SourceAlpha)
-    // El origen no aporta color (GL_ZERO), solo el factor de resta.
-    glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
-    
-    // El color negro actúa como máscara (el Alpha es lo que importa)
+    glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
+                        GL_ONE_MINUS_SRC_ALPHA);
     m_program->setUniformValue("color", QColor(0, 0, 0, 255));
   } else {
-    // MODO PINTAR NORMAL
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    // MODO PINTAR NORMAL - PREMULTIPLIED
+    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
+                        GL_ONE_MINUS_SRC_ALPHA);
     m_program->setUniformValue("color", color);
   }
-  
+
   // Dibujamos el Quad pre-cargado
   m_vao.bind();
   glDrawArrays(GL_TRIANGLES, 0, 6);

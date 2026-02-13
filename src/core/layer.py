@@ -16,7 +16,7 @@ class Layer:
         self.clipped = False # Clipping mask
         self.alpha_lock = False
         self.is_private = False # If true, ignored in timelapse
-        self.image = QImage(width, height, QImage.Format.Format_ARGB32)
+        self.image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
         self.image.fill(Qt.GlobalColor.transparent)
 
     def clear(self):

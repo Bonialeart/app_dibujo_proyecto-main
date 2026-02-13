@@ -64,40 +64,53 @@ void ImageBuffer::blendPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b,
     return;
 
   size_t idx = pixelIndex(x, y);
-  uint8_t dstAlphaRaw = m_data[idx + 3];
-  if (alphaLock && dstAlphaRaw == 0)
-    return;
+  uint8_t dstA = m_data[idx + 3];
 
-  float srcA = a / 255.0f;
-  float dstA = dstAlphaRaw / 255.0f;
+  if (alphaLock && dstA == 0)
+    return;
 
   if (isEraser) {
-    // Subtractive Alpha
-    float outA = std::max(0.0f, dstA * (1.0f - srcA));
-    m_data[idx + 3] =
-        static_cast<uint8_t>(clampVal(outA * 255.0f, 0.0f, 255.0f));
+    // Out_A = Dst_A * (1 - Src_A)
+    // Out_RGB = Dst_RGB * (1 - Src_A)
+    uint32_t invAlpha = 255 - a;
+    m_data[idx + 0] = (m_data[idx + 0] * invAlpha) / 255;
+    m_data[idx + 1] = (m_data[idx + 1] * invAlpha) / 255;
+    m_data[idx + 2] = (m_data[idx + 2] * invAlpha) / 255;
+    m_data[idx + 3] = (m_data[idx + 3] * invAlpha) / 255;
     return;
   }
 
-  float outA = srcA + dstA * (1.0f - srcA);
+  // PREMULTIPLIED BLENDING (Porter-Duff Source-Over)
+  // Out_RGB = Src_RGB*Src_A + Dst_RGB * (1 - Src_A)
+  // Out_A   = Src_A       + Dst_A   * (1 - Src_A)
+
+  uint32_t srcA = a;
+  uint32_t invSrcA = 255 - srcA;
+
+  // Internal data is PREMULTIPLIED.
+  // Incoming r,g,b,a are assumed to be STRAIGHT colors to be applied.
+  uint32_t srcR = (r * srcA) / 255;
+  uint32_t srcG = (g * srcA) / 255;
+  uint32_t srcB = (b * srcA) / 255;
 
   if (alphaLock) {
-    outA = dstA;
-    if (outA <= 0.001f)
-      return;
-    srcA = std::min(srcA, outA);
+    // Treat as Source-In practically: only affects RGB, keeps A
+    m_data[idx + 0] = clampVal<int>(
+        (srcR * dstA / 255) + (m_data[idx + 0] * invSrcA / 255), 0, 255);
+    m_data[idx + 1] = clampVal<int>(
+        (srcG * dstA / 255) + (m_data[idx + 1] * invSrcA / 255), 0, 255);
+    m_data[idx + 2] = clampVal<int>(
+        (srcB * dstA / 255) + (m_data[idx + 2] * invSrcA / 255), 0, 255);
+  } else {
+    m_data[idx + 0] =
+        clampVal<int>(srcR + (m_data[idx + 0] * invSrcA) / 255, 0, 255);
+    m_data[idx + 1] =
+        clampVal<int>(srcG + (m_data[idx + 1] * invSrcA) / 255, 0, 255);
+    m_data[idx + 2] =
+        clampVal<int>(srcB + (m_data[idx + 2] * invSrcA) / 255, 0, 255);
+    m_data[idx + 3] =
+        clampVal<int>(srcA + (m_data[idx + 3] * invSrcA) / 255, 0, 255);
   }
-
-  if (outA > 0.0f) {
-    float invSrcA = 1.0f - srcA;
-    m_data[idx + 0] = static_cast<uint8_t>(clampVal(
-        (r * srcA + m_data[idx + 0] * dstA * invSrcA) / outA, 0.0f, 255.0f));
-    m_data[idx + 1] = static_cast<uint8_t>(clampVal(
-        (g * srcA + m_data[idx + 1] * dstA * invSrcA) / outA, 0.0f, 255.0f));
-    m_data[idx + 2] = static_cast<uint8_t>(clampVal(
-        (b * srcA + m_data[idx + 2] * dstA * invSrcA) / outA, 0.0f, 255.0f));
-  }
-  m_data[idx + 3] = static_cast<uint8_t>(clampVal(outA * 255.0f, 0.0f, 255.0f));
 }
 
 void ImageBuffer::drawCircle(int cx, int cy, float radius, uint8_t r, uint8_t g,
@@ -271,34 +284,26 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
         continue;
       }
 
-      float dstA = dstRow[3] / 255.0f;
-      float outA = srcA + dstA * (1.0f - srcA);
+      // PREMULTIPLIED BLENDING in Composite
+      uint8_t sA = static_cast<uint8_t>(srcA * 255.0f);
+      uint8_t invSA = 255 - sA;
 
-      if (outA > 0.0f) {
-        float invSrcA = 1.0f - srcA;
-        for (int c = 0; c < 3; ++c) {
-          float s = srcRow[c] / 255.0f;
-          float d = dstRow[c] / 255.0f;
-          float result = s; // Default Normal
+      for (int c = 0; c < 3; ++c) {
+        // Source is straight, but we must premultiply it and blend onto
+        // premultiplied dst
+        uint8_t sVal = static_cast<uint8_t>(srcRow[c] * srcA);
 
-          // Professional Blend Modes math
-          if (mode == BlendMode::Multiply) {
-            result = s * d;
-          } else if (mode == BlendMode::Screen) {
-            result = 1.0f - (1.0f - s) * (1.0f - d);
-          } else if (mode == BlendMode::Overlay) {
-            result = (d < 0.5f) ? (2.0f * s * d)
-                                : (1.0f - 2.0f * (1.0f - s) * (1.0f - d));
-          }
-
-          // Porter-Duff source-over with blend mode
-          // (mode_result * srcA + dst * dstA * (1-srcA)) / outA
-          float blended = (result * srcA + d * dstA * invSrcA) / outA;
-          dstRow[c] =
-              static_cast<uint8_t>(clampVal(blended * 255.0f, 0.0f, 255.0f));
+        if (mode == BlendMode::Multiply) {
+          uint8_t dVal = dstRow[c]; // already premult
+          // Multiply expects un-premult? Actually Multiply is tricky in premult
+          // space. Simplified: (src * dst) and keep alpha
+          dstRow[c] = (sVal * dVal) / 255;
+        } else {
+          // Normal
+          dstRow[c] = clampVal<int>(sVal + (dstRow[c] * invSA) / 255, 0, 255);
         }
-        dstRow[3] = static_cast<uint8_t>(clampVal(outA * 255.0f, 0.0f, 255.0f));
       }
+      dstRow[3] = clampVal<int>(sA + (dstRow[3] * invSA) / 255, 0, 255);
 
       dstRow += 4;
       srcRow += 4;
