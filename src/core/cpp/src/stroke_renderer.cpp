@@ -377,6 +377,7 @@ void StrokeRenderer::renderStroke(
   // --- BLEND MODE ---
   glEnable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
   glBlendEquation(GL_FUNC_ADD);
 
   if (isEraser) {

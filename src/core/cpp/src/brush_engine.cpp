@@ -3,6 +3,7 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
+#include <QFileInfo>
 #include <QImage>
 #include <QMap>
 #include <QOpenGLTexture>
@@ -10,6 +11,7 @@
 #include <QPainter>
 #include <QPointF>
 #include <QString>
+#include <QStringList>
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -25,65 +27,72 @@ static uint32_t loadTexture(const QString &name) {
   if (g_textureCache.contains(name))
     return g_textureCache[name];
 
-  // Try to load
-  // Check local path first (dev mode)
-  // Check local path first (dev mode)
-  QString path = "assets/textures/" + name;
-  if (!QFile::exists(path)) {
-    path = "src/assets/textures/" + name; // Legacy fallback
-    if (!QFile::exists(path)) {
-      path = "assets/brushes/tips/" + name;
-      if (!QFile::exists(path)) {
-        path = "src/assets/brushes/tips/" + name; // Legacy
-        if (!QFile::exists(path)) {
-          // Check relative to executable
-          path = QCoreApplication::applicationDirPath() + "/assets/textures/" +
-                 name;
-          if (!QFile::exists(path)) {
-            // Check QRC
-            path = ":/textures/" + name;
-          }
-        }
-      }
+  // Try multiple paths (searching up to root from executable or CWD)
+  QStringList searchPaths;
+  searchPaths << "assets/textures/" + name;
+  searchPaths << "assets/brushes/tips/" + name;
+  searchPaths << "../assets/textures/" + name;
+  searchPaths << "../assets/brushes/tips/" + name;
+  searchPaths << "../../assets/textures/" + name;
+  searchPaths << QCoreApplication::applicationDirPath() + "/assets/textures/" +
+                     name;
+  searchPaths << QCoreApplication::applicationDirPath() +
+                     "/../assets/textures/" + name;
+  searchPaths << "src/assets/textures/" + name;
+  searchPaths << ":/textures/" + name;
+
+  QString path;
+  bool found = false;
+  for (const QString &p : searchPaths) {
+    if (QFile::exists(p)) {
+      path = p;
+      found = true;
+      break;
     }
   }
 
-  qDebug() << "BrushEngine: Loading texture:" << name << "from" << path;
+  qDebug() << "BrushEngine: Loading texture:" << name << "Found:" << found
+           << "Path:" << path;
 
-  QImage img(path);
+  QImage img;
+  if (found) {
+    img.load(path);
+  }
+
   if (img.isNull()) {
-    qDebug() << "Texture not found or failed to load:" << name << "at" << path;
-    qDebug() << "Generating procedural fallback for:" << name;
+    qDebug() << "Texture failed to load or NOT found:" << name
+             << ". Generating soft circle fallback.";
     img = QImage(512, 512, QImage::Format_RGBA8888);
-    img.fill(Qt::white);
+    img.fill(Qt::transparent);
 
-    // Simple noise gen
+    // Procedural Soft Circle fallback
     for (int y = 0; y < 512; ++y) {
       for (int x = 0; x < 512; ++x) {
-        int v = rand() % 255;
-        if (name.contains("canvas")) {
-          v = (std::sin(x * 0.1) + std::sin(y * 0.1)) * 50 + 128 +
-              (rand() % 40 - 20);
+        float dx = (x - 256) / 256.0f;
+        float dy = (y - 256) / 256.0f;
+        float dist = std::sqrt(dx * dx + dy * dy);
+        if (dist < 1.0f) {
+          int v = static_cast<int>(255 * (1.0f - std::pow(dist, 2.0f)));
+          v = std::max(0, std::min(255, v));
+          img.setPixel(x, y, qRgba(v, v, v, v));
         }
-        v = std::max(0, std::min(255, v));
-        img.setPixel(x, y, qRgb(v, v, v));
       }
     }
   }
 
-  // CRUCIAL: Convert to format OpenGL understands well (RGBA 8888)
+  // Convert to format OpenGL understands well
   QImage glImg =
       img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical);
 
   QOpenGLTexture *tex = new QOpenGLTexture(glImg);
   tex->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
   tex->setMagnificationFilter(QOpenGLTexture::Linear);
-  tex->setWrapMode(QOpenGLTexture::Repeat); // Allow texture tiling
-  tex->generateMipMaps(); // CRITICAL: Avoid black/low-res dots
+  tex->setWrapMode(QOpenGLTexture::Repeat);
+  tex->generateMipMaps();
 
   uint32_t id = tex->textureId();
   g_textureCache[name] = id;
-  g_textures.push_back(tex); // Keep alive
+  g_textures.push_back(tex);
   return id;
 }
 
@@ -259,6 +268,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     int w = painter->device()->width();
     int h = painter->device()->height();
 
+    m_renderer->beginFrame(w, h);
+
     float currentSize =
         settings.size * (settings.sizeByPressure ? effectivePressure : 1.0f);
     if (currentSize < 1.0f)
@@ -369,11 +380,10 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             static_cast<int>(settings.type), m_renderer->viewportWidth(),
             m_renderer->viewportHeight(),
             // Grain
-            settings.grainTextureID, settings.useTexture,
+            grainTexID, (grainTexID != 0 && settings.useTexture),
             settings.textureScale * scaleFactor, settings.textureIntensity,
             // Tip
-            settings.tipTextureID, !settings.tipTextureName.isEmpty(),
-            settings.tipRotation + jRot,
+            tipTexID, (tipTexID != 0), settings.tipRotation + jRot,
             // Dynamics
             tilt, velocity, settings.flow,
             // Wet Mix
@@ -622,10 +632,11 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
   int w = m_renderer ? m_renderer->viewportWidth() : 2000;
   int h = m_renderer ? m_renderer->viewportHeight() : 2000;
 
-  if (w <= 0)
-    w = 2000;
-  if (h <= 0)
-    h = 2000;
+  if (m_renderer) {
+    m_renderer->beginFrame(w, h);
+  }
+
+  bool isEraser = (m_currentSettings.type == BrushSettings::Type::Eraser);
 
   // Render Loop
   while (coveredDist <= dist) {
@@ -689,7 +700,6 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         finalColor.setHslF(h, s, l, a);
       }
 
-      bool isEraser = (m_currentSettings.type == BrushSettings::Type::Eraser);
       m_renderer->renderStroke(
           pt.x() + jX, pt.y() + jY, devSizeBase * jSize, point.pressure,
           m_currentSettings.hardness, finalColor, (int)m_currentSettings.type,
@@ -704,6 +714,51 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
           // Wet Mix
           0, m_currentSettings.wetness, m_currentSettings.dilution,
           m_currentSettings.smudge,
+          // New Watercolor Params
+          m_currentSettings.bleed, m_currentSettings.absorptionRate,
+          m_currentSettings.dryingTime, m_currentSettings.wetOnWetMultiplier,
+          m_currentSettings.granulation, m_currentSettings.pigmentFlow,
+          m_currentSettings.staining, m_currentSettings.separation,
+          m_currentSettings.bloomEnabled, m_currentSettings.bloomIntensity,
+          m_currentSettings.bloomRadius, m_currentSettings.bloomThreshold,
+          m_currentSettings.edgeDarkeningEnabled,
+          m_currentSettings.edgeDarkeningIntensity,
+          m_currentSettings.edgeDarkeningWidth,
+          m_currentSettings.textureRevealEnabled,
+          m_currentSettings.textureRevealIntensity,
+          m_currentSettings.textureRevealPressureInfluence,
+          // Oil Params
+          m_currentSettings.mixing, m_currentSettings.loading,
+          m_currentSettings.depletionRate, m_currentSettings.dirtyMixing,
+          m_currentSettings.colorPickup, m_currentSettings.blendOnly,
+          m_currentSettings.scrapeThrough,
+          // Impasto
+          m_currentSettings.impastoEnabled, m_currentSettings.impastoDepth,
+          m_currentSettings.impastoShine,
+          m_currentSettings.impastoTextureStrength,
+          m_currentSettings.impastoEdgeBuildup,
+          m_currentSettings.impastoDirectionalRidges,
+          m_currentSettings.impastoSmoothing,
+          m_currentSettings.impastoPreserveExisting,
+          // Bristles
+          m_currentSettings.bristlesEnabled, m_currentSettings.bristleCount,
+          m_currentSettings.bristleStiffness, m_currentSettings.bristleClumping,
+          m_currentSettings.bristleFanSpread,
+          m_currentSettings.bristleIndividualVariation,
+          m_currentSettings.bristleDryBrushEffect,
+          m_currentSettings.bristleSoftness,
+          m_currentSettings.bristlePointTaper,
+          // Smudge
+          m_currentSettings.smudgeStrength,
+          m_currentSettings.smudgePressureInfluence,
+          m_currentSettings.smudgeLength, m_currentSettings.smudgeGaussianBlur,
+          m_currentSettings.smudgeSmear,
+          // Canvas Interaction
+          m_currentSettings.canvasAbsorption,
+          m_currentSettings.canvasSkipValleys,
+          m_currentSettings.canvasCatchPeaks,
+          // Color Dynamics Oil
+          m_currentSettings.temperatureShift, m_currentSettings.brokenColor,
           // Mode
           isEraser);
     }

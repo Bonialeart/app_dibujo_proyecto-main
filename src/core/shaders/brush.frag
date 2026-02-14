@@ -96,42 +96,44 @@ uniform float uDabSize;          // Current brush diameter in pixels
 uniform float tipRotation;       // Brush tip rotation in radians
 
 void main() {
-    // === 1. SHAPE ALPHA (Brush Tip) ===
+    // === 1. SHAPE & OPACITY (Brush Tip) ===
     float shapeAlpha = 1.0;
+    float dist = distance(TexCoords, vec2(0.5));
 
-    // Rotate UV for tip if needed
-    vec2 tipUV = TexCoords;
-    if (abs(tipRotation) > 0.001) {
-        vec2 center = vec2(0.5);
-        vec2 d = tipUV - center;
-        float cs = cos(tipRotation);
-        float sn = sin(tipRotation);
-        tipUV = center + vec2(d.x * cs - d.y * sn, d.x * sn + d.y * cs);
-    }
+    // Force discard outside the circular radius to avoid square artifacts
+    if (dist > 0.5) discard;
 
     if (uHasTip == 1) {
         // CUSTOM BRUSH TIP — sample the tip texture in local UV space
-        // If rotated UV goes out of bounds, alpha = 0
-        if (tipUV.x < 0.0 || tipUV.x > 1.0 || tipUV.y < 0.0 || tipUV.y > 1.0) {
+        vec2 uv = TexCoords;
+        if (abs(tipRotation) > 0.001) {
+            vec2 center = vec2(0.5);
+            vec2 d = uv - center;
+            float cs = cos(tipRotation);
+            float sn = sin(tipRotation);
+            uv = center + vec2(d.x * cs - d.y * sn, d.x * sn + d.y * cs);
+        }
+
+        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
             shapeAlpha = 0.0;
         } else {
-            vec4 tipSample = texture(tipTexture, tipUV);
+            vec4 tipSample = texture(tipTexture, uv);
             // Use luminance as alpha mask (grayscale tip textures)
             shapeAlpha = dot(tipSample.rgb, vec3(0.299, 0.587, 0.114));
-            // Apply tip's own alpha channel too
+            // Apply tip's own alpha channel
             shapeAlpha *= tipSample.a;
         }
+        
+        // Anti-aliasing for custom tips (edges of the circle)
+        shapeAlpha *= (1.0 - smoothstep(0.48, 0.5, dist));
     } else {
         // PROCEDURAL ROUND TIP — smooth circle with hardness falloff
-        float dist = distance(TexCoords, vec2(0.5));
-
-        // Smooth anti-aliasing: feather increases as hardness decreases
-        float feather = (1.0 - hardness) * 0.45 + 0.02;
+        float feather = (1.0 - hardness) * 0.45 + 0.01;
         shapeAlpha = 1.0 - smoothstep(0.5 - feather, 0.5, dist);
     }
 
     // Early discard for fully transparent fragments
-    if (shapeAlpha < 0.004) discard;
+    if (shapeAlpha < 0.001) discard;
 
     // === 2. GRAIN MODULATION (Paper Texture) ===
     float grainFactor = 1.0;
