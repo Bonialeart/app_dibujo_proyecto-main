@@ -1,7 +1,0 @@
-QQmlApplicationEngine failed to load component
-qrc:/qml/main_pro.qml:7:1: el módulo «Qt.labs.platform» no está instalado
-qrc:/qml/main_pro.qml:6:1: el módulo «QtQuick.Effects» no está instalado
-qrc:/qml/main_pro.qml:5:1: el módulo «QtQuick.Dialogs» no está instalado
-qrc:/qml/main_pro.qml:4:1: el módulo «QtQuick.Layouts» no está instalado
-qrc:/qml/main_pro.qml:3:1: el módulo «QtQuick.Controls» no está instalado
-qrc:/qml/main_pro.qml:2:1: el módulo «QtQuick.Window» no está instalado

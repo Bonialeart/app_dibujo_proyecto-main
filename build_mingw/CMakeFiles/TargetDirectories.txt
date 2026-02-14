@@ -1,5 +1,0 @@
-E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/ArtFlowStudio.dir
-E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/edit_cache.dir
-E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/rebuild_cache.dir
-E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/ArtFlowStudio_autogen_timestamp_deps.dir
-E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir

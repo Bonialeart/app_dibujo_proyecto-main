@@ -28,13 +28,13 @@ static uint32_t loadTexture(const QString &name) {
   // Try to load
   // Check local path first (dev mode)
   // Check local path first (dev mode)
-  QString path = "src/assets/textures/" + name;
+  QString path = "assets/textures/" + name;
   if (!QFile::exists(path)) {
-    path = "../../src/assets/textures/" + name;
+    path = "src/assets/textures/" + name; // Legacy fallback
     if (!QFile::exists(path)) {
-      path = "src/assets/brushes/tips/" + name;
+      path = "assets/brushes/tips/" + name;
       if (!QFile::exists(path)) {
-        path = "../../src/assets/brushes/tips/" + name;
+        path = "src/assets/brushes/tips/" + name; // Legacy
         if (!QFile::exists(path)) {
           // Check relative to executable
           path = QCoreApplication::applicationDirPath() + "/assets/textures/" +
@@ -94,13 +94,13 @@ static QImage getTextureImage(const QString &name) {
     return s_imageTextureCache[name];
 
   // Try multiple paths (same as loadTexture)
-  QString path = "src/assets/textures/" + name;
+  QString path = "assets/textures/" + name;
   if (!QFile::exists(path)) {
-    path = "../../src/assets/textures/" + name;
+    path = "src/assets/textures/" + name;
     if (!QFile::exists(path)) {
-      path = "src/assets/brushes/tips/" + name;
+      path = "assets/brushes/tips/" + name;
       if (!QFile::exists(path)) {
-        path = "../../src/assets/brushes/tips/" + name;
+        path = "src/assets/brushes/tips/" + name;
         if (!QFile::exists(path)) {
           path = QCoreApplication::applicationDirPath() + "/assets/textures/" +
                  name;

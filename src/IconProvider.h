@@ -28,20 +28,12 @@ public:
     searchPaths << QCoreApplication::applicationDirPath() + "/assets/icons/" +
                        fileName;
     searchPaths << QCoreApplication::applicationDirPath() +
-                       "/../src/assets/icons/" + fileName;
-    searchPaths << QCoreApplication::applicationDirPath() +
-                       "/../../src/assets/icons/" + fileName;
-    // Rutas absolutas del proyecto (para desarrollo)
-    searchPaths << "d:/app_dibujo_proyecto-main/src/assets/icons/" + fileName;
-    searchPaths << "d:/app_dibujo_proyecto-main/assets/icons/" + fileName;
-    // Rutas relativas al directorio de trabajo actual (Qt Creator suele usar el
-    // directorio de build)
-    searchPaths << QDir::currentPath() + "/src/assets/icons/" + fileName;
-    searchPaths << QDir::currentPath() + "/../src/assets/icons/" + fileName;
-    searchPaths << QDir::currentPath() + "/../../src/assets/icons/" + fileName;
+                       "/../assets/icons/" + fileName;
+    // Rutas relativas al proyecto
     searchPaths << "assets/icons/" + fileName;
-    searchPaths << "../src/assets/icons/" + fileName;
-    searchPaths << "../../src/assets/icons/" + fileName;
+    searchPaths << "src/assets/icons/" + fileName; // Legacy
+    // Rutas relativas al directorio de trabajo actual
+    searchPaths << QDir::currentPath() + "/assets/icons/" + fileName;
 
     QString path;
     for (const QString &searchPath : searchPaths) {

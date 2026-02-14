@@ -2,7 +2,7 @@ from PIL import Image
 import numpy as np
 import os
 
-path = "src/assets/textures/tip_pencil.png"
+path = "assets/textures/tip_pencil.png"
 if not os.path.exists(path):
     print(f"File not found: {path}")
     exit(1)

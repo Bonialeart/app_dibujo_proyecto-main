@@ -8,7 +8,7 @@ class IconProvider(QQuickImageProvider):
         super().__init__(QQuickImageProvider.ImageType.Pixmap)
         # Base directory for icons: src/assets/icons
         # Assuming this file is in src/
-        self.base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "icons")
+        self.base_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "icons")
         print(f"[IconProvider] Icon path initialized: {self.base_path}")
 
     def requestPixmap(self, id, size, requestedSize=None):

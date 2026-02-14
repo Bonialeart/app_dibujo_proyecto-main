@@ -91,10 +91,11 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 
   // Try loading JSON presets from disk
   QStringList searchPaths;
-  searchPaths << "src/assets/brushes"
+  searchPaths << "assets/brushes"
+              << "src/assets/brushes" // Keep for compatibility if needed,
+                                      // though folder is gone
               << QCoreApplication::applicationDirPath() + "/assets/brushes"
-              << QCoreApplication::applicationDirPath() +
-                     "/../src/assets/brushes";
+              << QCoreApplication::applicationDirPath() + "/../assets/brushes";
   for (const QString &p : searchPaths) {
     if (QDir(p).exists()) {
       bpm->loadFromDirectory(p);
@@ -144,7 +145,8 @@ void CanvasItem::paint(QPainter *painter) {
     QStringList paths;
     paths << QCoreApplication::applicationDirPath() + "/shaders/";
     paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
-    paths << "d:/app_dibujo_proyecto-main/src/core/shaders/";
+    paths << "src/core/shaders/"; // Relative to project root
+    paths << "assets/shaders/";   // If we move shaders later
 
     QString vertPath, fragPath;
     for (const QString &path : paths) {

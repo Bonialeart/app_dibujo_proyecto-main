@@ -5,7 +5,7 @@ import uuid
 
 # Define output directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUTPUT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "../../src/assets/brushes"))
+OUTPUT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "../../assets/brushes"))
 
 # Ensure output directory exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)

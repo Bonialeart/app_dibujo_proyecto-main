@@ -1,2 +1,0 @@
-Qt Headers Path: C:/Users/alejandro/AppData/Local/Python/pythoncore-3.14-64/Lib/site-packages/PyQt6/Qt6/include
-Qt Headers dir does not exist.
