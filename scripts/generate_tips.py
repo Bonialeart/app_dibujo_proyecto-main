@@ -4,7 +4,8 @@ from PIL import Image, ImageDraw, ImageFilter
 import random
 import math
 
-OUTPUT_DIR = r"e:\app_dibujo_proyecto-main\src\assets\brushes\tips"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, "../assets/brushes/tips"))
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def save_tip(name, img):

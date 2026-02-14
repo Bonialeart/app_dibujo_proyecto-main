@@ -7,7 +7,7 @@ set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin
 
 set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
-mkdir build_mingw
+if not exist build_mingw mkdir build_mingw
 cd build_mingw
 
 cmake -G "Ninja" ^

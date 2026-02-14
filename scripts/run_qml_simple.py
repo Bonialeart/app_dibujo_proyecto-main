@@ -17,7 +17,7 @@ def main():
     engine = QQmlApplicationEngine()
     
     # Path to QML file
-    qml_file = os.path.join(os.path.dirname(__file__), "ui", "qml", "main.qml")
+    qml_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "../src/ui/qml/main.qml"))
     
     engine.load(QUrl.fromLocalFile(qml_file))
     

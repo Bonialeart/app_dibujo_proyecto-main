@@ -1,0 +1,27 @@
+# ninja log v6
+39	6112	7927459381100000	ArtFlowStudio_autogen/timestamp	150cf1f9f2b18cb2
+39	6112	7927459381100000	ArtFlowStudio_autogen/mocs_compilation.cpp	150cf1f9f2b18cb2
+39	6112	7927459381100000	E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/timestamp	150cf1f9f2b18cb2
+39	6112	7927459381100000	E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/mocs_compilation.cpp	150cf1f9f2b18cb2
+6123	7032	7927459400000000	ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp	95be9406c55a04a7
+6123	7032	7927459400000000	E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp	95be9406c55a04a7
+7066	8011	7927459400000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/color_utils.cpp.obj	b88d48d575ec6b71
+7060	8540	7927459400000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/layer_manager.cpp.obj	a6a6825df73731c5
+7079	8770	7927459400000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/image_buffer.cpp.obj	c8e91bc564ee374b
+8771	10354	7927459420000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_undo_command.cpp.obj	8e3b593cc0f44b63
+8550	10488	7927459420000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/undo_manager.cpp.obj	7e75f688ca8a30dc
+10506	13550	7927459440000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/ColorPickerImpl.cpp.obj	912e29f4e70761e2
+7046	14414	7927459400000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_preset.cpp.obj	3ec52cb099c24000
+7053	14834	7927459400000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_preset_manager.cpp.obj	d0b71a65baad5879
+10359	15564	7927459440000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/ColorPicker.cpp.obj	73a575bb45004261
+7040	15637	7927459400000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/brush_engine.cpp.obj	2d0a7047629bd70d
+8011	16771	7927459420000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/stroke_renderer.cpp.obj	b39599eebbba942c
+16787	17652	7927459500000000	CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj	39a26b7e3b996921
+7032	18506	7927459400000000	CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj	fe4092133026c504
+7087	18630	7927459400000000	CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/gl_utils.cpp.obj	34606eb481dad57f
+15639	19559	7927459480000000	CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj	20bde8831dc6102d
+14838	19845	7927459480000000	CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj	11e2aa9ddf1498b8
+15597	20170	7927459480000000	CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj	25db7528a7bc2a10
+13553	21033	7927459460000000	CMakeFiles/ArtFlowStudio.dir/src/main.cpp.obj	ac6d269c7e13153d
+14417	23003	7927459480000000	CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.obj	dd615d37b1d70db9
+23003	24408	7927459560000000	ArtFlowStudio.exe	f074003b978858b
