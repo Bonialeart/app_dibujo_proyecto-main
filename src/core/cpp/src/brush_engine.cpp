@@ -315,15 +315,24 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       float opacityMultiplier = 1.0f;
 
       if (settings.taperStart > 0.0f && totalDist < settings.taperStart) {
-        // Parabolic Taper (smoother)
-        // Reference: 1 - x²
+        // Parabolic Taper (smoother start)
         float x = 1.0f - (totalDist / settings.taperStart); // 1.0 to 0.0
         float parabola = 1.0f - (x * x);
-        sizeMultiplier = 0.2f + 0.8f * parabola;
+        sizeMultiplier = 0.1f + 0.9f * parabola;
       }
       if (settings.fallOff > 0.0f) {
+        // Opacity falloff
         opacityMultiplier =
             std::max(0.0f, 1.0f - (totalDist / settings.fallOff));
+
+        // Parabolic Taper (smoother end)
+        if (settings.taperEnd > 0.0f &&
+            totalDist > (settings.fallOff - settings.taperEnd)) {
+          float x = (totalDist - (settings.fallOff - settings.taperEnd)) /
+                    settings.taperEnd; // 0.0 to 1.0
+          float parabola = 1.0f - (x * x);
+          sizeMultiplier *= (0.1f + 0.9f * parabola);
+        }
       }
 
       QPointF devPt = xform.map(pt);

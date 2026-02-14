@@ -728,6 +728,169 @@
         "default_size": 6.0,
         "default_opacity": 1.0
       }
+    },
+    {
+      "meta": {
+        "uuid": "e7b2aedb-1b2c-4a3d-8e4f-a0b1c2d3e4f5",
+        "name": "Maru Pen",
+        "category": "Inking",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "ink_maru_pen.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.04,
+        "streamline": 0.95,
+        "taper_start": 40.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": [
+            0.4,
+            0.0,
+            0.6,
+            1.0
+          ],
+          "velocity_influence": 0.3
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 1.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "customize": {
+        "default_size": 15.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "f8c3bedb-2c3d-5b4e-9f5a-b1c2d3e4f5a6",
+        "name": "Saji Pen",
+        "category": "Inking",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "ink_saji_pen.png",
+        "roundness": 0.9,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.08,
+        "streamline": 0.4
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.3,
+          "pressure_curve": "linear"
+        }
+      },
+      "customize": {
+        "default_size": 10.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "09d4cedb-3d4e-6c5f-a06b-c2d3e4f5a6b7",
+        "name": "Fude Pen",
+        "category": "Inking",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "ink_fude_pen.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.05,
+        "streamline": 0.7
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 0.9,
+          "min_limit": 0.2,
+          "pressure_curve": "linear"
+        }
+      },
+      "wet_mix": {
+        "wet_mix": 0.2,
+        "pigment": 0.9
+      },
+      "customize": {
+        "default_size": 25.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "1ae5dedb-4e5f-7d6a-b17c-d3e4f5a6b7c8",
+        "name": "Real Manga G-Pen",
+        "category": "Inking",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "ink_manga_textured.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.5,
+        "taper_end": 30.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "hard"
+        }
+      },
+      "grain": {
+        "scale": 0.5,
+        "intensity": 0.3,
+        "texture": "grain_paper_standard.png"
+      },
+      "customize": {
+        "default_size": 12.0,
+        "default_opacity": 1.0
+      }
     }
   ]
 }

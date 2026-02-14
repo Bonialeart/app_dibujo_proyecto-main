@@ -183,6 +183,7 @@ public:
   void setIsFlippedV(bool flip);
   void setIsEraser(bool eraser);
   Q_INVOKABLE void setBackgroundColor(const QString &color);
+  Q_INVOKABLE void setUseCustomCursor(bool use);
   Q_INVOKABLE void usePreset(const QString &name);
   Q_INVOKABLE bool loadProject(const QString &path);
   Q_INVOKABLE bool saveProject(const QString &path);
@@ -322,6 +323,8 @@ protected:
   void mouseReleaseEvent(QMouseEvent *event) override;
   void wheelEvent(QWheelEvent *event) override;
   void hoverMoveEvent(QHoverEvent *event) override;
+  void hoverEnterEvent(QHoverEvent *event) override;
+  void hoverLeaveEvent(QHoverEvent *event) override;
   void tabletEvent(QTabletEvent *event);
   bool event(QEvent *event) override;
 
@@ -429,6 +432,19 @@ private:
   TransformMode m_transformMode = TransformMode::None;
   QPointF m_transformStartPos;
   QTransform m_initialMatrix;
+
+  // Krita-style Brush Cursor
+  QPointF m_cursorPos;
+  bool m_cursorVisible = false;
+  QImage m_brushOutlineCache;
+  QString m_lastBrushTexturePath;
+  float m_lastCursorSize = -1;
+  float m_lastCursorRotation = -1;
+  bool m_cursorCacheDirty = true;
+
+  QImage loadAndProcessBrushTexture(const QString &texturePath, float size,
+                                    float rotation);
+  void invalidateCursorCache();
 
   void capture_timelapse_frame();
 };

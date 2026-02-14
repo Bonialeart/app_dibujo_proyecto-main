@@ -81,10 +81,15 @@ CanvasItem::CanvasItem(QQuickItem *parent)
                 PreferencesManager::instance()->undoLevels());
             // Aquí podrías añadir otros updates (ej: gpuAcceleration si fuera
             // dinámico)
+            update();
           });
 
   m_activeLayerIndex = 1;
   m_layerManager->setActiveLayer(m_activeLayerIndex);
+
+  // ✅ OCULTAR CURSOR DEL SISTEMA COMPLETAMENTE
+  setCursor(Qt::BlankCursor);
+  setFlag(QQuickItem::ItemHasContents, true);
 
   // === Data-Driven Brush Loading ===
   auto *bpm = artflow::BrushPresetManager::instance();
@@ -369,6 +374,108 @@ void CanvasItem::paint(QPainter *painter) {
     // Draw "Marching Ants" effect (simplified DashOffset animation if time
     // allows)
     painter->restore();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 🎯 CURSOR PERSONALIZADO AL FINAL (ENCIMA DE TODO)
+  // ══════════════════════════════════════════════════════════════
+
+  if (m_cursorVisible &&
+      (m_tool == ToolType::Pen || m_tool == ToolType::Eraser)) {
+
+    // Obtener valores actuales del pincel
+    float size = m_brushSize;
+    float rotation = m_brushAngle;
+    QString texturePath;
+
+    // Si estamos editando un preset, usar sus valores
+    if (m_isEditingBrush) {
+      texturePath = m_editingPreset.shape.tipTexture;
+      rotation = m_editingPreset.shape.rotation;
+      size = m_editingPreset.defaultSize;
+    } else {
+      // Intentar obtener del preset activo
+      auto *bpm = artflow::BrushPresetManager::instance();
+      const artflow::BrushPreset *preset = bpm->findByName(m_activeBrushName);
+      if (preset) {
+        texturePath = preset->shape.tipTexture;
+        rotation = preset->shape.rotation;
+      } else {
+        // Debug fallback path if no preset found
+        qDebug() << "No preset found for cursor:" << m_activeBrushName;
+      }
+    }
+
+    // Verificar si necesitamos regenerar el cache del cursor
+    bool needsRegenerate =
+        (m_cursorCacheDirty || m_brushOutlineCache.isNull() ||
+         m_lastBrushTexturePath != texturePath ||
+         !qFuzzyCompare(m_lastCursorSize, size * m_zoomLevel) ||
+         !qFuzzyCompare(m_lastCursorRotation, rotation));
+
+    if (needsRegenerate) {
+      m_brushOutlineCache =
+          loadAndProcessBrushTexture(texturePath, size, rotation);
+      m_lastBrushTexturePath = texturePath;
+      m_lastCursorSize = size * m_zoomLevel;
+      m_lastCursorRotation = rotation;
+      m_cursorCacheDirty = false;
+
+      qDebug() << "Cursor regenerated for texture:" << texturePath
+               << "size:" << size << "zoom:" << m_zoomLevel;
+    }
+
+    if (!m_brushOutlineCache.isNull()) {
+      // Dibujar centrado en la posición del cursor
+      float cursorX = m_cursorPos.x() - m_brushOutlineCache.width() / 2.0f;
+      float cursorY = m_cursorPos.y() - m_brushOutlineCache.height() / 2.0f;
+
+      painter->save();
+      painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+      painter->drawImage(QPointF(cursorX, cursorY), m_brushOutlineCache);
+      painter->restore();
+    } else {
+      // 🚨 FALLBACK VISIBLE (Círculo Rojo) para depuración
+      // Si llegamos aquí, falló la carga de textura
+      painter->save();
+      painter->setPen(QPen(Qt::red, 2));
+      painter->drawEllipse(m_cursorPos, size * m_zoomLevel / 2,
+                           size * m_zoomLevel / 2);
+      painter->restore();
+    }
+  }
+
+  // Cursores para otras herramientas (opcionales)
+  else if (m_cursorVisible) {
+    // Crosshair simple para eyedropper, lasso, etc.
+    if (m_tool == ToolType::Eyedropper || m_tool == ToolType::Lasso) {
+      painter->save();
+      QPen crossPen(QColor(255, 255, 255), 1.5f);
+      painter->setPen(crossPen);
+      painter->drawLine(m_cursorPos + QPointF(-8, 0),
+                        m_cursorPos + QPointF(8, 0));
+      painter->drawLine(m_cursorPos + QPointF(0, -8),
+                        m_cursorPos + QPointF(0, 8));
+
+      // Contorno negro
+      crossPen.setColor(QColor(0, 0, 0));
+      crossPen.setWidthF(2.5f);
+      painter->setPen(crossPen);
+      painter->drawLine(m_cursorPos + QPointF(-8, 0),
+                        m_cursorPos + QPointF(8, 0));
+      painter->drawLine(m_cursorPos + QPointF(0, -8),
+                        m_cursorPos + QPointF(0, 8));
+
+      // Redibujar blanco encima
+      crossPen.setColor(QColor(255, 255, 255));
+      crossPen.setWidthF(1.5f);
+      painter->setPen(crossPen);
+      painter->drawLine(m_cursorPos + QPointF(-8, 0),
+                        m_cursorPos + QPointF(8, 0));
+      painter->drawLine(m_cursorPos + QPointF(0, -8),
+                        m_cursorPos + QPointF(0, 8));
+      painter->restore();
+    }
   }
 }
 
@@ -836,6 +943,15 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
+  // 🔒 FORCE HIDE CURSOR (Reinforce C++)
+  if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser) {
+    setCursor(Qt::BlankCursor);
+  }
+
+  m_cursorPos = event->position();
+  m_cursorVisible = true;
+  update(); // Ensure repaint
+
   emit cursorPosChanged(event->position().x(), event->position().y());
 
   if (m_tool == ToolType::Hand && (event->buttons() & Qt::LeftButton)) {
@@ -893,6 +1009,12 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 
     handleDraw(event->position(), pressure);
   }
+
+  // Solo actualizar el cursor si no estamos dibujando
+  if (!m_isDrawing) {
+    update();
+  }
+
   m_lastMousePos = event->position();
 }
 
@@ -1025,6 +1147,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     }
 
     // handleDraw(event->position(), pressure, tiltFactor);
+    handleDraw(event->position(), pressure, tiltFactor);
     event->accept();
 
   } else if (event->type() == QEvent::TabletRelease) {
@@ -1083,10 +1206,6 @@ bool CanvasItem::event(QEvent *event) {
   return QQuickPaintedItem::event(event);
 }
 
-void CanvasItem::hoverMoveEvent(QHoverEvent *event) {
-  emit cursorPosChanged(event->position().x(), event->position().y());
-}
-
 // ... Setters and other methods ...
 
 void CanvasItem::setBrushSize(int size) {
@@ -1094,6 +1213,7 @@ void CanvasItem::setBrushSize(int size) {
   BrushSettings s = m_brushEngine->getBrush();
   s.size = static_cast<float>(size);
   m_brushEngine->setBrush(s);
+  invalidateCursorCache();
   emit brushSizeChanged();
 }
 
@@ -1126,6 +1246,7 @@ void CanvasItem::setBrushHardness(float hardness) {
   BrushSettings s = m_brushEngine->getBrush();
   s.hardness = hardness;
   m_brushEngine->setBrush(s);
+  update();
   emit brushHardnessChanged();
 }
 
@@ -1211,6 +1332,7 @@ void CanvasItem::setLightElevation(float elevation) {
 
 void CanvasItem::setBrushAngle(float value) {
   m_brushAngle = value;
+  invalidateCursorCache();
   emit brushAngleChanged();
 }
 
@@ -1221,6 +1343,7 @@ void CanvasItem::setCursorRotation(float value) {
 
 void CanvasItem::setZoomLevel(float zoom) {
   m_zoomLevel = zoom;
+  invalidateCursorCache();
   emit zoomLevelChanged();
   update();
 }
@@ -1249,8 +1372,8 @@ void CanvasItem::setIsEraser(bool eraser) {
     // but better to not force it here. handleDraw will handle the override.
   }
   m_brushEngine->setBrush(s);
-  emit isEraserChanged(m_isEraser);
   update();
+  emit isEraserChanged(m_isEraser);
 }
 
 void CanvasItem::setCurrentTool(const QString &tool) {
@@ -1293,24 +1416,30 @@ void CanvasItem::setCurrentTool(const QString &tool) {
     emit requestToolIdx(12);
 
   if (tool == "brush" || tool == "pen" || tool == "pencil" ||
-      tool == "watercolor" || tool == "airbrush")
+      tool == "watercolor" || tool == "airbrush") {
     m_tool = ToolType::Pen;
-  else if (tool == "eraser")
+    setCursor(Qt::BlankCursor);
+  } else if (tool == "eraser") {
     m_tool = ToolType::Eraser;
-  else if (tool == "lasso")
+    setCursor(Qt::BlankCursor);
+  } else if (tool == "lasso") {
     m_tool = ToolType::Lasso;
-  else if (tool == "transform" || tool == "move") {
+    setCursor(Qt::CrossCursor);
+  } else if (tool == "transform" || tool == "move") {
     m_tool = ToolType::Transform;
-    // Ya no 'levantamos' el contenido aquí para evitar recuadros azules
-    // inmediatos y destrucción accidental de trazos previos. La lógica se
-    // movió a mousePressEvent.
-  } else if (tool == "eyedropper")
+    setCursor(Qt::ArrowCursor);
+  } else if (tool == "eyedropper") {
     m_tool = ToolType::Eyedropper;
-  else if (tool == "hand")
+    setCursor(Qt::CrossCursor);
+  } else if (tool == "hand") {
     m_tool = ToolType::Hand;
-  else if (tool == "fill")
+    setCursor(Qt::OpenHandCursor);
+  } else if (tool == "fill") {
     m_tool = ToolType::Fill;
+    setCursor(Qt::CrossCursor);
+  }
 
+  invalidateCursorCache();
   emit currentToolChanged();
 
   // Auto-apply default presets for tools
@@ -1870,6 +1999,7 @@ void CanvasItem::usePreset(const QString &name) {
   s.color = m_brushColor;
 
   m_brushEngine->setBrush(s);
+  invalidateCursorCache();
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -1997,6 +2127,7 @@ void CanvasItem::applyEditingPresetToEngine() {
   setBrushFlow(m_editingPreset.defaultFlow);
   setBrushSpacing(m_editingPreset.stroke.spacing);
   setBrushStreamline(m_editingPreset.stroke.streamline);
+  invalidateCursorCache();
 }
 
 // ─── Generic Property Getter ──────────────────────────────────────────
@@ -2890,4 +3021,190 @@ float CanvasItem::applyPressureCurve(float input) {
     return input; // Safety default linear
   int idx = std::clamp((int)(input * 1023), 0, 1023);
   return m_lut[idx];
+}
+
+void CanvasItem::hoverMoveEvent(QHoverEvent *event) {
+  // 🔒 FORCE HIDE CURSOR (Reinforce C++)
+  if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser) {
+    setCursor(Qt::BlankCursor);
+  }
+
+  m_cursorPos = event->position();
+  m_cursorVisible = true;
+  update(); // Actualizar para redibujar cursor
+  emit cursorPosChanged(event->position().x(), event->position().y());
+}
+
+void CanvasItem::hoverEnterEvent(QHoverEvent *event) {
+  m_cursorVisible = true;
+  m_cursorPos = event->position();
+  setCursor(Qt::BlankCursor); // Asegurar que está oculto
+  update();
+}
+
+void CanvasItem::hoverLeaveEvent(QHoverEvent *event) {
+  m_cursorVisible = false;
+  update();
+}
+
+QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
+                                              float size, float rotation) {
+  if (texturePath.isEmpty()) {
+    // Fallback: círculo simple si no hay textura
+    int iSize = std::max(8, std::min((int)(size * m_zoomLevel), 512));
+    if (iSize % 2 == 0)
+      iSize++;
+
+    QImage fallback(iSize, iSize, QImage::Format_ARGB32);
+    fallback.fill(Qt::transparent);
+
+    QPainter p(&fallback);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    float center = iSize / 2.0f;
+    float radius = center - 2.0f;
+
+    // Contorno negro
+    p.setPen(QPen(QColor(0, 0, 0, 200), 2.0f));
+    p.setBrush(Qt::NoBrush);
+    p.drawEllipse(QPointF(center, center), radius, radius);
+
+    // Contorno blanco
+    p.setPen(QPen(QColor(255, 255, 255, 255), 1.0f));
+    p.drawEllipse(QPointF(center, center), radius - 1, radius - 1);
+
+    // Crosshair
+    p.setPen(QPen(QColor(255, 255, 255, 255), 1.5f));
+    p.drawLine(QPointF(center - 4, center), QPointF(center + 4, center));
+    p.drawLine(QPointF(center, center - 4), QPointF(center, center + 4));
+
+    p.end();
+    return fallback;
+  }
+
+  // 🎯 CARGAR TEXTURA REAL DEL PINCEL
+  QStringList searchPaths;
+  searchPaths << "assets/textures"
+              << "src/assets/textures"
+              << QCoreApplication::applicationDirPath() + "/assets/textures"
+              << QCoreApplication::applicationDirPath() + "/../assets/textures"
+              << QCoreApplication::applicationDirPath() + "/textures";
+
+  QString fullPath;
+  for (const QString &base : searchPaths) {
+    QString candidate = base + "/" + texturePath;
+    if (QFile::exists(candidate)) {
+      fullPath = candidate;
+      break;
+    }
+  }
+
+  if (fullPath.isEmpty() || !QFile::exists(fullPath)) {
+    qDebug() << "loadAndProcessBrushTexture: Texture not found:" << texturePath;
+    return loadAndProcessBrushTexture("", size, rotation); // Fallback
+  }
+
+  // Cargar imagen original
+  QImage original(fullPath);
+  if (original.isNull()) {
+    qDebug() << "loadAndProcessBrushTexture: Failed to load:" << fullPath;
+    return loadAndProcessBrushTexture("", size, rotation);
+  }
+
+  // Convertir a ARGB32 si no lo es
+  if (original.format() != QImage::Format_ARGB32) {
+    original = original.convertToFormat(QImage::Format_ARGB32);
+  }
+
+  // 🔥 PROCESAR: Convertir fondo blanco/gris a transparente
+  // y usar solo el canal alfa para el contorno
+  for (int y = 0; y < original.height(); y++) {
+    for (int x = 0; x < original.width(); x++) {
+      QColor pixel = original.pixelColor(x, y);
+
+      // Obtener luminosidad (0-255)
+      int luminance = qGray(pixel.red(), pixel.green(), pixel.blue());
+
+      // Invertir: blanco = transparente, negro = opaco
+      int alpha = 255 - luminance;
+
+      // Establecer como blanco con alpha variable
+      if (alpha > 10) { // Threshold para ruido
+        original.setPixelColor(x, y, QColor(255, 255, 255, alpha));
+      } else {
+        original.setPixelColor(x, y, QColor(0, 0, 0, 0));
+      }
+    }
+  }
+
+  // Escalar según el tamaño del pincel y zoom
+  int targetSize = std::max(8, std::min((int)(size * m_zoomLevel), 512));
+  QImage scaled = original.scaled(targetSize, targetSize, Qt::KeepAspectRatio,
+                                  Qt::SmoothTransformation);
+
+  // Aplicar rotación si es necesario
+  if (std::abs(rotation) > 0.1f) {
+    QTransform transform;
+    transform.translate(scaled.width() / 2.0, scaled.height() / 2.0);
+    transform.rotate(rotation);
+    transform.translate(-scaled.width() / 2.0, -scaled.height() / 2.0);
+    scaled = scaled.transformed(transform, Qt::SmoothTransformation);
+  }
+
+  // 🎯 CREAR CONTORNO ESTILO KRITA (blanco con borde negro)
+  QImage outline(scaled.width() + 4, scaled.height() + 4,
+                 QImage::Format_ARGB32);
+  outline.fill(Qt::transparent);
+
+  QPainter p(&outline);
+  p.setRenderHint(QPainter::Antialiasing);
+  p.setRenderHint(QPainter::SmoothPixmapTransform);
+
+  // Dibujar sombra negra (borde exterior)
+  p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+  for (int dx = -1; dx <= 1; dx++) {
+    for (int dy = -1; dy <= 1; dy++) {
+      if (dx == 0 && dy == 0)
+        continue;
+      p.setOpacity(0.8);
+      p.drawImage(2 + dx, 2 + dy, scaled);
+    }
+  }
+
+  // Dibujar la forma principal en blanco
+  p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+  p.setOpacity(1.0);
+  p.drawImage(2, 2, scaled);
+
+  // Añadir crosshair central
+  if (PreferencesManager::instance()->cursorShowCrosshair()) {
+    float cx = outline.width() / 2.0f;
+    float cy = outline.height() / 2.0f;
+
+    // Cruz negra (fondo)
+    p.setPen(QPen(QColor(0, 0, 0, 200), 2.5f));
+    p.drawLine(QPointF(cx - 5, cy), QPointF(cx + 5, cy));
+    p.drawLine(QPointF(cx, cy - 5), QPointF(cx, cy + 5));
+
+    // Cruz blanca (frente)
+    p.setPen(QPen(QColor(255, 255, 255, 255), 1.5f));
+    p.drawLine(QPointF(cx - 5, cy), QPointF(cx + 5, cy));
+    p.drawLine(QPointF(cx, cy - 5), QPointF(cx, cy + 5));
+  }
+
+  p.end();
+
+  return outline;
+}
+
+void CanvasItem::invalidateCursorCache() {
+  m_cursorCacheDirty = true;
+  m_brushOutlineCache = QImage();
+  update();
+}
+
+void CanvasItem::setUseCustomCursor(bool use) {
+  (void)use;
+  setCursor(Qt::BlankCursor);
+  invalidateCursorCache();
 }

@@ -260,7 +260,7 @@ Rectangle {
                 spacing: 4
                 boundsBehavior: Flickable.StopAtBounds
                 
-                model: ["Sketching", "Inking", "Drawing", "Painting", "Artistic", "Watercolor", "Oil Painting", "Calligraphy", "Airbrushing", "Textures", "Abstract", "Charcoal", "Elements", "Sprays", "Industrial", "Luminance", "Vintage", "Imported"]
+                model: ["Manga", "Sketching", "Inking", "Drawing", "Painting", "Artistic", "Watercolor", "Oil Painting", "Calligraphy", "Airbrushing", "Textures", "Abstract", "Charcoal", "Elements", "Sprays", "Industrial", "Luminance", "Vintage", "Imported"]
                 
                 delegate: Rectangle {
                     width: parent.width

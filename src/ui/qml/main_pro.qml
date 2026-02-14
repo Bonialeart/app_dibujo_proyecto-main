@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
 import QtQuick.Effects
 import Qt.labs.platform 1.1 // For ColorDialog
+import Qt.labs.settings 1.0 // For Window persistence
 
 // import QtWebEngine
 // import Qt5Compat.GraphicalEffects
@@ -20,6 +21,17 @@ Window {
     title: "ArtFlow Studio Pro"
     color: "#050507"
     
+    // 💾 PERSIST WINDOW STATE
+    Settings {
+        id: windowSettings
+        category: "Window"
+        property alias x: mainWindow.x
+        property alias y: mainWindow.y
+        property alias width: mainWindow.width
+        property alias height: mainWindow.height
+        property alias visibility: mainWindow.visibility
+    }
+
     onWidthChanged: if(isProjectActive) mainCanvas.fitToView()
     // Global Keyboard Handler (Centralized)
     
