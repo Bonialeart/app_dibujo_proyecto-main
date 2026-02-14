@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_abstract_polygons.png",
+        "tip_texture": "abstract_polygons.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -76,7 +76,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_abstract_daisy.png",
+        "tip_texture": "abstract_daisy.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -137,7 +137,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_abstract_glitch.png",
+        "tip_texture": "abstract_glitch.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -198,7 +198,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_abstract_kaleidoscope.png",
+        "tip_texture": "abstract_kaleidoscope.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 6,
@@ -259,7 +259,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_abstract_fractal.png",
+        "tip_texture": "abstract_fractal.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -320,7 +320,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_abstract_3d_mesh.png",
+        "tip_texture": "abstract_3d_mesh.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -380,7 +380,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_abstract_pointillism.png",
+        "tip_texture": "abstract_pointillism.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 10,
@@ -441,7 +441,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_abstract_loop.png",
+        "tip_texture": "abstract_loop.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,

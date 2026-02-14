@@ -830,8 +830,8 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       m_quickShapeTimer->start(800);
     }
 
-    float pressure = 1.0f;
-    handleDraw(event->position(), pressure);
+    // float pressure = 0.1f;
+    // handleDraw(event->position(), pressure);
   }
 }
 
@@ -1024,7 +1024,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
       }
     }
 
-    handleDraw(event->position(), pressure, tiltFactor);
+    // handleDraw(event->position(), pressure, tiltFactor);
     event->accept();
 
   } else if (event->type() == QEvent::TabletRelease) {

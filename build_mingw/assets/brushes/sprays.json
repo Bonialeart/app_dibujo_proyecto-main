@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sprays_fat_cap.png",
+        "tip_texture": "fat_cap.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -77,7 +77,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sprays_skinny_cap.png",
+        "tip_texture": "skinny_cap.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -139,7 +139,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sprays_splatter.png",
+        "tip_texture": "splatter.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 3,
@@ -200,7 +200,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sprays_flicks.png",
+        "tip_texture": "flicks.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -261,7 +261,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sprays_drips.png",
+        "tip_texture": "drips.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -322,7 +322,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sprays_stencil_spray.png",
+        "tip_texture": "stencil_spray.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1

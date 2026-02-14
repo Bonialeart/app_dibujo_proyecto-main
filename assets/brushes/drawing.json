@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_conte_crayon.png",
+        "tip_texture": "conte_crayon.png",
         "roundness": 0.6,
         "contrast": 1.0,
         "count": 1
@@ -76,7 +76,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_soft_pastel.png",
+        "tip_texture": "soft_pastel.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -136,7 +136,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_oil_pastel.png",
+        "tip_texture": "oil_pastel.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -196,7 +196,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_wax_stick.png",
+        "tip_texture": "wax_stick.png",
         "roundness": 0.8,
         "contrast": 1.0,
         "count": 1
@@ -256,7 +256,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_gloaming.png",
+        "tip_texture": "gloaming.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -316,7 +316,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_blackburn.png",
+        "tip_texture": "blackburn.png",
         "roundness": 0.1,
         "contrast": 1.0,
         "count": 1
@@ -376,7 +376,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_oberon.png",
+        "tip_texture": "oberon.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -437,7 +437,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_blackboard_chalk.png",
+        "tip_texture": "blackboard_chalk.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -498,7 +498,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_artistic_crayon.png",
+        "tip_texture": "artistic_crayon.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -558,7 +558,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_drawing_eagle_sketch.png",
+        "tip_texture": "eagle_sketch.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1

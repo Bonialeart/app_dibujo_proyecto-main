@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_charcoal_6b_charcoal.png",
+        "tip_texture": "6b_charcoal.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -76,7 +76,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_charcoal_willow_stick.png",
+        "tip_texture": "willow_stick.png",
         "roundness": 0.7,
         "contrast": 1.0,
         "count": 1
@@ -136,7 +136,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_charcoal_compressed_stick.png",
+        "tip_texture": "compressed_stick.png",
         "roundness": 0.4,
         "contrast": 1.0,
         "count": 1
@@ -196,7 +196,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_charcoal_burnt_charcoal.png",
+        "tip_texture": "burnt_charcoal.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -257,7 +257,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_charcoal_charcoal_shader.png",
+        "tip_texture": "charcoal_shader.png",
         "roundness": 0.2,
         "contrast": 1.0,
         "count": 1,
@@ -318,7 +318,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_charcoal_charcoal_pencil.png",
+        "tip_texture": "charcoal_pencil.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -378,7 +378,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_charcoal_charcoal_dust.png",
+        "tip_texture": "charcoal_dust.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,

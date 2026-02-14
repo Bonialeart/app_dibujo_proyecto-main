@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_halftone.png",
+        "tip_texture": "halftone.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -76,7 +76,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_grid.png",
+        "tip_texture": "grid.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -137,7 +137,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_perlin_noise.png",
+        "tip_texture": "perlin_noise.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -198,7 +198,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_watercolor_paper.png",
+        "tip_texture": "watercolor_paper.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -233,7 +233,7 @@
         "scale": 1.0,
         "intensity": 0.5,
         "contrast": 1.0,
-        "texture": "watercolor_paper.png"
+        "texture": "grain_watercolor_paper.png"
       },
       "wet_mix": {
         "wet_mix": 0.0,
@@ -259,7 +259,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_concrete.png",
+        "tip_texture": "concrete.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -320,7 +320,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_wood.png",
+        "tip_texture": "wood.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -381,7 +381,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_canvas.png",
+        "tip_texture": "canvas.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -442,7 +442,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_rust.png",
+        "tip_texture": "rust.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -503,7 +503,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_victorian.png",
+        "tip_texture": "victorian.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -564,7 +564,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_cubes.png",
+        "tip_texture": "cubes.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -625,7 +625,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_textures_diagonal_rain.png",
+        "tip_texture": "diagonal_rain.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1

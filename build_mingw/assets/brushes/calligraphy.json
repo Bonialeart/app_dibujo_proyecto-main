@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_monoline_calligraphy.png",
+        "tip_texture": "monoline_calligraphy.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -75,7 +75,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_script.png",
+        "tip_texture": "script.png",
         "roundness": 0.6,
         "contrast": 1.0,
         "count": 1
@@ -135,7 +135,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_brush_pen.png",
+        "tip_texture": "brush_pen.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -197,7 +197,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_chalk_lettering.png",
+        "tip_texture": "chalk_lettering.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -258,7 +258,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_streaker.png",
+        "tip_texture": "streaker.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -318,7 +318,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_shale.png",
+        "tip_texture": "shale.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -379,7 +379,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_water_pen.png",
+        "tip_texture": "water_pen.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -440,7 +440,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_gothic_pen.png",
+        "tip_texture": "gothic_pen.png",
         "roundness": 0.2,
         "contrast": 1.0,
         "count": 1,
@@ -501,7 +501,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_calligraphy_neon_line.png",
+        "tip_texture": "neon_line.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,

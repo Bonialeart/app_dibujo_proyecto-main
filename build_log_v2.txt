@@ -1,0 +1,359 @@
+[1/2] Building CXX object CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/gl_utils.cpp.obj
+FAILED: CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/gl_utils.cpp.obj 
+C:\Qt\Tools\mingw1310_64\bin\c++.exe -DMINGW_HAS_SECURE_API=1 -DQT_CONCURRENT_LIB -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_NO_DEBUG -DQT_OPENGL_LIB -DQT_QMLINTEGRATION_LIB -DQT_QML_LIB -DQT_QUICKCONTROLS2_LIB -DQT_QUICKEFFECTS_LIB -DQT_QUICK_LIB -DQT_SHADERTOOLS_LIB -DQT_SVG_LIB -DQT_WIDGETS_LIB -DUNICODE -DWIN32 -DWIN64 -D_ENABLE_EXTENDED_ALIGNED_STORAGE -D_UNICODE -D_WIN64 -IE:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/include -IE:/app_dibujo_proyecto-main/src -IE:/app_dibujo_proyecto-main/src/core/cpp/include -isystem C:/Qt/6.10.2/mingw_64/include/QtCore -isystem C:/Qt/6.10.2/mingw_64/include -isystem C:/Qt/6.10.2/mingw_64/mkspecs/win32-g++ -isystem C:/Qt/6.10.2/mingw_64/include/QtGui -isystem C:/Qt/6.10.2/mingw_64/include/QtQml -isystem C:/Qt/6.10.2/mingw_64/include/QtQmlIntegration -isystem C:/Qt/6.10.2/mingw_64/include/QtNetwork -isystem C:/Qt/6.10.2/mingw_64/include/QtQuick -isystem C:/Qt/6.10.2/mingw_64/include/QtOpenGL -isystem C:/Qt/6.10.2/mingw_64/include/QtQuickControls2 -isystem C:/Qt/6.10.2/mingw_64/include/QtConcurrent -isystem C:/Qt/6.10.2/mingw_64/include/QtSvg -isystem C:/Qt/6.10.2/mingw_64/include/QtWidgets -isystem C:/Qt/6.10.2/mingw_64/include/QtQuickEffects -isystem C:/Qt/6.10.2/mingw_64/include/QtShaderTools -std=gnu++17 -MD -MT CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/gl_utils.cpp.obj -MF CMakeFiles\ArtFlowStudio.dir\src\core\cpp\src\gl_utils.cpp.obj.d -o CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/gl_utils.cpp.obj -c E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp
+In file included from E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:1:
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:79:8: error: 'PFNGLDELETEBUFFERSPROC' does not name a type; did you mean 'PFNGLGENBUFFERSPROC'?
+   79 | extern PFNGLDELETEBUFFERSPROC glDeleteBuffers;
+      |        ^~~~~~~~~~~~~~~~~~~~~~
+      |        PFNGLGENBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:80:8: error: 'PFNGLBINDBUFFERPROC' does not name a type; did you mean 'PFNGLGENBUFFERSPROC'?
+   80 | extern PFNGLBINDBUFFERPROC glBindBuffer;
+      |        ^~~~~~~~~~~~~~~~~~~
+      |        PFNGLGENBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:81:8: error: 'PFNGLBUFFERDATAPROC' does not name a type
+   81 | extern PFNGLBUFFERDATAPROC glBufferData;
+      |        ^~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:83:8: error: 'PFNGLGENVERTEXARRAYSPROC' does not name a type
+   83 | extern PFNGLGENVERTEXARRAYSPROC glGenVertexArrays;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:84:8: error: 'PFNGLDELETEVERTEXARRAYSPROC' does not name a type
+   84 | extern PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:85:8: error: 'PFNGLBINDVERTEXARRAYPROC' does not name a type
+   85 | extern PFNGLBINDVERTEXARRAYPROC glBindVertexArray;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:86:8: error: 'PFNGLENABLEVERTEXATTRIBARRAYPROC' does not name a type
+   86 | extern PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:87:8: error: 'PFNGLVERTEXATTRIBPOINTERPROC' does not name a type; did you mean 'PFNGLVERTEXPOINTEREXTPROC'?
+   87 | extern PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      |        PFNGLVERTEXPOINTEREXTPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:89:8: error: 'PFNGLCREATESHADERPROC' does not name a type
+   89 | extern PFNGLCREATESHADERPROC glCreateShader;
+      |        ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:90:8: error: 'PFNGLSHADERSOURCEPROC' does not name a type
+   90 | extern PFNGLSHADERSOURCEPROC glShaderSource;
+      |        ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:91:8: error: 'PFNGLCOMPILESHADERPROC' does not name a type
+   91 | extern PFNGLCOMPILESHADERPROC glCompileShader;
+      |        ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:92:8: error: 'PFNGLGETSHADERIVPROC' does not name a type
+   92 | extern PFNGLGETSHADERIVPROC glGetShaderiv;
+      |        ^~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:93:8: error: 'PFNGLGETSHADERINFOLOGPROC' does not name a type
+   93 | extern PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:94:8: error: 'PFNGLDELETESHADERPROC' does not name a type; did you mean 'PFNGLDELETEFRAMEBUFFERSPROC'?
+   94 | extern PFNGLDELETESHADERPROC glDeleteShader;
+      |        ^~~~~~~~~~~~~~~~~~~~~
+      |        PFNGLDELETEFRAMEBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:96:8: error: 'PFNGLCREATEPROGRAMPROC' does not name a type
+   96 | extern PFNGLCREATEPROGRAMPROC glCreateProgram;
+      |        ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:97:8: error: 'PFNGLATTACHSHADERPROC' does not name a type
+   97 | extern PFNGLATTACHSHADERPROC glAttachShader;
+      |        ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:98:8: error: 'PFNGLLINKPROGRAMPROC' does not name a type
+   98 | extern PFNGLLINKPROGRAMPROC glLinkProgram;
+      |        ^~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:99:8: error: 'PFNGLGETPROGRAMIVPROC' does not name a type
+   99 | extern PFNGLGETPROGRAMIVPROC glGetProgramiv;
+      |        ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:100:8: error: 'PFNGLGETPROGRAMINFOLOGPROC' does not name a type
+  100 | extern PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:101:8: error: 'PFNGLUSEPROGRAMPROC' does not name a type
+  101 | extern PFNGLUSEPROGRAMPROC glUseProgram;
+      |        ^~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:102:8: error: 'PFNGLDELETEPROGRAMPROC' does not name a type
+  102 | extern PFNGLDELETEPROGRAMPROC glDeleteProgram;
+      |        ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:104:8: error: 'PFNGLGETUNIFORMLOCATIONPROC' does not name a type
+  104 | extern PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:105:8: error: 'PFNGLUNIFORM1FPROC' does not name a type
+  105 | extern PFNGLUNIFORM1FPROC glUniform1f;
+      |        ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:106:8: error: 'PFNGLUNIFORM1IPROC' does not name a type
+  106 | extern PFNGLUNIFORM1IPROC glUniform1i;
+      |        ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:107:8: error: 'PFNGLUNIFORM2FPROC' does not name a type
+  107 | extern PFNGLUNIFORM2FPROC glUniform2f;
+      |        ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:108:8: error: 'PFNGLUNIFORM4FPROC' does not name a type
+  108 | extern PFNGLUNIFORM4FPROC glUniform4f;
+      |        ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:109:8: error: 'PFNGLUNIFORMMATRIX4FVPROC' does not name a type
+  109 | extern PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/include/gl_utils.h:110:8: error: 'PFNGLACTIVETEXTUREPROC' does not name a type
+  110 | extern PFNGLACTIVETEXTUREPROC glActiveTexture;
+      |        ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:18:1: error: 'PFNGLDELETEBUFFERSPROC' does not name a type; did you mean 'PFNGLGENBUFFERSPROC'?
+   18 | PFNGLDELETEBUFFERSPROC glDeleteBuffers = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~
+      | PFNGLGENBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:19:1: error: 'PFNGLBINDBUFFERPROC' does not name a type; did you mean 'PFNGLGENBUFFERSPROC'?
+   19 | PFNGLBINDBUFFERPROC glBindBuffer = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~
+      | PFNGLGENBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:20:1: error: 'PFNGLBUFFERDATAPROC' does not name a type
+   20 | PFNGLBUFFERDATAPROC glBufferData = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:22:1: error: 'PFNGLGENVERTEXARRAYSPROC' does not name a type
+   22 | PFNGLGENVERTEXARRAYSPROC glGenVertexArrays = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:23:1: error: 'PFNGLDELETEVERTEXARRAYSPROC' does not name a type
+   23 | PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:24:1: error: 'PFNGLBINDVERTEXARRAYPROC' does not name a type
+   24 | PFNGLBINDVERTEXARRAYPROC glBindVertexArray = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:25:1: error: 'PFNGLENABLEVERTEXATTRIBARRAYPROC' does not name a type
+   25 | PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:26:1: error: 'PFNGLVERTEXATTRIBPOINTERPROC' does not name a type; did you mean 'PFNGLVERTEXPOINTEREXTPROC'?
+   26 | PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      | PFNGLVERTEXPOINTEREXTPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:28:1: error: 'PFNGLCREATESHADERPROC' does not name a type
+   28 | PFNGLCREATESHADERPROC glCreateShader = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:29:1: error: 'PFNGLSHADERSOURCEPROC' does not name a type
+   29 | PFNGLSHADERSOURCEPROC glShaderSource = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:30:1: error: 'PFNGLCOMPILESHADERPROC' does not name a type
+   30 | PFNGLCOMPILESHADERPROC glCompileShader = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:31:1: error: 'PFNGLGETSHADERIVPROC' does not name a type
+   31 | PFNGLGETSHADERIVPROC glGetShaderiv = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:32:1: error: 'PFNGLGETSHADERINFOLOGPROC' does not name a type
+   32 | PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:33:1: error: 'PFNGLDELETESHADERPROC' does not name a type; did you mean 'PFNGLDELETEFRAMEBUFFERSPROC'?
+   33 | PFNGLDELETESHADERPROC glDeleteShader = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~
+      | PFNGLDELETEFRAMEBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:35:1: error: 'PFNGLCREATEPROGRAMPROC' does not name a type
+   35 | PFNGLCREATEPROGRAMPROC glCreateProgram = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:36:1: error: 'PFNGLATTACHSHADERPROC' does not name a type
+   36 | PFNGLATTACHSHADERPROC glAttachShader = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:37:1: error: 'PFNGLLINKPROGRAMPROC' does not name a type
+   37 | PFNGLLINKPROGRAMPROC glLinkProgram = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:38:1: error: 'PFNGLGETPROGRAMIVPROC' does not name a type
+   38 | PFNGLGETPROGRAMIVPROC glGetProgramiv = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:39:1: error: 'PFNGLGETPROGRAMINFOLOGPROC' does not name a type
+   39 | PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:40:1: error: 'PFNGLUSEPROGRAMPROC' does not name a type
+   40 | PFNGLUSEPROGRAMPROC glUseProgram = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:41:1: error: 'PFNGLDELETEPROGRAMPROC' does not name a type
+   41 | PFNGLDELETEPROGRAMPROC glDeleteProgram = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:43:1: error: 'PFNGLGETUNIFORMLOCATIONPROC' does not name a type
+   43 | PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:44:1: error: 'PFNGLUNIFORM1FPROC' does not name a type
+   44 | PFNGLUNIFORM1FPROC glUniform1f = nullptr;
+      | ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:45:1: error: 'PFNGLUNIFORM1IPROC' does not name a type
+   45 | PFNGLUNIFORM1IPROC glUniform1i = nullptr;
+      | ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:46:1: error: 'PFNGLUNIFORM2FPROC' does not name a type
+   46 | PFNGLUNIFORM2FPROC glUniform2f = nullptr;
+      | ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:47:1: error: 'PFNGLUNIFORM4FPROC' does not name a type
+   47 | PFNGLUNIFORM4FPROC glUniform4f = nullptr;
+      | ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:48:1: error: 'PFNGLUNIFORMMATRIX4FVPROC' does not name a type
+   48 | PFNGLUNIFORMMATRIX4FVPROC glUniformMatrix4fv = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:49:1: error: 'PFNGLACTIVETEXTUREPROC' does not name a type
+   49 | PFNGLACTIVETEXTUREPROC glActiveTexture = nullptr;
+      | ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp: In function 'bool initGLFunctions()':
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:74:5: error: 'glDeleteBuffers' was not declared in this scope; did you mean 'glSelectBuffer'?
+   74 |     glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)getProc("glDeleteBuffers");
+      |     ^~~~~~~~~~~~~~~
+      |     glSelectBuffer
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:74:24: error: 'PFNGLDELETEBUFFERSPROC' was not declared in this scope; did you mean 'PFNGLGENBUFFERSPROC'?
+   74 |     glDeleteBuffers = (PFNGLDELETEBUFFERSPROC)getProc("glDeleteBuffers");
+      |                        ^~~~~~~~~~~~~~~~~~~~~~
+      |                        PFNGLGENBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:75:5: error: 'glBindBuffer' was not declared in this scope; did you mean 'glReadBuffer'?
+   75 |     glBindBuffer = (PFNGLBINDBUFFERPROC)getProc("glBindBuffer");
+      |     ^~~~~~~~~~~~
+      |     glReadBuffer
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:75:21: error: 'PFNGLBINDBUFFERPROC' was not declared in this scope; did you mean 'PFNGLGENBUFFERSPROC'?
+   75 |     glBindBuffer = (PFNGLBINDBUFFERPROC)getProc("glBindBuffer");
+      |                     ^~~~~~~~~~~~~~~~~~~
+      |                     PFNGLGENBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:76:5: error: 'glBufferData' was not declared in this scope
+   76 |     glBufferData = (PFNGLBUFFERDATAPROC)getProc("glBufferData");
+      |     ^~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:76:21: error: 'PFNGLBUFFERDATAPROC' was not declared in this scope
+   76 |     glBufferData = (PFNGLBUFFERDATAPROC)getProc("glBufferData");
+      |                     ^~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:78:5: error: 'glGenVertexArrays' was not declared in this scope
+   78 |     glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)getProc("glGenVertexArrays");
+      |     ^~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:78:26: error: 'PFNGLGENVERTEXARRAYSPROC' was not declared in this scope
+   78 |     glGenVertexArrays = (PFNGLGENVERTEXARRAYSPROC)getProc("glGenVertexArrays");
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:79:5: error: 'glDeleteVertexArrays' was not declared in this scope
+   79 |     glDeleteVertexArrays = (PFNGLDELETEVERTEXARRAYSPROC)getProc("glDeleteVertexArrays");
+      |     ^~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:79:29: error: 'PFNGLDELETEVERTEXARRAYSPROC' was not declared in this scope
+   79 |     glDeleteVertexArrays = (PFNGLDELETEVERTEXARRAYSPROC)getProc("glDeleteVertexArrays");
+      |                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:80:5: error: 'glBindVertexArray' was not declared in this scope
+   80 |     glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)getProc("glBindVertexArray");
+      |     ^~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:80:26: error: 'PFNGLBINDVERTEXARRAYPROC' was not declared in this scope
+   80 |     glBindVertexArray = (PFNGLBINDVERTEXARRAYPROC)getProc("glBindVertexArray");
+      |                          ^~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:81:5: error: 'glEnableVertexAttribArray' was not declared in this scope
+   81 |     glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)getProc("glEnableVertexAttribArray");
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:81:34: error: 'PFNGLENABLEVERTEXATTRIBARRAYPROC' was not declared in this scope
+   81 |     glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)getProc("glEnableVertexAttribArray");
+      |                                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:82:5: error: 'glVertexAttribPointer' was not declared in this scope; did you mean 'glVertexPointer'?
+   82 |     glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)getProc("glVertexAttribPointer");
+      |     ^~~~~~~~~~~~~~~~~~~~~
+      |     glVertexPointer
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:82:30: error: 'PFNGLVERTEXATTRIBPOINTERPROC' was not declared in this scope; did you mean 'PFNGLVERTEXPOINTEREXTPROC'?
+   82 |     glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)getProc("glVertexAttribPointer");
+      |                              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      |                              PFNGLVERTEXPOINTEREXTPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:84:5: error: 'glCreateShader' was not declared in this scope
+   84 |     glCreateShader = (PFNGLCREATESHADERPROC)getProc("glCreateShader");
+      |     ^~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:84:23: error: 'PFNGLCREATESHADERPROC' was not declared in this scope
+   84 |     glCreateShader = (PFNGLCREATESHADERPROC)getProc("glCreateShader");
+      |                       ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:85:5: error: 'glShaderSource' was not declared in this scope
+   85 |     glShaderSource = (PFNGLSHADERSOURCEPROC)getProc("glShaderSource");
+      |     ^~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:85:23: error: 'PFNGLSHADERSOURCEPROC' was not declared in this scope
+   85 |     glShaderSource = (PFNGLSHADERSOURCEPROC)getProc("glShaderSource");
+      |                       ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:86:5: error: 'glCompileShader' was not declared in this scope
+   86 |     glCompileShader = (PFNGLCOMPILESHADERPROC)getProc("glCompileShader");
+      |     ^~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:86:24: error: 'PFNGLCOMPILESHADERPROC' was not declared in this scope
+   86 |     glCompileShader = (PFNGLCOMPILESHADERPROC)getProc("glCompileShader");
+      |                        ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:87:5: error: 'glGetShaderiv' was not declared in this scope
+   87 |     glGetShaderiv = (PFNGLGETSHADERIVPROC)getProc("glGetShaderiv");
+      |     ^~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:87:22: error: 'PFNGLGETSHADERIVPROC' was not declared in this scope
+   87 |     glGetShaderiv = (PFNGLGETSHADERIVPROC)getProc("glGetShaderiv");
+      |                      ^~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:88:5: error: 'glGetShaderInfoLog' was not declared in this scope
+   88 |     glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)getProc("glGetShaderInfoLog");
+      |     ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:88:27: error: 'PFNGLGETSHADERINFOLOGPROC' was not declared in this scope
+   88 |     glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)getProc("glGetShaderInfoLog");
+      |                           ^~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:89:5: error: 'glDeleteShader' was not declared in this scope
+   89 |     glDeleteShader = (PFNGLDELETESHADERPROC)getProc("glDeleteShader");
+      |     ^~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:89:23: error: 'PFNGLDELETESHADERPROC' was not declared in this scope; did you mean 'PFNGLDELETEFRAMEBUFFERSPROC'?
+   89 |     glDeleteShader = (PFNGLDELETESHADERPROC)getProc("glDeleteShader");
+      |                       ^~~~~~~~~~~~~~~~~~~~~
+      |                       PFNGLDELETEFRAMEBUFFERSPROC
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:91:5: error: 'glCreateProgram' was not declared in this scope
+   91 |     glCreateProgram = (PFNGLCREATEPROGRAMPROC)getProc("glCreateProgram");
+      |     ^~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:91:24: error: 'PFNGLCREATEPROGRAMPROC' was not declared in this scope
+   91 |     glCreateProgram = (PFNGLCREATEPROGRAMPROC)getProc("glCreateProgram");
+      |                        ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:92:5: error: 'glAttachShader' was not declared in this scope
+   92 |     glAttachShader = (PFNGLATTACHSHADERPROC)getProc("glAttachShader");
+      |     ^~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:92:23: error: 'PFNGLATTACHSHADERPROC' was not declared in this scope
+   92 |     glAttachShader = (PFNGLATTACHSHADERPROC)getProc("glAttachShader");
+      |                       ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:93:5: error: 'glLinkProgram' was not declared in this scope
+   93 |     glLinkProgram = (PFNGLLINKPROGRAMPROC)getProc("glLinkProgram");
+      |     ^~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:93:22: error: 'PFNGLLINKPROGRAMPROC' was not declared in this scope
+   93 |     glLinkProgram = (PFNGLLINKPROGRAMPROC)getProc("glLinkProgram");
+      |                      ^~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:94:5: error: 'glGetProgramiv' was not declared in this scope
+   94 |     glGetProgramiv = (PFNGLGETPROGRAMIVPROC)getProc("glGetProgramiv");
+      |     ^~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:94:23: error: 'PFNGLGETPROGRAMIVPROC' was not declared in this scope
+   94 |     glGetProgramiv = (PFNGLGETPROGRAMIVPROC)getProc("glGetProgramiv");
+      |                       ^~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:95:5: error: 'glGetProgramInfoLog' was not declared in this scope
+   95 |     glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)getProc("glGetProgramInfoLog");
+      |     ^~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:95:28: error: 'PFNGLGETPROGRAMINFOLOGPROC' was not declared in this scope
+   95 |     glGetProgramInfoLog = (PFNGLGETPROGRAMINFOLOGPROC)getProc("glGetProgramInfoLog");
+      |                            ^~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:96:5: error: 'glUseProgram' was not declared in this scope
+   96 |     glUseProgram = (PFNGLUSEPROGRAMPROC)getProc("glUseProgram");
+      |     ^~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:96:21: error: 'PFNGLUSEPROGRAMPROC' was not declared in this scope
+   96 |     glUseProgram = (PFNGLUSEPROGRAMPROC)getProc("glUseProgram");
+      |                     ^~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:97:5: error: 'glDeleteProgram' was not declared in this scope
+   97 |     glDeleteProgram = (PFNGLDELETEPROGRAMPROC)getProc("glDeleteProgram");
+      |     ^~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:97:24: error: 'PFNGLDELETEPROGRAMPROC' was not declared in this scope
+   97 |     glDeleteProgram = (PFNGLDELETEPROGRAMPROC)getProc("glDeleteProgram");
+      |                        ^~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:99:5: error: 'glGetUniformLocation' was not declared in this scope
+   99 |     glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)getProc("glGetUniformLocation");
+      |     ^~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:99:29: error: 'PFNGLGETUNIFORMLOCATIONPROC' was not declared in this scope
+   99 |     glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)getProc("glGetUniformLocation");
+      |                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:100:5: error: 'glUniform1f' was not declared in this scope
+  100 |     glUniform1f = (PFNGLUNIFORM1FPROC)getProc("glUniform1f");
+      |     ^~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:100:20: error: 'PFNGLUNIFORM1FPROC' was not declared in this scope
+  100 |     glUniform1f = (PFNGLUNIFORM1FPROC)getProc("glUniform1f");
+      |                    ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:101:5: error: 'glUniform1i' was not declared in this scope
+  101 |     glUniform1i = (PFNGLUNIFORM1IPROC)getProc("glUniform1i");
+      |     ^~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:101:20: error: 'PFNGLUNIFORM1IPROC' was not declared in this scope
+  101 |     glUniform1i = (PFNGLUNIFORM1IPROC)getProc("glUniform1i");
+      |                    ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:102:5: error: 'glUniform2f' was not declared in this scope
+  102 |     glUniform2f = (PFNGLUNIFORM2FPROC)getProc("glUniform2f");
+      |     ^~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:102:20: error: 'PFNGLUNIFORM2FPROC' was not declared in this scope
+  102 |     glUniform2f = (PFNGLUNIFORM2FPROC)getProc("glUniform2f");
+      |                    ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:103:5: error: 'glUniform4f' was not declared in this scope
+  103 |     glUniform4f = (PFNGLUNIFORM4FPROC)getProc("glUniform4f");
+      |     ^~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:103:20: error: 'PFNGLUNIFORM4FPROC' was not declared in this scope
+  103 |     glUniform4f = (PFNGLUNIFORM4FPROC)getProc("glUniform4f");
+      |                    ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:104:5: error: 'glUniformMatrix4fv' was not declared in this scope
+  104 |     glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)getProc("glUniformMatrix4fv");
+      |     ^~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:104:27: error: 'PFNGLUNIFORMMATRIX4FVPROC' was not declared in this scope
+  104 |     glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)getProc("glUniformMatrix4fv");
+      |                           ^~~~~~~~~~~~~~~~~~~~~~~~~
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:105:5: error: 'glActiveTexture' was not declared in this scope; did you mean 'glBindTexture'?
+  105 |     glActiveTexture = (PFNGLACTIVETEXTUREPROC)getProc("glActiveTexture");
+      |     ^~~~~~~~~~~~~~~
+      |     glBindTexture
+E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp:105:24: error: 'PFNGLACTIVETEXTUREPROC' was not declared in this scope
+  105 |     glActiveTexture = (PFNGLACTIVETEXTUREPROC)getProc("glActiveTexture");
+      |                        ^~~~~~~~~~~~~~~~~~~~~~
+ninja: build stopped: subcommand failed.
+Presione una tecla para continuar . . . 

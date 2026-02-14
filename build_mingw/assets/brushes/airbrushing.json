@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_airbrushing_soft_airbrush.png",
+        "tip_texture": "shape_airbrush_soft.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -76,7 +76,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_airbrushing_medium_airbrush.png",
+        "tip_texture": "medium_airbrush.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -137,7 +137,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_airbrushing_hard_airbrush.png",
+        "tip_texture": "hard_airbrush.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -198,7 +198,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_airbrushing_noise_airbrush.png",
+        "tip_texture": "noise_airbrush.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -259,7 +259,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_airbrushing_soft_blend.png",
+        "tip_texture": "soft_blend.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -320,7 +320,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_airbrushing_digital_shader.png",
+        "tip_texture": "digital_shader.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1

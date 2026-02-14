@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_luminance_light_pen.png",
+        "tip_texture": "light_pen.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -76,7 +76,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_luminance_neon_tube.png",
+        "tip_texture": "neon_tube.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -137,7 +137,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_luminance_bokeh.png",
+        "tip_texture": "bokeh.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -198,7 +198,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_luminance_flares.png",
+        "tip_texture": "flares.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -259,7 +259,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_luminance_glimmer.png",
+        "tip_texture": "glimmer.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 5,
@@ -320,7 +320,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_luminance_nebula.png",
+        "tip_texture": "nebula.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -382,7 +382,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_luminance_laser.png",
+        "tip_texture": "laser.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1

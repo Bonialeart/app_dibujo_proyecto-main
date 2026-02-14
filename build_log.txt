@@ -1,0 +1,9 @@
+[1/8] Building CXX object CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj
+[2/8] Building CXX object CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/gl_utils.cpp.obj
+[3/8] Building CXX object CMakeFiles/ArtFlowStudio.dir/src/PreferencesManager.cpp.obj
+[4/8] Building CXX object CMakeFiles/ArtFlowStudio.dir/src/TestCanvas.cpp.obj
+[5/8] Building CXX object CMakeFiles/ArtFlowStudio.dir/src/ProjectModel.cpp.obj
+[6/8] Building CXX object CMakeFiles/ArtFlowStudio.dir/src/main.cpp.obj
+[7/8] Building CXX object CMakeFiles/ArtFlowStudio.dir/src/CanvasItem.cpp.obj
+[8/8] Linking CXX executable ArtFlowStudio.exe
+Presione una tecla para continuar . . . 

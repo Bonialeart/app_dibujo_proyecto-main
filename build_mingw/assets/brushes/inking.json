@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_g_pen.png",
+        "tip_texture": "ink_g_pen.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -76,7 +76,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_studio_pen.png",
+        "tip_texture": "studio_pen.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -136,7 +136,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_monoline.png",
+        "tip_texture": "monoline.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -196,7 +196,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_dry_ink.png",
+        "tip_texture": "dry_ink.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -257,7 +257,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_bleed_ink.png",
+        "tip_texture": "bleed_ink.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -319,7 +319,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_gel_pen.png",
+        "tip_texture": "gel_pen.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -379,7 +379,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_sumi_e_ink.png",
+        "tip_texture": "sumi_e_ink.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -440,7 +440,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_fountain_pen.png",
+        "tip_texture": "fountain_pen.png",
         "roundness": 0.3,
         "contrast": 1.0,
         "count": 1,
@@ -501,7 +501,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_mercury_ink.png",
+        "tip_texture": "mercury_ink.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -561,7 +561,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_thylacine.png",
+        "tip_texture": "thylacine.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -621,7 +621,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_rough_inker.png",
+        "tip_texture": "rough_inker.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -682,7 +682,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_inking_bic_pen.png",
+        "tip_texture": "bic_pen.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1

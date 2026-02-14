@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_leatherwood.png",
+        "tip_texture": "leatherwood.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -76,7 +76,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_plimsoll.png",
+        "tip_texture": "plimsoll.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -136,7 +136,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_wild_light.png",
+        "tip_texture": "wild_light.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -196,7 +196,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_saguaro.png",
+        "tip_texture": "saguaro.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -256,7 +256,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_hartz.png",
+        "tip_texture": "hartz.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -317,7 +317,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_tarraleah.png",
+        "tip_texture": "tarraleah.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -377,7 +377,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_old_brush.png",
+        "tip_texture": "old_brush.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1,
@@ -438,7 +438,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_palette_knife.png",
+        "tip_texture": "palette_knife.png",
         "roundness": 0.1,
         "contrast": 1.0,
         "count": 1,
@@ -499,7 +499,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_ink_roller.png",
+        "tip_texture": "ink_roller.png",
         "roundness": 0.3,
         "contrast": 1.0,
         "count": 1
@@ -559,7 +559,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_artistic_impressionist.png",
+        "tip_texture": "impressionist.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 3,

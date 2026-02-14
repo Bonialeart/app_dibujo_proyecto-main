@@ -213,7 +213,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   m_lastPos = currentPoint;
 
   // 1. Calculate Dynamics
-  float effectivePressure = (pressure > 0.0f) ? pressure : 0.5f;
+  float effectivePressure = pressure;
 
   // Velocity Influence (Mouse pressure fallback)
   if (settings.velocityDynamics > 0.01f && velocity > 0.1f) {
@@ -374,6 +374,12 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
         // scope. Assuming the intent was to use devPt.x() + jX, devPt.y() + jY,
         // devSizeBase * jSize, effectivePressure, and settings.tipRotation +
         // jRot based on the original code and the context.
+
+        // Skip drawing if size is too small (prevents micro-dots at end of
+        // stroke)
+        if (devSizeBase < 0.6f)
+          continue;
+
         m_renderer->renderStroke(
             devPt.x() + jX, devPt.y() + jY, devSizeBase * jSize,
             effectivePressure, settings.hardness, finalColor,

@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_hb_pencil.png",
+        "tip_texture": "pencil_hb.png",
         "roundness": 0.8,
         "contrast": 1.0,
         "count": 1
@@ -50,7 +50,7 @@
         "scale": 0.5,
         "intensity": 0.7,
         "contrast": 1.0,
-        "texture": "paper_grain.png"
+        "texture": "grain_paper_standard.png"
       },
       "wet_mix": {
         "wet_mix": 0.0,
@@ -77,7 +77,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_6b_real_pencil.png",
+        "tip_texture": "pencil_6b_real.png",
         "roundness": 0.6,
         "contrast": 1.0,
         "count": 1,
@@ -140,7 +140,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_peppermint_graphite.png",
+        "tip_texture": "peppermint_graphite.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -201,7 +201,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_derwent_pencil.png",
+        "tip_texture": "derwent_pencil.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -263,7 +263,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_mechanical_0_5.png",
+        "tip_texture": "mechanical_0_5.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -324,7 +324,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_carpenter_pencil.png",
+        "tip_texture": "carpenter_pencil.png",
         "roundness": 0.2,
         "contrast": 1.0,
         "count": 1,
@@ -385,7 +385,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_pro_sketch.png",
+        "tip_texture": "pro_sketch.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -445,7 +445,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_artistic_graphite.png",
+        "tip_texture": "artistic_graphite.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -506,7 +506,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_wax_color_pencil.png",
+        "tip_texture": "wax_color_pencil.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -566,7 +566,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_graphite_smudge.png",
+        "tip_texture": "graphite_smudge.png",
         "roundness": 1.0,
         "contrast": 1.0,
         "count": 1
@@ -627,7 +627,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "tip_sketching_evolution.png",
+        "tip_texture": "evolution.png",
         "roundness": 0.9,
         "contrast": 1.0,
         "count": 1

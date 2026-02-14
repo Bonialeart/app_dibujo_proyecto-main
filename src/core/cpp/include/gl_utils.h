@@ -33,6 +33,7 @@ typedef char GLchar;
 typedef ptrdiff_t GLsizeiptr;
 typedef ptrdiff_t GLintptr;
 
+// Framebuffers
 typedef void(APIENTRY *PFNGLGENFRAMEBUFFERSPROC)(GLsizei n,
                                                  GLuint *framebuffers);
 typedef void(APIENTRY *PFNGLDELETEFRAMEBUFFERSPROC)(GLsizei n,
@@ -46,6 +47,7 @@ typedef void(APIENTRY *PFNGLFRAMEBUFFERTEXTURE2DPROC)(GLenum target,
                                                       GLint level);
 typedef GLenum(APIENTRY *PFNGLCHECKFRAMEBUFFERSTATUSPROC)(GLenum target);
 
+// Renderbuffers
 typedef void(APIENTRY *PFNGLGENRENDERBUFFERSPROC)(GLsizei n,
                                                   GLuint *renderbuffers);
 typedef void(APIENTRY *PFNGLDELETERENDERBUFFERSPROC)(
@@ -60,29 +62,15 @@ typedef void(APIENTRY *PFNGLFRAMEBUFFERRENDERBUFFERPROC)(
     GLenum target, GLenum attachment, GLenum renderbuffertarget,
     GLuint renderbuffer);
 
+// Buffers
 typedef void(APIENTRY *PFNGLGENBUFFERSPROC)(GLsizei n, GLuint *buffers);
-
-// ... (keep externs)
-
-extern PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers;
-extern PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers;
-extern PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer;
-extern PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
-extern PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus;
-
-extern PFNGLGENRENDERBUFFERSPROC glGenRenderbuffers;
-extern PFNGLDELETERENDERBUFFERSPROC glDeleteRenderbuffers;
-extern PFNGLBINDRENDERBUFFERPROC glBindRenderbuffer;
-extern PFNGLRENDERBUFFERSTORAGEPROC glRenderbufferStorage;
-extern PFNGLFRAMEBUFFERRENDERBUFFERPROC glFramebufferRenderbuffer;
-
-extern PFNGLGENBUFFERSPROC glGenBuffers;
 typedef void(APIENTRY *PFNGLDELETEBUFFERSPROC)(GLsizei n,
                                                const GLuint *buffers);
 typedef void(APIENTRY *PFNGLBINDBUFFERPROC)(GLenum target, GLuint buffer);
 typedef void(APIENTRY *PFNGLBUFFERDATAPROC)(GLenum target, GLsizeiptr size,
                                             const void *data, GLenum usage);
 
+// Vertex Arrays
 typedef void(APIENTRY *PFNGLGENVERTEXARRAYSPROC)(GLsizei n, GLuint *arrays);
 typedef void(APIENTRY *PFNGLDELETEVERTEXARRAYSPROC)(GLsizei n,
                                                     const GLuint *arrays);
@@ -94,6 +82,7 @@ typedef void(APIENTRY *PFNGLVERTEXATTRIBPOINTERPROC)(GLuint index, GLint size,
                                                      GLsizei stride,
                                                      const void *pointer);
 
+// Shaders
 typedef GLuint(APIENTRY *PFNGLCREATESHADERPROC)(GLenum type);
 typedef void(APIENTRY *PFNGLSHADERSOURCEPROC)(GLuint shader, GLsizei count,
                                               const GLchar *const *string,
@@ -107,6 +96,7 @@ typedef void(APIENTRY *PFNGLGETSHADERINFOLOGPROC)(GLuint shader,
                                                   GLchar *infoLog);
 typedef void(APIENTRY *PFNGLDELETESHADERPROC)(GLuint shader);
 
+// Programs
 typedef GLuint(APIENTRY *PFNGLCREATEPROGRAMPROC)(void);
 typedef void(APIENTRY *PFNGLATTACHSHADERPROC)(GLuint program, GLuint shader);
 typedef void(APIENTRY *PFNGLLINKPROGRAMPROC)(GLuint program);
@@ -119,6 +109,7 @@ typedef void(APIENTRY *PFNGLGETPROGRAMINFOLOGPROC)(GLuint program,
 typedef void(APIENTRY *PFNGLUSEPROGRAMPROC)(GLuint program);
 typedef void(APIENTRY *PFNGLDELETEPROGRAMPROC)(GLuint program);
 
+// Uniforms
 typedef GLint(APIENTRY *PFNGLGETUNIFORMLOCATIONPROC)(GLuint program,
                                                      const GLchar *name);
 typedef void(APIENTRY *PFNGLUNIFORM1FPROC)(GLint location, GLfloat v0);
@@ -138,6 +129,12 @@ extern PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers;
 extern PFNGLBINDFRAMEBUFFERPROC glBindFramebuffer;
 extern PFNGLFRAMEBUFFERTEXTURE2DPROC glFramebufferTexture2D;
 extern PFNGLCHECKFRAMEBUFFERSTATUSPROC glCheckFramebufferStatus;
+
+extern PFNGLGENRENDERBUFFERSPROC glGenRenderbuffers;
+extern PFNGLDELETERENDERBUFFERSPROC glDeleteRenderbuffers;
+extern PFNGLBINDRENDERBUFFERPROC glBindRenderbuffer;
+extern PFNGLRENDERBUFFERSTORAGEPROC glRenderbufferStorage;
+extern PFNGLFRAMEBUFFERRENDERBUFFERPROC glFramebufferRenderbuffer;
 
 extern PFNGLGENBUFFERSPROC glGenBuffers;
 extern PFNGLDELETEBUFFERSPROC glDeleteBuffers;
