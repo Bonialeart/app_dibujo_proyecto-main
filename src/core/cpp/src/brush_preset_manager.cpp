@@ -237,59 +237,61 @@ void BrushPresetManager::loadDefaults() {
   qDebug() << "BrushPresetManager: Loading built-in default presets...";
 
   // Helper lambda for convenience
-  auto addBrush =
-      [this](const QString &cat, const QString &bName, float size,
-             float opacity, float hardness, float spacing, float streamline,
-             const QString &grainTex = "", float grainScale = 1.0f,
-             float grainIntensity = 0.5f, const QString &tipTex = "",
-             float wetness = 0.0f, float smudge = 0.0f,
-             bool sizeByPressure = true, bool opacityByPressure = false,
-             float velocityDyn = 0.0f, float jitter = 0.0f, float flow = 1.0f) {
-        BrushPreset p;
-        p.uuid = BrushPreset::generateUUID();
-        p.name = bName;
-        p.category = cat;
-        p.defaultSize = size;
-        p.defaultOpacity = opacity;
-        p.defaultHardness = hardness;
-        p.defaultFlow = flow;
-        p.stroke.spacing = spacing;
-        p.stroke.streamline = streamline;
+  auto addBrush = [this](const QString &cat, const QString &bName, float size,
+                         float opacity, float hardness, float spacing,
+                         float streamline, const QString &grainTex = "",
+                         float grainScale = 1.0f, float grainIntensity = 0.5f,
+                         const QString &tipTex = "", float wetness = 0.0f,
+                         float smudge = 0.0f, bool sizeByPressure = true,
+                         bool opacityByPressure = false,
+                         float velocityDyn = 0.0f, float jitter = 0.0f,
+                         float flow = 1.0f, float calli = 0.0f) {
+    BrushPreset p;
+    p.uuid = BrushPreset::generateUUID();
+    p.name = bName;
+    p.category = cat;
+    p.defaultSize = size;
+    p.defaultOpacity = opacity;
+    p.defaultHardness = hardness;
+    p.defaultFlow = flow;
+    p.stroke.spacing = spacing;
+    p.stroke.streamline = streamline;
 
-        if (!grainTex.isEmpty()) {
-          p.grain.texture = grainTex;
-          p.grain.scale = grainScale;
-          p.grain.intensity = grainIntensity;
-        }
-        if (!tipTex.isEmpty()) {
-          p.shape.tipTexture = tipTex;
-        }
+    if (!grainTex.isEmpty()) {
+      p.grain.texture = grainTex;
+      p.grain.scale = grainScale;
+      p.grain.intensity = grainIntensity;
+    }
+    if (!tipTex.isEmpty()) {
+      p.shape.tipTexture = tipTex;
+    }
+    p.shape.calligraphic = calli;
 
-        p.wetMix.wetness = wetness;
-        p.wetMix.pull = smudge;
+    p.wetMix.wetness = wetness;
+    p.wetMix.pull = smudge;
 
-        // Dynamics
-        if (sizeByPressure) {
-          p.sizeDynamics.baseValue = 1.0f;
-          p.sizeDynamics.minLimit = 0.1f;
-        } else {
-          p.sizeDynamics.baseValue = 1.0f;
-          p.sizeDynamics.minLimit = 1.0f; // No variation
-        }
+    // Dynamics
+    if (sizeByPressure) {
+      p.sizeDynamics.baseValue = 1.0f;
+      p.sizeDynamics.minLimit = 0.1f;
+    } else {
+      p.sizeDynamics.baseValue = 1.0f;
+      p.sizeDynamics.minLimit = 1.0f; // No variation
+    }
 
-        if (opacityByPressure) {
-          p.opacityDynamics.baseValue = 1.0f;
-          p.opacityDynamics.minLimit = 0.0f;
-        } else {
-          p.opacityDynamics.baseValue = 1.0f;
-          p.opacityDynamics.minLimit = 1.0f;
-        }
+    if (opacityByPressure) {
+      p.opacityDynamics.baseValue = 1.0f;
+      p.opacityDynamics.minLimit = 0.0f;
+    } else {
+      p.opacityDynamics.baseValue = 1.0f;
+      p.opacityDynamics.minLimit = 1.0f;
+    }
 
-        p.sizeDynamics.velocityInfluence = velocityDyn;
-        p.sizeDynamics.jitter = jitter;
+    p.sizeDynamics.velocityInfluence = velocityDyn;
+    p.sizeDynamics.jitter = jitter;
 
-        addPreset(p);
-      };
+    addPreset(p);
+  };
 
   // ==================== SKETCHING ====================
   addBrush("Sketching", "Pencil HB", 8, 0.7f, 0.2f, 0.05f, 0.25f,
@@ -300,13 +302,13 @@ void BrushPresetManager::loadDefaults() {
            0, 0.12f);
   addBrush("Sketching", "Mechanical", 2.5f, 0.95f, 0.95f, 0.008f, 0.3f,
            "paper_grain.png", 450.0f, 0.75f, "tip_hard.png", 0, 0, true, true,
-           0, 0.01f);
+           0, 0.01f, 1.0f, 0.4f);
 
   // ==================== INKING ====================
   addBrush("Inking", "Ink Pen", 12, 1.0f, 1.0f, 0.015f, 0.75f, "", 0, 0,
-           "tip_hard.png", 0, 0, true, false, -0.2f);
+           "tip_hard.png", 0, 0, true, false, -0.2f, 0, 1.0f, 0.8f);
   addBrush("Inking", "G-Pen", 18, 1.0f, 0.98f, 0.01f, 0.8f, "", 0, 0,
-           "tip_hard.png", 0, 0, true, false, -0.15f);
+           "tip_hard.png", 0, 0, true, false, -0.15f, 0, 1.0f, 0.9f);
   addBrush("Inking", "Maru Pen", 6, 1.0f, 1.0f, 0.01f, 0.6f, "", 0, 0,
            "tip_hard.png");
   addBrush("Inking", "Marker", 28, 0.35f, 0.95f, 0.03f, 0.15f, "", 0, 0,

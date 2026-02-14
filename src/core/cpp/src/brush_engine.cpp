@@ -27,13 +27,24 @@ static uint32_t loadTexture(const QString &name) {
 
   // Try to load
   // Check local path first (dev mode)
+  // Check local path first (dev mode)
   QString path = "src/assets/textures/" + name;
   if (!QFile::exists(path)) {
-    // Check relative to executable
-    path = QCoreApplication::applicationDirPath() + "/assets/textures/" + name;
+    path = "../../src/assets/textures/" + name;
     if (!QFile::exists(path)) {
-      // Check QRC
-      path = ":/textures/" + name;
+      path = "src/assets/brushes/tips/" + name;
+      if (!QFile::exists(path)) {
+        path = "../../src/assets/brushes/tips/" + name;
+        if (!QFile::exists(path)) {
+          // Check relative to executable
+          path = QCoreApplication::applicationDirPath() + "/assets/textures/" +
+                 name;
+          if (!QFile::exists(path)) {
+            // Check QRC
+            path = ":/textures/" + name;
+          }
+        }
+      }
     }
   }
 
@@ -82,13 +93,26 @@ static QImage getTextureImage(const QString &name) {
   if (s_imageTextureCache.contains(name))
     return s_imageTextureCache[name];
 
+  // Try multiple paths (same as loadTexture)
   QString path = "src/assets/textures/" + name;
   if (!QFile::exists(path)) {
-    path = QCoreApplication::applicationDirPath() + "/assets/textures/" + name;
+    path = "../../src/assets/textures/" + name;
     if (!QFile::exists(path)) {
-      path = ":/textures/" + name;
+      path = "src/assets/brushes/tips/" + name;
+      if (!QFile::exists(path)) {
+        path = "../../src/assets/brushes/tips/" + name;
+        if (!QFile::exists(path)) {
+          path = QCoreApplication::applicationDirPath() + "/assets/textures/" +
+                 name;
+          if (!QFile::exists(path)) {
+            path = ":/textures/" + name;
+          }
+        }
+      }
     }
   }
+
+  qDebug() << "BrushEngine: getTextureImage Loading:" << name << "from" << path;
 
   QImage img(path);
   if (img.isNull()) {
@@ -107,18 +131,48 @@ static QImage getTextureImage(const QString &name) {
   return img;
 }
 
+// Helper to draw a tinted tip in Raster mode
+static void paintTipRaster(QPainter *painter, const QPointF &point, float size,
+                           float opacity, const QColor &color, float rotation,
+                           const QString &texName) {
+  QImage tipImg = getTextureImage(texName);
+  if (tipImg.isNull())
+    return;
+
+  painter->save();
+  painter->setOpacity(opacity);
+  painter->translate(point);
+  painter->rotate(rotation * 180.0f / 3.14159f); // rad to deg
+
+  QRectF rect(-size / 2.0, -size / 2.0, size, size);
+
+  // Tinting: Create a temporary image for the dab
+  // This is expensive in Raster but necessary for correct visual
+  QImage dab =
+      tipImg.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+  QPainter p(&dab);
+  p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+  p.fillRect(dab.rect(), color);
+  p.end();
+
+  painter->drawImage(rect, dab);
+  painter->restore();
+}
+
 static void paintTexturedRaster(QPainter *painter, const QPointF &point,
                                 float size, float opacity, const QColor &color,
                                 const QString &texName) {
   QImage tex = getTextureImage(texName);
+  if (tex.isNull())
+    return;
 
+  painter->save();
   painter->setOpacity(opacity);
   painter->setPen(Qt::NoPen);
 
   QBrush brush(tex);
   QTransform matrix;
   matrix.translate(point.x(), point.y());
-  // Fixed scale pattern
   float scale = 0.5f;
   matrix.scale(scale, scale);
   brush.setTransform(matrix);
@@ -130,7 +184,7 @@ static void paintTexturedRaster(QPainter *painter, const QPointF &point,
   painter->setBrush(color);
   painter->setCompositionMode(QPainter::CompositionMode_Overlay);
   painter->drawEllipse(point, size / 2.0f, size / 2.0f);
-  painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+  painter->restore();
 }
 
 BrushEngine::BrushEngine() {}
@@ -151,6 +205,17 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
 
   // 1. Calculate Dynamics
   float effectivePressure = (pressure > 0.0f) ? pressure : 0.5f;
+
+  // Velocity Influence (Mouse pressure fallback)
+  if (settings.velocityDynamics > 0.01f && velocity > 0.1f) {
+    // High velocity = lower pressure (thinner stroke)
+    // Reference: 1.0 - (velocity / 2000.0)
+    float vPressure =
+        std::max(0.1f, std::min(1.0f, 1.0f - (velocity / 2000.0f)));
+    effectivePressure = effectivePressure + (vPressure - effectivePressure) *
+                                                settings.velocityDynamics;
+  }
+
   if (!settings.dynamicsEnabled) {
     effectivePressure = 1.0f;
   }
@@ -214,6 +279,15 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     QColor c = settings.color;
     c.setAlphaF(c.alphaF() * settings.opacity);
 
+    // Calligraphy effect (Angle-based thickness)
+    float calligraphyWidth = 1.0f;
+    float strokeAngle = std::atan2(dy, dx);
+    if (settings.type == BrushSettings::Type::Ink ||
+        settings.type == BrushSettings::Type::Custom) {
+      // Horizontal = thicker, Vertical = thinner
+      calligraphyWidth = 0.5f + std::abs(std::sin(strokeAngle)) * 0.5f;
+    }
+
     QTransform xform = painter->transform();
     float scaleFactor =
         std::sqrt(xform.m11() * xform.m11() + xform.m12() * xform.m12());
@@ -230,7 +304,11 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       float opacityMultiplier = 1.0f;
 
       if (settings.taperStart > 0.0f && totalDist < settings.taperStart) {
-        sizeMultiplier = totalDist / settings.taperStart;
+        // Parabolic Taper (smoother)
+        // Reference: 1 - x²
+        float x = 1.0f - (totalDist / settings.taperStart); // 1.0 to 0.0
+        float parabola = 1.0f - (x * x);
+        sizeMultiplier = 0.2f + 0.8f * parabola;
       }
       if (settings.fallOff > 0.0f) {
         opacityMultiplier =
@@ -238,7 +316,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       }
 
       QPointF devPt = xform.map(pt);
-      float devSizeBase = currentSize * scaleFactor * sizeMultiplier;
+      float devSizeBase =
+          currentSize * scaleFactor * sizeMultiplier * calligraphyWidth;
       float opacityBase = c.alphaF() * opacityMultiplier;
 
       // Loop for Count (Stamp stacking)
@@ -342,6 +421,13 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
 
   QColor baseColor = settings.color;
 
+  // Calligraphy effect (Angle-based thickness)
+  float calligraphyWidth = 1.0f;
+  if (settings.type == BrushSettings::Type::Ink ||
+      settings.type == BrushSettings::Type::Custom) {
+    calligraphyWidth = 0.5f + std::abs(std::sin(std::atan2(dy, dx))) * 0.5f;
+  }
+
   while (distanceToDab <= dist) {
     float t = (dist > 0.0001f) ? (distanceToDab / dist) : 0.0f;
     QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
@@ -354,13 +440,15 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     float opacityMultiplier = 1.0f;
 
     if (settings.taperStart > 0.0f && totalDist < settings.taperStart) {
-      sizeMultiplier = totalDist / settings.taperStart;
+      float x = 1.0f - (totalDist / settings.taperStart);
+      float parabola = 1.0f - (x * x);
+      sizeMultiplier = 0.2f + 0.8f * parabola;
     }
     if (settings.fallOff > 0.0f) {
       opacityMultiplier = std::max(0.0f, 1.0f - (totalDist / settings.fallOff));
     }
 
-    float dabSize = currentSize * sizeMultiplier;
+    float dabSize = currentSize * sizeMultiplier * calligraphyWidth;
     float dabOpacity = currentOpacity * opacityMultiplier;
 
     // Loop for Count (Stamp stacking)
@@ -401,7 +489,10 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
         finalColor.setHslF(h, s, l, a);
       }
 
-      if (settings.useTexture && !settings.textureName.isEmpty()) {
+      if (!settings.tipTextureName.isEmpty()) {
+        paintTipRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
+                       settings.tipRotation + jRot, settings.tipTextureName);
+      } else if (settings.useTexture && !settings.textureName.isEmpty()) {
         paintTexturedRaster(painter, finalPt, finalSize, finalOpacity,
                             finalColor, settings.textureName);
       } else {

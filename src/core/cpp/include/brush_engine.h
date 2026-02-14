@@ -149,6 +149,8 @@ struct BrushSettings {
   float jitter = 0.0f;
   float grain = 0.5f;            // For legacy compatibility
   float velocityDynamics = 0.0f; // For legacy compatibility
+  float calligraphicInfluence =
+      0.0f; // 0.0 = none, 1.0 = full angle-based width
 };
 
 class StrokeRenderer; // Forward declaration

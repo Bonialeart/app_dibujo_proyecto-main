@@ -890,6 +890,8 @@ E:/app_dibujo_proyecto-main/src/PreferencesManager.h
  mdp:C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wctype.h
  mdp:E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h
  mdp:E:/app_dibujo_proyecto-main/src/PreferencesManager.h
+E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPickerImpl.h
+E:/app_dibujo_proyecto-main/src/CanvasItem.cpp
 E:/app_dibujo_proyecto-main/src/ProjectModel.h
  mmc:Q_OBJECT
  mdp:C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel
@@ -1233,8 +1235,6 @@ E:/app_dibujo_proyecto-main/src/ProjectModel.h
  mdp:C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h
  mdp:E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h
  mdp:E:/app_dibujo_proyecto-main/src/ProjectModel.h
-E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPickerImpl.h
-E:/app_dibujo_proyecto-main/src/CanvasItem.cpp
 E:/app_dibujo_proyecto-main/src/TestCanvas.h
  mmc:Q_OBJECT
  mdp:C:/Qt/6.10.2/mingw_64/include/QtCore/QList
@@ -1671,6 +1671,7 @@ E:/app_dibujo_proyecto-main/src/TestCanvas.h
  mdp:C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h
  mdp:E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h
  mdp:E:/app_dibujo_proyecto-main/src/TestCanvas.h
+E:/app_dibujo_proyecto-main/src/PreferencesManager.cpp
 E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h
  mmc:Q_OBJECT
  mdp:C:/Qt/6.10.2/mingw_64/include/QtCore/QList
@@ -2018,9 +2019,8 @@ E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h
  mdp:C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h
  mdp:E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h
  mdp:E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h
-E:/app_dibujo_proyecto-main/src/PreferencesManager.cpp
-E:/app_dibujo_proyecto-main/src/ProjectModel.cpp
 E:/app_dibujo_proyecto-main/src/core/cpp/src/layer_manager.cpp
+E:/app_dibujo_proyecto-main/src/ProjectModel.cpp
 E:/app_dibujo_proyecto-main/src/TestCanvas.cpp
 E:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPicker.cpp
 E:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPickerImpl.cpp

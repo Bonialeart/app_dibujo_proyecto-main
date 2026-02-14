@@ -27,6 +27,7 @@ QJsonObject BrushPreset::ShapeSettings::toJson() const {
   obj["randomize"] = randomize;
   obj["count"] = count;
   obj["count_jitter"] = countJitter;
+  obj["calligraphic"] = calligraphic;
   return obj;
 }
 
@@ -46,6 +47,7 @@ BrushPreset::ShapeSettings::fromJson(const QJsonObject &obj) {
   s.randomize = obj.value("randomize").toBool(false);
   s.count = obj.value("count").toInt(1);
   s.countJitter = obj.value("count_jitter").toDouble(0.0);
+  s.calligraphic = obj.value("calligraphic").toDouble(0.0);
   return s;
 }
 
@@ -459,6 +461,8 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
     qDebug() << "BrushPreset::applyToLegacy: Setting tipTextureName to"
              << s.tipTextureName;
   }
+
+  s.calligraphicInfluence = shape.calligraphic;
 
   // Grain texture (paper grain) — separate slot
   if (!grain.texture.isEmpty()) {
