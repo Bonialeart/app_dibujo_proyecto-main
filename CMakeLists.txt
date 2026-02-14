@@ -77,6 +77,13 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     opengl32
 )
 
+# Copy assets to build directory
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/assets
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
+)
+
 # Configuración de despliegue para Windows (Copia DLLs automáticamente)
 # if(WIN32)
 #    set_target_properties(${PROJECT_NAME} PROPERTIES

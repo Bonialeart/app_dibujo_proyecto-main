@@ -359,22 +359,61 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           finalColor.setHslF(h, s, l, a);
         }
 
-        bool isEraser = (settings.type == BrushSettings::Type::Eraser);
+        // The variables p2, size, pressure, tipRotation are not defined in this
+        // scope. Assuming the intent was to use devPt.x() + jX, devPt.y() + jY,
+        // devSizeBase * jSize, effectivePressure, and settings.tipRotation +
+        // jRot based on the original code and the context.
         m_renderer->renderStroke(
             devPt.x() + jX, devPt.y() + jY, devSizeBase * jSize,
             effectivePressure, settings.hardness, finalColor,
-            (int)settings.type, w, h,
+            static_cast<int>(settings.type), m_renderer->viewportWidth(),
+            m_renderer->viewportHeight(),
             // Grain
-            grainTexID, hasGrain, settings.textureScale * scaleFactor,
-            settings.textureIntensity,
+            settings.grainTextureID, settings.useTexture,
+            settings.textureScale * scaleFactor, settings.textureIntensity,
             // Tip
-            tipTexID, hasTip, settings.tipRotation + jRot,
+            settings.tipTextureID, !settings.tipTextureName.isEmpty(),
+            settings.tipRotation + jRot,
             // Dynamics
             tilt, velocity, settings.flow,
             // Wet Mix
             canvasTexId, wetness, dilution, smudge,
+            // Watercolor params
+            settings.bleed, settings.absorptionRate, settings.dryingTime,
+            settings.wetOnWetMultiplier, settings.granulation,
+            settings.pigmentFlow, settings.staining, settings.separation,
+            settings.bloomEnabled, settings.bloomIntensity,
+            settings.bloomRadius, settings.bloomThreshold,
+            settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
+            settings.edgeDarkeningWidth, settings.textureRevealEnabled,
+            settings.textureRevealIntensity,
+            settings.textureRevealPressureInfluence,
+            // Oil Params
+            settings.mixing, settings.loading, settings.depletionRate,
+            settings.dirtyMixing, settings.colorPickup, settings.blendOnly,
+            settings.scrapeThrough,
+            // Impasto
+            settings.impastoEnabled, settings.impastoDepth,
+            settings.impastoShine, settings.impastoTextureStrength,
+            settings.impastoEdgeBuildup, settings.impastoDirectionalRidges,
+            settings.impastoSmoothing, settings.impastoPreserveExisting,
+            // Bristles
+            settings.bristlesEnabled, settings.bristleCount,
+            settings.bristleStiffness, settings.bristleClumping,
+            settings.bristleFanSpread, settings.bristleIndividualVariation,
+            settings.bristleDryBrushEffect, settings.bristleSoftness,
+            settings.bristlePointTaper,
+            // Smudge
+            settings.smudgeStrength, settings.smudgePressureInfluence,
+            settings.smudgeLength, settings.smudgeGaussianBlur,
+            settings.smudgeSmear,
+            // Canvas Interaction
+            settings.canvasAbsorption, settings.canvasSkipValleys,
+            settings.canvasCatchPeaks,
+            // Color Dynamics Oil
+            settings.temperatureShift, settings.brokenColor,
             // Mode
-            isEraser);
+            settings.type == BrushSettings::Type::Eraser);
       }
 
       distanceToDab += stepSize;

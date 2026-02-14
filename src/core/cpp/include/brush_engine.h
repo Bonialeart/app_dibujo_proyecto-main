@@ -47,7 +47,7 @@ struct BrushSettings {
   float opacity = 1.0f;
   float hardness = 1.0f; // 1.0 = duro, 0.0 = suave
   float spacing = 0.1f;  // Espaciado del trazo
-  QColor color = Qt::black;
+  QColor color = QColor(0, 0, 0);
   bool dynamicsEnabled = true; // Activar/desactivar presión
 
   enum class Type {
@@ -130,12 +130,91 @@ struct BrushSettings {
   float strokeSatJitter = 0.0f;
   float strokeLightJitter = 0.0f;
   float strokeDarkJitter = 0.0f;
+  float tiltDarkJitter = 0.0f;
   bool useSecondaryColor = false;
 
   // Wet Mix
   float pressurePigment = 0.0f;
   float pullPressure = 0.0f;
   float wetJitter = 0.0f;
+
+  // === NEW REALISTIC WATERCOLOR FIELDS ===
+  // Wet Mix
+  float bleed = 0.0f;
+  float absorptionRate = 0.0f;
+  float dryingTime = 0.0f;
+  float wetOnWetMultiplier = 1.0f;
+
+  // Oil Paint Wet Mix
+  float mixing = 0.5f;
+  float loading = 1.0f;
+  float depletionRate = 0.0f;
+  bool dirtyMixing = false;
+  float colorPickup = 0.0f;
+  bool blendOnly = false;
+  bool scrapeThrough = false;
+
+  // Pigment
+  float granulation = 0.0f;
+  float pigmentFlow = 1.0f;
+  float staining = 0.0f;
+  float separation = 0.0f;
+
+  // Oil Color Dynamics
+  float temperatureShift = 0.0f;
+  float brokenColor = 0.0f;
+
+  // Bloom
+  bool bloomEnabled = false;
+  float bloomIntensity = 0.0f;
+  float bloomRadius = 0.0f;
+  float bloomThreshold = 0.0f;
+
+  // Edge Darkening
+  bool edgeDarkeningEnabled = false;
+  float edgeDarkeningIntensity = 0.0f;
+  float edgeDarkeningWidth = 0.0f;
+
+  // Texture Reveal (Dry Brush)
+  bool textureRevealEnabled = false;
+  float textureRevealIntensity = 0.0f;
+  float textureRevealPressureInfluence = 0.0f;
+
+  // === OIL PAINT FIELDS ===
+  // Impasto
+  bool impastoEnabled = false;
+  float impastoDepth = 0.0f;
+  float impastoShine = 0.0f;
+  float impastoTextureStrength = 0.0f;
+  float impastoEdgeBuildup = 0.0f;
+  bool impastoDirectionalRidges = false;
+  float impastoSmoothing = 0.0f;
+  bool impastoPreserveExisting = false;
+
+  // Bristles
+  bool bristlesEnabled = false;
+  int bristleCount = 1;
+  float bristleStiffness = 0.5f;
+  float bristleClumping = 0.0f;
+  float bristleFanSpread = 0.0f;
+  float bristleIndividualVariation = 0.0f;
+  bool bristleDryBrushEffect = false;
+  float bristleSoftness = 0.0f;
+  float bristlePointTaper = 0.0f;
+
+  // Smudge (Advanced)
+  float smudgeStrength = 0.0f;
+  // Blendmode is tricky in C++, maybe map to int enum or just float flag
+  // For now let's skip complex string blendmode in shader uniforms
+  float smudgePressureInfluence = 0.0f;
+  float smudgeLength = 0.0f;
+  float smudgeGaussianBlur = 0.0f;
+  bool smudgeSmear = false;
+
+  // Canvas Interaction
+  float canvasAbsorption = 0.0f;
+  bool canvasSkipValleys = false;
+  float canvasCatchPeaks = 0.0f;
 
   // Cache e Internal
   uint32_t grainTextureID = 0;

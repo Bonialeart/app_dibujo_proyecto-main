@@ -171,6 +171,22 @@ QJsonObject BrushPreset::WetMixSettings::toJson() const {
   obj["pressure_pigment"] = pressurePigment;
   obj["pull_pressure"] = pullPressure;
   obj["wet_jitter"] = wetJitter;
+
+  // New fields
+  obj["bleed"] = bleed;
+  obj["absorption_rate"] = absorptionRate;
+  obj["drying_time"] = dryingTime;
+  obj["wet_on_wet_multiplier"] = wetOnWetMultiplier;
+
+  // Oil Paint
+  obj["mixing"] = mixing;
+  obj["loading"] = loading;
+  obj["depletion_rate"] = depletionRate;
+  obj["dirty_mixing"] = dirtyMixing;
+  obj["color_pickup"] = colorPickup;
+  obj["blend_only"] = blendOnly;
+  obj["scrape_through"] = scrapeThrough;
+
   return obj;
 }
 
@@ -187,7 +203,239 @@ BrushPreset::WetMixSettings::fromJson(const QJsonObject &obj) {
   w.pressurePigment = obj.value("pressure_pigment").toDouble(0.0);
   w.pullPressure = obj.value("pull_pressure").toDouble(0.0);
   w.wetJitter = obj.value("wet_jitter").toDouble(0.0);
+
+  // New fields
+  w.bleed = obj.value("bleed").toDouble(0.0);
+  w.absorptionRate = obj.value("absorption_rate").toDouble(0.0);
+  w.dryingTime = obj.value("drying_time").toDouble(0.0);
+  w.wetOnWetMultiplier = obj.value("wet_on_wet_multiplier").toDouble(1.0);
+
+  // Oil Paint
+  w.mixing = obj.value("mixing").toDouble(0.5);
+  w.loading = obj.value("loading").toDouble(1.0);
+  w.depletionRate = obj.value("depletion_rate").toDouble(0.0);
+  w.dirtyMixing = obj.value("dirty_mixing").toBool(false);
+  w.colorPickup = obj.value("color_pickup").toDouble(0.0);
+  w.blendOnly = obj.value("blend_only").toBool(false);
+  w.scrapeThrough = obj.value("scrape_through").toBool(false);
+
   return w;
+}
+
+// ============================================================
+// ImpastoSettings
+// ============================================================
+QJsonObject BrushPreset::ImpastoSettings::toJson() const {
+  QJsonObject obj;
+  obj["enabled"] = enabled;
+  obj["depth"] = depth;
+  obj["shine"] = shine;
+  obj["texture_strength"] = textureStrength;
+  obj["edge_buildup"] = edgeBuildup;
+  obj["directional_ridges"] = directionalRidges;
+  obj["smoothing"] = smoothing;
+  obj["preserve_existing"] = preserveExisting;
+  return obj;
+}
+
+BrushPreset::ImpastoSettings
+BrushPreset::ImpastoSettings::fromJson(const QJsonObject &obj) {
+  ImpastoSettings i;
+  i.enabled = obj.value("enabled").toBool(false);
+  i.depth = obj.value("depth").toDouble(0.0);
+  i.shine = obj.value("shine").toDouble(0.0);
+  i.textureStrength = obj.value("texture_strength").toDouble(0.0);
+  i.edgeBuildup = obj.value("edge_buildup").toDouble(0.0);
+  i.directionalRidges = obj.value("directional_ridges").toBool(false);
+  i.smoothing = obj.value("smoothing").toDouble(0.0);
+  i.preserveExisting = obj.value("preserve_existing").toBool(false);
+  return i;
+}
+
+// ============================================================
+// BristleSettings
+// ============================================================
+QJsonObject BrushPreset::BristleSettings::toJson() const {
+  QJsonObject obj;
+  obj["enabled"] = enabled;
+  obj["count"] = count;
+  obj["stiffness"] = stiffness;
+  obj["clumping"] = clumping;
+  obj["fan_spread"] = fanSpread;
+  obj["individual_variation"] = individualVariation;
+  obj["dry_brush_effect"] = dryBrushEffect;
+  obj["softness"] = softness;
+  obj["point_taper"] = pointTaper;
+  return obj;
+}
+
+BrushPreset::BristleSettings
+BrushPreset::BristleSettings::fromJson(const QJsonObject &obj) {
+  BristleSettings b;
+  b.enabled = obj.value("enabled").toBool(false);
+  b.count = obj.value("count").toInt(1);
+  b.stiffness = obj.value("stiffness").toDouble(0.5);
+  b.clumping = obj.value("clumping").toDouble(0.0);
+  b.fanSpread = obj.value("fan_spread").toDouble(0.0);
+  b.individualVariation = obj.value("individual_variation").toDouble(0.0);
+  b.dryBrushEffect = obj.value("dry_brush_effect").toBool(false);
+  b.softness = obj.value("softness").toDouble(0.0);
+  b.pointTaper = obj.value("point_taper").toDouble(0.0);
+  return b;
+}
+
+// ============================================================
+// SmudgeSettings
+// ============================================================
+QJsonObject BrushPreset::SmudgeSettings::toJson() const {
+  QJsonObject obj;
+  obj["strength"] = strength;
+  obj["blend_mode"] = blendMode;
+  obj["pressure_influence"] = pressureInfluence;
+  obj["length"] = length;
+  obj["gaussian_blur"] = gaussianBlur;
+  obj["smear"] = smear;
+  return obj;
+}
+
+BrushPreset::SmudgeSettings
+BrushPreset::SmudgeSettings::fromJson(const QJsonObject &obj) {
+  SmudgeSettings s;
+  s.strength = obj.value("strength").toDouble(0.0);
+  s.blendMode = obj.value("blend_mode").toString("normal");
+  s.pressureInfluence = obj.value("pressure_influence").toDouble(0.0);
+  s.length = obj.value("length").toDouble(0.0);
+  s.gaussianBlur = obj.value("gaussian_blur").toDouble(0.0);
+  s.smear = obj.value("smear").toBool(false);
+  return s;
+}
+
+// ============================================================
+// CanvasInteractionSettings
+// ============================================================
+QJsonObject BrushPreset::CanvasInteractionSettings::toJson() const {
+  QJsonObject obj;
+  obj["texture_reveal"] = textureReveal;
+  obj["absorption"] = absorption;
+  obj["skip_valleys"] = skipValleys;
+  obj["catch_peaks"] = catchPeaks;
+  return obj;
+}
+
+BrushPreset::CanvasInteractionSettings
+BrushPreset::CanvasInteractionSettings::fromJson(const QJsonObject &obj) {
+  CanvasInteractionSettings c;
+  c.textureReveal = obj.value("texture_reveal").toDouble(0.0);
+  c.absorption = obj.value("absorption").toDouble(0.0);
+  c.skipValleys = obj.value("skip_valleys").toBool(false);
+  c.catchPeaks = obj.value("catch_peaks").toDouble(0.0);
+  return c;
+}
+
+// ============================================================
+// PigmentSettings
+// ============================================================
+QJsonObject BrushPreset::PigmentSettings::toJson() const {
+  QJsonObject obj;
+  obj["granulation"] = granulation;
+  obj["flow"] = flow;
+  obj["staining"] = staining;
+  obj["separation"] = separation;
+  return obj;
+}
+
+BrushPreset::PigmentSettings
+BrushPreset::PigmentSettings::fromJson(const QJsonObject &obj) {
+  PigmentSettings p;
+  p.granulation = obj.value("granulation").toDouble(0.0);
+  p.flow = obj.value("flow").toDouble(1.0);
+  p.staining = obj.value("staining").toDouble(0.0);
+  p.separation = obj.value("separation").toDouble(0.0);
+  return p;
+}
+
+// ============================================================
+// BloomSettings
+// ============================================================
+QJsonObject BrushPreset::BloomSettings::toJson() const {
+  QJsonObject obj;
+  obj["enabled"] = enabled;
+  obj["intensity"] = intensity;
+  obj["radius"] = radius;
+  obj["threshold"] = threshold;
+  obj["random_variation"] = randomVariation;
+  return obj;
+}
+
+BrushPreset::BloomSettings
+BrushPreset::BloomSettings::fromJson(const QJsonObject &obj) {
+  BloomSettings b;
+  b.enabled = obj.value("enabled").toBool(false);
+  b.intensity = obj.value("intensity").toDouble(0.0);
+  b.radius = obj.value("radius").toDouble(0.0);
+  b.threshold = obj.value("threshold").toDouble(0.0);
+  b.randomVariation = obj.value("random_variation").toDouble(0.0);
+  return b;
+}
+
+// ============================================================
+// EdgeDarkeningSettings
+// ============================================================
+QJsonObject BrushPreset::EdgeDarkeningSettings::toJson() const {
+  QJsonObject obj;
+  obj["enabled"] = enabled;
+  obj["intensity"] = intensity;
+  obj["width"] = width;
+  return obj;
+}
+
+BrushPreset::EdgeDarkeningSettings
+BrushPreset::EdgeDarkeningSettings::fromJson(const QJsonObject &obj) {
+  EdgeDarkeningSettings e;
+  e.enabled = obj.value("enabled").toBool(false);
+  e.intensity = obj.value("intensity").toDouble(0.0);
+  e.width = obj.value("width").toDouble(0.0);
+  return e;
+}
+
+// ============================================================
+// BackrunSettings
+// ============================================================
+QJsonObject BrushPreset::BackrunSettings::toJson() const {
+  QJsonObject obj;
+  obj["enabled"] = enabled;
+  obj["probability"] = probability;
+  obj["intensity"] = intensity;
+  return obj;
+}
+
+BrushPreset::BackrunSettings
+BrushPreset::BackrunSettings::fromJson(const QJsonObject &obj) {
+  BackrunSettings b;
+  b.enabled = obj.value("enabled").toBool(false);
+  b.probability = obj.value("probability").toDouble(0.0);
+  b.intensity = obj.value("intensity").toDouble(0.0);
+  return b;
+}
+
+// ============================================================
+// TextureRevealSettings
+// ============================================================
+QJsonObject BrushPreset::TextureRevealSettings::toJson() const {
+  QJsonObject obj;
+  obj["enabled"] = enabled;
+  obj["intensity"] = intensity;
+  obj["pressure_influence"] = pressureInfluence;
+  return obj;
+}
+
+BrushPreset::TextureRevealSettings
+BrushPreset::TextureRevealSettings::fromJson(const QJsonObject &obj) {
+  TextureRevealSettings t;
+  t.enabled = obj.value("enabled").toBool(false);
+  t.intensity = obj.value("intensity").toDouble(0.0);
+  t.pressureInfluence = obj.value("pressure_influence").toDouble(0.0);
+  return t;
 }
 
 // ============================================================
@@ -215,6 +463,11 @@ QJsonObject BrushPreset::ColorDynamics::toJson() const {
   obj["tilt_light_jitter"] = tiltLightJitter;
   obj["tilt_dark_jitter"] = tiltDarkJitter;
   obj["use_secondary_color"] = useSecondaryColor;
+
+  // Oil
+  obj["temperature_shift"] = temperatureShift;
+  obj["broken_color"] = brokenColor;
+
   return obj;
 }
 
@@ -241,6 +494,11 @@ BrushPreset::ColorDynamics::fromJson(const QJsonObject &obj) {
   cd.tiltLightJitter = obj.value("tilt_light_jitter").toDouble(0.0);
   cd.tiltDarkJitter = obj.value("tilt_dark_jitter").toDouble(0.0);
   cd.useSecondaryColor = obj.value("use_secondary_color").toBool(false);
+
+  // Oil
+  cd.temperatureShift = obj.value("temperature_shift").toDouble(0.0);
+  cd.brokenColor = obj.value("broken_color").toDouble(0.0);
+
   return cd;
 }
 
@@ -345,6 +603,19 @@ QJsonObject BrushPreset::toJson() const {
   // Wet Mix
   root["wet_mix"] = wetMix.toJson();
 
+  // Watercolor specific
+  root["pigment"] = pigment.toJson();
+  root["bloom"] = bloom.toJson();
+  root["edge_darkening"] = edgeDarkening.toJson();
+  root["backrun"] = backrun.toJson();
+  root["texture_reveal"] = textureReveal.toJson();
+
+  // Oil Specific
+  root["impasto"] = impasto.toJson();
+  root["bristles"] = bristles.toJson();
+  root["smudge"] = smudge.toJson();
+  root["canvas_interaction"] = canvasInteraction.toJson();
+
   // Color Dynamics
   root["color_dynamics"] = colorDynamics.toJson();
 
@@ -420,6 +691,30 @@ BrushPreset BrushPreset::fromJson(const QJsonObject &root) {
   // Wet Mix
   if (root.contains("wet_mix"))
     preset.wetMix = WetMixSettings::fromJson(root["wet_mix"].toObject());
+
+  // Watercolor specific
+  if (root.contains("pigment"))
+    preset.pigment = PigmentSettings::fromJson(root["pigment"].toObject());
+  if (root.contains("bloom"))
+    preset.bloom = BloomSettings::fromJson(root["bloom"].toObject());
+  if (root.contains("edge_darkening"))
+    preset.edgeDarkening =
+        EdgeDarkeningSettings::fromJson(root["edge_darkening"].toObject());
+  if (root.contains("backrun"))
+    preset.backrun = BackrunSettings::fromJson(root["backrun"].toObject());
+  preset.textureReveal =
+      TextureRevealSettings::fromJson(root["texture_reveal"].toObject());
+
+  // Oil specific
+  if (root.contains("impasto"))
+    preset.impasto = ImpastoSettings::fromJson(root["impasto"].toObject());
+  if (root.contains("bristles"))
+    preset.bristles = BristleSettings::fromJson(root["bristles"].toObject());
+  if (root.contains("smudge"))
+    preset.smudge = SmudgeSettings::fromJson(root["smudge"].toObject());
+  if (root.contains("canvas_interaction"))
+    preset.canvasInteraction = CanvasInteractionSettings::fromJson(
+        root["canvas_interaction"].toObject());
 
   // Color Dynamics
   if (root.contains("color_dynamics"))
@@ -535,6 +830,75 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.pressurePigment = wetMix.pressurePigment;
   s.pullPressure = wetMix.pullPressure;
   s.wetJitter = wetMix.wetJitter;
+  s.bleed = wetMix.bleed;
+  s.absorptionRate = wetMix.absorptionRate;
+  s.dryingTime = wetMix.dryingTime;
+  s.wetOnWetMultiplier = wetMix.wetOnWetMultiplier;
+
+  // Oil Wet Mix
+  s.mixing = wetMix.mixing;
+  s.loading = wetMix.loading;
+  s.depletionRate = wetMix.depletionRate;
+  s.dirtyMixing = wetMix.dirtyMixing;
+  s.colorPickup = wetMix.colorPickup;
+  s.blendOnly = wetMix.blendOnly;
+  s.scrapeThrough = wetMix.scrapeThrough;
+
+  // Watercolor Pigment
+  s.granulation = pigment.granulation;
+  s.pigmentFlow = pigment.flow;
+  s.staining = pigment.staining;
+  s.separation = pigment.separation;
+
+  // Bloom
+  s.bloomEnabled = bloom.enabled;
+  s.bloomIntensity = bloom.intensity;
+  s.bloomRadius = bloom.radius;
+  s.bloomThreshold = bloom.threshold;
+
+  // Edge Darkening
+  s.edgeDarkeningEnabled = edgeDarkening.enabled;
+  s.edgeDarkeningIntensity = edgeDarkening.intensity;
+  s.edgeDarkeningWidth = edgeDarkening.width;
+
+  // Texture Reveal
+  s.textureRevealEnabled = textureReveal.enabled;
+  s.textureRevealIntensity = textureReveal.intensity;
+  s.textureRevealPressureInfluence = textureReveal.pressureInfluence;
+
+  // === OIL PAINT ===
+  // Impasto
+  s.impastoEnabled = impasto.enabled;
+  s.impastoDepth = impasto.depth;
+  s.impastoShine = impasto.shine;
+  s.impastoTextureStrength = impasto.textureStrength;
+  s.impastoEdgeBuildup = impasto.edgeBuildup;
+  s.impastoDirectionalRidges = impasto.directionalRidges;
+  s.impastoSmoothing = impasto.smoothing;
+  s.impastoPreserveExisting = impasto.preserveExisting;
+
+  // Bristles
+  s.bristlesEnabled = bristles.enabled;
+  s.bristleCount = bristles.count;
+  s.bristleStiffness = bristles.stiffness;
+  s.bristleClumping = bristles.clumping;
+  s.bristleFanSpread = bristles.fanSpread;
+  s.bristleIndividualVariation = bristles.individualVariation;
+  s.bristleDryBrushEffect = bristles.dryBrushEffect;
+  s.bristleSoftness = bristles.softness;
+  s.bristlePointTaper = bristles.pointTaper;
+
+  // Smudge
+  s.smudgeStrength = smudge.strength;
+  s.smudgePressureInfluence = smudge.pressureInfluence;
+  s.smudgeLength = smudge.length;
+  s.smudgeGaussianBlur = smudge.gaussianBlur;
+  s.smudgeSmear = smudge.smear;
+
+  // Canvas Interaction
+  s.canvasAbsorption = canvasInteraction.absorption;
+  s.canvasSkipValleys = canvasInteraction.skipValleys;
+  s.canvasCatchPeaks = canvasInteraction.catchPeaks;
 
   // Color Dynamics
   s.hueJitter = colorDynamics.hueJitter;
@@ -545,7 +909,12 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.strokeSatJitter = colorDynamics.strokeSatJitter;
   s.strokeLightJitter = colorDynamics.strokeLightJitter;
   s.strokeDarkJitter = colorDynamics.strokeDarkJitter;
+  s.tiltDarkJitter = colorDynamics.tiltDarkJitter;
   s.useSecondaryColor = colorDynamics.useSecondaryColor;
+
+  // Oil Color Dynamics
+  s.temperatureShift = colorDynamics.temperatureShift;
+  s.brokenColor = colorDynamics.brokenColor;
 
   // Determine brush type from category/name heuristics
   if (category == "Eraser" || name.contains("Eraser", Qt::CaseInsensitive)) {

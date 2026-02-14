@@ -189,17 +189,46 @@ void StrokeRenderer::initialize() {
   m_vbo.release();
 }
 
+// Premium rendering with dual texture support
 void StrokeRenderer::renderStroke(
     float x, float y, float size, float pressure, float hardness,
     const QColor &color, int type, int width, int height,
-    // Grain
+    // Grain texture
     uint32_t grainTexId, bool hasGrain, float grainScale, float grainIntensity,
-    // Tip
+    // Tip texture
     uint32_t tipTexId, bool hasTip, float tipRotation,
     // Dynamics
     float tilt, float velocity, float flow,
-    // Wet Mix
+    // Wet Mix Engine
     uint32_t canvasTexId, float wetness, float dilution, float smudge,
+    // New parameters
+    float bleed, float absorptionRate, float dryingTime,
+    float wetOnWetMultiplier, float granulation, float pigmentFlow,
+    float staining, float separation, bool bloomEnabled, float bloomIntensity,
+    float bloomRadius, float bloomThreshold, bool edgeDarkeningEnabled,
+    float edgeDarkeningIntensity, float edgeDarkeningWidth,
+    bool textureRevealEnabled, float textureRevealIntensity,
+    float textureRevealPressureInfluence,
+    // Oil Paint Parameters
+    float mixing, float loading, float depletionRate, bool dirtyMixing,
+    float colorPickup, bool blendOnly, bool scrapeThrough,
+    // Impasto
+    bool impastoEnabled, float impastoDepth, float impastoShine,
+    float impastoTextureStrength, float impastoEdgeBuildup,
+    bool impastoDirectionalRidges, float impastoSmoothing,
+    bool impastoPreserveExisting,
+    // Bristles
+    bool bristlesEnabled, int bristleCount, float bristleStiffness,
+    float bristleClumping, float bristleFanSpread,
+    float bristleIndividualVariation, bool bristleDryBrushEffect,
+    float bristleSoftness, float bristlePointTaper,
+    // Smudge (Advanced)
+    float smudgeStrength, float smudgePressureInfluence, float smudgeLength,
+    float smudgeGaussianBlur, bool smudgeSmear,
+    // Canvas Interaction
+    float canvasAbsorption, bool canvasSkipValleys, float canvasCatchPeaks,
+    // Oil Color Dynamics
+    float temperatureShift, float brokenColor,
     // Mode
     bool isEraser) {
 
@@ -260,13 +289,86 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("grainIntensity", 0.0f);
   }
 
-  // --- WET MIX ENGINE — Canvas texture for paint mixing ---
+  // --- WET MIX ENGINE & WATERCOLOR UNIFORMS ---
   m_program->setUniformValue("wetness", wetness);
   m_program->setUniformValue("dilution", dilution);
   m_program->setUniformValue("smudge", smudge);
   m_program->setUniformValue("canvasSize", QVector2D(width, height));
 
-  if ((wetness > 0.01f || smudge > 0.01f) && canvasTexId != 0) {
+  // New Watercolor Uniforms
+  m_program->setUniformValue("bleed", bleed);
+  m_program->setUniformValue("granulation", granulation);
+
+  m_program->setUniformValue("bloomEnabled", bloomEnabled ? 1 : 0);
+  m_program->setUniformValue("bloomIntensity", bloomIntensity);
+  m_program->setUniformValue("bloomRadius", bloomRadius);
+  m_program->setUniformValue("bloomThreshold", bloomThreshold);
+
+  m_program->setUniformValue("edgeDarkeningEnabled",
+                             edgeDarkeningEnabled ? 1 : 0);
+  m_program->setUniformValue("edgeDarkeningIntensity", edgeDarkeningIntensity);
+  m_program->setUniformValue("edgeDarkeningWidth", edgeDarkeningWidth);
+
+  m_program->setUniformValue("textureRevealEnabled",
+                             textureRevealEnabled ? 1 : 0);
+  m_program->setUniformValue("textureRevealIntensity", textureRevealIntensity);
+  m_program->setUniformValue("textureRevealPressureInfluence",
+                             textureRevealPressureInfluence);
+
+  // === OIL PAINT UNIFORMS ===
+  m_program->setUniformValue("mixing", mixing);
+  m_program->setUniformValue("loading", loading);
+  m_program->setUniformValue("depletionRate", depletionRate);
+  m_program->setUniformValue("dirtyMixing", dirtyMixing ? 1 : 0);
+  m_program->setUniformValue("colorPickup", colorPickup);
+  m_program->setUniformValue("blendOnly", blendOnly ? 1 : 0);
+  m_program->setUniformValue("scrapeThrough", scrapeThrough ? 1 : 0);
+
+  // Impasto
+  m_program->setUniformValue("impastoEnabled", impastoEnabled ? 1 : 0);
+  m_program->setUniformValue("impastoDepth", impastoDepth);
+  m_program->setUniformValue("impastoShine", impastoShine);
+  m_program->setUniformValue("impastoTextureStrength", impastoTextureStrength);
+  m_program->setUniformValue("impastoEdgeBuildup", impastoEdgeBuildup);
+  m_program->setUniformValue("impastoDirectionalRidges",
+                             impastoDirectionalRidges ? 1 : 0); // Simplified
+  m_program->setUniformValue("impastoSmoothing", impastoSmoothing);
+  m_program->setUniformValue("impastoPreserveExisting",
+                             impastoPreserveExisting ? 1 : 0);
+
+  // Bristles
+  m_program->setUniformValue("bristlesEnabled", bristlesEnabled ? 1 : 0);
+  m_program->setUniformValue("bristleCount", bristleCount);
+  m_program->setUniformValue("bristleStiffness", bristleStiffness);
+  m_program->setUniformValue("bristleClumping", bristleClumping);
+  m_program->setUniformValue("bristleFanSpread", bristleFanSpread);
+  m_program->setUniformValue("bristleIndividualVariation",
+                             bristleIndividualVariation);
+  m_program->setUniformValue("bristleDryBrushEffect",
+                             bristleDryBrushEffect ? 1 : 0);
+  m_program->setUniformValue("bristleSoftness", bristleSoftness);
+  m_program->setUniformValue("bristlePointTaper", bristlePointTaper);
+
+  // Smudge
+  m_program->setUniformValue("smudgeStrength", smudgeStrength);
+  m_program->setUniformValue("smudgePressureInfluence",
+                             smudgePressureInfluence);
+  m_program->setUniformValue("smudgeLength", smudgeLength);
+  m_program->setUniformValue("smudgeGaussianBlur", smudgeGaussianBlur);
+  m_program->setUniformValue("smudgeSmear", smudgeSmear ? 1 : 0);
+
+  // Canvas Interaction
+  m_program->setUniformValue("canvasAbsorption", canvasAbsorption);
+  m_program->setUniformValue("canvasSkipValleys", canvasSkipValleys ? 1 : 0);
+  m_program->setUniformValue("canvasCatchPeaks", canvasCatchPeaks);
+
+  // Color Dynamics Oil
+  m_program->setUniformValue("temperatureShift", temperatureShift);
+  m_program->setUniformValue("brokenColor", brokenColor);
+
+  if ((wetness > 0.01f || smudge > 0.01f || bloomEnabled || mixing > 0.01f ||
+       impastoEnabled) &&
+      canvasTexId != 0) {
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, canvasTexId);
     m_program->setUniformValue("canvasTexture", 2);

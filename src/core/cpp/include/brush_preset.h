@@ -320,9 +320,133 @@ struct BrushPreset {
     float pullPressure = 0.0f;
     float wetJitter = 0.0f;
 
+    // New realistic watercolor fields
+    float bleed = 0.0f;
+    float absorptionRate = 0.0f;
+    float dryingTime = 0.0f;
+    float wetOnWetMultiplier = 1.0f;
+
+    // Oil Paint fields
+    float mixing = 0.5f;
+    float loading = 1.0f;
+    float depletionRate = 0.0f;
+    bool dirtyMixing = false;
+    float colorPickup = 0.0f;
+    bool blendOnly = false;
+    bool scrapeThrough = false;
+
     QJsonObject toJson() const;
     static WetMixSettings fromJson(const QJsonObject &obj);
   } wetMix;
+
+  // === Oil Paint: Impasto ===
+  struct ImpastoSettings {
+    bool enabled = false;
+    float depth = 0.0f;
+    // float depthCurve = ... (simplified for now as just float depth)
+    float shine = 0.0f;
+    float textureStrength = 0.0f;
+    float edgeBuildup = 0.0f;
+    bool directionalRidges = false;
+    float smoothing = 0.0f;
+    bool preserveExisting = false;
+
+    QJsonObject toJson() const;
+    static ImpastoSettings fromJson(const QJsonObject &obj);
+  } impasto;
+
+  // === Oil Paint: Bristles ===
+  struct BristleSettings {
+    bool enabled = false;
+    int count = 1;
+    float stiffness = 0.5f;
+    float clumping = 0.0f;
+    float fanSpread = 0.0f;
+    float individualVariation = 0.0f;
+    bool dryBrushEffect = false;
+    float softness = 0.0f;
+    float pointTaper = 0.0f;
+
+    QJsonObject toJson() const;
+    static BristleSettings fromJson(const QJsonObject &obj);
+  } bristles;
+
+  // === Oil Paint: Smudge (Detailed) ===
+  struct SmudgeSettings {
+    float strength = 0.0f;
+    QString blendMode = "normal";
+    float pressureInfluence = 0.0f;
+    float length = 0.0f;
+    float gaussianBlur = 0.0f;
+    bool smear = false;
+
+    QJsonObject toJson() const;
+    static SmudgeSettings fromJson(const QJsonObject &obj);
+  } smudge;
+
+  // === Oil Paint: Canvas Interaction ===
+  struct CanvasInteractionSettings {
+    float textureReveal = 0.0f;
+    float absorption = 0.0f;
+    bool skipValleys = false;
+    float catchPeaks = 0.0f;
+
+    QJsonObject toJson() const;
+    static CanvasInteractionSettings fromJson(const QJsonObject &obj);
+  } canvasInteraction;
+
+  // === Watercolor Pigment Engine ===
+  struct PigmentSettings {
+    float granulation = 0.0f;
+    float flow = 1.0f;
+    float staining = 0.0f;
+    float separation = 0.0f;
+
+    QJsonObject toJson() const;
+    static PigmentSettings fromJson(const QJsonObject &obj);
+  } pigment;
+
+  // === Bloom / Cauliflower Effect ===
+  struct BloomSettings {
+    bool enabled = false;
+    float intensity = 0.0f;
+    float radius = 0.0f;
+    float threshold = 0.0f;
+    float randomVariation = 0.0f;
+
+    QJsonObject toJson() const;
+    static BloomSettings fromJson(const QJsonObject &obj);
+  } bloom;
+
+  // === Edge Darkening ===
+  struct EdgeDarkeningSettings {
+    bool enabled = false;
+    float intensity = 0.0f;
+    float width = 0.0f;
+
+    QJsonObject toJson() const;
+    static EdgeDarkeningSettings fromJson(const QJsonObject &obj);
+  } edgeDarkening;
+
+  // === Backrun / Retroceso ===
+  struct BackrunSettings {
+    bool enabled = false;
+    float probability = 0.0f; // 0..1
+    float intensity = 0.0f;
+
+    QJsonObject toJson() const;
+    static BackrunSettings fromJson(const QJsonObject &obj);
+  } backrun;
+
+  // === Texture Reveal (Dry Brush) ===
+  struct TextureRevealSettings {
+    bool enabled = false;
+    float intensity = 0.0f;
+    float pressureInfluence = 0.0f;
+
+    QJsonObject toJson() const;
+    static TextureRevealSettings fromJson(const QJsonObject &obj);
+  } textureReveal;
 
   // === Color Dynamics ===
   struct ColorDynamics {
@@ -354,6 +478,10 @@ struct BrushPreset {
     float tiltSatJitter = 0.0f;
     float tiltLightJitter = 0.0f;
     float tiltDarkJitter = 0.0f;
+
+    // Oil specific
+    float temperatureShift = 0.0f;
+    float brokenColor = 0.0f;
 
     // Secondary color
     bool useSecondaryColor = false;

@@ -334,17 +334,17 @@ void BrushPresetManager::loadDefaults() {
   addBrush("Painting", "Smudge Tool", 40, 1.0f, 0.3f, 0.01f, 0.0f, "", 0, 0,
            "tip_soft.png", 0.2f, 0.95f, true, false);
 
-  // ==================== OIL BRUSHES ====================
-  addBrush("Oil Brushes", "Óleo Classic Flat", 60, 1.0f, 0.9f, 0.04f, 0.0f, "",
+  // ==================== OIL PAINTING ====================
+  addBrush("Oil Painting", "Óleo Classic Flat", 60, 1.0f, 0.9f, 0.04f, 0.0f, "",
            0, 0, "oil_flat_pro.png", 0.6f, 0.1f, true, false, 0, 0, 0.35f);
-  addBrush("Oil Brushes", "Óleo Round Bristle", 45, 0.95f, 0.7f, 0.05f, 0.0f,
+  addBrush("Oil Painting", "Óleo Round Bristle", 45, 0.95f, 0.7f, 0.05f, 0.0f,
            "", 0, 0, "oil_filbert_pro.png", 0.75f, 0.2f, true, true, 0, 0,
            0.4f);
-  addBrush("Oil Brushes", "Óleo Impasto Knife", 80, 1.0f, 1.0f, 0.02f, 0.0f, "",
-           0, 0, "oil_knife_pro.png", 0.1f, 0.8f, false, false, 0, 0, 0.8f);
-  addBrush("Oil Brushes", "Óleo Dry Scumble", 70, 0.8f, 0.5f, 0.08f, 0.0f, "",
+  addBrush("Oil Painting", "Óleo Impasto Knife", 80, 1.0f, 1.0f, 0.02f, 0.0f,
+           "", 0, 0, "oil_knife_pro.png", 0.1f, 0.8f, false, false, 0, 0, 0.8f);
+  addBrush("Oil Painting", "Óleo Dry Scumble", 70, 0.8f, 0.5f, 0.08f, 0.0f, "",
            0, 0, "oil_flat_pro.png", 0, 0.1f, false, true, 0, 0, 0.15f);
-  addBrush("Oil Brushes", "Óleo Wet Blender", 90, 0.0f, 0.2f, 0.04f, 0.0f, "",
+  addBrush("Oil Painting", "Óleo Wet Blender", 90, 0.0f, 0.2f, 0.04f, 0.0f, "",
            0, 0, "oil_filbert_pro.png", 1.0f, 0.95f, true, false, 0, 0, 0.5f);
 
   // ==================== AIRBRUSH ====================
