@@ -1,3 +1,0 @@
-[1/2] Building CXX object CMakeFiles/ArtFlowStudio.dir/src/core/cpp/src/gl_utils.cpp.obj
-[2/2] Linking CXX executable ArtFlowStudio.exe
-Presione una tecla para continuar . . . 
