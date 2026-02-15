@@ -1,4 +1,3 @@
-#define GL_GLEXT_PROTOTYPES
 #include "../include/stroke_renderer.h"
 #include "../include/brush_engine.h"
 #include <QColor>
@@ -6,6 +5,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QMatrix4x4>
+#include <QOpenGLFunctions>
 #include <QStringList>
 #include <QVector2D>
 #include <QVector3D>
@@ -382,13 +382,12 @@ void StrokeRenderer::renderStroke(
 
   if (isEraser) {
     // ERASER MODE: Dest = Dest * (1 - SourceAlpha)
-    glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
-                        GL_ONE_MINUS_SRC_ALPHA);
+    this->glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
+                              GL_ONE_MINUS_SRC_ALPHA);
     m_program->setUniformValue("color", QColor(0, 0, 0, 255));
   } else {
-    // NORMAL PAINT MODE — PREMULTIPLIED ALPHA
-    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE,
-                        GL_ONE_MINUS_SRC_ALPHA);
+    // NORMAL PAINT MODE — PREMULTIPLIED ALPHA with ADDITIVE HEIGHT
+    this->glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
     m_program->setUniformValue("color", color);
   }
 

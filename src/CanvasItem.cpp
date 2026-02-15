@@ -232,28 +232,39 @@ void CanvasItem::paint(QPainter *painter) {
       bool renderedWithShader = false;
       // DIBUJAR VISTA PREVIA DE OPENGL (FBO) si estamos dibujando en esta capa
       if (m_isDrawing && i == m_activeLayerIndex && m_pingFBO) {
-        painter->save();
-
-        // Grab FBO image and correctly mark as premultiplied to avoid
-        // Double-Alpha bug
+        // Grab FBO image
         QImage fboImg =
             m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888);
         fboImg.reinterpretAsFormat(QImage::Format_RGBA8888_Premultiplied);
 
-        painter->setRenderHint(QPainter::SmoothPixmapTransform);
-        painter->setRenderHint(QPainter::Antialiasing);
-        painter->setOpacity(layer->opacity);
-        painter->drawImage(targetRect, fboImg);
-        painter->restore();
-        renderedWithShader = true;
+        bool previewWithShader =
+            (m_impastoStrength > 0.01f && m_impastoShader &&
+             m_impastoShader->isLinked());
+
+        if (previewWithShader) {
+          // We'll use the same logic as the layer rendering below but for the
+          // preview rect To keep it simple for now, we render the
+          // layer-rendering-with-shader logic but we need to ensure the pingFBO
+          // is used as the source. Setting useImpasto = true below will already
+          // handle the active layer, but we need to prevent double-draw. For
+          // now, let's keep the standard preview and skip double draw if shader
+          // is used.
+          renderedWithShader =
+              false; // Let the layer loop handle it with the shader
+        } else {
+          painter->save();
+          painter->setRenderHint(QPainter::SmoothPixmapTransform);
+          painter->setRenderHint(QPainter::Antialiasing);
+          painter->setOpacity(layer->opacity);
+          painter->drawImage(targetRect, fboImg);
+          painter->restore();
+          renderedWithShader = true;
+        }
       }
 
       // Intentar usar shaders (Impasto)
-      bool useImpasto = false;
-      // Deshabilitado temporalmente para evitar crash en rendering
-      if (false && m_impastoShader && m_impastoShader->isLinked()) {
-        useImpasto = true;
-      }
+      bool useImpasto = (m_impastoStrength > 0.01f && m_impastoShader &&
+                         m_impastoShader->isLinked());
 
       if (useImpasto) {
         painter->save();
@@ -608,7 +619,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
       // EXPLICIT FORMAT with Alpha support and 0 samples (Stable)
       QOpenGLFramebufferObjectFormat format;
-      format.setInternalTextureFormat(GL_RGBA8);
+      format.setInternalTextureFormat(
+          GL_RGBA16F); // Support high-precision volume accumulation
       format.setSamples(0);
       format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
 

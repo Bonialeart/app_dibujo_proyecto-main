@@ -95,6 +95,30 @@ uniform float uDabSize;          // Current brush diameter in pixels
 // === Rotation ===
 uniform float tipRotation;       // Brush tip rotation in radians
 
+// --- Kubelka-Munk Pigment Mixing ---
+// Simplified K-M model for GPU: 
+// K (Absorpcion) / S (Dispersion) = (1-R)^2 / 2R
+// We treat RGB as reflectance R.
+
+vec3 rgbToKS(vec3 rgb) {
+    // Avoid division by zero and extreme values
+    vec3 r = clamp(rgb, 0.02, 0.98);
+    return (vec3(1.0) - r) * (vec3(1.0) - r) / (2.0 * r);
+}
+
+vec3 ksToRGB(vec3 ks) {
+    // Reverse formula: R = 1 + KS - sqrt(KS^2 + 2*KS)
+    return 1.0 + ks - sqrt(ks * ks + 2.0 * ks);
+}
+
+vec3 mixColorsKM(vec3 c1, vec3 c2, float t) {
+    vec3 ks1 = rgbToKS(c1);
+    vec3 ks2 = rgbToKS(c2);
+    // Linear interpolation in KS space (corresponds to pigment concentration)
+    vec3 mixedKS = mix(ks1, ks2, t);
+    return ksToRGB(mixedKS);
+}
+
 void main() {
     // === 1. SHAPE & OPACITY (Brush Tip) ===
     float shapeAlpha = 1.0;
@@ -154,6 +178,21 @@ void main() {
     float effectiveFlow = flow * pressure;
     float baseAlpha = color.a * shapeAlpha * grainFactor * effectiveFlow;
 
+    // --- PIGMENT MIGRATION (Watercolor Diffusion) ---
+    // Pigment flows from center to edges when wet
+    if (brushType == 2 || brushType == 5) { // Assuming 2=Watercolor, 5=Custom/Wet
+        float migrationRate = bleed * 0.8;
+        // Ring highlights the area near the edge (0.4 to 0.5 distance)
+        float ring = smoothstep(0.35, 0.5, dist);
+        
+        // Center becomes slightly more transparent as pigment leaves
+        float centerDepletion = mix(1.0, 1.0 - migrationRate * 0.4, 1.0 - ring);
+        // Edges become opaque as pigment arrives
+        float edgeAccumulation = mix(1.0, 1.0 + migrationRate * 1.5, ring);
+        
+        baseAlpha *= (centerDepletion * edgeAccumulation);
+    }
+
     // Dilution reduces pigment density (makes color more transparent)
     baseAlpha *= (1.0 - dilution * 0.7);
 
@@ -182,27 +221,19 @@ void main() {
     // === 5.5. BRISTLE SIMULATION ===
     if (bristlesEnabled == 1) {
         // Procedural bristles based on UV and count
-        // Higher count = higher frequency noise
         float freq = float(bristleCount) * 0.5;
-        // Rotate coords to align with brush rotation (approximated by uRotation if available, else just simple)
-        // Simple 1D noise striping along flow
         float stripe = sin(TexCoords.x * freq * 3.14159 * 2.0 + TexCoords.y * 10.0);
         float bristleNoise = smoothstep(-1.0, 1.0, stripe); // 0..1
         
-        // Clumping makes it less uniform
         if (bristleClumping > 0.0) {
             float clump = sin(TexCoords.x * freq * 0.2);
             bristleNoise = mix(bristleNoise, clump, bristleClumping);
         }
         
-        // Stiffness: High stiffness = hard bristle lines (high contrast)
-        // Low stiffness = soft (blurrier)
         float contrast = 1.0 + bristleStiffness * 3.0;
         bristleNoise = (bristleNoise - 0.5) * contrast + 0.5;
         bristleNoise = clamp(bristleNoise, 0.0, 1.0);
         
-        // Modulate Alpha
-        // If bristleDryBrushEffect is on, we see it more at low pressure
         float effectStr = 1.0;
         if (bristleDryBrushEffect == 1) {
             effectStr = 1.0 - pressure;
@@ -212,85 +243,36 @@ void main() {
     }
     
     // === 5.6 OIL LOADING / DEPLETION ===
-    // Simple simulation: lower opacity if loading is low or depletion is high
     if (loading < 1.0) {
         baseAlpha *= loading;
     }
     
-    // === 5.7 IMPASTO LIGHTING (Fake 3D) ===
-    vec3 lightDir = normalize(vec3(-1.0, -1.0, 1.0)); // Top-left light
-    if (impastoEnabled == 1) {
-        // Estimate gradient of alpha to get normal
-        // Since we are in fragment shader without derivatives of the shape *before* drawing, 
-        // we use the distance from center (approx shape) for gradient.
-        // Or we use dFdx/dFdy on the calculated baseAlpha (if not too noisy)
-        
-        // Let's use analytical sphere/circle normal for the dab
-        vec2 d = TexCoords - 0.5;
-        float distSq = dot(d, d);
-        float height = sqrt(max(0.0, 0.25 - distSq)) * 2.0; // Hemisphere 0..1
-        height *= pressure; // Flatten by pressure? Or Height by amount of paint
-        height *= impastoDepth;
-        
-        // Perturb height with grain
-        if (uHasGrain == 1) {
-            height += (grainFactor - 0.5) * impastoTextureStrength * 0.2;
-        }
-        
-        // Calculate Normal from height
-        // This is a per-dab normal. For stroke-wide it might look like bubbles.
-        // Better: Use directional ridges (stripes)
-        if (impastoDirectionalRidges == 1) {
-            float ridge = sin(TexCoords.y * 20.0);
-             height += ridge * 0.1 * impastoDepth;
-        }
-        
-        // Since we can't easily do neighbor sampling, we cheat lighting:
-        // Light coming from top-left means top-left of dab is bright, bottom-right is dark.
-        // Dot product of (d.x, d.y, z) with Light
-        
-        vec3 normal = normalize(vec3(d.x, -d.y, 1.0 - height)); // Approx
-        // Normal pointing up is (0,0,1)
-        
-        float diffuse = max(dot(normal, lightDir), 0.0);
-        float specular = pow(diffuse, 20.0) * impastoShine;
-        
-        // Modify Color
-        color.rgb *= (0.5 + 0.5 * diffuse); // Ambient + Diffuse
-        color.rgb += vec3(specular);
-    }
-
-    // === 6. EDGE DARKENING ===
+    // === 6. EDGE DARKENING (Water Fringe) ===
     // If enabled, we darken the pigment at the edges of the stroke
     if (edgeDarkeningEnabled == 1 && edgeDarkeningIntensity > 0.01) {
-        // We need distance from center 0..0.5
-        float dist = distance(TexCoords, vec2(0.5));
-        // Normalize to 0..1 (approx edge)
         float edgeness = smoothstep(0.5 - edgeDarkeningWidth, 0.5, dist);
         
-        // Darken RGB, keep alpha (or boost alpha?) -> Darkening usually implies more pigment
-        // Let's boost alpha and darken color
+        // Darken RGB by increasing apparent density
         float darkFactor = 1.0 + (edgeDarkeningIntensity * edgeness);
-        baseAlpha = min(baseAlpha * darkFactor, 1.0);
-        // Make color darker/saturated
-        // finalRGB *= (1.0 - (edgeDarkeningIntensity * 0.5 * edgeness));
+        baseAlpha = clamp(baseAlpha * darkFactor, 0.0, 1.0);
+        
+        // Physically-inspired color deepening
+        color.rgb *= mix(1.0, 0.85, edgeDarkeningIntensity * edgeness);
     }
     
     // === 7. BLOOM / GRANULATION ===
-    // Real bloom needs neighbor info, but we can simulate "pigment separation" aka granulation
     if (granulation > 0.01 && uHasGrain == 1) {
-       // Boost grain contrast
         float grainSignal = grainFactor; // 0..1
-        // Make valleys darker (pigment settles)
-        float settling = (1.0 - grainSignal) * granulation * 2.0;
-        baseAlpha = min(baseAlpha * (1.0 + settling), 1.0);
+        // Moisture-Aware: Granulation is stronger in the wettest parts
+        float localWetness = baseAlpha * (1.0 + bleed);
+        float settling = (1.0 - grainSignal) * granulation * localWetness * 3.0;
+        baseAlpha = clamp(baseAlpha * (1.0 + settling), 0.0, 1.0);
     }
 
     // === 8. WET MIX ENGINE & OIL MIXING ===
     vec3 finalRGB = color.rgb;
     
-    // Combine wetness params
-    float effectiveWetness = max(wetness, mixing); // Use mixing for oil
+    float effectiveWetness = max(wetness, mixing); 
     float effectiveSmudge = max(smudge, smudgeStrength);
 
     if ((effectiveWetness > 0.01 || effectiveSmudge > 0.01 || bloomEnabled == 1 || blendOnly == 1) && canvasSize.x > 1.0) {
@@ -303,63 +285,47 @@ void main() {
 
         // SMUDGE
         if (effectiveSmudge > 0.01 && canvasA > 0.01) {
-            finalRGB = mix(finalRGB, canvasRGB, effectiveSmudge * canvasA);
+            finalRGB = mixColorsKM(finalRGB, canvasRGB, effectiveSmudge * canvasA);
         }
 
         // MIXING
         if (effectiveWetness > 0.01 && canvasA > 0.01) {
-             // Oil Mixing: 
-             // If dirtyMixing is on, we pick up color.
-             // If blendOnly is on, we barely deposit pigment, just push existing.
-             
              if (blendOnly == 1) {
-                 baseAlpha *= 0.1; // Reduce deposition
-                 finalRGB = canvasRGB; // Just picking up
+                 baseAlpha *= 0.1; 
+                 finalRGB = canvasRGB; 
              }
              
              float mixAmount = effectiveWetness * 0.5 * canvasA;
              mixAmount += bleed * 0.3;
              mixAmount = clamp(mixAmount, 0.0, 1.0);
-             finalRGB = mix(finalRGB, canvasRGB, mixAmount);
+             finalRGB = mixColorsKM(finalRGB, canvasRGB, mixAmount);
              
              if (dirtyMixing == 1) {
-                 // Push canvas color into 'finalRGB' more strongly
-                 finalRGB = mix(finalRGB, canvasRGB, 0.2);
+                 finalRGB = mixColorsKM(finalRGB, canvasRGB, 0.2);
              }
              
-             // Scrape Through: Removing paint
-             if (scrapeThrough == 1) {
-                 // Sample alpha is inverted? 
-                 // Effectively we want to reduce the destination alpha.
-                 // In standard blending we can't easily reduce dest alpha without specific blend modes.
-                 // But we can output a color that blends to "erase".
-                 // Hard to do in single pass forward painting without specific blend func.
-             }
-             
-             // Color Dynamics: Temperature Shift (Warm/Cool)
              if (temperatureShift != 0.0) {
-                 // Simple R/B shift
                  finalRGB.r += temperatureShift * 0.1;
                  finalRGB.b -= temperatureShift * 0.1;
              }
         }
         
-        // Wet paint darkens slightly at edges
-        if (wetness > 0.01 || mixing > 0.01) { // Apply for oil too
+        if (wetness > 0.01 || mixing > 0.01) { 
             float edgeDist = abs(shapeAlpha - 0.5) * 2.0;
             float pooling = effectiveWetness * 0.15 * edgeDist;
             finalRGB *= (1.0 - pooling);
         }
         
-        // BLOOM Simulation (Simple)
-        // If underlying pixel is wet/exists, and we have bloom enabled, we displace pigment
-        if (bloomEnabled == 1 && canvasA > 0.1) {
-             // If we are painting 'water' or wet paint on existing paint, 
-             // we push the pigment away (reduce alpha here) or create a ring
-             float noise = fract(sin(dot(TexCoords.xy ,vec2(12.9898,78.233))) * 43758.5453);
-             if (noise < bloomIntensity) {
-                 // Creating 'holes' or variations
-                 baseAlpha *= (1.0 - bloomIntensity * 0.3);
+        // BLOOM & Wet-on-Wet Expansion
+        if (canvasA > 0.1) {
+             float expansion = bleed * 0.2 * canvasA;
+             baseAlpha = clamp(baseAlpha * (1.0 + expansion), 0.0, 1.0);
+             
+             if (bloomEnabled == 1) {
+                 float noise = fract(sin(dot(TexCoords.xy ,vec2(12.9898,78.233))) * 43758.5453);
+                 if (noise < bloomIntensity) {
+                     baseAlpha *= (1.0 - bloomIntensity * 0.3);
+                 }
              }
         }
     }
@@ -367,6 +333,12 @@ void main() {
     // === FINAL OUTPUT (Premultiplied Alpha) ===
     float finalAlpha = clamp(baseAlpha, 0.0, 1.0);
 
+    // Impasto Volume Accumulation
+    float heightAlpha = finalAlpha;
+    if (impastoEnabled == 1) {
+        heightAlpha *= impastoDepth * 0.5;
+    }
+
     // Premultiplied output
-    FragColor = vec4(finalRGB * finalAlpha, finalAlpha);
+    FragColor = vec4(finalRGB * finalAlpha, heightAlpha);
 }
