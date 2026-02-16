@@ -20,143 +20,501 @@ Item {
     readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
 
-    readonly property color colorAccent: "#3c82f6"
-    readonly property color colorSurface: "#1a1a1c"
-    readonly property color colorBorder: "#2c2c2e"
+    readonly property color colorAccent: (typeof mainWindow !== "undefined") ? mainWindow.colorAccent : "#6366f1"
+    readonly property color colorSurface: "#111113"
+    readonly property color colorBorder: "#1e1e22"
+    readonly property color colorGlass: "#0cffffff"
+    readonly property color colorTextPrimary: "#f0f0f5"
+    readonly property color colorTextSecondary: "#7a7a85"
 
-    // 1. FONDO DEEP SPACE (Premium Gradient)
+    // Time-based greeting
+    property string timeGreeting: {
+        var h = new Date().getHours()
+        if (h < 6) return "🌙 Good Evening"
+        if (h < 12) return "☀️ Good Morning"
+        if (h < 18) return "🌤 Good Afternoon"
+        return "🌙 Good Evening"
+    }
+
+    // ═══════════════════════════════════════
+    // 1. DEEP SPACE BACKGROUND — Premium Gradient
+    // ═══════════════════════════════════════
     Rectangle {
         anchors.fill: parent
-        z: -2
+        z: -10
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#060608" }
-            GradientStop { position: 0.5; color: "#0a0a0d" }
-            GradientStop { position: 1.0; color: "#0d0d10" }
+            GradientStop { position: 0.0; color: "#030305" }
+            GradientStop { position: 0.3; color: "#06060a" }
+            GradientStop { position: 0.7; color: "#0a0a0f" }
+            GradientStop { position: 1.0; color: "#08080d" }
         }
     }
 
-    // Reflejo de luz superior izquierdo para dar volumen
+    // Animated Ambient Orb — Top-Left (Accent Color Glow)
     Rectangle {
-        width: parent.width * 0.6; height: width; radius: width/2
-        x: -width/3; y: -height/3
-        color: colorAccent; opacity: 0.03
-        z: -1
+        id: ambientOrb1
+        width: 600; height: 600; radius: 300
+        x: -200; y: -200
+        color: Qt.rgba(Qt.lighter(colorAccent, 1.3).r, Qt.lighter(colorAccent, 1.3).g, Qt.lighter(colorAccent, 1.3).b, 0.04)
+        z: -5
         layer.enabled: true
         layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
+
+        SequentialAnimation on x {
+            loops: Animation.Infinite
+            NumberAnimation { to: -150; duration: 8000; easing.type: Easing.InOutSine }
+            NumberAnimation { to: -200; duration: 8000; easing.type: Easing.InOutSine }
+        }
+        SequentialAnimation on y {
+            loops: Animation.Infinite
+            NumberAnimation { to: -150; duration: 6000; easing.type: Easing.InOutSine }
+            NumberAnimation { to: -200; duration: 6000; easing.type: Easing.InOutSine }
+        }
     }
 
-    // 2. CONTENIDO SCROLLABLE
+    // Animated Ambient Orb — Bottom-Right (Warm Glow)
+    Rectangle {
+        id: ambientOrb2
+        width: 500; height: 500; radius: 250
+        x: parent.width - 300; y: parent.height - 250
+        color: Qt.rgba(1.0, 0.4, 0.2, 0.025)
+        z: -5
+        layer.enabled: true
+        layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
+
+        SequentialAnimation on x {
+            loops: Animation.Infinite
+            NumberAnimation { to: parent.width - 250; duration: 10000; easing.type: Easing.InOutSine }
+            NumberAnimation { to: parent.width - 300; duration: 10000; easing.type: Easing.InOutSine }
+        }
+    }
+
+    // Subtle grid pattern overlay
+    Canvas {
+        anchors.fill: parent
+        z: -4
+        opacity: 0.015
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.strokeStyle = "#ffffff"
+            ctx.lineWidth = 0.5
+            var spacing = 60
+            for (var x = 0; x < width; x += spacing) {
+                ctx.beginPath()
+                ctx.moveTo(x, 0)
+                ctx.lineTo(x, height)
+                ctx.stroke()
+            }
+            for (var y = 0; y < height; y += spacing) {
+                ctx.beginPath()
+                ctx.moveTo(0, y)
+                ctx.lineTo(width, y)
+                ctx.stroke()
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════
+    // 2. SCROLLABLE CONTENT
+    // ═══════════════════════════════════════
     Flickable {
         id: flick
         anchors.fill: parent
-        contentHeight: mainCol.height + 150
-        topMargin: 0; bottomMargin: 50
+        contentHeight: mainCol.height + 180
+        topMargin: 0; bottomMargin: 60
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
+        // Smooth scrolling
+        flickDeceleration: 3000
+        maximumFlickVelocity: 2000
+
         Column {
             id: mainCol
-            width: Math.min(parent.width - 100, 1400)
+            width: Math.min(parent.width - 80, 1300)
             anchors.horizontalCenter: parent.horizontalCenter
-            topPadding: 80; spacing: 60
+            topPadding: 60; spacing: 55
 
-            // --- SECCIÓN 1: BIENVENIDA Y ACCIÓN RÁPIDA ---
-            RowLayout {
+            // ═══════════════════════════════════════
+            // SECTION 1: HERO — Welcome & Quick Actions
+            // ═══════════════════════════════════════
+            Item {
                 width: parent.width
-                spacing: 40
-                Column {
-                    Layout.fillWidth: true; spacing: 8
-                    Text { 
-                        text: dashboardRoot.qs("welcome"); color: "white"
-                        font.pixelSize: 52; font.weight: Font.Black; font.letterSpacing: -2.0
+                height: 280
+
+                // Hero Card Background with Glass effect
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 28
+                    color: "#0a0a0e"
+                    border.color: "#15ffffff"
+                    border.width: 1
+
+                    // Inner gradient glow
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: 1
+                        radius: 27
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.06) }
+                            GradientStop { position: 0.4; color: "transparent" }
+                            GradientStop { position: 1.0; color: "transparent" }
+                        }
                     }
-                    Text { 
-                        text: dashboardRoot.qs("welcome_desc"); color: "#8e8e93"
-                        font.pixelSize: 18; font.weight: Font.Light
+
+                    // Top-right decorative circles
+                    Rectangle {
+                        width: 200; height: 200; radius: 100
+                        anchors.right: parent.right; anchors.rightMargin: 60
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.04)
+                        layer.enabled: true
+                        layer.effect: MultiEffect { blurEnabled: true; blur: 0.8 }
+                    }
+                    Rectangle {
+                        width: 120; height: 120; radius: 60
+                        anchors.right: parent.right; anchors.rightMargin: 120
+                        anchors.top: parent.top; anchors.topMargin: 20
+                        color: Qt.rgba(1, 0.5, 0.3, 0.03)
+                        layer.enabled: true
+                        layer.effect: MultiEffect { blurEnabled: true; blur: 0.7 }
                     }
                 }
-                
-                // Botón "Nuevo Proyecto" con efecto Glow
-                Rectangle {
-                    id: btnNew
-                    width: 240; height: 64
-                    Layout.preferredWidth: 240; Layout.preferredHeight: 64; radius: 32
-                    
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#3c82f6" }
-                        GradientStop { position: 1.0; color: "#2563eb" }
-                    }
-                    
-                    // Subtle inner highlight
-                    Rectangle {
-                        anchors.fill: parent; anchors.margins: 1; radius: 32; color: "transparent"
-                        border.color: "white"; border.width: 1; opacity: 0.15
-                    }
 
-                    Row {
-                        anchors.centerIn: parent; spacing: 14
-                        // Animated Icon
-                        Item {
-                            width: 24; height: 24
-                            Rectangle { width: 14; height: 2; color: "white"; anchors.centerIn: parent; radius: 1 }
-                            Rectangle { width: 2; height: 14; color: "white"; anchors.centerIn: parent; radius: 1 }
-                            rotation: maNew.containsMouse ? 90 : 0
-                            Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+                // Content Row
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 50
+                    spacing: 40
+
+                    // Left: Welcome Text
+                    Column {
+                        Layout.fillWidth: true
+                        spacing: 14
+
+                        // Time-based greeting tag
+                        Rectangle {
+                            width: greetingText.width + 22; height: 30
+                            radius: 15
+                            color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.12)
+                            border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25)
+                            border.width: 1
+
+                            Text {
+                                id: greetingText
+                                text: dashboardRoot.timeGreeting
+                                color: Qt.lighter(colorAccent, 1.4)
+                                font.pixelSize: 12
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: 0.5
+                                anchors.centerIn: parent
+                            }
                         }
-                        Text { 
-                            text: dashboardRoot.qs("new_drawing")
-                            color: "white"; font.bold: true; font.pixelSize: 18; font.letterSpacing: -0.2
+
+                        Text {
+                            text: dashboardRoot.qs("welcome")
+                            color: colorTextPrimary
+                            font.pixelSize: 46
+                            font.weight: Font.Black
+                            font.letterSpacing: -2.0
+
+                            // Fade-in animation
+                            opacity: 0
+                            Component.onCompleted: opacity = 1
+                            Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
+                        }
+
+                        Text {
+                            text: dashboardRoot.qs("welcome_desc")
+                            color: colorTextSecondary
+                            font.pixelSize: 17
+                            font.weight: Font.Light
+                            font.letterSpacing: 0.3
+
+                            opacity: 0
+                            Component.onCompleted: opacity = 1
+                            Behavior on opacity { NumberAnimation { duration: 1000; easing.type: Easing.OutCubic } }
                         }
                     }
 
-                    // Efecto de brillo al pasar el mouse (Sin MultiEffect para evitar que desaparezca)
-                    Rectangle {
-                        anchors.fill: parent; radius: 32
-                        color: "white"; opacity: maNew.containsMouse ? 0.15 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
-                    }
+                    // Right: Quick Action Buttons
+                    Column {
+                        spacing: 14
+                        Layout.alignment: Qt.AlignVCenter
 
-                    scale: maNew.pressed ? 0.95 : (maNew.containsMouse ? 1.04 : 1.0)
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                    
-                    MouseArea {
-                        id: maNew; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: dashboardRoot.createNewProject()
+                        // Primary CTA — New Drawing
+                        Rectangle {
+                            id: btnNew
+                            width: 260; height: 58
+                            radius: 29
+
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: colorAccent }
+                                GradientStop { position: 1.0; color: Qt.darker(colorAccent, 1.2) }
+                            }
+
+                            // Inner highlight
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: 1
+                                radius: 28; color: "transparent"
+                                border.color: Qt.rgba(1, 1, 1, 0.18); border.width: 1
+                            }
+
+                            Row {
+                                anchors.centerIn: parent; spacing: 12
+                                // Plus icon
+                                Item {
+                                    width: 22; height: 22
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Rectangle { width: 14; height: 2; color: "white"; anchors.centerIn: parent; radius: 1 }
+                                    Rectangle { width: 2; height: 14; color: "white"; anchors.centerIn: parent; radius: 1 }
+                                    rotation: maNew.containsMouse ? 90 : 0
+                                    Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+                                }
+                                Text {
+                                    text: dashboardRoot.qs("new_drawing")
+                                    color: "white"; font.bold: true; font.pixelSize: 16; font.letterSpacing: -0.2
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            // Hover glow
+                            Rectangle {
+                                anchors.fill: parent; radius: 29
+                                color: "white"; opacity: maNew.containsMouse ? 0.12 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                            }
+
+                            scale: maNew.pressed ? 0.95 : (maNew.containsMouse ? 1.04 : 1.0)
+                            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+
+                            MouseArea {
+                                id: maNew; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: dashboardRoot.createNewProject()
+                            }
+                        }
+
+                        // Secondary CTA — Open Gallery
+                        Rectangle {
+                            width: 260; height: 50
+                            radius: 25
+                            color: "transparent"
+                            border.color: "#25ffffff"
+                            border.width: 1
+
+                            Row {
+                                anchors.centerIn: parent; spacing: 10
+                                Text {
+                                    text: "📁"
+                                    font.pixelSize: 16
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    text: dashboardRoot.qs("go_gallery")
+                                    color: colorTextSecondary
+                                    font.pixelSize: 14; font.weight: Font.Medium
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent; radius: 25
+                                color: "white"; opacity: maGalHero.containsMouse ? 0.06 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                            }
+
+                            scale: maGalHero.pressed ? 0.96 : (maGalHero.containsMouse ? 1.02 : 1.0)
+                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+
+                            MouseArea {
+                                id: maGalHero; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: dashboardRoot.openGallery()
+                            }
+                        }
                     }
                 }
             }
 
-            // --- SECCIÓN 2: PROYECTOS RECIENTES ---
+            // ═══════════════════════════════════════
+            // SECTION 2: QUICK ACTIONS — Canvas Preset Cards
+            // ═══════════════════════════════════════
             Column {
-                width: parent.width; spacing: 25
+                width: parent.width; spacing: 20
+
+                Text {
+                    text: "Quick Start"
+                    color: colorTextPrimary
+                    font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: -0.3
+                }
+
+                RowLayout {
+                    width: parent.width; spacing: 18
+
+                    // Quick Draw Card
+                    QuickActionCard {
+                        Layout.fillWidth: true
+                        title: "Quick Draw"
+                        subtitle: "1920 × 1080 — HD Canvas"
+                        iconText: "✏️"
+                        cardAccent: colorAccent
+                        onClicked: {
+                            if (typeof mainCanvas !== "undefined") {
+                                mainCanvas.resizeCanvas(1920, 1080)
+                                mainWindow.isProjectActive = true
+                                mainWindow.currentPage = 1
+                                mainCanvas.fitToView()
+                            }
+                        }
+                    }
+
+                    QuickActionCard {
+                        Layout.fillWidth: true
+                        title: "Square Canvas"
+                        subtitle: "2048 × 2048 — Social Media"
+                        iconText: "🖼"
+                        cardAccent: "#ec4899"
+                        onClicked: {
+                            if (typeof mainCanvas !== "undefined") {
+                                mainCanvas.resizeCanvas(2048, 2048)
+                                mainWindow.isProjectActive = true
+                                mainWindow.currentPage = 1
+                                mainCanvas.fitToView()
+                            }
+                        }
+                    }
+
+                    QuickActionCard {
+                        Layout.fillWidth: true
+                        title: "4K Ultra"
+                        subtitle: "3840 × 2160 — Print Quality"
+                        iconText: "🎨"
+                        cardAccent: "#10b981"
+                        onClicked: {
+                            if (typeof mainCanvas !== "undefined") {
+                                mainCanvas.resizeCanvas(3840, 2160)
+                                mainWindow.isProjectActive = true
+                                mainWindow.currentPage = 1
+                                mainCanvas.fitToView()
+                            }
+                        }
+                    }
+
+                    QuickActionCard {
+                        Layout.fillWidth: true
+                        title: "Portrait"
+                        subtitle: "1080 × 1920 — Mobile/Story"
+                        iconText: "📱"
+                        cardAccent: "#f59e0b"
+                        onClicked: {
+                            if (typeof mainCanvas !== "undefined") {
+                                mainCanvas.resizeCanvas(1080, 1920)
+                                mainWindow.isProjectActive = true
+                                mainWindow.currentPage = 1
+                                mainCanvas.fitToView()
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            // ═══════════════════════════════════════
+            // SECTION 3: RECENT PROJECTS
+            // ═══════════════════════════════════════
+            Column {
+                width: parent.width; spacing: 22
+
                 RowLayout {
                     width: parent.width
-                    Text { text: dashboardRoot.qs("recent_creations"); color: "white"; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: -0.5 }
+                    Text {
+                        text: dashboardRoot.qs("recent_creations")
+                        color: colorTextPrimary
+                        font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: -0.5
+                    }
                     Item { Layout.fillWidth: true }
-                    Text { 
-                        text: dashboardRoot.qs("go_gallery"); color: colorAccent; font.bold: true; font.pixelSize: 15
-                        opacity: maGal.containsMouse ? 1.0 : 0.7
-                        Behavior on opacity { NumberAnimation { duration: 200 } }
-                        MouseArea { id: maGal; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: dashboardRoot.openGallery() }
+                    Rectangle {
+                        width: galLink.width + 24; height: 34
+                        radius: 17
+                        color: maGal.containsMouse ? "#15ffffff" : "transparent"
+                        border.color: maGal.containsMouse ? "#25ffffff" : "transparent"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 200 } }
+
+                        Text {
+                            id: galLink
+                            text: dashboardRoot.qs("go_gallery")
+                            color: colorAccent
+                            font.bold: true; font.pixelSize: 14
+                            anchors.centerIn: parent
+                        }
+                        MouseArea {
+                            id: maGal; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: dashboardRoot.openGallery()
+                        }
                     }
                 }
 
+                // Empty state
+                Rectangle {
+                    width: parent.width; height: 200
+                    radius: 20
+                    color: "#08ffffff"
+                    border.color: "#10ffffff"
+                    border.width: 1
+                    visible: (!dashboardRoot.externalModel || dashboardRoot.externalModel.count === 0) && recentModel.count === 0
+
+                    Column {
+                        anchors.centerIn: parent; spacing: 12
+                        Text { text: "🎨"; font.pixelSize: 40; anchors.horizontalCenter: parent.horizontalCenter }
+                        Text {
+                            text: "No projects yet"
+                            color: colorTextSecondary; font.pixelSize: 16; font.weight: Font.Medium
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                        Text {
+                            text: "Create your first masterpiece to see it here"
+                            color: "#50ffffff"; font.pixelSize: 13
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                    }
+                }
+
+                // Project Cards Grid
                 Flow {
-                    width: parent.width; spacing: 25
+                    width: parent.width; spacing: 20
                     Repeater {
                         model: dashboardRoot.externalModel || recentModel
                         delegate: Item {
-                            id: projItem; width: 220; height: 280
-                            
-                            // Micro-interacción: Escala al pasar el ratón
-                            scale: maProj.containsMouse ? 1.05 : 1.0
+                            id: projItem; width: 230; height: 295
+
+                            // Staggered entrance animation
+                            opacity: 0
+                            Component.onCompleted: {
+                                entranceAnim.start()
+                            }
+                            NumberAnimation {
+                                id: entranceAnim
+                                target: projItem
+                                property: "opacity"
+                                from: 0; to: 1
+                                duration: 500
+                                easing.type: Easing.OutCubic
+                            }
+
+                            // Hover micro-interaction
+                            scale: maProj.containsMouse ? 1.04 : 1.0
                             Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                            
+
                             Rectangle {
-                                anchors.fill: parent; radius: 20; color: colorSurface; border.color: maProj.containsMouse ? "#555" : colorBorder
+                                anchors.fill: parent; radius: 22
+                                color: colorSurface
+                                border.color: maProj.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.5) : "#18ffffff"
+                                border.width: maProj.containsMouse ? 1.5 : 1
+
+                                Behavior on border.color { ColorAnimation { duration: 250 } }
                                 clip: true
-                                
+
                                 Loader {
                                     id: cellLoader
                                     anchors.fill: parent
@@ -165,12 +523,30 @@ Item {
                                     property string preview: model.preview || ""
                                     sourceComponent: (model.type === "folder" || model.type === "sketchbook") ? stackComp : drawingComp
                                 }
-                                
-                                // Borde de cristal al pasar el mouse
+
+                                // Glassmorphism hover overlay
                                 Rectangle {
-                                    anchors.fill: parent; radius: 20; color: "transparent"
-                                    border.color: colorAccent; border.width: 2; opacity: maProj.containsMouse ? 0.6 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                                    anchors.fill: parent; radius: 22
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.08) }
+                                        GradientStop { position: 1.0; color: "transparent" }
+                                    }
+                                    opacity: maProj.containsMouse ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 300 } }
+                                }
+
+                                // Bottom info gradient
+                                Rectangle {
+                                    anchors.left: parent.left; anchors.right: parent.right
+                                    anchors.bottom: parent.bottom
+                                    height: 80; radius: 22
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: "transparent" }
+                                        GradientStop { position: 1.0; color: "#c0000000" }
+                                    }
+                                    visible: maProj.containsMouse
+                                    opacity: maProj.containsMouse ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 250 } }
                                 }
                             }
 
@@ -186,116 +562,373 @@ Item {
                 }
             }
 
-            // --- SECCIÓN 3: EXPLORAR ASSETS (NUEVO) ---
+
+            // ═══════════════════════════════════════
+            // SECTION 4: RESOURCES & ASSETS
+            // ═══════════════════════════════════════
             Column {
-                width: parent.width; spacing: 25
-                Text { text: dashboardRoot.qs("resources_assets"); color: "white"; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: -0.5 }
+                width: parent.width; spacing: 22
+
+                Text {
+                    text: dashboardRoot.qs("resources_assets")
+                    color: colorTextPrimary
+                    font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: -0.5
+                }
+
                 RowLayout {
-                    width: parent.width; spacing: 25
-                    // Card 1: Pinceles
-                    AssetCard { 
-                        title: dashboardRoot.qs("new_brushes"); 
-                        desc: dashboardRoot.qs("watercolor_pack"); 
-                        accentColor: "#ff4757"; icon: "brush.svg" 
+                    width: parent.width; spacing: 18
+
+                    AssetCard {
+                        Layout.fillWidth: true
+                        title: dashboardRoot.qs("new_brushes")
+                        desc: dashboardRoot.qs("watercolor_pack")
+                        accentColor: "#ef4444"
+                        iconEmoji: "🖌"
                     }
-                    // Card 2: Texturas
-                    AssetCard { 
-                        title: dashboardRoot.qs("paper_textures"); 
-                        desc: dashboardRoot.qs("fine_grain"); 
-                        accentColor: "#2ed573"; icon: "image.svg" 
+                    AssetCard {
+                        Layout.fillWidth: true
+                        title: dashboardRoot.qs("paper_textures")
+                        desc: dashboardRoot.qs("fine_grain")
+                        accentColor: "#22c55e"
+                        iconEmoji: "📄"
                     }
-                    // Card 3: Paletas
-                    AssetCard { 
-                        title: dashboardRoot.qs("color_palettes"); 
-                        desc: dashboardRoot.qs("sunset_insp"); 
-                        accentColor: "#ffa502"; icon: "palette.svg" 
+                    AssetCard {
+                        Layout.fillWidth: true
+                        title: dashboardRoot.qs("color_palettes")
+                        desc: dashboardRoot.qs("sunset_insp")
+                        accentColor: "#f59e0b"
+                        iconEmoji: "🎨"
                     }
                 }
             }
 
-            // --- SECCIÓN 4: CENTRO DE APRENDIZAJE (NUEVO) ---
+
+            // ═══════════════════════════════════════
+            // SECTION 5: LEARNING CENTER
+            // ═══════════════════════════════════════
             Column {
-                width: parent.width; spacing: 25
-                Text { text: dashboardRoot.qs("improve_technique"); color: "white"; font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: -0.5 }
+                width: parent.width; spacing: 22
+
+                Text {
+                    text: dashboardRoot.qs("improve_technique")
+                    color: colorTextPrimary
+                    font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: -0.5
+                }
+
                 Flow {
-                    width: parent.width; spacing: 25
-                        VideoCard { title: dashboardRoot.qs("mastering_layers"); duration: "05:20"; thumbColor: "#2c3e50" }
-                        VideoCard { title: dashboardRoot.qs("pro_workflow"); duration: "12:45"; thumbColor: "#4b6584" }
-                        VideoCard { title: dashboardRoot.qs("advanced_shading"); duration: "08:15"; thumbColor: "#1e272e" }
+                    width: parent.width; spacing: 18
+                    VideoCard {
+                        title: dashboardRoot.qs("mastering_layers")
+                        duration: "05:20"
+                        gradStart: "#1e3a5f"; gradEnd: "#0f2439"
+                        iconText: "📐"
+                    }
+                    VideoCard {
+                        title: dashboardRoot.qs("pro_workflow")
+                        duration: "12:45"
+                        gradStart: "#3b1f5e"; gradEnd: "#1f1035"
+                        iconText: "⚡"
+                    }
+                    VideoCard {
+                        title: dashboardRoot.qs("advanced_shading")
+                        duration: "08:15"
+                        gradStart: "#1a3f2f"; gradEnd: "#0d2319"
+                        iconText: "🌗"
+                    }
                 }
             }
+
+            // Bottom spacer
+            Item { width: 1; height: 40 }
         }
     }
 
-    // --- COMPONENTES INTERNOS PARA EL DISEÑO ---
-    
-    // Tarjeta de Proyecto Simple
+
+    // ═══════════════════════════════════════
+    // INTERNAL COMPONENTS
+    // ═══════════════════════════════════════
+
+    // Quick Action Card Component
+    component QuickActionCard : Rectangle {
+        id: qacRoot
+        property string title: ""
+        property string subtitle: ""
+        property string iconText: ""
+        property color cardAccent: colorAccent
+        signal clicked()
+
+        height: 100
+        radius: 18
+        color: "#0c0c10"
+        border.color: qacHover.containsMouse ? Qt.rgba(cardAccent.r, cardAccent.g, cardAccent.b, 0.4) : "#12ffffff"
+        border.width: 1
+
+        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+        // Accent glow on hover
+        Rectangle {
+            anchors.fill: parent; radius: 18
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.08) }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+            opacity: qacHover.containsMouse ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 250 } }
+        }
+
+        RowLayout {
+            anchors.fill: parent; anchors.margins: 18; spacing: 16
+
+            // Icon container
+            Rectangle {
+                width: 52; height: 52; radius: 16
+                color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.12)
+                border.color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.2)
+                border.width: 1
+
+                Text {
+                    text: qacRoot.iconText
+                    font.pixelSize: 22
+                    anchors.centerIn: parent
+                }
+            }
+
+            Column {
+                Layout.fillWidth: true; spacing: 4
+                Text {
+                    text: qacRoot.title
+                    color: colorTextPrimary
+                    font.pixelSize: 15; font.weight: Font.Bold
+                }
+                Text {
+                    text: qacRoot.subtitle
+                    color: colorTextSecondary
+                    font.pixelSize: 12
+                }
+            }
+        }
+
+        scale: qacHover.pressed ? 0.97 : (qacHover.containsMouse ? 1.02 : 1.0)
+        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+
+        MouseArea {
+            id: qacHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: qacRoot.clicked()
+        }
+    }
+
+    // Drawing Card Component
     Component {
         id: drawingComp
         Item {
             anchors.fill: parent
             Rectangle {
-                anchors.fill: parent; anchors.bottomMargin: 60; color: "#000"; clip: true; radius: 18
-                Image { 
+                anchors.fill: parent; anchors.bottomMargin: 60; color: "#000"; clip: true
+                radius: 22
+
+                Image {
                     id: imgPreview
                     anchors.fill: parent
                     source: model.preview || ""
-                    fillMode: Image.PreserveAspectCrop; mipmap: true 
+                    fillMode: Image.PreserveAspectCrop; mipmap: true
                     asynchronous: true
                 }
-                // Placeholder: Solo visible si no hay imagen o está cargando
+
+                // Placeholder
                 Rectangle {
-                    anchors.fill: parent; color: "#252529"
+                    anchors.fill: parent
+                    color: "#16161a"
                     visible: imgPreview.status !== Image.Ready
-                    Text { anchors.centerIn: parent; text: "✎"; color: "#444"; font.pixelSize: 40 }
+                    radius: 22
+
+                    Column {
+                        anchors.centerIn: parent; spacing: 8
+                        Text { text: "✎"; color: "#333"; font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
+                        Text { text: model.name || ""; color: "#444"; font.pixelSize: 11; anchors.horizontalCenter: parent.horizontalCenter; elide: Text.ElideRight; width: 150; horizontalAlignment: Text.AlignHCenter }
+                    }
                 }
             }
-            Text { 
-                anchors.bottom: parent.bottom; anchors.bottomMargin: 20; anchors.horizontalCenter: parent.horizontalCenter
-                text: model.name || dashboardRoot.qs("untitled")
-                color: "white"; font.bold: true; font.pixelSize: 15; width: parent.width - 20; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter 
+
+            // Title area
+            Column {
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 12
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 3
+
+                Text {
+                    text: model.name || dashboardRoot.qs("untitled")
+                    color: colorTextPrimary; font.bold: true; font.pixelSize: 14
+                    width: parent.parent.width - 24; elide: Text.ElideRight
+                    horizontalAlignment: Text.AlignHCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
+                Text {
+                    text: model.date || ""
+                    color: colorTextSecondary; font.pixelSize: 11
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: text !== ""
+                }
             }
         }
     }
 
-    // Componente para Assets
+    // Asset Card Component
     component AssetCard : Rectangle {
         id: assetRoot
-        property string title: ""; property string desc: ""; property string icon: ""; property color accentColor: "white"
-        Layout.fillWidth: true; height: 120; radius: 20; color: colorSurface; border.color: colorBorder
+        property string title: ""
+        property string desc: ""
+        property string iconEmoji: "★"
+        property color accentColor: colorAccent
+
+        height: 110; radius: 20
+        color: "#0c0c10"
+        border.color: assetHover.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.35) : "#12ffffff"
+        border.width: 1
         clip: true
-        RowLayout {
-            anchors.fill: parent; anchors.margins: 20; spacing: 20
-            Rectangle { width: 60; height: 60; radius: 15; color: assetRoot.accentColor; opacity: 0.15 
-                Text { anchors.centerIn: parent; text: "★"; color: assetRoot.accentColor; font.pixelSize: 24 }
-            }
-            Column {
-                Layout.fillWidth: true
-                Text { text: assetRoot.title; color: "white"; font.bold: true; font.pixelSize: 16 }
-                Text { text: assetRoot.desc; color: "#8e8e93"; font.pixelSize: 14 }
-            }
-        }
-        MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: parent.scale = 0.98; onReleased: parent.scale = 1.0 }
-        Behavior on scale { NumberAnimation { duration: 100 } }
-    }
 
-    // Componente para Vídeos
-    component VideoCard : Rectangle {
-        property string title: ""; property string duration: ""; property color thumbColor: "grey"
-        width: 320; height: 180; radius: 20; color: colorSurface; border.color: colorBorder; clip: true
+        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+        // Gradient hover effect
         Rectangle {
-            anchors.fill: parent; anchors.bottomMargin: 50; color: parent.thumbColor; radius: 18
-            Rectangle { width: 50; height: 50; radius: 25; color: "#aa000000"; anchors.centerIn: parent
-                Text { text: "▶"; color: "white"; anchors.centerIn: parent; anchors.leftMargin: 3 }
+            anchors.fill: parent; radius: 20
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: Qt.rgba(assetRoot.accentColor.r, assetRoot.accentColor.g, assetRoot.accentColor.b, 0.06) }
+                GradientStop { position: 1.0; color: "transparent" }
             }
-            Text { text: parent.parent.duration; color: "white"; anchors.bottom: parent.bottom; anchors.right: parent.right; anchors.margins: 10; font.pixelSize: 12; font.bold: true }
+            opacity: assetHover.containsMouse ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 250 } }
         }
-        Text { anchors.bottom: parent.bottom; anchors.bottomMargin: 15; anchors.left: parent.left; anchors.leftMargin: 15; text: parent.title; color: "white"; font.bold: true }
-        MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onPressed: parent.opacity = 0.8; onReleased: parent.opacity = 1.0 }
+
+        RowLayout {
+            anchors.fill: parent; anchors.margins: 20; spacing: 18
+
+            Rectangle {
+                width: 56; height: 56; radius: 16
+                color: Qt.rgba(assetRoot.accentColor.r, assetRoot.accentColor.g, assetRoot.accentColor.b, 0.1)
+                border.color: Qt.rgba(assetRoot.accentColor.r, assetRoot.accentColor.g, assetRoot.accentColor.b, 0.2)
+                border.width: 1
+
+                Text { anchors.centerIn: parent; text: assetRoot.iconEmoji; font.pixelSize: 24 }
+            }
+
+            Column {
+                Layout.fillWidth: true; spacing: 4
+                Text { text: assetRoot.title; color: colorTextPrimary; font.bold: true; font.pixelSize: 15 }
+                Text { text: assetRoot.desc; color: colorTextSecondary; font.pixelSize: 13 }
+            }
+
+            // Arrow indicator
+            Text {
+                text: "→"
+                color: colorTextSecondary
+                font.pixelSize: 18
+                opacity: assetHover.containsMouse ? 1.0 : 0.3
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+            }
+        }
+
+        scale: assetHover.pressed ? 0.98 : 1.0
+        Behavior on scale { NumberAnimation { duration: 100 } }
+
+        MouseArea {
+            id: assetHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+        }
     }
 
-    // MODELO DE RESPALDO
+    // Video Card Component
+    component VideoCard : Rectangle {
+        id: vidRoot
+        property string title: ""
+        property string duration: ""
+        property color gradStart: "#1e3a5f"
+        property color gradEnd: "#0f2439"
+        property string iconText: "▶"
+
+        width: 310; height: 195
+        radius: 20
+        color: "#0c0c10"
+        border.color: vidHover.containsMouse ? "#30ffffff" : "#12ffffff"
+        border.width: 1
+        clip: true
+
+        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+        // Thumbnail area
+        Rectangle {
+            anchors.fill: parent; anchors.bottomMargin: 55
+            radius: 20; clip: true
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: vidRoot.gradStart }
+                GradientStop { position: 1.0; color: vidRoot.gradEnd }
+            }
+
+            // Play button
+            Rectangle {
+                width: 46; height: 46; radius: 23
+                color: "#cc000000"
+                anchors.centerIn: parent
+                border.color: "#40ffffff"; border.width: 1
+
+                Text {
+                    text: "▶"
+                    color: "white"; font.pixelSize: 16
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: 2
+                }
+
+                scale: vidHover.containsMouse ? 1.15 : 1.0
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+            }
+
+            // Duration badge
+            Rectangle {
+                anchors.bottom: parent.bottom; anchors.right: parent.right
+                anchors.margins: 10
+                width: durText.width + 14; height: 22; radius: 11
+                color: "#cc000000"
+
+                Text {
+                    id: durText
+                    text: vidRoot.duration; color: "white"; font.pixelSize: 11; font.bold: true
+                    anchors.centerIn: parent
+                }
+            }
+
+            // Category icon
+            Text {
+                text: vidRoot.iconText
+                font.pixelSize: 32
+                anchors.top: parent.top; anchors.left: parent.left
+                anchors.margins: 14
+                opacity: 0.5
+            }
+        }
+
+        // Title
+        Text {
+            anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+            anchors.left: parent.left; anchors.leftMargin: 16
+            anchors.right: parent.right; anchors.rightMargin: 16
+            text: vidRoot.title; color: colorTextPrimary; font.bold: true; font.pixelSize: 14
+            elide: Text.ElideRight
+        }
+
+        scale: vidHover.pressed ? 0.97 : (vidHover.containsMouse ? 1.03 : 1.0)
+        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+
+        MouseArea {
+            id: vidHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+        }
+    }
+
+    // ═══════════════════════════════════════
+    // MODEL & DATA
+    // ═══════════════════════════════════════
     ListModel { id: recentModel }
+
     function refresh() {
         recentModel.clear()
         if (typeof mainCanvas !== "undefined") {
@@ -313,7 +946,7 @@ Item {
     }
     Component.onCompleted: refresh()
 
-    Component { 
+    Component {
         id: stackComp
         StackFolder {
             thumbnails: parent.thumbnails

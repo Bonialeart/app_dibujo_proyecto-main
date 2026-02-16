@@ -24,11 +24,26 @@
     <file>qml/components/SketchbookCover.qml</file>
     <file>qml/components/VideoExportDialog.qml</file>
     <file>qml/components/PressureSettingsDialog.qml</file>
-    <file>qml/components/BrushSettingsPanel.qml</file>
+
     <file>qml/components/PremiumSlider.qml</file>
     <file>qml/components/ImprovedColorSlider.qml</file>
     <file>qml/components/BrushStudioDialog.qml</file>
     <file>qml/components/ColorStudioDialog.qml</file>
+    <file>qml/components/StudioCanvasLayout.qml</file>
+    <file>qml/components/DockArea.qml</file>
+    <file>qml/components/DockablePanel.qml</file>
+    <file>qml/components/ImpastoControls.qml</file>
+    <file>qml/components/StudioPanelManager.qml</file>
+    <file>qml/components/SideIconBar.qml</file>
+    <file>qml/components/DockContainer.qml</file>
+    <file>qml/components/ColorPanel.qml</file>
+    <file>qml/components/LayerPanel.qml</file>
+    <file>qml/components/NavigatorPanel.qml</file>
+    <file>qml/components/BrushLibraryPanel.qml</file>
+    <file>qml/components/StudioSlider.qml</file>
+    <file>qml/components/FloatingPanel.qml</file>
+    <file>qml/components/BrushSettingsPanel.qml</file>
+    <file>qml/components/PremiumPanel.qml</file>
     <file>qml/views/CanvasPage.qml</file>
 </qresource>
 </RCC>

@@ -98,6 +98,10 @@ Window {
     
     // Zen Mode State
     property bool isZenMode: false
+    
+    // Canvas Mode: "essential" (Procreate-like) or "studio" (Clip Studio-like)
+    property string canvasMode: "essential"
+    property bool isStudioMode: canvasMode === "studio"
 
     function iconPath(name) { 
         return "image://icons/" + name; 
@@ -139,7 +143,7 @@ Window {
     // === FONDO ===
     Rectangle {
         anchors.fill: parent
-        color: "#0f0f12"
+        color: "#060608"
     }
 
     // Global Functions & Models
@@ -273,18 +277,14 @@ Window {
         anchors.fill: parent
         spacing: 0
 
-        // NAVBAR DE MENÚ SUPERIOR (INTERACTIVA Y PREMIUM)
+        // NAVBAR DE MENÚ SUPERIOR (PREMIUM)
         Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 32
-            color: "#1e1e20"
-            z: 2000 // Ensure it's above everything
-            
-            // Zen Mode: Hide menu bar? Generally art apps keep the menu or auto-hide. 
-            // Let's optionally allow it to hide or obscure it.
-            // For true Zen, we might want to hide it.
+            Layout.fillWidth: true; Layout.preferredHeight: 34
+            color: "#0c0c0f"
+            z: 2000
             visible: !isZenMode
             
-            Rectangle { width: parent.width; height: 1; anchors.bottom: parent.bottom; color: "#000"; opacity: 0.3 }
+            Rectangle { width: parent.width; height: 1; anchors.bottom: parent.bottom; color: "#10ffffff" }
 
             Row {
                 anchors.fill: parent; anchors.leftMargin: 8; spacing: 0
@@ -295,21 +295,24 @@ Window {
                     property string label
                     property var menuItems: []
                     width: mText.width + 24; height: parent.height
-                    color: mBtnMouse.containsMouse || menuPopup.visible ? "#3a3a3c" : "transparent"
-                    radius: 4
+                    color: mBtnMouse.containsMouse || menuPopup.visible ? "#18ffffff" : "transparent"
+                    radius: 6
+                    
+                    Behavior on color { ColorAnimation { duration: 120 } }
                     
                     Text {
                         id: mText
-                        text: label; color: "#e0e0e0"; font.pixelSize: 12; font.weight: Font.Medium
+                        text: label; color: mBtnMouse.containsMouse || menuPopup.visible ? "#f0f0f5" : "#8e8e93"
+                        font.pixelSize: 12; font.weight: Font.Medium
                         anchors.centerIn: parent
+                        
+                        Behavior on color { ColorAnimation { duration: 120 } }
                     }
                     
                     MouseArea {
                         id: mBtnMouse
                         anchors.fill: parent; hoverEnabled: true
                         onClicked: {
-                            // Close others
-                            // Toggle this
                             if (menuPopup.visible) menuPopup.close()
                             else menuPopup.open()
                         }
@@ -319,38 +322,46 @@ Window {
                         id: menuPopup
                         y: parent.height + 4
                         x: 0
-                        width: 200
+                        width: 220
                         padding: 0
                         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
                         
                         background: Rectangle {
-                            color: "#252526"
-                            border.color: "#3e3e42"
-                            radius: 6
+                            color: "#141418"
+                            border.color: "#1cffffff"
+                            radius: 10
                             layer.enabled: true
+                            
+                            // Subtle shadow simulation
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: -8
+                                z: -1; radius: 18; color: "black"; opacity: 0.5
+                            }
                         }
                         
                         Column {
                             width: parent.width; spacing: 2
-                            topPadding: 4; bottomPadding: 4
+                            topPadding: 6; bottomPadding: 6
                             
                             Repeater {
                                 model: mBtn.menuItems
                                 delegate: Rectangle {
-                                    width: parent.width; height: modelData.isSeparator ? 1 : 28
-                                    color: modelData.isSeparator ? "#3e3e42" : (actionMouse.containsMouse ? colorAccent : "transparent")
+                                    width: parent.width; height: modelData.isSeparator ? 1 : 30
+                                    color: modelData.isSeparator ? "#15ffffff" : (actionMouse.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : "transparent")
                                     visible: true
                                     
                                     property bool isSep: modelData.isSeparator === true
                                     
+                                    Behavior on color { ColorAnimation { duration: 100 } }
+                                    
                                     // Menu Item Content
                                     RowLayout {
-                                        anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
+                                        anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14
                                         visible: !parent.isSep
                                         spacing: 10
                                         
-                                        Text { text: modelData.text || ""; color: "white"; font.pixelSize: 12; Layout.fillWidth: true }
-                                        Text { text: modelData.shortcut || ""; color: "#aaa"; font.pixelSize: 10 }
+                                        Text { text: modelData.text || ""; color: actionMouse.containsMouse ? "#ffffff" : "#d0d0d5"; font.pixelSize: 12; Layout.fillWidth: true }
+                                        Text { text: modelData.shortcut || ""; color: "#666"; font.pixelSize: 10 }
                                     }
                                     
                                     MouseArea {
@@ -447,33 +458,68 @@ Window {
             Layout.fillWidth: true; Layout.fillHeight: true
             spacing: 0
 
-        // NAVBAR IZQUIERDA (PREMIUM - Collapsible)
+        // NAVBAR IZQUIERDA (PREMIUM - Collapsible with Glassmorphism)
         Rectangle {
             id: leftNavbar
-            // Hide sidebar on canvas page by default for minimalist experience
-            Layout.preferredWidth: (showSidebar && !isZenMode) ? 70 : 0
+            Layout.preferredWidth: (showSidebar && !isZenMode) ? 72 : 0
             Layout.fillHeight: true
-            color: "#111113"
             z: 80
             clip: true
             Behavior on Layout.preferredWidth { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-            
-            Rectangle { width: 1; height: parent.height; anchors.right: parent.right; color: "#1affffff" }
+
+            // Dark gradient background
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#0c0c0f" }
+                GradientStop { position: 0.5; color: "#0a0a0d" }
+                GradientStop { position: 1.0; color: "#08080b" }
+            }
+
+            // Right edge separator — subtle glassmorphism line
+            Rectangle { width: 1; height: parent.height; anchors.right: parent.right; color: "#10ffffff" }
             
             ColumnLayout {
-                anchors.fill: parent; anchors.margins: 10; spacing: 15
-                // Logo
+                anchors.fill: parent; anchors.margins: 12; spacing: 8
+                
+                // ── Premium Logo ──
                 Item { 
-                    Layout.preferredWidth: 46; Layout.preferredHeight: 46; Layout.alignment: Qt.AlignHCenter
+                    Layout.preferredWidth: 44; Layout.preferredHeight: 44; Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 6; Layout.bottomMargin: 10
+
+                    // Glow behind logo
+                    Rectangle {
+                        anchors.fill: parent; anchors.margins: -6
+                        radius: 20
+                        color: colorAccent; opacity: 0.08
+                    }
+
                     Rectangle { 
                         anchors.fill: parent; radius: 14
-                        color: colorAccent
-                        Text { text: "A"; anchors.centerIn: parent; color: "white"; font.bold: true; font.pixelSize: 20 }
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.15) }
+                            GradientStop { position: 1.0; color: colorAccent }
+                        }
+                        
+                        // Inner highlight
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: 1; radius: 13
+                            color: "transparent"
+                            border.color: Qt.rgba(1, 1, 1, 0.2); border.width: 1
+                        }
+
+                        Text { 
+                            text: "A"; anchors.centerIn: parent; color: "white"
+                            font.bold: true; font.pixelSize: 20; font.letterSpacing: -0.5
+                        }
                     }
-                    MouseArea { anchors.fill: parent; onClicked: currentPage = 0; cursorShape: Qt.PointingHandCursor }
+                    
+                    scale: logoMouse.pressed ? 0.9 : (logoMouse.containsMouse ? 1.08 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                    
+                    MouseArea { id: logoMouse; anchors.fill: parent; hoverEnabled: true; onClicked: currentPage = 0; cursorShape: Qt.PointingHandCursor }
                 }
-                
-                Item { height: 10 }
+
+                // ── Navigation Buttons ──
                 SidebarButton { 
                     iconName: "home.svg"; label: "Home"; active: currentPage === 0 && homeNavigator.stack.depth === 1; 
                     onClicked: {
@@ -490,8 +536,16 @@ Window {
                         homeNavigator.pushGallery()
                     } 
                 }
+
                 Item { Layout.fillHeight: true }
+
+                // Separator line
+                Rectangle { width: 28; height: 1; color: "#18ffffff"; Layout.alignment: Qt.AlignHCenter }
+                Item { height: 2 }
+
                 SidebarButton { iconName: "settings.svg"; label: "Settings"; active: currentPage === 4; onClicked: currentPage = 4 }
+
+                Item { height: 6 }
             }
         }
 
@@ -960,22 +1014,23 @@ Window {
                     }
                 }
 
-                // === SIDE PROFESSIONAL TOOLBAR (RIGHT SIDE - Compact Premium) ===
+                // === SIDE PROFESSIONAL TOOLBAR (Draggable, Premium) ===
                 Rectangle {
                     id: sideToolbar
                     width: 52
-                    height: Math.min(toolsColumn.implicitHeight + 32, parent.height - 60)
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
+                    height: Math.min(toolsColumn.implicitHeight + 56, canvasPage.height - 60)
                     
-                    // Compact Premium glassmorphism
+                    // Initial position (right side, centered)
+                    x: canvasPage.width - width - 16
+                    y: (canvasPage.height - height) / 2
+                    
+                    // Premium glassmorphism
                     color: "#f01a1a1e"
                     radius: 26
                     border.color: Qt.rgba(1, 1, 1, 0.12)
                     border.width: 1
-                    visible: isProjectActive && !isZenMode
-                    z: 1000 // Ensure it's above other panels
+                    visible: isProjectActive && !isZenMode && !isStudioMode
+                    z: 1000
 
                     // Subtle inner glow
                     Rectangle { 
@@ -995,6 +1050,45 @@ Window {
                         radius: parent.radius + 5
                         color: "black"
                         opacity: 0.35
+                    }
+                    
+                    // ── DRAG HANDLE (Top grip) ──
+                    Item {
+                        id: toolbarDragHandle
+                        width: parent.width
+                        height: 20
+                        anchors.top: parent.top
+                        anchors.topMargin: 4
+                        z: 10
+                        
+                        // Grip dots
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 3
+                            Repeater {
+                                model: 3
+                                Rectangle { width: 3; height: 3; radius: 1.5; color: "#555" }
+                            }
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                            
+                            property point pressPos: Qt.point(0, 0)
+                            
+                            onPressed: (mouse) => {
+                                pressPos = Qt.point(mouse.x, mouse.y)
+                            }
+                            onPositionChanged: (mouse) => {
+                                if (pressed) {
+                                    var dx = mouse.x - pressPos.x
+                                    var dy = mouse.y - pressPos.y
+                                    sideToolbar.x = Math.max(0, Math.min(sideToolbar.x + dx, canvasPage.width - sideToolbar.width))
+                                    sideToolbar.y = Math.max(0, Math.min(sideToolbar.y + dy, canvasPage.height - sideToolbar.height))
+                                }
+                            }
+                        }
                     }
 
                     Column {
@@ -1276,15 +1370,14 @@ Window {
                     }
                 }
 
+                // === COLOR PANEL (Popup-based — can't use PremiumPanel) ===
                 ColorStudioDialog {
                     id: colorStudioDialog
                     x: parent.width - width - 12
                     y: topBar.y + topBar.height + 6
-                    // Slight offset if Brush Panel is also open? Or Mutual Exclusion?
-                    // Mutual exclusion is better for mobile-like UI.
                     
-                    visible: isProjectActive && mainWindow.showColor
-                    z: 550
+                    visible: isProjectActive && mainWindow.showColor && !isStudioMode
+                    z: 1800
                     
                     targetCanvas: mainCanvas
                     accentColor: colorAccent
@@ -1298,24 +1391,32 @@ Window {
                     onCloseRequested: mainWindow.showColor = false
                 }
 
-                // === TOOL PROPERTIES PANEL (Brush Settings - Premium Floating Panel) ===
-                BrushSettingsPanel {
-                    anchors.right: sideToolbar.left
-                    anchors.rightMargin: 15
-                    anchors.verticalCenter: sideToolbar.verticalCenter
+                // === TOOL PROPERTIES (Brush Settings - Premium Draggable/Resizable) ===
+                PremiumPanel {
+                    id: brushSettingsPanelWrapper
+                    panelVisible: isProjectActive && canvasPage.showToolSettings && (canvasPage.activeToolIdx >= 5 && canvasPage.activeToolIdx <= 9) && !isStudioMode
+                    panelTitle: "Brush Settings"
+                    panelIcon: "sliders.svg"
+                    accentColor: colorAccent
+                    initialX: canvasPage.width - 350
+                    initialY: 150
+                    defaultWidth: 260
+                    defaultHeight: 380
+                    minWidth: 200
+                    maxWidth: 400
+                    minHeight: 200
+                    maxHeight: 600
+                    z: 1700
                     
-                    visible: isProjectActive && canvasPage.showToolSettings && (canvasPage.activeToolIdx >= 5 && canvasPage.activeToolIdx <= 9)
-                    z: 500
+                    onCloseRequested: canvasPage.showToolSettings = false
+                    onPanelClicked: z = 2100
                     
-                    // Animations
-                    opacity: visible ? 1.0 : 0.0
-                    scale: visible ? 1.0 : 0.95
-                    Behavior on opacity { NumberAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                    
-                    targetCanvas: mainCanvas
-                    activeToolIdx: canvasPage.activeToolIdx
-                    colorAccent: colorAccent
+                    BrushSettingsPanel {
+                        anchors.fill: parent
+                        targetCanvas: mainCanvas
+                        activeToolIdx: canvasPage.activeToolIdx
+                        colorAccent: colorAccent
+                    }
                 }
                 // === NEW HORIZONTAL SUB-TOOL BAR (Premium Design - Pops out from Sidebar) ===
                 Rectangle {
@@ -1329,7 +1430,7 @@ Window {
                     color: "#f21c1c1e" // OLED Dark
                     border.color: Qt.rgba(1, 1, 1, 0.15)
                     border.width: 1
-                    visible: isProjectActive && canvasPage.showSubTools && toolsModel.get(canvasPage.activeToolIdx).subTools.count > 0
+                    visible: isProjectActive && canvasPage.showSubTools && toolsModel.get(canvasPage.activeToolIdx).subTools.count > 0 && !isStudioMode
                     z: 600
                     
                     // Glassmorphism shadow
@@ -1417,51 +1518,143 @@ Window {
                     }
                 }
 
+                // ============================================================================
+                // STUDIO MODE LAYOUT (Clip Studio Paint-Style)
+                // ============================================================================
+                
+                StudioCanvasLayout {
+                    id: studioCanvasLayout
+                    anchors.fill: parent
+                    
+                    mainCanvas: mainCanvas
+                    canvasPage: canvasPage
+                    toolsModel: toolsModel
+                    accentColor: colorAccent
+                    isProjectActive: mainWindow.isProjectActive
+                    isZenMode: mainWindow.isZenMode
+                    
+                    visible: isStudioMode && isProjectActive && !isZenMode
+                    z: 900
 
-                // EMPTY STATE OVERLAY
+                    onSwitchToEssential: mainWindow.canvasMode = "essential"
+                }
+                
+                // Studio Mode top bar is now integrated inside StudioCanvasLayout.qml (studioInfoBar)
+
+                // EMPTY STATE OVERLAY — Premium Design
                 Rectangle {
                     anchors.fill: parent
-                    color: "#050507"
                     visible: !isProjectActive
                     z: 1000
-                    
+
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: "#030305" }
+                        GradientStop { position: 0.5; color: "#06060a" }
+                        GradientStop { position: 1.0; color: "#08080d" }
+                    }
+
+                    // Ambient glow orb
+                    Rectangle {
+                        width: 400; height: 400; radius: 200
+                        anchors.centerIn: parent; anchors.horizontalCenterOffset: 0; anchors.verticalCenterOffset: -60
+                        color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.04)
+                        layer.enabled: true
+                        layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
+
+                        SequentialAnimation on anchors.verticalCenterOffset {
+                            loops: Animation.Infinite
+                            NumberAnimation { to: -40; duration: 4000; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: -60; duration: 4000; easing.type: Easing.InOutSine }
+                        }
+                    }
+
                     Column {
                         anchors.centerIn: parent
-                        spacing: 20
-                        
-                        Image {
-                            source: iconPath("brush.svg")
-                            width: 64; height: 64
+                        spacing: 18
+
+                        // Icon with subtle animation
+                        Item {
+                            width: 72; height: 72
                             anchors.horizontalCenter: parent.horizontalCenter
-                            opacity: 0.2
+
+                            Rectangle {
+                                anchors.fill: parent; radius: 22
+                                color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.08)
+                                border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15)
+                                border.width: 1
+                            }
+
+                            Image {
+                                source: iconPath("brush.svg")
+                                width: 36; height: 36
+                                anchors.centerIn: parent
+                                opacity: 0.5
+                                mipmap: true
+                            }
+
+                            SequentialAnimation on rotation {
+                                loops: Animation.Infinite
+                                NumberAnimation { to: 3; duration: 3000; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: -3; duration: 3000; easing.type: Easing.InOutSine }
+                            }
                         }
                         
                         Text {
                             text: "No Project Active"
-                            color: "#444"
+                            color: "#7a7a85"
                             font.pixelSize: 24
-                            font.bold: true
+                            font.weight: Font.Bold
+                            font.letterSpacing: -0.5
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                         
                         Text {
-                            text: "Please create a new canvas or open a recent\nproject from the Gallery to start drawing."
-                            color: "#333"
+                            text: "Create a new canvas or open a project\nfrom the Gallery to start drawing."
+                            color: "#50ffffff"
                             font.pixelSize: 14
+                            font.weight: Font.Light
                             horizontalAlignment: Text.AlignHCenter
                             anchors.horizontalCenter: parent.horizontalCenter
+                            lineHeight: 1.4
                         }
+
+                        Item { width: 1; height: 8 }
                         
+                        // Primary CTA
                         Rectangle {
-                            width: 180; height: 44; radius: 22
-                            color: colorAccent
+                            width: 200; height: 48; radius: 24
                             anchors.horizontalCenter: parent.horizontalCenter
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: colorAccent }
+                                GradientStop { position: 1.0; color: Qt.darker(colorAccent, 1.2) }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent; radius: 24; color: "transparent"
+                                border.color: Qt.rgba(1, 1, 1, 0.15); border.width: 1
+                            }
                             
-                            Text { text: "Quick Draw"; color: "white"; anchors.centerIn: parent; font.bold: true }
+                            Row {
+                                anchors.centerIn: parent; spacing: 8
+                                Text { text: "✨"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: "Quick Draw"; color: "white"; font.bold: true; font.pixelSize: 15; anchors.verticalCenter: parent.verticalCenter }
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent; radius: 24
+                                color: "white"; opacity: emptyQuickHover.containsMouse ? 0.1 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                            }
+
+                            scale: emptyQuickHover.pressed ? 0.95 : (emptyQuickHover.containsMouse ? 1.04 : 1.0)
+                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
                             
                             MouseArea {
+                                id: emptyQuickHover
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
                                 onClicked: {
                                     mainCanvas.resizeCanvas(1920, 1080)
                                     isProjectActive = true
@@ -1471,24 +1664,30 @@ Window {
                             }
                         }
 
-                        Text {
-                            text: "or"
-                            color: "#222"
-                            font.pixelSize: 12
-                            anchors.horizontalCenter: parent.horizontalCenter
-                        }
-
+                        // Secondary CTA
                         Rectangle {
-                            width: 180; height: 44; radius: 22
+                            width: 200; height: 44; radius: 22
                             color: "transparent"
-                            border.color: "#1a1a1c"
+                            border.color: "#20ffffff"
+                            border.width: 1
                             anchors.horizontalCenter: parent.horizontalCenter
-                            
-                            Text { text: "Go to Gallery"; color: "#666"; anchors.centerIn: parent; font.bold: true }
+
+                            Text { text: "Go to Gallery"; color: "#7a7a85"; anchors.centerIn: parent; font.weight: Font.Medium; font.pixelSize: 14 }
+
+                            Rectangle {
+                                anchors.fill: parent; radius: 22
+                                color: "white"; opacity: emptyGalHover.containsMouse ? 0.06 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                            }
+
+                            scale: emptyGalHover.pressed ? 0.95 : (emptyGalHover.containsMouse ? 1.02 : 1.0)
+                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
                             
                             MouseArea {
+                                id: emptyGalHover
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
                                 onClicked: currentPage = 0
                             }
                         }
@@ -1513,7 +1712,7 @@ Window {
                     id: sliderToolbox
                     x: 20
                     y: 150 // Static initial Y to avoid startup loops
-                    visible: isProjectActive && !isZenMode
+                    visible: isProjectActive && !isZenMode && !isStudioMode
                     opacity: visible ? 0.98 : 0.0
                     Behavior on opacity { NumberAnimation { duration: 300 } }
                     
@@ -1708,7 +1907,7 @@ Window {
                     id: topBar
                     width: parent.width; height: 42
                     color: "#e8101012"
-                    visible: isProjectActive && !isZenMode
+                    visible: isProjectActive && !isZenMode && !isStudioMode
                     z: 50
                     
                     MouseArea { anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
@@ -1942,6 +2141,43 @@ Window {
                         }
                         
                         // Color Swatch
+                        
+                        // Separator
+                        Rectangle { width: 1; height: 14; color: "#15ffffff"; Layout.alignment: Qt.AlignVCenter }
+                        
+                        // Studio Mode Switch
+                        Rectangle {
+                            Layout.preferredWidth: essentialSwitchText.implicitWidth + 18
+                            Layout.preferredHeight: 22
+                            radius: 11
+                            color: essentialSwitchMouse.containsMouse ? colorAccent : "#15ffffff"
+                            border.color: essentialSwitchMouse.containsMouse ? colorAccent : "#22ffffff"
+                            border.width: 0.5
+                            
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            
+                            Text {
+                                id: essentialSwitchText
+                                text: "Studio"
+                                color: essentialSwitchMouse.containsMouse ? "#fff" : "#777"
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                                font.letterSpacing: 0.5
+                                anchors.centerIn: parent
+                            }
+                            
+                            MouseArea {
+                                id: essentialSwitchMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: mainWindow.canvasMode = "studio"
+                            }
+                            
+                            ToolTip.visible: essentialSwitchMouse.containsMouse
+                            ToolTip.text: "Switch to Studio Mode (Clip Studio-style)"
+                            ToolTip.delay: 500
+                        }
                         Rectangle {
                             width: 22; height: 22; radius: 11
                             color: mainCanvas.brushColor
@@ -2923,89 +3159,71 @@ Window {
                 
 
 
-                // 1. PANEL DE PINCELES (Librería - Izquierda)
-                // 1. PANEL DE PINCELES (Librería - Premium Floating)
-                BrushLibrary {
-                    id: brushLibrary
-                    z: 500
-                    targetCanvas: mainCanvas
-                    contextPage: canvasPage
-                    
-                    // Fixed constraints
-                    visible: opacity > 0
-                    opacity: mainWindow.showBrush ? 1.0 : 0.0
-                    
-                    // Smooth slide-in from right
-                    anchors.right: sideToolbar.left
-                    anchors.rightMargin: 15
-                    anchors.verticalCenter: sideToolbar.verticalCenter
-                    
-                    // Visual offset for the "Slide" effect without breaking anchors
-                    transform: Translate {
-                        x: mainWindow.showBrush ? 0 : 50
-                        Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                    }
-                    
-                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                // 1. PANEL DE PINCELES (Librería - Premium Draggable/Resizable)
+                PremiumPanel {
+                    id: brushLibraryPanel
+                    panelVisible: mainWindow.showBrush && !isStudioMode
+                    panelTitle: "Brush Library"
+                    panelIcon: "brush.svg"
+                    accentColor: colorAccent
+                    initialX: canvasPage.width - 380
+                    initialY: 80
+                    defaultWidth: 320
+                    defaultHeight: 500
+                    minWidth: 240
+                    maxWidth: 500
+                    minHeight: 250
+                    maxHeight: 750
+                    z: 1900
                     
                     onCloseRequested: mainWindow.showBrush = false
-                    onImportRequested: importAbrDialog.open()
-                    onSettingsRequested: function(brushName) {
-                        mainWindow.showBrush = false
-                        brushStudioDialog.open()
-                    }
-                    onEditBrushRequested: function(brushName) {
-                        mainWindow.showBrush = false
-                        brushStudioDialog.open()
-                    }
-                }
-
-                // Dimmer background for the modal
-                Rectangle {
-                    z: brushLibrary.z - 1
-                    anchors.fill: parent
-                    anchors.rightMargin: sideToolbar.width + sideToolbar.anchors.rightMargin + 10
-                    color: "black"
-                    opacity: mainWindow.showBrush ? 0.4 : 0.0
-                    visible: opacity > 0
-                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                    onPanelClicked: z = 2100
                     
-                    MouseArea {
+                    BrushLibrary {
+                        id: brushLibrary
                         anchors.fill: parent
-                        onClicked: mainWindow.showBrush = false
+                        targetCanvas: mainCanvas
+                        contextPage: canvasPage
+                        
+                        onCloseRequested: mainWindow.showBrush = false
+                        onImportRequested: importAbrDialog.open()
+                        onSettingsRequested: function(brushName) {
+                            mainWindow.showBrush = false
+                            brushStudioDialog.open()
+                        }
+                        onEditBrushRequested: function(brushName) {
+                            mainWindow.showBrush = false
+                            brushStudioDialog.open()
+                        }
                     }
                 }
 
-                // 2. PANEL DE CAPAS - Diseño Premium
-                Rectangle {
+                // 2. PANEL DE CAPAS - Premium Draggable/Resizable
+                PremiumPanel {
                     id: layersPanel
-                    visible: showLayers
-                    width: 280; height: 400
-                    x: parent.width - width - 15
-                    y: topBar.height + 8
-                    color: "#1c1c1e"
-                    radius: 14
-                    border.color: "#3a3a3c"; border.width: 0.5
-                    z: 2000 // High Z-index
-                    clip: false // Allow menu to spill out to the left
+                    panelVisible: showLayers && !isStudioMode
+                    panelTitle: "Layers"
+                    panelIcon: "layers.svg"
+                    accentColor: colorAccent
+                    initialX: canvasPage.width - 310
+                    initialY: 55
+                    defaultWidth: 290
+                    defaultHeight: 440
+                    minWidth: 220
+                    maxWidth: 450
+                    minHeight: 200
+                    maxHeight: 750
+                    z: 2000
                     
-                    // Sombra suave
-                    Rectangle { z: -1; anchors.fill: parent; anchors.margins: -8; color: "#000"; opacity: 0.5; radius: 18 }
-                    
-                    // Animación
-                    scale: visible ? 1.0 : 0.95
-                    opacity: visible ? 1.0 : 0.0
-                    Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
-                    Behavior on opacity { NumberAnimation { duration: 100 } }
-                    
-                    
-                    // Reset on click background - Ensuring the whole modal is clickable
+                    onCloseRequested: showLayers = false
+                    onPanelClicked: z = 2100
+
+                    // Reset on click background
                     MouseArea {
                         id: modalBackgroundReset
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.ArrowCursor
-                        // Should be the first child to stay behind interaction elements
                         function onWheel(wheel) { wheel.accepted = true }
                         onClicked: {
                             layersList.swipedIndex = -1
@@ -3149,49 +3367,21 @@ Window {
                         }
                     }
                     
-                    // Header Premium
+                    // Action Bar (compact - title is handled by PremiumPanel)
                     Item {
                         id: layerHeader
-                        width: parent.width; height: 52
-                        
-                        // Close swiped/options on header click
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                layersList.swipedIndex = -1
-                                layersList.optionsIndex = -1
-                                layerContextMenu.visible = false
-                            }
-                        }
+                        width: parent.width; height: 38
                         
                         Row {
                             anchors.left: parent.left
-                            anchors.leftMargin: 16
+                            anchors.leftMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 8
+                            spacing: 6
                             
-                            // Icono de capas
-                            Image {
-                                source: iconPath("layers.svg")
-                                width: 18; height: 18
-                                anchors.verticalCenter: parent.verticalCenter
-                                opacity: 0.8
-                            }
-                            
-                            Text { 
-                                text: "Layers"
-                                color: "#fff"
-                                font.pixelSize: 14
-                                font.weight: Font.DemiBold
-                                font.letterSpacing: 0.5
-                                anchors.verticalCenter: parent.verticalCenter
-                            }
-                            
-                            // Badge con número de capas
+                            // Layer count badge
                             Rectangle {
-                                width: 22; height: 18; radius: 9
-                                color: "#3a3a3c"
-                                anchors.verticalCenter: parent.verticalCenter
+                                width: 24; height: 18; radius: 9
+                                color: "#2c2c2e"
                                 Text {
                                     text: layerModel.count
                                     color: "#8e8e93"
@@ -3202,23 +3392,22 @@ Window {
                             }
                         }
                         
-                        // Botones de Acción (Grupo y Capa)
                         Row {
                             anchors.right: parent.right
-                            anchors.rightMargin: 12
+                            anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 8
+                            spacing: 6
 
                             // Add Group
                             Rectangle {
-                                width: 32; height: 32; radius: 8
+                                width: 28; height: 28; radius: 7
                                 color: grpMouse.containsMouse ? "#3a3a3c" : "#2c2c2e"
                                 border.color: grpMouse.containsMouse ? colorAccent : "#48484a"
                                 border.width: 1
                                 
                                 Image {
                                     source: iconPath("folder.svg")
-                                    width: 16; height: 16
+                                    width: 14; height: 14
                                     anchors.centerIn: parent
                                     opacity: 0.9
                                 }
@@ -3234,7 +3423,7 @@ Window {
 
                             // Add Layer
                             Rectangle {
-                                width: 32; height: 32; radius: 8
+                                width: 28; height: 28; radius: 7
                                 color: addMouse.containsMouse ? "#3a3a3c" : "#2c2c2e"
                                 border.color: addMouse.containsMouse ? colorAccent : "#48484a"
                                 border.width: 1
@@ -3242,7 +3431,7 @@ Window {
                                 Text { 
                                     text: "+" 
                                     color: addMouse.containsMouse ? colorAccent : "#fff"
-                                    font.pixelSize: 20
+                                    font.pixelSize: 18
                                     font.weight: Font.Light
                                     anchors.centerIn: parent 
                                 }
@@ -3260,16 +3449,16 @@ Window {
                             }
                         }
                         
-                        // Separador con gradiente
+                        // Gradient separator
                         Rectangle { 
-                            width: parent.width - 24; height: 1
+                            width: parent.width - 16; height: 1
                             anchors.bottom: parent.bottom
                             anchors.horizontalCenter: parent.horizontalCenter
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
                                 GradientStop { position: 0.0; color: "transparent" }
-                                GradientStop { position: 0.2; color: "#3a3a3c" }
-                                GradientStop { position: 0.8; color: "#3a3a3c" }
+                                GradientStop { position: 0.2; color: "#2a2a2e" }
+                                GradientStop { position: 0.8; color: "#2a2a2e" }
                                 GradientStop { position: 1.0; color: "transparent" }
                             }
                         }
