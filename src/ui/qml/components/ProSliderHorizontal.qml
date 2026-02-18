@@ -11,6 +11,7 @@ Item {
     property bool previewOnBottom: false
     property string brushTipSource: ""
     property color brushColor: "black"
+    property color accentColor: "#6366f1"
     
     implicitWidth: 200 * uiScale
     implicitHeight: 60 * uiScale
@@ -62,8 +63,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#6366f1" }
-                        GradientStop { position: 1.0; color: "#7c3aed" }
+                        GradientStop { position: 0.0; color: root.accentColor }
+                        GradientStop { position: 1.0; color: Qt.lighter(root.accentColor, 1.2) }
                     }
                     
                     // Subtle inner shine for the fill
@@ -87,7 +88,7 @@ Item {
                 // Line
                 Rectangle {
                     width: 2 * uiScale; height: 10 * uiScale; radius: 1; 
-                    color: slideMouse.pressed ? "white" : "#6366f1"
+                    color: slideMouse.pressed ? "white" : root.accentColor
                     anchors.centerIn: parent
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }
@@ -95,7 +96,7 @@ Item {
                 // Glow
                 Rectangle {
                     anchors.centerIn: parent; width: parent.width + 12; height: parent.height + 12
-                    radius: 12 * uiScale; color: "#6366f1"
+                    radius: 12 * uiScale; color: root.accentColor
                     opacity: slideMouse.pressed ? 0.2 : (slideMouse.containsMouse ? 0.1 : 0.0)
                     z: -1
                     Behavior on opacity { NumberAnimation { duration: 200 } }

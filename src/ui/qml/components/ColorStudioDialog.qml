@@ -43,7 +43,7 @@ Popup {
     }
     
     // --- THEME & COLORS ---
-    property color accentColor: "#8E7CC3"  // Soft Purple
+    property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#8E7CC3"
     property color bgColor: "#121214"      // Near Black
     property color panelColor: "#1C1C1E"   // Dark Gray
     property color borderColor: "#2C2C2E"
@@ -69,6 +69,9 @@ Popup {
     property real h: 0.0
     property real s: 0.0
     property real v: 1.0
+    
+    property string harmonyMode: "Complementary"
+    property var harmonyColors: []
     
     onActiveSlotChanged: {
         if (!internalUpdate) {
@@ -194,6 +197,31 @@ Popup {
         if (targetCanvas) targetCanvas.brushColor = currentColor
     }
 
+    onHChanged: updateHarmony()
+    onSChanged: updateHarmony()
+    onVChanged: updateHarmony() // Value might affect harmony color appearance
+    onHarmonyModeChanged: updateHarmony()
+    
+    function updateHarmony() {
+        var baseHue = root.h
+        var offsets = []
+        
+        switch(harmonyMode) {
+            case "Complementary": offsets = [0.5]; break;
+            case "Split Complementary": offsets = [0.41, 0.59]; break; 
+            case "Analogous": offsets = [0.917, 0.083]; break; 
+            case "Triadic": offsets = [0.333, 0.666]; break; 
+            case "Square": offsets = [0.25, 0.5, 0.75]; break; 
+        }
+        
+        var colors = [Qt.hsva(root.h, root.s, root.v, 1.0)] // Primary
+        for (var i=0; i<offsets.length; i++) {
+            var h2 = (baseHue + offsets[i]) % 1.0
+            colors.push(Qt.hsva(h2, root.s, root.v, 1.0))
+        }
+        harmonyColors = colors
+    }
+
     signal colorSelected(color newColor)
     signal closeRequested()
 
@@ -252,7 +280,8 @@ Popup {
                         Text { 
                             text: viewStack.currentIndex === 0 ? "Color Box" : 
                                   viewStack.currentIndex === 1 ? "Color Disc" : 
-                                  viewStack.currentIndex === 2 ? "Color Sliders" : "Color Studio"
+                                  viewStack.currentIndex === 2 ? "Color Sliders" : 
+                                  viewStack.currentIndex === 3 ? "Color Harmony" : "Color Studio"
                             color: "white"
                             font.pixelSize: 18
                             font.weight: Font.Black 
@@ -262,9 +291,30 @@ Popup {
                             color: "#5E5E5E"
                             font.pixelSize: 10
                             font.family: "Monospace" 
-                            visible: viewStack.currentIndex !== 2 // Hide in Sliders to match foto
+                            visible: viewStack.currentIndex !== 2 && viewStack.currentIndex !== 3
                         }
                     }
+                    
+                    // --- HARMONY MODE MENU (Three Dots) ---
+                    Rectangle {
+                        visible: viewStack.currentIndex === 3
+                        width: 32; height: 32; radius: 8; color: "transparent"
+                        Text { text: "•••"; color: "white"; font.pixelSize: 20; anchors.centerIn: parent }
+                        MouseArea { 
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: harmonyMenu.open()
+                        }
+                        Menu {
+                            id: harmonyMenu
+                            y: 35
+                            MenuItem { text: "Complementary"; onTriggered: root.harmonyMode = "Complementary" }
+                            MenuItem { text: "Split Complementary"; onTriggered: root.harmonyMode = "Split Complementary" }
+                            MenuItem { text: "Analogous"; onTriggered: root.harmonyMode = "Analogous" }
+                            MenuItem { text: "Triadic"; onTriggered: root.harmonyMode = "Triadic" }
+                            MenuItem { text: "Square"; onTriggered: root.harmonyMode = "Square" }
+                        }
+                    }
+
                     // --- PREMIUM DUAL COLOR WELLS ---
                     Item {
                         width: 76; height: 44
@@ -421,11 +471,11 @@ Popup {
                         // Icons: Box (App Store/Grid), Disc (Circle), Sliders, Picker, Harmony/Butterfly, Library
                         // Mapping: 0=Box, 1=Disc, 2=Sliders, 3=Picker(TBD), 4=Harmony(TBD), 5=Library
                         model: [
-                            {icon: "grid_pattern.svg", x: 0}, 
+                            {icon: "grid_pattern.svg", x: 0},
                             {icon: "shape.svg", x: 1}, 
                             {icon: "sliders.svg", x: 2}, 
-                            {icon: "eyedropper.svg", x: 3}, 
-                            {icon: "ghost.svg", x: 4}, // Using Ghost as requested/available placeholder for Harmony
+                            {icon: "ghost.svg", x: 3}, // Harmony (Fourth Icon)
+                            {icon: "eyedropper.svg", x: 4}, // Picker moved
                             {icon: "palette.svg", x: 5}
                         ]
                         Rectangle {
@@ -580,6 +630,7 @@ Popup {
                             onPaint: {
                                 var ctx = getContext("2d");
                                 ctx.reset();
+                                ctx.clearRect(0, 0, width, height);
                                 
                                 var cx = width / 2;
                                 var cy = height / 2;
@@ -758,7 +809,7 @@ Popup {
                             }
                         }
                         
-                        // 3. CMYK GROUP - Con gradientes vibrantes
+                        // 3. CMYK GROUP
                         Rectangle {
                             Layout.fillWidth: true; Layout.preferredHeight: 140
                             color: "#161618"; radius: 12; border.color: "#252525"; border.width: 1
@@ -788,7 +839,7 @@ Popup {
                             }
                         }
                         
-                        // 4. HEXADECIMAL
+                        // Hex Code Row
                         Rectangle {
                             Layout.fillWidth: true; Layout.preferredHeight: 40; radius: 12; color: "#161618"; border.color: "#252525"; border.width: 1
                             RowLayout {
@@ -798,11 +849,6 @@ Popup {
                                 Rectangle { 
                                     width: 28; height: 28; radius: 6; color: "transparent"; 
                                     Image { source: "image://icons/copy.svg"; width: 16; height: 16; anchors.centerIn: parent; opacity: 0.8 }
-                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor } 
-                                }
-                                Rectangle { 
-                                    width: 28; height: 28; radius: 6; color: "transparent"; 
-                                    Image { source: "image://icons/file.svg"; width: 16; height: 16; anchors.centerIn: parent; opacity: 0.8 }
                                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor } 
                                 }
                                 Rectangle {
@@ -819,38 +865,130 @@ Popup {
                         }
                     }
                 }
+                
+                // VIEW 3: COLOR HARMONY
+                Item {
+                    id: harmonyView
+                    ColumnLayout {
+                        anchors.fill: parent; spacing: 20
+                        
+                        Item {
+                            Layout.fillWidth: true; Layout.fillHeight: true
+                            Rectangle {
+                                id: harmonyDisc
+                                width: Math.min(parent.width, parent.height) * 0.95; height: width
+                                anchors.centerIn: parent
+                                radius: width/2; clip: true
+                                color: "transparent"
+                                
+                                Canvas {
+                                    anchors.fill: parent; antialiasing: true; smooth: true
+                                    onPaint: {
+                                        var ctx = getContext("2d");
+                                        var cx = width/2, cy = height/2, r = width/2;
+                                        ctx.reset();
+                                        ctx.clearRect(0, 0, width, height);
+                                        
+                                        var hueGrad = ctx.createConicalGradient(cx, cy, 0);
+                                        for(var i=0; i<=1.0; i+=0.1) hueGrad.addColorStop(i, Qt.hsva(i, 1, 1, 1));
+                                        ctx.fillStyle = hueGrad;
+                                        ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2*Math.PI); ctx.fill();
+                                        
+                                        var satGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+                                        satGrad.addColorStop(0, "white");
+                                        satGrad.addColorStop(1, "transparent");
+                                        ctx.fillStyle = satGrad;
+                                        ctx.fill();
+                                    }
+                                }
+                                
+                                Rectangle { anchors.fill: parent; radius: parent.radius; color: "black"; opacity: 1.0 - root.v }
+                                
+                                // Drag Logic for primary reticle
+                                MouseArea {
+                                    anchors.fill: parent
+                                    function handleMouse(m) {
+                                        var dx = m.x - width/2, dy = m.y - height/2
+                                        var theta = Math.atan2(dy, dx)
+                                        var hVal = -theta / (2*Math.PI); if (hVal < 0) hVal += 1.0
+                                        var dist = Math.sqrt(dx*dx + dy*dy)
+                                        var sVal = Math.min(1.0, dist / (width/2))
+                                        root.h = hVal; root.s = sVal; root.updateColor()
+                                    }
+                                    onPressed: handleMouse(mouse)
+                                    onPositionChanged: if(pressed) handleMouse(mouse)
+                                }
+
+                                // Secondary Reticles
+                                Repeater {
+                                    model: root.harmonyColors.length - 1
+                                    Rectangle {
+                                        property color col: root.harmonyColors[index+1]
+                                        property real ang: -(col.hsvHue * 2 * Math.PI)
+                                        width: 22; height: 22; radius: 11; color: "transparent"; border.color: "white"; border.width: 2; opacity: 0.7
+                                        x: (harmonyDisc.width/2) + (root.s * harmonyDisc.width/2 * Math.cos(ang)) - 11
+                                        y: (harmonyDisc.height/2) + (root.s * harmonyDisc.height/2 * Math.sin(ang)) - 11
+                                    }
+                                }
+                                
+                                // Primary Reticle
+                                Rectangle {
+                                    width: 32; height: 32; radius: 16; color: "transparent"; border.color: "white"; border.width: 3
+                                    property real ang: -(root.h * 2 * Math.PI)
+                                    x: (harmonyDisc.width/2) + (root.s * harmonyDisc.width/2 * Math.cos(ang)) - 16
+                                    y: (harmonyDisc.height/2) + (root.s * harmonyDisc.height/2 * Math.sin(ang)) - 16
+                                    layer.enabled: true; layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 10; shadowColor: "#80000000" }
+                                    Rectangle { anchors.centerIn: parent; width: 24; height: 24; radius: 12; color: "transparent"; border.color: "black"; border.width: 1 }
+                                }
+                            }
+                        }
+                        // Brush Config (Renamed from Settings)
+                        Item {
+                            Layout.fillWidth: true; Layout.preferredHeight: 30
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: 10; radius: 5
+                                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0; color: "black" } GradientStop { position: 1; color: "white" } }
+                            }
+                            Rectangle {
+                                x: root.v * (parent.width - 24)
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 24; height: 24; radius: 12; color: "white"; border.color: root.accentColor; border.width: 2
+                            }
+                            MouseArea { anchors.fill: parent; onPressed: uiV(mouse); onPositionChanged: if(pressed) uiV(mouse)
+                                function uiV(m) { root.v = Math.max(0, Math.min(1, m.x/width)); root.updateColor() }
+                            }
+                        }
+                    }
+                }
+                
+                // VIEW 4: EYE DROPPER (Placeholder)
+                Item { Text { text: "Sampler coming soon"; anchors.centerIn: parent; color: "white" } }
+                
+                // VIEW 5: PALETTES
+                Item { Text { text: "Palettes coming soon"; anchors.centerIn: parent; color: "white" } }
             }
             
             // ------------------------------------------------------------------
-            // 4. FOOTER: SHADES / HISTORY / PALETTES (PERFECCIONADO)
+            // 4. FOOTER: SHADES / HISTORY / PALETTES
             // ------------------------------------------------------------------
             Item {
                 Layout.fillWidth: true; Layout.preferredHeight: 140; Layout.topMargin: 20
                 ColumnLayout {
                     anchors.fill: parent; spacing: 12
                     
-                    // Tab Buttons (Capsule style)
                     RowLayout {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 36
-                        spacing: 4
+                        Layout.fillWidth: true; Layout.preferredHeight: 36; spacing: 4
                         Repeater {
-                            model: [{n: "Shades", x: 0}, {n: "History", x: 1}, {n: "Palettes", x: 2}]
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 32
-                                radius: 16
-                                color: footStack.currentIndex === modelData.x ? "#5E5CE6" : "#1A1A1C"
+                            model: viewStack.currentIndex === 3 
+                                ? [{n: "Harmony Color", x: 0}, {n: "Color History", x: 1}, {n: "My Palettes", x: 2}]
+                                : [{n: "Shades", x: 0}, {n: "History", x: 1}, {n: "Palettes", x: 2}]
+                            delegate: Rectangle {
+                                Layout.fillWidth: true; Layout.preferredHeight: 32; radius: 16
+                                color: footStack.currentIndex === modelData.x ? root.accentColor : "#1A1A1C"
                                 border.color: footStack.currentIndex === modelData.x ? "transparent" : "#2C2C2E"
                                 border.width: 1
                                 
-                                Text { 
-                                    text: modelData.n
-                                    anchors.centerIn: parent
-                                    color: footStack.currentIndex === modelData.x ? "white" : "#8E8E93"
-                                    font.pixelSize: 11
-                                    font.weight: footStack.currentIndex === modelData.x ? Font.Bold : Font.Medium
-                                }
+                                Text { text: modelData.n; anchors.centerIn: parent; color: "white"; font.pixelSize: 11; font.weight: Font.Bold }
                                 MouseArea { anchors.fill: parent; onClicked: footStack.currentIndex = modelData.x }
                             }
                         }
@@ -859,65 +997,52 @@ Popup {
                     StackLayout {
                         id: footStack; Layout.fillWidth: true; Layout.fillHeight: true
                         
-                        // SHADES
+                        // 0: SHADES / HARMONY BOX
                         Item {
                             RowLayout {
-                                anchors.fill: parent; spacing: 3
+                                anchors.fill: parent; spacing: 5
                                 Repeater {
-                                    model: 10
-                                    Rectangle { Layout.fillWidth: true; Layout.fillHeight: true; radius: 6; color: Qt.hsva(root.h, root.s, (index+1)/10.0, 1.0); MouseArea { anchors.fill: parent; onClicked: { root.v = (index+1)/10.0; root.updateColor(); root.addToHistory() } } }
-                                }
-                            }
-                        }
-                        
-                        // HISTORY (Refinado y Premium)
-                        Item {
-                            ScrollView {
-                                anchors.fill: parent
-                                anchors.margins: 2
-                                clip: true
-                                
-                                Flow {
-                                    id: historyFlow
-                                    width: parent.width
-                                    spacing: 10
-                                    
-                                    Repeater { 
-                                        model: backend.history
-                                        Rectangle { 
-                                            width: 42; height: 42; radius: 10
-                                            color: modelData
-                                            border.width: 1
-                                            border.color: "#30FFFFFF"
-                                            
-                                            layer.enabled: true
-                                            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 8; shadowColor: "#60000000" }
-                                            
-                                            MouseArea { 
-                                                anchors.fill: parent
-                                                cursorShape: Qt.PointingHandCursor
-                                                onClicked: root.currentColor = modelData
-                                                onPressed: parent.scale = 0.92
-                                                onReleased: parent.scale = 1.0
-                                            }
-                                            
-                                            Behavior on scale { NumberAnimation { duration: 100 } }
+                                    model: viewStack.currentIndex === 3 ? root.harmonyColors.length : 10
+                                    Rectangle { 
+                                        Layout.fillWidth: true; Layout.fillHeight: true; radius: 10
+                                        color: viewStack.currentIndex === 3 ? root.harmonyColors[index] : Qt.hsva(root.h, root.s, (index+1)/10.0, 1.0)
+                                        
+                                        // Premium Active Indicator
+                                        Rectangle {
+                                            anchors.fill: parent; anchors.margins: -2; radius: 12; color: "transparent"
+                                            border.color: "white"; border.width: 2; visible: viewStack.currentIndex === 3 && root.currentColor === parent.color
                                         }
+
+                                        MouseArea { 
+                                            anchors.fill: parent; 
+                                            hoverEnabled: true
+                                            onClicked: { 
+                                                if(viewStack.currentIndex===3) {
+                                                    var col = parent.color
+                                                    root.h = col.hsvHue
+                                                    // Maintenance s and v if needed, though they are usually same in my current logic
+                                                    root.updateColor()
+                                                    root.addToHistory()
+                                                } else { 
+                                                    root.v = (index+1)/10.0; root.updateColor() 
+                                                }
+                                            }
+                                            onPressed: parent.scale = 0.95
+                                            onReleased: parent.scale = 1.0
+                                        }
+                                        Behavior on scale { NumberAnimation { duration: 100 } }
                                     }
                                 }
-                                
-                                Text {
-                                    visible: backend.history.length === 0
-                                    text: "Your history is empty"
-                                    color: "#444"
-                                    anchors.centerIn: parent
-                                    font.pixelSize: 12
-                                }
                             }
                         }
                         
-                        // PALETTES
-                        Item { Text { text: "No Palettes Saved"; color: "#444"; anchors.centerIn: parent; font.pixelSize: 12 } }
+                        // 1: HISTORY
+                        Item {
+                            Flow { anchors.fill: parent; spacing: 8; Repeater { model: backend.history; Rectangle { width: 36; height: 36; radius: 8; color: modelData; MouseArea { anchors.fill: parent; onClicked: root.currentColor = modelData } } } }
+                        }
+                        
+                        // 2: PALETTES
+                        Item { Text { text: "Save your favorite palettes"; color: "#555"; anchors.centerIn: parent } }
                     }
                 }
             }

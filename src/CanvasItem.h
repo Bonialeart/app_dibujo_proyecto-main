@@ -209,8 +209,10 @@ public:
   Q_INVOKABLE void toggleClipping(int index);
   Q_INVOKABLE void toggleAlphaLock(int index);
   Q_INVOKABLE void toggleVisibility(int index);
+  Q_INVOKABLE void toggleLock(int index);
   Q_INVOKABLE void clearLayer(int index);
   Q_INVOKABLE void setLayerOpacity(int index, float opacity);
+  Q_INVOKABLE void setLayerOpacityPreview(int index, float opacity); // Fast update without model refresh
   Q_INVOKABLE void setLayerBlendMode(int index, const QString &mode);
   Q_INVOKABLE void setLayerPrivate(int index, bool isPrivate);
   Q_INVOKABLE void setActiveLayer(int index);
@@ -319,6 +321,7 @@ signals:
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
+  void notificationRequested(const QString &message, const QString &type);
 
   // Brush Studio signals
   void isEditingBrushChanged();
@@ -381,7 +384,10 @@ private:
   int m_activeLayerIndex;
   float m_brushAngle;
   float m_cursorRotation;
-  QColor m_backgroundColor; // Background color state
+
+  QColor m_backgroundColor; // Paper/Layer Background (e.g. Transparent/White)
+  QColor m_workspaceColor;  // App Workspace Background (Theme based)
+  QColor m_accentColor;     // UI Elements Accent (Theme based)
   bool m_isFlippedH = false;
   bool m_isFlippedV = false;
   bool m_isEraser = false;
@@ -448,6 +454,10 @@ private:
   // Krita-style Brush Cursor
   QPointF m_cursorPos;
   bool m_cursorVisible = false;
+
+  // Composition Shader
+  QOpenGLShaderProgram *m_compositionShader = nullptr;
+  void blendWithShader(QPainter *painter, artflow::Layer *layer, const QRectF &rect, artflow::Layer *maskLayer = nullptr, uint32_t overrideTextureId = 0);
   QImage m_brushOutlineCache;
   QString m_lastBrushTexturePath;
   float m_lastCursorSize = -1;

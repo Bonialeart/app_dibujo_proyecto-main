@@ -15,6 +15,9 @@ Item {
     property var layersListRef: ListView.view 
     property var dragGhostRef: null // Reference to the drag ghost
     
+    // Helper
+    property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#007aff"
+
     // --- 0. DROP INDICATOR (Blue Line) ---
     Rectangle {
         id: dropIndicator
@@ -22,14 +25,14 @@ Item {
         visible: layersListRef && layersListRef.draggedIndex !== -1 && layersListRef.dropTargetIndex === listIndex && layersListRef.draggedIndex !== listIndex
         width: parent.width - 16
         height: 2
-        color: "#007aff"
+        color: layerDelegate.accentColor
         anchors.bottom: parent.bottom // Drop below by default
         anchors.horizontalCenter: parent.horizontalCenter
         z: 999
         
         // Add a small glow
         layer.enabled: true
-        layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 4; shadowColor: "#007aff" }
+        layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 4; shadowColor: layerDelegate.accentColor }
     }
     
     // Signals
@@ -81,7 +84,7 @@ Item {
         // Copy
         Rectangle {
             width: 50; height: parent.height; radius: 10
-            color: "#0a84ff"
+            color: accentColor // Apply accent to Copy? Or keep blue? Let's use accent for consistency.
             Column {
                 anchors.centerIn: parent
                 spacing: 2
@@ -108,7 +111,7 @@ Item {
             }
             MouseArea {
                 anchors.fill: parent; onClicked: { 
-                    mainCanvas.toggleLock(listIndex); 
+                    mainCanvas.toggleLock(layerIndex); 
                     layersListRef.swipedIndex = -1 
                 }
             }
@@ -128,7 +131,7 @@ Item {
             }
             MouseArea {
                 anchors.fill: parent; onClicked: { 
-                    mainCanvas.removeLayer(listIndex); 
+                    mainCanvas.removeLayer(layerIndex); 
                     layersListRef.swipedIndex = -1 
                 }
             }
@@ -150,7 +153,7 @@ Item {
         // Dark background for all states (Active gets border only)
         color: isClipped ? "#151517" : "#1c1c1e" 
         border.width: isActive ? 2 : 1
-        border.color: isActive ? "#007aff" : (isClipped ? "#333" : "#2c2c2e")
+        border.color: isActive ? layerDelegate.accentColor : (isClipped ? "#333" : "#2c2c2e")
         
         clip: true 
         
@@ -194,10 +197,10 @@ Item {
                 }
                 onReleased: {
                     var delta = mouseX - startX
-                    if (layerDelegate.isSwipedOpen && delta > 20) layersListRef.swipedIndex = -1
+                    if (layerDelegate.isSwipedOpen && delta < -20) layersListRef.swipedIndex = -1 // Close if swiped back left
                     else if (!layerDelegate.isSwipedOpen) {
-                        if (delta < -35) layersListRef.swipedIndex = listIndex
-                        else if (delta > 45) mainCanvas.toggleClipping(layerIndex)
+                        if (delta > 35) layersListRef.swipedIndex = listIndex // Swipe Right -> Open Menu
+                        else if (delta < -45) mainCanvas.toggleClipping(layerIndex) // Swipe Left -> Toggle Clip
                     }
                     layerContent.x = Qt.binding(function() { return layerContent.baseX })
                 }
@@ -287,55 +290,105 @@ Item {
                                 elide: Text.ElideRight 
                             }
                             
+                            // Locked Indicator
+                            Image {
+                                visible: isLocked
+                                source: iconPath("lock.svg")
+                                width: 12; height: 12
+                                Layout.alignment: Qt.AlignVCenter
+                                opacity: 0.6
+                            }
+                            
                             // PREMIUM: Blend Mode Indicator (Badge)
                             Rectangle {
                                 visible: blendMode !== "Normal"
-                                height: 14
-                                width: modeText.contentWidth + 10
-                                color: isActive ? "#007aff" : "#2c2c2e"
+                                height: 16
+                                width: modeText.contentWidth + 12
+                                color: isActive ? layerDelegate.accentColor : "#222224"
                                 radius: 4
-                                border.color: isActive ? "transparent" : "#444"
+                                border.color: isActive ? "#50ffffff" : "#444"
                                 border.width: 1
                                 Text {
                                     id: modeText
                                     anchors.centerIn: parent
                                     text: blendMode
-                                    color: isActive ? "white" : "#aaa"
+                                    color: "white"
                                     font.pixelSize: 8
-                                    font.weight: Font.Bold
+                                    font.weight: Font.Black
                                     font.capitalization: Font.AllUppercase
+                                    font.letterSpacing: 0.5
                                 }
                             }
                         }
 
-                        // Integrated Opacity Slider (Only when Active)
+                        // Interactive Opacity Slider
                         RowLayout {
                             visible: isActive
                             width: parent.width
                             spacing: 8
                             
-                            Rectangle {
+                            Item {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 4
-                                radius: 2
-                                color: "#33ffffff"
-                                Rectangle { width: parent.width * layerOpacity; height: parent.height; radius: 2; color: "white" }
-                                Rectangle { 
-                                    x: (parent.width * layerOpacity) - 6; y: -4; width: 12; height: 12; radius: 6; color: "white"
-                                    layer.enabled: true
-                                    layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 2; shadowColor: "#40000000" }
+                                Layout.preferredHeight: 16 // Sufficient touch target
+                                
+                                property bool dragging: false
+                                property real dragValue: 0.0
+
+                                // Background Track
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: parent.width
+                                    height: 4 
+                                    radius: 2
+                                    color: "#20ffffff"
+                                    
+                                    // Progress Fill
+                                    Rectangle {
+                                        width: parent.width * (parent.parent.dragging ? parent.parent.dragValue : layerOpacity)
+                                        height: parent.height
+                                        radius: 2
+                                        color: layerDelegate.accentColor 
+                                    }
                                 }
+                                
                                 MouseArea {
-                                    anchors.fill: parent; anchors.margins: -8
-                                    onPressed: { var v=Math.max(0,Math.min(1,mouseX/width)); mainCanvas.setLayerOpacity(layerIndex,v) }
-                                    onPositionChanged: { var v=Math.max(0,Math.min(1,mouseX/width)); mainCanvas.setLayerOpacity(layerIndex,v) }
+                                    anchors.fill: parent
+                                    anchors.margins: -4
+                                    preventStealing: true
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    
+                                    function updateVal(mouse) {
+                                        var v = Math.max(0.0, Math.min(1.0, mouse.x / width))
+                                        parent.dragValue = v
+                                        if (mainCanvas && mainCanvas.setLayerOpacityPreview) 
+                                            mainCanvas.setLayerOpacityPreview(layerIndex, v)
+                                    }
+
+                                    onPressed: {
+                                        parent.dragging = true
+                                        updateVal(mouse)
+                                    }
+                                    onPositionChanged: {
+                                        if (pressed) updateVal(mouse)
+                                    }
+                                    onReleased: {
+                                        parent.dragging = false
+                                        var v = Math.max(0.0, Math.min(1.0, mouse.x / width))
+                                        if (mainCanvas && mainCanvas.setLayerOpacity) 
+                                            mainCanvas.setLayerOpacity(layerIndex, v)
+                                    }
                                 }
                             }
+                            
                             Text {
-                                text: Math.round(layerOpacity*100)+"%"
+                                text: Math.round((parent.children[0].dragging ? parent.children[0].dragValue : layerOpacity)*100)+"%"
                                 color: "white"
-                                font.pixelSize: 10
-                                opacity: 0.6
+                                font.pixelSize: 11
+                                font.weight: Font.Black
+                                opacity: 0.8
+                                Layout.preferredWidth: 32
+                                horizontalAlignment: Text.AlignRight
                             }
                         }
                     }
@@ -393,192 +446,91 @@ Item {
         
         // --- EXPANDED OPTIONS PANEL (If needed, pushes down or overlay? Current logic expands height) ---
         // Keeping logical structure but simplified visually
+        // --- PREMIUM OPTIONS PANEL (Blend Modes & Opacity) ---
         Rectangle {
             id: optionsPanel
             anchors.top: headerContent.bottom
             width: parent.width
-            height: parent.height - 60 // Fit remaining
+            height: parent.height - 60
             visible: layersListRef.optionsIndex === layerIndex
             color: "transparent"
             clip: true
             
-            // Re-implement simplified options if expanded
-            // ... (For now, prioritizing the main view cleanup as requested)
-            // Note: If delegate height expands to 320 for options, we need content here.
-            // Restoring basic options list if expanded:
-            
-            // --- PREMIUM OPTIONS PANEL (Blend Modes & Opacity) ---
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 16
+                anchors.margins: 14
+                spacing: 14
                 visible: parent.visible
                 
-                // 1. Opacity Slider (Re-added for explicit control)
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 30
-                    Text { text: "Opacity"; color: "#aaa"; font.pixelSize: 12 }
-                    
-                    Slider {
-                        Layout.fillWidth: true
-                        from: 0.0; to: 1.0
-                        value: layerOpacity
-                        stepSize: 0.01
-                        onMoved: mainCanvas.setLayerOpacity(layerIndex, value)
-                        
-                        background: Rectangle {
-                            x: parent.leftPadding
-                            y: parent.topPadding + parent.availableHeight / 2 - height / 2
-                            width: parent.availableWidth
-                            height: 4
-                            radius: 2
-                            color: "#3a3a3c"
-                            Rectangle { width: parent.parent.visualPosition * parent.width; height: parent.height; color: "#007aff"; radius: 2 }
-                        }
-                        handle: Rectangle {
-                            x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
-                            y: parent.topPadding + parent.availableHeight / 2 - height / 2
-                            width: 16; height: 16
-                            radius: 8
-                            color: "#fff"
-                            border.width: 1; border.color: "#ccc"
-                            layer.enabled: true
-                            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 4; shadowOpacity: 0.3 }
-                        }
-                    }
-                    Text { text: Math.round(layerOpacity * 100) + "%"; color: "white"; font.pixelSize: 12; Layout.preferredWidth: 30 }
-                }
-
-                // 2. Blend Mode Selector (Framed List / Wheel Style)
-                Item {
+                // Blend Mode Selector
+                ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    spacing: 8
+                    Text { text: "Blend Mode"; color: "#999"; font.pixelSize: 11; font.weight: Font.Medium }
                     
-                    Text { text: "Blend Mode"; color: "#aaa"; font.pixelSize: 12; anchors.top: parent.top }
-                    
-                    // Container for the list
                     Rectangle {
-                        anchors.top: parent.top; anchors.topMargin: 20
-                        anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-                        color: "transparent"
+                        Layout.fillWidth: true; Layout.fillHeight: true
+                        color: "#121214"; radius: 12
+                        border.color: "#1f1f22"; border.width: 1
                         
-                        // Blend Mode Picker Frame (Premium Glassmorphism)
-                        Rectangle {
-                            id: highlightFrame
-                            height: 42 // Matching item height + bit more
-                            width: parent.width - 8
-                            anchors.centerIn: parent
-                            color: "#15ffffff" // Very subtle white tint
-                            radius: 12
-                            border.color: "#33007aff" // Subtle blue
-                            border.width: 1
-                            z: 0
-                            
-                            layer.enabled: true
-                            layer.effect: MultiEffect {
-                                blurEnabled: true
-                                blur: 1.0
-                                shadowEnabled: true
-                                shadowBlur: 15
-                                shadowColor: "#40000000"
-                            }
-                        }
-
                         ListView {
                             id: blendModeList
                             anchors.fill: parent
-                            anchors.margins: 2 
+                            anchors.margins: 4
                             clip: true
-                            focus: true
-                            interactive: true 
-                            
-                            // Wheel Physics - Adjusted for fluid scrolling
-                            snapMode: ListView.SnapToItem 
-                            highlightRangeMode: ListView.StrictlyEnforceRange // More aggressive for center snapping
-                            preferredHighlightBegin: height/2 - 20
-                            preferredHighlightEnd: height/2 + 20
-                            highlightMoveDuration: 200
-                            
-                            // Critical: Prevent parent ListView from stealing the scroll
-                            boundsBehavior: Flickable.StopAtBounds
-                            pressDelay: 0
-                            
-                            // Prevent parent (Channel list) from stealing scrolling
-                            property bool isScrolling: moving || dragging
-                            onIsScrollingChanged: {
-                                if (isScrolling) {
-                                    layersListRef.interactive = false
-                                } else {
-                                    layersListRef.interactive = true
-                                }
-                            }
-                            
-                            // Important: Extra padding so edge items can reach the center
-                            header: Item { width: blendModeList.width; height: (blendModeList.height / 2) - 20 }
-                            footer: Item { width: blendModeList.width; height: (blendModeList.height / 2) - 20 }
+                            orientation: ListView.Vertical
+                            snapMode: ListView.SnapToItem
+                            highlightRangeMode: ListView.StrictlyEnforceRange
+                            property real centerOffset: -50 // Raise the selection box
+                            preferredHighlightBegin: height/2 + centerOffset - 22
+                            preferredHighlightEnd: height/2 + centerOffset + 22
+                            highlightMoveDuration: 0 // Start instant to avoid jump on load
                             
                             model: ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Soft Light", "Hard Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity"]
                             
                             delegate: Item {
-                                width: blendModeList.width
-                                height: 40 // Slightly taller for better spacing
-                                
-                                // --- REACTIVE POSITION TRACKING (Critical for the effect to work) ---
-                                // By referencing blendModeList.contentY, this property re-evaluates on every scroll
-                                property real itemCenterY: y + height/2 - blendModeList.contentY
-                                property real listCenterY: blendModeList.height / 2
-                                property real distFromCenter: Math.abs(itemCenterY - listCenterY)
-                                
-                                // Factor: 1.0 at center, 0.0 at edges. Divisor (70) controls the 'width' of the lens.
-                                property real factor: Math.max(0.0, 1.0 - (distFromCenter / 80.0))
-                                property bool isSelected: distFromCenter < 20 // Active center item
+                                width: blendModeList.width; height: 44
+                                property real distFromCenter: Math.abs((y + height/2 - blendModeList.contentY) - (blendModeList.height / 2 + blendModeList.centerOffset))
+                                property real factor: Math.max(0.0, 1.0 - (distFromCenter / (blendModeList.height / 2)))
                                 
                                 Text {
                                     text: modelData
                                     anchors.centerIn: parent
-                                    
-                                    // Visuals
-                                    color: Qt.hsla(0, 0, 1.0, 0.3 + (factor * 0.7)) 
-                                    
-                                    // Premium Scaling: x1.5 at center, x0.9 at edges
-                                    scale: 0.9 + (Math.pow(factor, 2) * 0.6) 
-                                    
-                                    font.pixelSize: 14
+                                    color: factor > 0.8 ? "white" : Qt.rgba(1,1,1, 0.3 + factor * 0.4)
+                                    font.pixelSize: 14 + (factor * 2)
                                     font.weight: factor > 0.8 ? Font.DemiBold : Font.Normal
-                                    font.letterSpacing: factor * 0.5
-                                    
-                                    // Subtle Glow/Shadow for central item
-                                    layer.enabled: factor > 0.5
-                                    layer.effect: MultiEffect {
-                                        shadowEnabled: true
-                                        shadowColor: Qt.rgba(0, 0.48, 1, factor * 0.5) // Blue-ish glow
-                                        shadowBlur: 10 * factor
-                                        shadowVerticalOffset: 0
-                                    }
+                                    scale: 0.9 + (factor * 0.2)
                                 }
-                                
                                 MouseArea {
                                     anchors.fill: parent
                                     onClicked: blendModeList.currentIndex = index
                                 }
                             }
+
+                            // Selection Highlight (Glass overlay)
+                            Rectangle {
+                                anchors.centerIn: parent
+                                anchors.verticalCenterOffset: blendModeList.centerOffset
+                                width: parent.width - 8; height: 40
+                                color: Qt.rgba(layerDelegate.accentColor.r, layerDelegate.accentColor.g, layerDelegate.accentColor.b, 0.2)
+                                radius: 8
+                                z: -1
+                                border.color: layerDelegate.accentColor; border.width: 1
+                            }
                             
                             onCurrentIndexChanged: {
-                                // IMPORTANT: Only update backend if NOT dragging to avoid feedback loops
-                                // which reset the list mid-scroll.
-                                if (!moving && !dragging && currentIndex >= 0) {
+                                if (isReady && !moving && !dragging && currentIndex >= 0) {
                                     mainCanvas.setLayerBlendMode(layerIndex, model[currentIndex])
                                 }
                             }
-                            
                             onMovementEnded: {
-                                // Commit the final selection when movement stops
-                                if (currentIndex >= 0) {
+                                if (isReady && currentIndex >= 0) {
                                     mainCanvas.setLayerBlendMode(layerIndex, model[currentIndex])
                                 }
                             }
-                            
-                            // Initialize position
+
+                            property bool isReady: false
                             Component.onCompleted: {
                                 for(var i=0; i<model.length; i++) {
                                     if(model[i] === blendMode) {
@@ -586,6 +538,14 @@ Item {
                                         break
                                     }
                                 }
+                                isReady = true
+                                restoreAnim.start()
+                            }
+                            
+                            Timer {
+                                id: restoreAnim
+                                interval: 50
+                                onTriggered: blendModeList.highlightMoveDuration = 250
                             }
                         }
                     }

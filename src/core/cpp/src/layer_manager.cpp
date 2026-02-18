@@ -72,6 +72,7 @@ void LayerManager::duplicateLayer(int index) {
   newLayer->opacity = src->opacity;
   newLayer->blendMode = src->blendMode;
   newLayer->visible = src->visible;
+  newLayer->locked = src->locked;
   newLayer->alphaLock = src->alphaLock;
   newLayer->clipped = src->clipped;
   newLayer->isPrivate = src->isPrivate;

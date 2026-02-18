@@ -111,7 +111,7 @@ Rectangle {
 
                 // Brush Studio Title
                 Text {
-                    text: "Advance Brush Settings"
+                    text: "Advance Brush Config"
                     color: textPrimary
                     font.pixelSize: 16
                     font.weight: Font.DemiBold

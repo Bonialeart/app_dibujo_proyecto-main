@@ -288,12 +288,11 @@ Window {
             
              // Premium Gradient Line at bottom
             Rectangle { 
-                width: parent.width; height: 1; anchors.bottom: parent.bottom; 
+                width: parent.width; height: 1.5; anchors.bottom: parent.bottom; 
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop { position: 0.2; color: "#20ffffff" }
-                    GradientStop { position: 0.8; color: "#20ffffff" }
+                    GradientStop { position: 0.5; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.6) }
                     GradientStop { position: 1.0; color: "transparent" }
                 }
             }
@@ -430,7 +429,7 @@ Window {
                         { text: "Undo", shortcut: "Ctrl+Z", action: function() { mainCanvas.undo() } },
                         { text: "Redo", shortcut: "Ctrl+Y", action: function() { mainCanvas.redo() } },
                         { isSeparator: true },
-                        { text: "Pen Pressure Settings...", action: function() { pressureDialog.open() } },
+                        { text: "Pen Pressure Config...", action: function() { pressureDialog.open() } },
                         { text: "Preferences", action: function() { preferencesDialog.open() } }
                     ]
                 }
@@ -585,7 +584,7 @@ Window {
                 Rectangle { width: 28; height: 1; color: "#18ffffff"; Layout.alignment: Qt.AlignHCenter }
                 Item { height: 2 }
 
-                SidebarButton { iconName: "settings.svg"; label: "Settings"; active: currentPage === 4; onClicked: currentPage = 4 }
+                SidebarButton { iconName: "settings.svg"; label: "Setup"; active: currentPage === 4; onClicked: currentPage = 4 }
 
                 Item { height: 6 }
             }
@@ -1072,8 +1071,8 @@ Window {
                         GradientStop { position: 1.0; color: "#f0161619" }
                     }
                     radius: 26 * uiScale
-                    border.color: Qt.rgba(1, 1, 1, 0.08)
-                    border.width: 1
+                    border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4)
+                    border.width: 1.5
                     visible: isProjectActive && !isZenMode && !isStudioMode
                     z: 1000
 
@@ -1183,29 +1182,7 @@ Window {
                                 }
                                 
                                 // Fallback characters (Premium emojis/symbols)
-                                Text {
-                                    visible: toolImg.status !== Image.Ready
-                                    text: {
-                                        if (model.name === "selection") return "✥"
-                                        if (model.name === "shapes") return "▢"
-                                        if (model.name === "lasso") return "➰"
-                                        if (model.name === "magnetic_lasso") return "🧲"
-                                        if (model.name === "move") return "✣"
-                                        if (model.name === "pen") return "✒"
-                                        if (model.name === "pencil") return "✎"
-                                        if (model.name === "brush") return "🖌"
-                                        if (model.name === "airbrush") return "💨"
-                                        if (model.name === "eraser") return "⌫"
-                                        if (model.name === "fill") return "🪣"
-                                        if (model.name === "picker") return "💉"
-                                        if (model.name === "hand") return "✋"
-                                        return "•"
-                                    }
-                                    color: "white"
-                                    font.pixelSize: 18 * uiScale
-                                    anchors.centerIn: parent
-                                    opacity: toolImg.opacity
-                                }
+
                                 
                                 MouseArea {
                                     id: toolHover
@@ -1469,7 +1446,7 @@ Window {
                 PremiumPanel {
                     id: brushSettingsPanelWrapper
                     panelVisible: isProjectActive && canvasPage.showToolSettings && (canvasPage.activeToolIdx >= 5 && canvasPage.activeToolIdx <= 9) && !isStudioMode
-                    panelTitle: "Brush Settings"
+                    panelTitle: "Tool Config"
                     panelIcon: "sliders.svg"
                     accentColor: colorAccent
                     initialX: canvasPage.width - 350
@@ -2124,7 +2101,7 @@ Window {
 
                             Rectangle { width: 1; height: 16 * uiScale; color: "#22ffffff" } // Separator
 
-                            // Brush Settings
+                            // Brush Config (Renamed from Settings)
                             Rectangle {
                                 width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
                                 color: showBrushSettings ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (brushSettingsMouse.containsMouse ? "#22ffffff" : "transparent")
@@ -2767,7 +2744,7 @@ Window {
                             Column {
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 3
-                                Text { text: "Brush Studio"; color: "#fff"; font.pixelSize: 15; font.weight: Font.DemiBold }
+                                Text { text: "Tool Config"; color: "#fff"; font.pixelSize: 15; font.weight: Font.DemiBold }
                                 Text { 
                                     text: mainCanvas.activeBrushName || "No brush selected"
                                     color: colorAccent; font.pixelSize: 11
@@ -3360,6 +3337,9 @@ Window {
                                 layerModel.append(layers[i])
                             }
                             // Restore scroll? Logic might be tricky if items change count.
+                        }
+                        function onNotificationRequested(message, type) {
+                            toastManager.show(message, type)
                         }
                     }
                     
@@ -4039,7 +4019,7 @@ Window {
             // 3. LIBRARY (Integrated)
             Item { id: assetsPlaceholder; visible: false }
             
-            Item { Text { text: "Settings"; color: "white"; anchors.centerIn: parent } }
+            Item { Text { text: "Ghost Settings"; color: "white"; anchors.centerIn: parent } }
 
         } // Fin StackLayout
     } // Fin RowLayout
@@ -5302,25 +5282,19 @@ Window {
                 width: parent.width; height: parent.height * sliderRoot.value
                 anchors.bottom: parent.bottom
                 radius: parent.radius
-                color: "#2c2c2e" // Matte gray fill
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.2) }
+                    GradientStop { position: 1.0; color: colorAccent }
+                }
                 
                 opacity: sliderRoot.value > 0.005 ? 1.0 : 0.0
                 Behavior on opacity { NumberAnimation { duration: 200 } }
-                
-                // Top Edge Highlight (Subtle Handle Replacement)
-                Rectangle {
-                    width: parent.width; height: 6 * mainWindow.uiScale
-                    anchors.top: parent.top
-                    color: "#4a4a4c"
-                    radius: 3 * mainWindow.uiScale
-                    opacity: sliderRoot.value > 0.05 ? 1.0 : 0.0
-                }
                 
                 // Inner Shine for premium look
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 1; radius: parent.radius
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.03) }
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.2) }
                         GradientStop { position: 1.0; color: "transparent" }
                     }
                 }
@@ -5414,25 +5388,20 @@ Window {
                 height: parent.height; width: parent.width * hSliderRoot.value
                 anchors.left: parent.left
                 radius: parent.radius
-                color: "#2c2c2e" // Matte gray fill
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: colorAccent }
+                    GradientStop { position: 1.0; color: Qt.lighter(colorAccent, 1.2) }
+                }
                 
                 opacity: hSliderRoot.value > 0.01 ? 1.0 : 0.0
                 Behavior on opacity { NumberAnimation { duration: 200 } }
-                
-                // Right Edge Highlight
-                Rectangle {
-                    height: parent.height; width: 6 * mainWindow.uiScale
-                    anchors.right: parent.right
-                    color: "#4a4a4c"
-                    radius: 3 * mainWindow.uiScale
-                    opacity: hSliderRoot.value > 0.05 ? 1.0 : 0.0
-                }
                 
                 // Inner Shine
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 1; radius: parent.radius
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.03) }
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.2) }
                         GradientStop { position: 1.0; color: "transparent" }
                     }
                 }

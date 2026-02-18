@@ -468,309 +468,7 @@ import "../components"
                     }
                 }
 
-                // === SIDE PROFESSIONAL TOOLBAR (RIGHT SIDE - Compact Premium) ===
-                Rectangle {
-                    id: sideToolbar
-                    width: 40
-                    height: Math.min(toolsColumn.implicitHeight + 24, parent.height - 60)
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    
-                    // Compact Premium glassmorphism
-                    color: "#e01a1a1e"
-                    radius: 20
-                    border.color: Qt.rgba(1, 1, 1, 0.08)
-                    border.width: 1
-                    visible: isProjectActive
-                    z: 200
 
-                    // Subtle inner glow
-                    Rectangle { 
-                        anchors.fill: parent
-                        anchors.margins: 1
-                        radius: parent.radius - 1
-                        color: "transparent"
-                        border.color: Qt.rgba(1, 1, 1, 0.03)
-                        border.width: 1
-                    }
-
-                    // Shadow
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: -5
-                        z: -1
-                        radius: parent.radius + 5
-                        color: "black"
-                        opacity: 0.35
-                    }
-
-                    Column {
-                        id: toolsColumn
-                        anchors.centerIn: parent
-                        spacing: 4
-                        
-                        Repeater {
-                            model: toolsModel
-                            delegate: Rectangle {
-                                width: 34; height: 34
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                radius: 12
-                                color: (index === canvasPage.activeToolIdx) ? colorAccent : (toolHover.containsMouse ? "#22ffffff" : "transparent")
-                                
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                
-                                Image {
-                                    id: toolImg
-                                    source: iconPath(model.icon)
-                                    width: 20; height: 20
-                                    anchors.centerIn: parent
-                                    opacity: (index === canvasPage.activeToolIdx) ? 1.0 : 0.6
-                                    sourceSize: Qt.size(40, 40)
-                                    smooth: true
-                                    mipmap: true
-                                    
-                                    Behavior on opacity { NumberAnimation { duration: 120 } }
-                                    
-                                    onStatusChanged: if (status === Image.Error) console.log("Error loading icon:", source)
-                                }
-                                
-                                // Fallback characters (Premium emojis/symbols)
-                                Text {
-                                    visible: toolImg.status !== Image.Ready
-                                    text: {
-                                        if (model.name === "selection") return "✥"
-                                        if (model.name === "shapes") return "▢"
-                                        if (model.name === "lasso") return "➰"
-                                        if (model.name === "magnetic_lasso") return "🧲"
-                                        if (model.name === "move") return "✣"
-                                        if (model.name === "pen") return "✒"
-                                        if (model.name === "pencil") return "✎"
-                                        if (model.name === "brush") return "🖌"
-                                        if (model.name === "airbrush") return "💨"
-                                        if (model.name === "eraser") return "⌫"
-                                        if (model.name === "fill") return "🪣"
-                                        if (model.name === "picker") return "💉"
-                                        if (model.name === "hand") return "✋"
-                                        return "•"
-                                    }
-                                    color: "white"
-                                    font.pixelSize: 18
-                                    anchors.centerIn: parent
-                                    opacity: toolImg.opacity
-                                }
-                                
-                                MouseArea {
-                                    id: toolHover
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    hoverEnabled: true
-                                    
-                                    Timer {
-                                        id: longPressTimer
-                                        interval: 500
-                                        onTriggered: {
-                                            canvasPage.activeToolIdx = index
-                                            canvasPage.showSubTools = true
-                                            // Position subtool bar next to this button
-                                            subToolBar.yLevel = parent.mapToItem(canvasPage, 0, 0).y
-                                        }
-                                    }
-
-                                    onPressed: longPressTimer.start()
-                                    onReleased: {
-                                        if (longPressTimer.running) {
-                                            longPressTimer.stop()
-                                            
-                                            // UX: Close Panels on Tool Interaction
-                                            mainWindow.showColor = false
-                                            mainWindow.showLayers = false
-                                            mainWindow.showBrush = false
-                                            
-                                            // Handle as Click
-                                            if (canvasPage.activeToolIdx === index) {
-                                                // Toggle Logic based on tool type
-                                                if (index >= 5 && index <= 9) {
-                                                    // Brushes/Eraser -> Open Brush Library (Gallery) instead of Settings
-                                                    mainWindow.showBrush = !mainWindow.showBrush
-                                                    if (mainWindow.showBrush) {
-                                                        brushLibrary.autoSelectCategory(model.name)
-                                                    }
-                                                    canvasPage.showToolSettings = false 
-                                                    mainWindow.showBrushSettings = false // Close Studio if open
-                                                } else {
-                                                    // Other tools -> Toggle their specific settings
-                                                    canvasPage.showToolSettings = !canvasPage.showToolSettings
-                                                }
-                                            } else {
-                                                canvasPage.activeToolIdx = index
-                                                canvasPage.activeSubToolIdx = 0
-                                                // Switch tool: Close all popovers initially
-                                                canvasPage.showToolSettings = false
-                                                canvasPage.showSubTools = false
-                                                
-                                                // If switching to a brush tool, don't open library automatically (User request)
-                                                // Just close any open panels from previous tool
-                                                mainWindow.showBrush = false
-                                                mainWindow.showBrushSettings = false
-                                                
-                                                // Backend Mapping
-                                                // Backend Mapping - Pass EXACT names to Python for Filter Logic
-                                                var toolName = model.name
-                                                 if (toolName === "pen") mainCanvas.currentTool = "pen"
-                                                 else if (toolName === "pencil") mainCanvas.currentTool = "pencil"
-                                                 else if (toolName === "brush") mainCanvas.currentTool = "brush"
-                                                 else if (toolName === "airbrush") mainCanvas.currentTool = "airbrush"
-                                                 else if (toolName === "eraser") mainCanvas.currentTool = "eraser"
-                                                 else if (toolName === "fill") mainCanvas.currentTool = "fill"
-                                                 else if (toolName === "picker") mainCanvas.currentTool = "picker" 
-                                                 else if (toolName === "hand") mainCanvas.currentTool = "hand"
-                                                 else if (toolName === "selection") mainCanvas.currentTool = "selection"
-                                                 else if (toolName === "lasso") mainCanvas.currentTool = "lasso"
-                                                 else if (toolName === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
-                                                 else if (toolName === "move") mainCanvas.currentTool = "move"
-                                                 else mainCanvas.currentTool = "hand"
-                                            }
-                                        }
-                                    }
-                                    onCanceled: longPressTimer.stop()
-
-                                    ToolTip.visible: containsMouse
-                                    ToolTip.text: model.label
-                                    ToolTip.delay: 800
-                                }
-                            }
-                        }
-                        
-                        Rectangle {
-                            width: 24; height: 1
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            color: "#22ffffff"
-                            visible: isProjectActive
-                        }
-                        
-                        SidebarButton {
-                            id: impastoBtn
-                            width: 34; height: 34
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            // iconSource: iconPath("oil.svg") // Si no existe, SidebarButton suele manejar fallbacks o texto
-                            toolTipText: "Efectos de Óleo (Impasto)"
-                            onClicked: {
-                                impastoPanel.visible = !impastoPanel.visible
-                            }
-                        }
-                    }
-                }
-
-                // === TOOL PROPERTIES PANEL (Brush Settings - Premium Floating Panel) ===
-                // === TOOL PROPERTIES PANEL (Brush Settings - Premium Floating Panel) ===
-                BrushSettingsPanel {
-                    anchors.right: sideToolbar.left
-                    anchors.rightMargin: 15
-                    anchors.verticalCenter: sideToolbar.verticalCenter
-                    
-                    visible: isProjectActive && canvasPage.showToolSettings && (canvasPage.activeToolIdx >= 3 && canvasPage.activeToolIdx <= 10)
-                    z: 500
-                    
-                    // Animations
-                    opacity: visible ? 1.0 : 0.0
-                    scale: visible ? 1.0 : 0.95
-                    Behavior on opacity { NumberAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                    
-                    targetCanvas: mainCanvas
-                    activeToolIdx: canvasPage.activeToolIdx
-                    colorAccent: canvasPage.colorAccent
-                }
-
-                // === NEW HORIZONTAL SUB-TOOL BAR (Premium Design - Pops out from Sidebar) ===
-                Rectangle {
-                    id: subToolBar
-                    property real yLevel: 0
-                    x: sideToolbar.x - width - 15
-                    y: Math.max(10, Math.min(yLevel - 4, canvasPage.height - height - 10))
-                    width: subToolRow.implicitWidth + 24
-                    height: 48
-                    radius: 24
-                    color: "#f21c1c1e" // OLED Dark
-                    border.color: Qt.rgba(1, 1, 1, 0.15)
-                    border.width: 1
-                    visible: isProjectActive && canvasPage.showSubTools && toolsModel.get(canvasPage.activeToolIdx).subTools.count > 0
-                    z: 600
-                    
-                    // Glassmorphism shadow
-                    layer.enabled: true
-                    /* layer.effect: DropShadow {
-                        transparentBorder: true
-                        color: "#aa000000"
-                        radius: 20
-                        samples: 40
-                    } */
-
-                    opacity: visible ? 1.0 : 0.0
-                    scale: visible ? 1.0 : 0.8
-                    transformOrigin: Item.Right
-                    Behavior on opacity { NumberAnimation { duration: 150 } }
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-
-                    Row {
-                        id: subToolRow
-                        anchors.centerIn: parent; spacing: 10
-                        Repeater {
-                            model: toolsModel.get(canvasPage.activeToolIdx).subTools
-                            delegate: Rectangle {
-                                width: 36; height: 36; radius: 18
-                                color: (index === canvasPage.activeSubToolIdx) ? colorAccent : (subHover.containsMouse ? "#22ffffff" : "transparent")
-                                
-                                Behavior on color { ColorAnimation { duration: 150 } }
-
-                                Image {
-                                    id: subIcon
-                                    source: iconPath(model.icon)
-                                    width: 18; height: 18; anchors.centerIn: parent
-                                    opacity: (index === canvasPage.activeSubToolIdx) ? 1.0 : 0.6
-                                    smooth: true
-                                }
-
-                                // Fallback
-                                Text {
-                                    visible: subIcon.status !== Image.Ready
-                                    text: model.label.substring(0, 1)
-                                    color: "white"; font.pixelSize: 14; font.bold: true; anchors.centerIn: parent
-                                    opacity: subIcon.opacity
-                                }
-                                
-                                MouseArea {
-                                    id: subHover; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-                                    onClicked: {
-                                        canvasPage.activeSubToolIdx = index
-                                        canvasPage.showSubTools = false 
-                                        
-                                        // Auto-apply preset if it exists in backend
-                                        mainCanvas.usePreset(model.label)
-                                        
-                                        // Update Selection Mode
-                                        if (model.name === "LASSO") {
-                                            mainCanvas.currentTool = "selection"
-                                            mainCanvas.fillMode = "none" // Ensure not in lasso fill
-                                        } else if (model.name === "MAGNETIC") {
-                                            mainCanvas.currentTool = "magnetic_lasso"
-                                        }
-                                        
-                                        // Update Fill Mode
-                                        if (model.name === "LASSO_FILL") mainCanvas.fillMode = "lasso"
-                                        else if (model.name === "BUCKET") mainCanvas.fillMode = "bucket"
-                                    }
-
-                                }
-                                
-                                ToolTip.visible: subHover.containsMouse
-                                ToolTip.text: model.label
-                                ToolTip.delay: 300
-                            }
-                        }
-                    }
-                }
 
                 // Invisible overlay to dismiss settings when clicking outside
                 MouseArea {
@@ -983,6 +681,7 @@ import "../components"
                             value: mainCanvas.brushSize / 100.0
                             previewType: "size"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
+                            accentColor: canvasPage.colorAccent
                             onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 100 }
                         }
                         
@@ -991,6 +690,7 @@ import "../components"
                             value: mainCanvas.brushOpacity
                             previewType: "opacity"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
+                            accentColor: canvasPage.colorAccent
                             onValueChanged: { if (mainCanvas) mainCanvas.brushOpacity = value }
                         }
                     }
@@ -1008,6 +708,7 @@ import "../components"
                             value: mainCanvas.brushSize / 100.0
                             previewType: "size"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
+                            accentColor: canvasPage.colorAccent
                             onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 100 }
                         }
                         
@@ -1016,6 +717,7 @@ import "../components"
                             value: mainCanvas.brushOpacity
                             previewType: "opacity"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
+                            accentColor: canvasPage.colorAccent
                             onValueChanged: { if (mainCanvas) mainCanvas.brushOpacity = value }
                         }
                     }
@@ -1901,7 +1603,7 @@ import "../components"
                             Column {
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 3
-                                Text { text: "Brush Studio"; color: "#fff"; font.pixelSize: 15; font.weight: Font.DemiBold }
+                                Text { text: "Tool Config"; color: "#fff"; font.pixelSize: 15; font.weight: Font.DemiBold }
                                 Text { 
                                     text: mainCanvas.activeBrushName || "No brush selected"
                                     color: colorAccent; font.pixelSize: 11

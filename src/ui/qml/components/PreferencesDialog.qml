@@ -93,7 +93,7 @@ Popup {
     // --- BACKGROUND ---
     background: Rectangle {
         color: colorBg
-        border.color: "#444"
+        border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4) // Subtle accent border
         border.width: 1
         radius: 8
         
@@ -628,7 +628,7 @@ Popup {
                     }
                     
                     // 7. COLOR
-                    Item { Text { text: "Color Settings"; color: "white"; anchors.centerIn: parent } }
+                    Item { Text { text: "Color Config"; color: "white"; anchors.centerIn: parent } }
                 }
             }
         }
@@ -652,7 +652,7 @@ Popup {
                         if (typeof preferencesManager !== "undefined") {
                             preferencesManager.resetDefaults()
                             root.close()
-                            toastManager.show("Settings reset to defaults", "info")
+                             toastManager.show("Config reset to defaults", "info")
                         }
                     }
                 }

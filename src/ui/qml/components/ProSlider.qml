@@ -8,6 +8,7 @@ Item {
     property real value: 0.0
     property string previewType: "" // "size", "opacity"
     property bool previewOnRight: false
+    property color accentColor: "#6366f1" // Default Indigo
     
     implicitWidth: 60 * uiScale
     implicitHeight: 180 * uiScale
@@ -48,8 +49,8 @@ Item {
                     anchors.horizontalCenter: parent.horizontalCenter
                     
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#7c3aed" } // Purple 600
-                        GradientStop { position: 1.0; color: "#6366f1" } // Indigo 500
+                        GradientStop { position: 0.0; color: Qt.lighter(root.accentColor, 1.2) } 
+                        GradientStop { position: 1.0; color: root.accentColor } 
                     }
                     
                     // Subtle inner shine for the fill
@@ -80,7 +81,7 @@ Item {
                 // Inner Detail (A small line)
                 Rectangle {
                     width: 10 * uiScale; height: 2 * uiScale; radius: 1
-                    color: slideMouse.pressed ? "white" : "#6366f1"
+                    color: slideMouse.pressed ? "white" : root.accentColor
                     anchors.centerIn: parent
                     Behavior on color { ColorAnimation { duration: 150 } }
                 }
@@ -90,7 +91,7 @@ Item {
                     anchors.centerIn: parent
                     width: parent.width + 12; height: parent.height + 12
                     radius: 12 * uiScale
-                    color: "#6366f1"
+                    color: root.accentColor
                     opacity: slideMouse.pressed ? 0.2 : (slideMouse.containsMouse ? 0.1 : 0.0)
                     z: -1
                     Behavior on opacity { NumberAnimation { duration: 200 } }

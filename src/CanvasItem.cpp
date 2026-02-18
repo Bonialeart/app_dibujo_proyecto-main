@@ -76,14 +76,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_undoManager->setMaxLevels(PreferencesManager::instance()->undoLevels());
 
   // Escuchar cambios en preferencias para actualizar el sistema en tiempo real
-  connect(PreferencesManager::instance(), &PreferencesManager::settingsChanged,
-          this, [this]() {
-            m_undoManager->setMaxLevels(
-                PreferencesManager::instance()->undoLevels());
-            // Aquí podrías añadir otros updates (ej: gpuAcceleration si fuera
-            // dinámico)
-            update();
-          });
+
 
   m_activeLayerIndex = 1;
   m_layerManager->setActiveLayer(m_activeLayerIndex);
@@ -124,6 +117,39 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   usePreset(m_activeBrushName);
   updateBrushTipImage();
   updateLayersList();
+
+  // Initial Theme Setup
+  auto updateTheme = [this]() {
+      QString theme = PreferencesManager::instance()->themeMode();
+      QString accent = PreferencesManager::instance()->themeAccent();
+      
+      // Theme Background Colors
+      if (theme == "Dark") m_workspaceColor = QColor("#1e1e1e");
+      else if (theme == "Light") m_workspaceColor = QColor("#e0e0e0"); // Soft Grey
+      else if (theme == "Midnight") m_workspaceColor = QColor("#000000"); // Pitch Black
+      else if (theme == "Blue-Grey") m_workspaceColor = QColor("#263238"); // Material Blue Grey 900
+      else m_workspaceColor = QColor("#1e1e1e"); // Fallback
+
+      // Accent Color
+      if (QColor::isValidColorName(accent)) {
+          m_accentColor = QColor(accent);
+      } else {
+          m_accentColor = QColor("#007bff"); // Default Blue
+      }
+      
+      update();
+  };
+  
+  // Connect to Preferences
+  connect(PreferencesManager::instance(), &PreferencesManager::settingsChanged,
+          this, [this, updateTheme]() {
+            m_undoManager->setMaxLevels(
+                PreferencesManager::instance()->undoLevels());
+            updateTheme();
+          });
+
+  // Apply initial
+  updateTheme();
 }
 
 CanvasItem::~CanvasItem() {
@@ -142,6 +168,29 @@ CanvasItem::~CanvasItem() {
 void CanvasItem::paint(QPainter *painter) {
   if (!m_layerManager)
     return;
+
+  // 0. Initialize Composition Shader
+  if (!m_compositionShader) {
+      m_compositionShader = new QOpenGLShaderProgram();
+      QStringList paths;
+      paths << QCoreApplication::applicationDirPath() + "/shaders/";
+      paths << "src/core/shaders/";
+      QString vertPath, fragPath;
+      for (const QString &path : paths) {
+          if (QFile::exists(path + "composition.vert") && QFile::exists(path + "composition.frag")) {
+              vertPath = path + "composition.vert";
+              fragPath = path + "composition.frag";
+              break;
+          }
+      }
+      if (!vertPath.isEmpty()) {
+          m_compositionShader->addShaderFromSourceFile(QOpenGLShader::Vertex, vertPath);
+          m_compositionShader->addShaderFromSourceFile(QOpenGLShader::Fragment, fragPath);
+          m_compositionShader->link();
+      } else {
+          qWarning() << "Composition shaders not found!";
+      }
+  }
 
   // 1. Inicializar Shaders Premium si es necesario
   if (!m_impastoShader) {
@@ -174,8 +223,8 @@ void CanvasItem::paint(QPainter *painter) {
     }
   }
 
-  // 2. Fondo Base (Workspace - Dark Grey)
-  painter->fillRect(0, 0, width(), height(), QColor("#1e1e1e"));
+  // 2. Fondo Base (Workspace - Theme Based)
+  painter->fillRect(0, 0, width(), height(), m_workspaceColor);
 
   // Calculate generic target rect for background
   QRectF paperRect(m_viewOffset.x() * m_zoomLevel,
@@ -216,8 +265,20 @@ void CanvasItem::paint(QPainter *painter) {
   // painter->drawRect(paperRect.translated(5, 5));
 
   if (m_layerManager->getLayerCount() > 0) {
+    Layer *clippingBase = nullptr;
     for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
       Layer *layer = m_layerManager->getLayer(i);
+      
+      // Track clipping base (bottom-up)
+      Layer *maskLayer = nullptr;
+      if (layer) {
+          if (layer->clipped) {
+              maskLayer = clippingBase;
+          } else {
+              clippingBase = layer;
+          }
+      }
+
       if (!layer || !layer->visible)
         continue;
 
@@ -233,34 +294,20 @@ void CanvasItem::paint(QPainter *painter) {
       bool renderedWithShader = false;
       // DIBUJAR VISTA PREVIA DE OPENGL (FBO) si estamos dibujando en esta capa
       if (m_isDrawing && i == m_activeLayerIndex && m_pingFBO) {
-        // Grab FBO image
-        QImage fboImg =
-            m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888);
-        fboImg.reinterpretAsFormat(QImage::Format_RGBA8888_Premultiplied);
-
-        bool previewWithShader =
-            (m_impastoStrength > 0.01f && m_impastoShader &&
-             m_impastoShader->isLinked());
-
-        if (previewWithShader) {
-          // We'll use the same logic as the layer rendering below but for the
-          // preview rect To keep it simple for now, we render the
-          // layer-rendering-with-shader logic but we need to ensure the pingFBO
-          // is used as the source. Setting useImpasto = true below will already
-          // handle the active layer, but we need to prevent double-draw. For
-          // now, let's keep the standard preview and skip double draw if shader
-          // is used.
-          renderedWithShader =
-              false; // Let the layer loop handle it with the shader
-        } else {
-          painter->save();
-          painter->setRenderHint(QPainter::SmoothPixmapTransform);
-          painter->setRenderHint(QPainter::Antialiasing);
-          painter->setOpacity(layer->opacity);
-          painter->drawImage(targetRect, fboImg);
-          painter->restore();
-          renderedWithShader = true;
-        }
+          // PREMIUM: Renderizar directamente desde el FBO usando el shader de composición.
+          // Esto elimina la latencia de copiar texturas de GPU a CPU y permite ver 
+          // el clipping mask y blend modes EN TIEMPO REAL mientras pintas.
+          if (m_compositionShader && m_compositionShader->isLinked()) {
+              blendWithShader(painter, layer, targetRect, maskLayer, m_pingFBO->texture());
+              renderedWithShader = true;
+          } else {
+              QImage fboImg = m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+              painter->save();
+              painter->setOpacity(layer->opacity);
+              painter->drawImage(targetRect, fboImg);
+              painter->restore();
+              renderedWithShader = true;
+          }
       }
 
       // Intentar usar shaders (Impasto)
@@ -335,11 +382,77 @@ void CanvasItem::paint(QPainter *painter) {
       }
 
       if (!renderedWithShader) {
-        // Fallback
-        painter->save();
-        painter->setOpacity(layer->opacity);
-        painter->drawImage(targetRect, img);
-        painter->restore();
+        // Advanced Blending via Shader (Post-Processing Style)
+        // Only use shader for modes that QPainter DOES NOT support natively (HSL modes)
+        // OR if you really want to force GPU composition for everything.
+        // For robustness with Clipping + Blending, we prefer QPainter where possible.
+        bool isNativeMode = (layer->blendMode == BlendMode::Multiply || 
+                             layer->blendMode == BlendMode::Screen ||
+                             layer->blendMode == BlendMode::Overlay ||
+                             layer->blendMode == BlendMode::Darken ||
+                             layer->blendMode == BlendMode::Lighten ||
+                             layer->blendMode == BlendMode::ColorDodge ||
+                             layer->blendMode == BlendMode::ColorBurn ||
+                             layer->blendMode == BlendMode::HardLight ||
+                             layer->blendMode == BlendMode::SoftLight ||
+                             layer->blendMode == BlendMode::Difference ||
+                             layer->blendMode == BlendMode::Exclusion || 
+                             layer->blendMode == BlendMode::Normal);
+
+        bool useCompositionShader = (!isNativeMode && m_compositionShader && m_compositionShader->isLinked());
+        
+        // Force shader if specifically requested/configured, but for now disable for robustness on Clipped Multiply
+        if (layer->clipped && isNativeMode) useCompositionShader = false;
+
+        if (useCompositionShader) {
+            blendWithShader(painter, layer, targetRect, maskLayer);
+        } else {
+            // Fallback (Software Rendering via QPainter) - NOW WITH CLIPPING SUPPORT
+            painter->save();
+            painter->setOpacity(layer->opacity);
+
+            // Determine correct blend mode
+            QPainter::CompositionMode compMode = QPainter::CompositionMode_SourceOver;
+            switch (layer->blendMode) {
+              case BlendMode::Multiply: compMode = QPainter::CompositionMode_Multiply; break;
+              case BlendMode::Screen: compMode = QPainter::CompositionMode_Screen; break;
+              case BlendMode::Overlay: compMode = QPainter::CompositionMode_Overlay; break;
+              case BlendMode::Darken: compMode = QPainter::CompositionMode_Darken; break;
+              case BlendMode::Lighten: compMode = QPainter::CompositionMode_Lighten; break;
+              case BlendMode::ColorDodge: compMode = QPainter::CompositionMode_ColorDodge; break;
+              case BlendMode::ColorBurn: compMode = QPainter::CompositionMode_ColorBurn; break;
+              case BlendMode::HardLight: compMode = QPainter::CompositionMode_HardLight; break;
+              case BlendMode::SoftLight: compMode = QPainter::CompositionMode_SoftLight; break;
+              case BlendMode::Difference: compMode = QPainter::CompositionMode_Difference; break;
+              case BlendMode::Exclusion: compMode = QPainter::CompositionMode_Exclusion; break;
+              default: compMode = QPainter::CompositionMode_SourceOver; break;
+            }
+
+            if (layer->clipped && maskLayer) {
+                // Manual Clipping in Software
+                // 1. Create a copy of the layer image to modify
+                QImage maskedImg = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+                
+                // 2. Get the mask image (Base Layer)
+                QImage baseMask(maskLayer->buffer->data(), maskLayer->buffer->width(), maskLayer->buffer->height(), QImage::Format_RGBA8888_Premultiplied);
+                
+                // 3. Apply the mask using DestinationIn (keeps source where dest is opaque)
+                // Result = Source (Layer) * DestAlpha (Mask)
+                QPainter p(&maskedImg);
+                p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                p.drawImage(0, 0, baseMask);
+                p.end();
+
+                // 4. Draw the MASKED content onto the canvas using the CORRECT BLEND MODE
+                painter->setCompositionMode(compMode);
+                painter->drawImage(targetRect, maskedImg);
+            } else {
+                // Standard Non-Clipped Drawing
+                painter->setCompositionMode(compMode);
+                painter->drawImage(targetRect, img);
+            }
+            painter->restore();
+        }
       }
     }
   }
@@ -371,7 +484,7 @@ void CanvasItem::paint(QPainter *painter) {
     painter->restore();
   }
 
-  // 4. Selección (Lasso) Feedback
+  // 4. Selección (Lasso) Feedback (Accent Color)
   if (!m_selectionPath.isEmpty()) {
     painter->save();
     // Transformar de Canvas a Pantalla para el feedback
@@ -379,7 +492,9 @@ void CanvasItem::paint(QPainter *painter) {
                        m_viewOffset.y() * m_zoomLevel);
     painter->scale(m_zoomLevel, m_zoomLevel);
 
-    QPen lassoPen(Qt::blue, 1 / m_zoomLevel, Qt::DashLine);
+    QColor lassoColor = m_accentColor;
+    if (lassoColor.value() < 50) lassoColor = Qt::cyan; // Ensure visibility on dark
+    QPen lassoPen(lassoColor, 1.5f / m_zoomLevel, Qt::DashLine);
     painter->setPen(lassoPen);
     painter->drawPath(m_selectionPath);
 
@@ -932,6 +1047,11 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
     // ... rest of stroke start logic ...
     Layer *layer = m_layerManager->getActiveLayer();
+    if (layer && layer->locked) {
+      emit notificationRequested("Layer is locked", "warning");
+      return;
+    }
+
     if (layer && layer->buffer) {
       m_strokeBeforeBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
     }
@@ -1126,6 +1246,11 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
 
     // Undo Snapshot
     Layer *layer = m_layerManager->getActiveLayer();
+    if (layer && layer->locked) {
+      emit notificationRequested("Layer is locked", "warning");
+      return;
+    }
+
     if (layer && layer->buffer) {
       m_strokeBeforeBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
     }
@@ -1675,6 +1800,11 @@ void CanvasItem::addLayer() {
 }
 
 void CanvasItem::removeLayer(int index) {
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    emit notificationRequested("Cannot delete a locked layer", "error");
+    return;
+  }
   m_layerManager->removeLayer(index);
   m_activeLayerIndex = qMax(0, (int)m_layerManager->getLayerCount() - 1);
   emit activeLayerChanged();
@@ -1699,6 +1829,14 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
   
   m_layerManager->moveLayer(fromIndex, toIndex);
   
+  // Auto-clipping logic: If dropped into the middle of a clipping group, join it.
+  int count = m_layerManager->getLayerCount();
+  Layer* moved = m_layerManager->getLayer(toIndex);
+  Layer* above = (toIndex + 1 < count) ? m_layerManager->getLayer(toIndex + 1) : nullptr;
+  if (moved && above && above->clipped) {
+      moved->clipped = true;
+  }
+  
   // Update active layer index if it moved
   if (m_activeLayerIndex == fromIndex) {
     m_activeLayerIndex = toIndex;
@@ -1716,6 +1854,11 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
 }
 
 void CanvasItem::mergeDown(int index) {
+  Layer *bottom = m_layerManager->getLayer(index - 1);
+  if (bottom && bottom->locked) {
+    emit notificationRequested("Cannot merge onto a locked layer", "error");
+    return;
+  }
   m_layerManager->mergeDown(index);
   updateLayersList();
   update();
@@ -1723,12 +1866,21 @@ void CanvasItem::mergeDown(int index) {
 
 void CanvasItem::renameLayer(int index, const QString &name) {
   Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    emit notificationRequested("Layer is locked", "warning");
+    return;
+  }
   if (l)
     l->name = name.toStdString();
 }
 
 void CanvasItem::applyEffect(int index, const QString &effect,
                              const QVariantMap &params) {
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    emit notificationRequested("Cannot apply effect to a locked layer", "warning");
+    return;
+  }
   qDebug() << "Applying effect:" << effect << "on layer" << index;
 }
 
@@ -1742,6 +1894,10 @@ void CanvasItem::setBackgroundColor(const QString &color) {
       for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
         Layer *l = m_layerManager->getLayer(i);
         if (l && l->type == Layer::Type::Background) {
+          if (l->locked) {
+            emit notificationRequested("Background layer is locked", "warning");
+            continue;
+          }
           // Swap R and B for QImage::Format_ARGB32 (BGRA)
           l->buffer->fill(newColor.blue(), newColor.green(), newColor.red(),
                           255); // Force opaque for background layer
@@ -1824,10 +1980,34 @@ void CanvasItem::updateLayersList() {
     layer["active"] = (i == m_activeLayerIndex);
     layer["type"] = (i == 0) ? "background" : "drawing";
 
-    // Add thumbnail if active or requested (real app would cache these)
+    // Convert internal BlendMode enum back to string for QML
+    QString bModeStr = "Normal";
+    switch(l->blendMode) {
+        case BlendMode::Multiply: bModeStr = "Multiply"; break;
+        case BlendMode::Screen: bModeStr = "Screen"; break;
+        case BlendMode::Overlay: bModeStr = "Overlay"; break;
+        case BlendMode::Darken: bModeStr = "Darken"; break;
+        case BlendMode::Lighten: bModeStr = "Lighten"; break;
+        case BlendMode::ColorDodge: bModeStr = "Color Dodge"; break;
+        case BlendMode::ColorBurn: bModeStr = "Color Burn"; break;
+        case BlendMode::SoftLight: bModeStr = "Soft Light"; break;
+        case BlendMode::HardLight: bModeStr = "Hard Light"; break;
+        case BlendMode::Difference: bModeStr = "Difference"; break;
+        case BlendMode::Exclusion: bModeStr = "Exclusion"; break;
+        case BlendMode::Hue: bModeStr = "Hue"; break;
+        case BlendMode::Saturation: bModeStr = "Saturation"; break;
+        case BlendMode::Color: bModeStr = "Color"; break;
+        case BlendMode::Luminosity: bModeStr = "Luminosity"; break;
+        default: bModeStr = "Normal";
+    }
+    layer["blendMode"] = bModeStr;
+
     // Add thumbnail for ALL layers
     if (l->buffer && l->buffer->width() > 0 && l->buffer->height() > 0) {
-      int tw = 60, th = 40;
+        // OPTIMIZATION: Only generate if needed. For now, we only 
+        // regenerate the active layer to keep UI responsive.
+        if (i == m_activeLayerIndex) {
+            int tw = 60, th = 40;
       // Use QImage wrapper around existing buffer (no copy yet)
       QImage full(l->buffer->data(), l->buffer->width(), l->buffer->height(),
                   QImage::Format_ARGB32);
@@ -1844,9 +2024,9 @@ void CanvasItem::updateLayersList() {
                         16);
       }
 
-      // Scale down (high quality)
+      // Scale down (Fast for responsiveness)
       QImage thumb =
-          full.scaled(tw, th, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+          full.scaled(tw, th, Qt::KeepAspectRatio, Qt::FastTransformation);
 
       QByteArray ba;
       QBuffer buffer(&ba);
@@ -1854,6 +2034,7 @@ void CanvasItem::updateLayersList() {
       thumb.save(&buffer, "PNG");
       QString b64 = QString::fromLatin1(ba.toBase64());
       layer["thumbnail"] = "data:image/png;base64," + b64;
+        }
     } else {
       layer["thumbnail"] = "";
     }
@@ -1903,6 +2084,10 @@ bool CanvasItem::isLayerClipped(int index) {
 
 void CanvasItem::toggleClipping(int index) {
   Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    emit notificationRequested("Layer is locked", "warning");
+    return;
+  }
   if (l) {
     l->clipped = !l->clipped;
     updateLayersList();
@@ -1912,6 +2097,10 @@ void CanvasItem::toggleClipping(int index) {
 
 void CanvasItem::toggleAlphaLock(int index) {
   Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    emit notificationRequested("Layer is locked", "warning");
+    return;
+  }
   if (l) {
     l->alphaLock = !l->alphaLock;
     updateLayersList();
@@ -1927,8 +2116,20 @@ void CanvasItem::toggleVisibility(int index) {
   }
 }
 
+void CanvasItem::toggleLock(int index) {
+  Layer *l = m_layerManager->getLayer(index);
+  if (l) {
+    l->locked = !l->locked;
+    updateLayersList();
+  }
+}
+
 void CanvasItem::clearLayer(int index) {
   Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    emit notificationRequested("Layer is locked", "warning");
+    return;
+  }
   if (l) {
     l->buffer->clear();
     update();
@@ -1937,6 +2138,12 @@ void CanvasItem::clearLayer(int index) {
 
 void CanvasItem::setLayerOpacity(int index, float opacity) {
   Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    // We don't necessarily need a notification for every slider drag, 
+    // but the UI should ideally handle this. Let's emit one to be safe.
+    emit notificationRequested("Layer is locked", "warning");
+    return;
+  }
   if (l) {
     l->opacity = opacity;
     updateLayersList();
@@ -1944,8 +2151,22 @@ void CanvasItem::setLayerOpacity(int index, float opacity) {
   }
 }
 
+void CanvasItem::setLayerOpacityPreview(int index, float opacity) {
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) return; 
+  if (l) {
+    l->opacity = opacity;
+    // Skip updateLayersList() for smooth preview
+    update();
+  }
+}
+
 void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
   Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    emit notificationRequested("Layer is locked", "warning");
+    return;
+  }
   if (l) {
     BlendMode newMode = BlendMode::Normal;
     if (mode == "Normal") newMode = BlendMode::Normal;
@@ -3336,4 +3557,158 @@ void CanvasItem::setUseCustomCursor(bool use) {
   (void)use;
   setCursor(Qt::BlankCursor);
   invalidateCursorCache();
+}
+
+void CanvasItem::blendWithShader(QPainter *painter, artflow::Layer *layer, const QRectF &rect, artflow::Layer *maskLayer, uint32_t overrideTextureId) {
+    if (!m_compositionShader || !layer) return;
+
+    QOpenGLContext *ctx = QOpenGLContext::currentContext();
+    if (!ctx) return;
+    QOpenGLFunctions *f = ctx->functions();
+
+    // ... (backdrop prep remains same) ...
+    static GLuint backdropTexID = 0;
+    if (backdropTexID == 0) {
+        f->glGenTextures(1, &backdropTexID);
+        f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
+        f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
+
+    // Fix High DPI issues: glCopyTexImage2D uses physical pixels
+    qreal dpr = window() ? window()->devicePixelRatio() : 1.0;
+    int w = width() * dpr;
+    int h = height() * dpr;
+    
+    // Ensure we are in Native Painting mode (flushes QPainter commands)
+    painter->beginNativePainting();
+
+    // 1. Capture current framebuffer (Backdrop)
+    f->glActiveTexture(GL_TEXTURE0);
+    f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
+    
+    // Check if size changed to reallocate texture storage if needed (though copy does it)
+    // Important: Use Nearest neighbor for 1:1 pixel mapping to avoid blurry backdrops
+    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    // Copy the ENTIRE physical framebuffer to the texture
+    f->glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, w, h, 0);
+
+    // 2. Prepare Layer Texture
+    QOpenGLTexture *layerTex = nullptr;
+    if (overrideTextureId == 0) {
+        auto getOrUpdateTexture = [&](artflow::Layer *L) -> QOpenGLTexture* {
+            QOpenGLTexture *tex = m_layerTextures.value(L);
+            if (!tex) {
+                if (!L->buffer) return nullptr;
+                QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                           QImage::Format_RGBA8888_Premultiplied);
+                tex = new QOpenGLTexture(img);
+                tex->setMinificationFilter(QOpenGLTexture::Linear);
+                tex->setMagnificationFilter(QOpenGLTexture::Linear);
+                tex->setWrapMode(QOpenGLTexture::ClampToBorder);
+                tex->setBorderColor(QColor(0,0,0,0)); 
+                m_layerTextures.insert(L, tex);
+                L->dirty = false;
+            } else if (L->dirty) {
+                if (!L->buffer) return tex;
+                QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                           QImage::Format_RGBA8888_Premultiplied);
+                tex->setData(img);
+                L->dirty = false;
+            }
+            return tex;
+        };
+        layerTex = getOrUpdateTexture(layer);
+    }
+    
+    // 3. Prepare Mask Texture (if applicable)
+    QOpenGLTexture *maskTex = nullptr;
+    if (maskLayer) {
+        // We always need the mask from its persistent buffer (not override)
+        auto getOrUpdateTexture = [&](artflow::Layer *L) -> QOpenGLTexture* {
+            QOpenGLTexture *tex = m_layerTextures.value(L);
+            if (!tex) {
+                if (!L->buffer) return nullptr;
+                QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                           QImage::Format_RGBA8888_Premultiplied);
+                tex = new QOpenGLTexture(img);
+                m_layerTextures.insert(L, tex);
+                L->dirty = false;
+            } else if (L->dirty) {
+                if (!L->buffer) return tex;
+                QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                           QImage::Format_RGBA8888_Premultiplied);
+                tex->setData(img);
+                L->dirty = false;
+            }
+            return tex;
+        };
+        maskTex = getOrUpdateTexture(maskLayer);
+    }
+
+    // 4. Bind & Draw
+    m_compositionShader->bind();
+
+    f->glActiveTexture(GL_TEXTURE0);
+    f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
+    m_compositionShader->setUniformValue("uBackdrop", 0);
+    m_compositionShader->setUniformValue("uIsPreview", overrideTextureId != 0 ? 1.0f : 0.0f);
+
+    f->glActiveTexture(GL_TEXTURE1);
+    if (overrideTextureId != 0) {
+        f->glBindTexture(GL_TEXTURE_2D, overrideTextureId);
+    } else if (layerTex) {
+        layerTex->bind();
+    }
+    m_compositionShader->setUniformValue("uSource", 1);
+    
+    if (maskTex) {
+        f->glActiveTexture(GL_TEXTURE2);
+        maskTex->bind();
+        m_compositionShader->setUniformValue("uMask", 2);
+        m_compositionShader->setUniformValue("uHasMask", 1);
+    } else {
+        m_compositionShader->setUniformValue("uHasMask", 0);
+    }
+
+    m_compositionShader->setUniformValue("uOpacity", layer->opacity);
+    m_compositionShader->setUniformValue("uMode", (int)layer->blendMode);
+    
+    m_compositionShader->setUniformValue("uScreenSize", QVector2D(w, h));
+    m_compositionShader->setUniformValue("uLayerSize", QVector2D(layer->buffer->width(), layer->buffer->height()));
+    m_compositionShader->setUniformValue("uViewOffset", QVector2D(m_viewOffset.x(), m_viewOffset.y()));
+    m_compositionShader->setUniformValue("uZoom", m_zoomLevel);
+
+    float vertices[] = {
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f,  1.0f,  1.0f, 1.0f,
+    };
+
+    m_compositionShader->enableAttributeArray(0); 
+    m_compositionShader->enableAttributeArray(1); 
+    m_compositionShader->setAttributeArray(0, GL_FLOAT, vertices, 2, 4 * sizeof(float));
+    m_compositionShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2, 4 * sizeof(float));
+
+    f->glEnable(GL_BLEND);
+    f->glBlendFunc(GL_ONE, GL_ZERO);
+
+    f->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    m_compositionShader->disableAttributeArray(0);
+    m_compositionShader->disableAttributeArray(1);
+
+    m_compositionShader->release();
+    layerTex->release();
+    if (maskTex) maskTex->release();
+    
+    f->glActiveTexture(GL_TEXTURE0);
+    f->glBindTexture(GL_TEXTURE_2D, 0);
+
+    painter->endNativePainting();
 }

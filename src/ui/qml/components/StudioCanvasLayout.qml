@@ -10,7 +10,7 @@ Item {
     property var mainCanvas: null
     property var canvasPage: null
     property var toolsModel: null
-    property color accentColor: "#6366f1"
+    property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
     property bool isProjectActive: false
     property bool isZenMode: false
 

@@ -28,7 +28,7 @@ Item {
         }
         ListElement {
             panelId: "settings"
-            name: "Settings" 
+            name: "StudioConfig" 
             icon: "sliders.svg" 
             source: "BrushSettingsPanel.qml" 
             visible: true 
