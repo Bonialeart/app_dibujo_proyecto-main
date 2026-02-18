@@ -15,7 +15,11 @@ enum class BlendMode {
   Darken,
   Lighten,
   Difference,
-  Exclusion
+  Exclusion,
+  Hue,
+  Saturation,
+  Color,
+  Luminosity
 };
 
 } // namespace artflow

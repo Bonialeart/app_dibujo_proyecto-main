@@ -236,6 +236,7 @@ public:
   Q_INVOKABLE void addLayer();
   Q_INVOKABLE void removeLayer(int index);
   Q_INVOKABLE void duplicateLayer(int index);
+  Q_INVOKABLE void moveLayer(int fromIndex, int toIndex);
   Q_INVOKABLE void mergeDown(int index);
   Q_INVOKABLE void renameLayer(int index, const QString &name);
   Q_INVOKABLE void applyEffect(int index, const QString &effect,

@@ -1,17 +1,69 @@
 {
 	"AUTOGEN_COMMAND_LINE_LENGTH_MAX" : 32000,
-	"BUILD_DIR" : "E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen",
-	"CMAKE_BINARY_DIR" : "E:/app_dibujo_proyecto-main/build_mingw",
-	"CMAKE_CURRENT_BINARY_DIR" : "E:/app_dibujo_proyecto-main/build_mingw",
-	"CMAKE_CURRENT_SOURCE_DIR" : "E:/app_dibujo_proyecto-main",
+	"BUILD_DIR" : "D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen",
+	"CMAKE_BINARY_DIR" : "D:/app_dibujo_proyecto-main/build_mingw",
+	"CMAKE_CURRENT_BINARY_DIR" : "D:/app_dibujo_proyecto-main/build_mingw",
+	"CMAKE_CURRENT_SOURCE_DIR" : "D:/app_dibujo_proyecto-main",
 	"CMAKE_EXECUTABLE" : "C:/Qt/Tools/CMake_64/bin/cmake.exe",
 	"CMAKE_LIST_FILES" : 
 	[
-		"E:/app_dibujo_proyecto-main/CMakeLists.txt",
-		"E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/3.30.5/CMakeSystem.cmake",
+		"D:/app_dibujo_proyecto-main/CMakeLists.txt",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeDetermineSystem.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeSystem.cmake.in",
+		"D:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/3.30.5/CMakeSystem.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeSystemSpecificInitialize.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-Initialize.cmake",
-		"E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/3.30.5/CMakeCXXCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeDetermineCXXCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeDetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-Determine-CXX.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeDetermineCompilerId.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCompilerIdDetection.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/ADSP-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/ARMCC-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/ARMClang-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/AppleClang-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Clang-DetermineCompilerInternal.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Borland-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Clang-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Clang-DetermineCompilerInternal.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Compaq-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Cray-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/CrayClang-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Embarcadero-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Fujitsu-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/FujitsuClang-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/GHS-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/GNU-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/HP-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/IAR-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/IBMClang-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Intel-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/IntelLLVM-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/LCC-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/MSVC-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/NVHPC-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/NVIDIA-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/OpenWatcom-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/OrangeC-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/PGI-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/PathScale-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/SCO-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/SunPro-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/TI-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/TIClang-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Tasking-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/VisualAge-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/IBMCPP-CXX-DetermineVersionInternal.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/Watcom-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/XL-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/IBMCPP-CXX-DetermineVersionInternal.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/XLClang-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/zOS-CXX-DetermineCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/IBMCPP-CXX-DetermineVersionInternal.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeFindBinUtils.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/GNU-FindBinUtils.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCXXCompiler.cmake.in",
+		"D:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/3.30.5/CMakeCXXCompiler.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeSystemSpecificInformation.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeGenericSystem.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeInitializeConfigs.cmake",
@@ -24,11 +76,27 @@
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/CMakeCommonCompilerMacros.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-GNU.cmake",
-		"E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/3.30.5/CMakeRCCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeDetermineRCCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeRCCompiler.cmake.in",
+		"D:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/3.30.5/CMakeRCCompiler.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeRCInformation.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-windres.cmake",
-		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX-ABI.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeTestRCCompiler.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCommonLanguageInclude.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeTestCXXCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeTestCompilerCommon.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeDetermineCompilerABI.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Internal/CMakeDetermineLinkerId.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeParseImplicitIncludeInfo.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeParseImplicitLinkInfo.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeParseLibraryArchitecture.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeTestCompilerCommon.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCXXCompilerABI.cpp",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeDetermineCompilerSupport.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Internal/FeatureTesting.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCXXCompiler.cmake.in",
+		"D:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/3.30.5/CMakeCXXCompiler.cmake",
+		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX-ABI.cmake",
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6/Qt6ConfigVersion.cmake",
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6/Qt6ConfigVersionImpl.cmake",
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6/Qt6Config.cmake",
@@ -894,54 +962,54 @@
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsTargets-relwithdebinfo.cmake",
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsAdditionalTargetInfo.cmake",
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsVersionlessAliasTargets.cmake",
-		"E:/app_dibujo_proyecto-main/src/ui/resources.qrc"
+		"D:/app_dibujo_proyecto-main/src/ui/resources.qrc"
 	],
-	"CMAKE_SOURCE_DIR" : "E:/app_dibujo_proyecto-main",
+	"CMAKE_SOURCE_DIR" : "D:/app_dibujo_proyecto-main",
 	"CROSS_CONFIG" : false,
-	"DEP_FILE" : "E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/deps",
+	"DEP_FILE" : "D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/deps",
 	"DEP_FILE_RULE_NAME" : "ArtFlowStudio_autogen/timestamp",
 	"HEADERS" : 
 	[
 		[
-			"E:/app_dibujo_proyecto-main/src/CanvasItem.h",
+			"D:/app_dibujo_proyecto-main/src/CanvasItem.h",
 			"MU",
 			"UVLADIE3JM/moc_CanvasItem.cpp",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/PreferencesManager.h",
+			"D:/app_dibujo_proyecto-main/src/PreferencesManager.h",
 			"MU",
 			"UVLADIE3JM/moc_PreferencesManager.cpp",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/ProjectModel.h",
+			"D:/app_dibujo_proyecto-main/src/ProjectModel.h",
 			"MU",
 			"UVLADIE3JM/moc_ProjectModel.cpp",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/TestCanvas.h",
+			"D:/app_dibujo_proyecto-main/src/TestCanvas.h",
 			"MU",
 			"UVLADIE3JM/moc_TestCanvas.cpp",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h",
 			"MU",
 			"H4ZJWAWVOH/moc_ColorPicker.cpp",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPickerImpl.h",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPickerImpl.h",
 			"MU",
 			"H4ZJWAWVOH/moc_ColorPickerImpl.cpp",
 			null
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
-	"INCLUDE_DIR" : "E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/include",
-	"MOC_COMPILATION_FILE" : "E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/mocs_compilation.cpp",
+	"INCLUDE_DIR" : "D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/include",
+	"MOC_COMPILATION_FILE" : "D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/mocs_compilation.cpp",
 	"MOC_DEFINITIONS" : 
 	[
 		"MINGW_HAS_SECURE_API=1",
@@ -949,6 +1017,7 @@
 		"QT_CORE_LIB",
 		"QT_GUI_LIB",
 		"QT_NETWORK_LIB",
+		"QT_NO_DEBUG",
 		"QT_OPENGL_LIB",
 		"QT_QMLINTEGRATION_LIB",
 		"QT_QML_LIB",
@@ -974,8 +1043,8 @@
 	],
 	"MOC_INCLUDES" : 
 	[
-		"E:/app_dibujo_proyecto-main/src",
-		"E:/app_dibujo_proyecto-main/src/core/cpp/include",
+		"D:/app_dibujo_proyecto-main/src",
+		"D:/app_dibujo_proyecto-main/src/core/cpp/include",
 		"C:/Qt/6.10.2/mingw_64/include/QtCore",
 		"C:/Qt/6.10.2/mingw_64/include",
 		"C:/Qt/6.10.2/mingw_64/mkspecs/win32-g++",
@@ -1011,91 +1080,91 @@
 	"MOC_PATH_PREFIX" : false,
 	"MOC_PREDEFS_CMD" : 
 	[
-		"C:/Qt/Tools/mingw1310_64/bin/c++.exe",
+		"C:/Qt/Tools/mingw1310_64/bin/g++.exe",
 		"-std=gnu++17",
 		"-dM",
 		"-E",
 		"-c",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCXXCompilerABI.cpp"
 	],
-	"MOC_PREDEFS_FILE" : "E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h",
+	"MOC_PREDEFS_FILE" : "D:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h",
 	"MOC_RELAXED_MODE" : false,
 	"MOC_SKIP" : [],
 	"MULTI_CONFIG" : false,
-	"PARALLEL" : 4,
-	"PARSE_CACHE_FILE" : "E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir/ParseCache.txt",
+	"PARALLEL" : 8,
+	"PARSE_CACHE_FILE" : "D:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir/ParseCache.txt",
 	"QT_MOC_EXECUTABLE" : "C:/Qt/6.10.2/mingw_64/bin/moc.exe",
 	"QT_UIC_EXECUTABLE" : "C:/Qt/6.10.2/mingw_64/bin/uic.exe",
 	"QT_VERSION_MAJOR" : 6,
 	"QT_VERSION_MINOR" : 10,
-	"SETTINGS_FILE" : "E:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir/AutogenUsed.txt",
+	"SETTINGS_FILE" : "D:/app_dibujo_proyecto-main/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir/AutogenUsed.txt",
 	"SOURCES" : 
 	[
-		[ "E:/app_dibujo_proyecto-main/src/CanvasItem.cpp", "MU", null ],
-		[ "E:/app_dibujo_proyecto-main/src/PreferencesManager.cpp", "MU", null ],
-		[ "E:/app_dibujo_proyecto-main/src/ProjectModel.cpp", "MU", null ],
-		[ "E:/app_dibujo_proyecto-main/src/TestCanvas.cpp", "MU", null ],
+		[ "D:/app_dibujo_proyecto-main/src/CanvasItem.cpp", "MU", null ],
+		[ "D:/app_dibujo_proyecto-main/src/PreferencesManager.cpp", "MU", null ],
+		[ "D:/app_dibujo_proyecto-main/src/ProjectModel.cpp", "MU", null ],
+		[ "D:/app_dibujo_proyecto-main/src/TestCanvas.cpp", "MU", null ],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPicker.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPicker.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPickerImpl.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPickerImpl.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/brush_engine.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/brush_engine.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/brush_preset.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/brush_preset.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/brush_preset_manager.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/brush_preset_manager.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/color_utils.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/color_utils.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/gl_utils.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/image_buffer.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/image_buffer.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/layer_manager.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/layer_manager.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/stroke_renderer.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/stroke_renderer.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/stroke_undo_command.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/stroke_undo_command.cpp",
 			"MU",
 			null
 		],
 		[
-			"E:/app_dibujo_proyecto-main/src/core/cpp/src/undo_manager.cpp",
+			"D:/app_dibujo_proyecto-main/src/core/cpp/src/undo_manager.cpp",
 			"MU",
 			null
 		],
-		[ "E:/app_dibujo_proyecto-main/src/main.cpp", "MU", null ]
+		[ "D:/app_dibujo_proyecto-main/src/main.cpp", "MU", null ]
 	],
 	"UIC_OPTIONS" : [],
 	"UIC_SEARCH_PATHS" : [],

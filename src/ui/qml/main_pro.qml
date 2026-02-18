@@ -3477,6 +3477,7 @@ Window {
                         property int swipedIndex: -1
                         property int optionsIndex: -1
                         property int draggedIndex: -1 // For tracking drag operations
+                        property int dropTargetIndex: -1 // For visual feedback
                         
                         // Close any swiped layer when clicking on list background
                         MouseArea {
@@ -3491,6 +3492,7 @@ Window {
                         
                         delegate: LayerDelegate {
                             // Delegate logic extracted to src/ui/qml/components/LayerDelegate.qml
+                            dragGhostRef: dragGhost
                             onRequestBackgroundEdit: bgColorDialog.open()
                         }
                         
@@ -3566,6 +3568,9 @@ Window {
                     }
                 }
                 
+
+
+
 
 
 

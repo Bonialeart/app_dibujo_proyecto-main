@@ -355,7 +355,7 @@ Popup {
                             }
                         }
                         
-                        // Swap Micro-Button
+                            // Swap Micro-Button
                         Rectangle {
                             id: swapBtnRect
                             width: 20; height: 20; radius: 10
@@ -364,7 +364,14 @@ Popup {
                             anchors.right: parent.right; anchors.top: parent.top
                             anchors.margins: -2
                             z: 25
-                            Text { text: "⇆"; color: "white"; font.pixelSize: 10; anchors.centerIn: parent }
+                            
+                            Image {
+                                source: "image://icons/rotate.svg"
+                                width: 12; height: 12
+                                anchors.centerIn: parent
+                                opacity: 0.9
+                            }
+                            
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
@@ -394,7 +401,12 @@ Popup {
                             Behavior on scale { NumberAnimation { duration: 100 } }
                         }
                     }
-                    Text { text: "⋮"; color: "#666"; font.pixelSize: 22; Layout.alignment: Qt.AlignVCenter }
+                    Image {
+                        source: "image://icons/grip.svg"
+                        width: 20; height: 20
+                        Layout.alignment: Qt.AlignVCenter
+                        opacity: 0.6
+                    }
                 }
             }
             
@@ -406,11 +418,37 @@ Popup {
                 RowLayout {
                     anchors.fill: parent; spacing: 0
                     Repeater {
-                        model: [{i: "▩", x: 0}, {i: "◎", x: 1}, {i: "⌥", x: 2}, {i: "⚲", x: 3}, {i: "🦋", x: 4}, {i: "◫", x: 5}]
+                        // Icons: Box (App Store/Grid), Disc (Circle), Sliders, Picker, Harmony/Butterfly, Library
+                        // Mapping: 0=Box, 1=Disc, 2=Sliders, 3=Picker(TBD), 4=Harmony(TBD), 5=Library
+                        model: [
+                            {icon: "grid_pattern.svg", x: 0}, 
+                            {icon: "shape.svg", x: 1}, 
+                            {icon: "sliders.svg", x: 2}, 
+                            {icon: "eyedropper.svg", x: 3}, 
+                            {icon: "ghost.svg", x: 4}, // Using Ghost as requested/available placeholder for Harmony
+                            {icon: "palette.svg", x: 5}
+                        ]
                         Rectangle {
                             Layout.fillWidth: true; Layout.fillHeight: true; color: "transparent"
-                            Rectangle { visible: viewStack.currentIndex === modelData.x; anchors.centerIn: parent; width: 36; height: 36; radius: 10; color: "#252528"; border.color: "#303035"; border.width: 1 }
-                            Text { text: modelData.i; color: viewStack.currentIndex === modelData.x ? root.accentColor : "#555"; font.pixelSize: 18; anchors.centerIn: parent }
+                            
+                            // Active Indicator Background
+                            Rectangle { 
+                                visible: viewStack.currentIndex === modelData.x
+                                anchors.centerIn: parent
+                                width: 36; height: 36; radius: 10
+                                color: "#252528"
+                                border.color: "#303035"
+                                border.width: 1 
+                            }
+                            
+                            Image {
+                                source: "image://icons/" + modelData.icon
+                                width: 22; height: 22
+                                anchors.centerIn: parent
+                                opacity: viewStack.currentIndex === modelData.x ? 1.0 : 0.5
+                                // Phosphor icons are white by default now, so opacity handles 'gray' look
+                            }
+                            
                             MouseArea { anchors.fill: parent; onClicked: viewStack.currentIndex = modelData.x }
                         }
                     }
@@ -757,8 +795,16 @@ Popup {
                                 anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 8
                                 Text { text: "Hex Code"; color: "#8E8E93"; font.pixelSize: 10; font.weight: Font.Medium }
                                 Item { Layout.fillWidth: true }
-                                Rectangle { width: 28; height: 28; radius: 6; color: "transparent"; Text { text: "⎘"; color: "#5E5CE6"; anchors.centerIn: parent; font.pixelSize: 16 } MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor } }
-                                Rectangle { width: 28; height: 28; radius: 6; color: "transparent"; Text { text: "❐"; color: "#5E5CE6"; anchors.centerIn: parent; font.pixelSize: 16 } MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor } }
+                                Rectangle { 
+                                    width: 28; height: 28; radius: 6; color: "transparent"; 
+                                    Image { source: "image://icons/copy.svg"; width: 16; height: 16; anchors.centerIn: parent; opacity: 0.8 }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor } 
+                                }
+                                Rectangle { 
+                                    width: 28; height: 28; radius: 6; color: "transparent"; 
+                                    Image { source: "image://icons/file.svg"; width: 16; height: 16; anchors.centerIn: parent; opacity: 0.8 }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor } 
+                                }
                                 Rectangle {
                                     width: 80; height: 26; radius: 6; color: "#1C1C1E"; border.color: "#2C2C2E"
                                     TextInput {

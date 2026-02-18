@@ -63,47 +63,82 @@ Item {
         }
     }
 
+    Rectangle {
+        anchors.fill: parent
+        color: "#1c1c1e"
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
         
-        // Header (Add Layer, Group, Delete)
+        // Premium Header
         Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 32
-            color: "#252528"
+            Layout.fillWidth: true
+            Layout.preferredHeight: 48
+            color: "#1c1c1e"
             
             RowLayout {
-                anchors.fill: parent; anchors.margins: 4
-                spacing: 4
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 8
+                spacing: 8
                 
-                Item { Layout.fillWidth: true } // Spacer
-                
-                // Add Group
-                Rectangle {
-                    width: 28; height: 24; radius: 4
-                    color: "transparent"
-                    border.color: "#333"
-                    Text { text: "📁"; color: "#ddd"; anchors.centerIn: parent }
-                    MouseArea { anchors.fill: parent; onClicked: if(targetCanvas) targetCanvas.addGroup() }
+                Text {
+                    text: "Layers"
+                    color: "white"
+                    font.pixelSize: 18
+                    font.weight: Font.Bold
+                    Layout.fillWidth: true
                 }
                 
-                // Add Layer
+                // Add Layer Button
                 Rectangle {
-                    width: 28; height: 24; radius: 4
-                    color: "transparent"
-                    border.color: "#333"
-                    Text { text: "+"; color: "#ddd"; anchors.centerIn: parent }
-                    MouseArea { anchors.fill: parent; onClicked: if(targetCanvas) targetCanvas.addLayer() }
+                    width: 32; height: 32; radius: 16
+                    color: addLayerMouse.containsMouse ? "#333" : "transparent"
+                    
+                    Text {
+                        text: "+"
+                        color: "white"
+                        font.pixelSize: 24
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: -1 // Visual alignment
+                    }
+                    
+                    MouseArea {
+                        id: addLayerMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: if(targetCanvas) targetCanvas.addLayer()
+                    }
                 }
-                
-                // Delete
+
+                // Add Group Button (More subtle)
                 Rectangle {
-                    width: 28; height: 24; radius: 4
-                    color: "transparent"
-                    border.color: "#333"
-                    Text { text: "🗑"; color: "#ddd"; anchors.centerIn: parent }
-                    MouseArea { anchors.fill: parent; onClicked: if(targetCanvas) targetCanvas.removeLayer(targetCanvas.activeLayerIndex) }
+                    width: 32; height: 32; radius: 16
+                    color: addGroupMouse.containsMouse ? "#333" : "transparent"
+                    
+                    Image {
+                        source: "image://icons/folder.svg"
+                        width: 18; height: 18
+                        anchors.centerIn: parent
+                        opacity: 0.8
+                    }
+                    
+                    MouseArea {
+                        id: addGroupMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: if(targetCanvas) targetCanvas.addGroup()
+                    }
                 }
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: "#2c2c2e"
             }
         }
         

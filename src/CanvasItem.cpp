@@ -1688,6 +1688,33 @@ void CanvasItem::duplicateLayer(int index) {
   update();
 }
 
+void CanvasItem::moveLayer(int fromIndex, int toIndex) {
+  if (fromIndex == toIndex) return;
+  
+  // Validate indices
+  if (fromIndex < 0 || fromIndex >= m_layerManager->getLayerCount() ||
+      toIndex < 0 || toIndex >= m_layerManager->getLayerCount()) {
+    return;
+  }
+  
+  m_layerManager->moveLayer(fromIndex, toIndex);
+  
+  // Update active layer index if it moved
+  if (m_activeLayerIndex == fromIndex) {
+    m_activeLayerIndex = toIndex;
+    emit activeLayerChanged();
+  } else if (fromIndex < m_activeLayerIndex && toIndex >= m_activeLayerIndex) {
+    m_activeLayerIndex--;
+    emit activeLayerChanged();
+  } else if (fromIndex > m_activeLayerIndex && toIndex <= m_activeLayerIndex) {
+    m_activeLayerIndex++;
+    emit activeLayerChanged();
+  }
+  
+  updateLayersList();
+  update();
+}
+
 void CanvasItem::mergeDown(int index) {
   m_layerManager->mergeDown(index);
   updateLayersList();
@@ -1920,15 +1947,27 @@ void CanvasItem::setLayerOpacity(int index, float opacity) {
 void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
   Layer *l = m_layerManager->getLayer(index);
   if (l) {
-    if (mode == "Normal")
-      l->blendMode = BlendMode::Normal;
-    else if (mode == "Multiply")
-      l->blendMode = BlendMode::Multiply;
-    else if (mode == "Screen")
-      l->blendMode = BlendMode::Screen;
-    else if (mode == "Overlay")
-      l->blendMode = BlendMode::Overlay;
+    BlendMode newMode = BlendMode::Normal;
+    if (mode == "Normal") newMode = BlendMode::Normal;
+    else if (mode == "Multiply") newMode = BlendMode::Multiply;
+    else if (mode == "Screen") newMode = BlendMode::Screen;
+    else if (mode == "Overlay") newMode = BlendMode::Overlay;
+    else if (mode == "Darken") newMode = BlendMode::Darken;
+    else if (mode == "Lighten") newMode = BlendMode::Lighten;
+    else if (mode == "Color Dodge") newMode = BlendMode::ColorDodge;
+    else if (mode == "Color Burn") newMode = BlendMode::ColorBurn;
+    else if (mode == "Soft Light") newMode = BlendMode::SoftLight;
+    else if (mode == "Hard Light") newMode = BlendMode::HardLight;
+    else if (mode == "Difference") newMode = BlendMode::Difference;
+    else if (mode == "Exclusion") newMode = BlendMode::Exclusion;
+    else if (mode == "Hue") newMode = BlendMode::Hue;
+    else if (mode == "Saturation") newMode = BlendMode::Saturation;
+    else if (mode == "Color") newMode = BlendMode::Color;
+    else if (mode == "Luminosity") newMode = BlendMode::Luminosity;
+    
+    if (l->blendMode == newMode) return;
 
+    l->blendMode = newMode;
     updateLayersList();
     update();
   }

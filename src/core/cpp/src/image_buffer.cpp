@@ -288,19 +288,183 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
       uint8_t sA = static_cast<uint8_t>(srcA * 255.0f);
       uint8_t invSA = 255 - sA;
 
-      for (int c = 0; c < 3; ++c) {
-        // Source is straight, but we must premultiply it and blend onto
-        // premultiplied dst
-        uint8_t sVal = static_cast<uint8_t>(srcRow[c] * srcA);
+      // HSL Blending Logic (Requires full pixel access)
+      if (mode == BlendMode::Hue || mode == BlendMode::Saturation || mode == BlendMode::Color || mode == BlendMode::Luminosity) {
+          // Helper: Get Luminance
+          auto getLum = [](float r, float g, float b) { return 0.3f*r + 0.59f*g + 0.11f*b; };
+          
+          // Helper: Set Luminance
+          auto setLum = [&](float& r, float& g, float& b, float l) {
+              float d = l - getLum(r, g, b);
+              r += d; g += d; b += d;
+              float l_new = getLum(r, g, b);
+              float n = std::min({r, g, b});
+              float x = std::max({r, g, b});
+              if (n < 0.0f) {
+                  float fact = l_new / (l_new - n);
+                  r = l_new + (r - l_new) * fact;
+                  g = l_new + (g - l_new) * fact;
+                  b = l_new + (b - l_new) * fact;
+              }
+              if (x > 1.0f) {
+                  float fact = (1.0f - l_new) / (x - l_new);
+                  r = l_new + (r - l_new) * fact;
+                  g = l_new + (g - l_new) * fact;
+                  b = l_new + (b - l_new) * fact;
+              }
+          };
+          
+          // Helper: Get Saturation
+          auto getSat = [](float r, float g, float b) { return std::max({r,g,b}) - std::min({r,g,b}); };
+          
+          // Helper: Set Saturation
+          auto setSat = [&](float& r, float& g, float& b, float s) {
+                float *min_c = &r, *mid_c = &g, *max_c = &b;
+                if (*mid_c < *min_c) std::swap(mid_c, min_c);
+                if (*max_c < *mid_c) std::swap(max_c, mid_c);
+                if (*mid_c < *min_c) std::swap(mid_c, min_c);
+                
+                if (*max_c > *min_c) {
+                    *mid_c = (((*mid_c - *min_c) * s) / (*max_c - *min_c));
+                    *max_c = s;
+                } else {
+                    *mid_c = *max_c = 0;
+                }
+                *min_c = 0;
+          };
 
-        if (mode == BlendMode::Multiply) {
-          uint8_t dVal = dstRow[c]; // already premult
-          // Multiply expects un-premult? Actually Multiply is tricky in premult
-          // space. Simplified: (src * dst) and keep alpha
-          dstRow[c] = (sVal * dVal) / 255;
-        } else {
-          // Normal
-          dstRow[c] = clampVal<int>(sVal + (dstRow[c] * invSA) / 255, 0, 255);
+          // 1. Get Source Color (Straight)
+          float sR = (srcRow[0] * srcA) / 255.0f; // srcRow is straight? No, srcRow is likely straight in buffer but multiplied by opacity logic earlier... 
+                                                  // Wait, srcRow comes from pixelAt. m_data is premultiplied?
+                                                  // ImageBuffer implementation says "Internal data is PREMULTIPLIED".
+                                                  // BUT composite loop calculates srcA = (p[3]/255)*opacity.
+                                                  // And "Source is straight, but we must premultiply it".
+                                                  // Let's assume srcRow is UN-premultiplied color (RGB) and p[3] is Alpha.
+                                                  // Line 294: sVal = srcRow[c] * srcA.
+                                                  // If m_data is premult, getting straight RGB means dividing by alpha.
+                                                  // Let's check pixelAt impl. It just returns data.
+                                                  // If stored premult, then red component is R*A.
+                                                  
+          // Un-premultiply logic for blending math (expensive but needed for HSL)
+          float sA_f = srcA; // 0..1 calculated outside
+          float sR_U = 0, sG_U = 0, sB_U = 0;
+          if (srcRow[3] > 0) {
+              sR_U = (float)srcRow[0] / srcRow[3];
+              sG_U = (float)srcRow[1] / srcRow[3];
+              sB_U = (float)srcRow[2] / srcRow[3];
+          }
+          
+          float dA_f = dstRow[3] / 255.0f;
+          float dR_U = 0, dG_U = 0, dB_U = 0;
+          if (dstRow[3] > 0) {
+              dR_U = (float)dstRow[0] / dstRow[3];
+              dG_U = (float)dstRow[1] / dstRow[3];
+              dB_U = (float)dstRow[2] / dstRow[3];
+          }
+
+          float r = dR_U, g = dG_U, b = dB_U; // Destination is base
+
+          if (mode == BlendMode::Hue) {
+              float sSat = getSat(sR_U, sG_U, sB_U);
+              float sLum = getLum(sR_U, sG_U, sB_U);
+              // Set Hue of Src (by taking Src and setting Dst Sat/Lum?? No.)
+              // Hue: Hue(Src), Sat(Dst), Lum(Dst)
+              // To do this: Take Src, set Sat(Dst), set Lum(Dst)
+              r = sR_U; g = sG_U; b = sB_U;
+              setSat(r, g, b, getSat(dR_U, dG_U, dB_U));
+              setLum(r, g, b, getLum(dR_U, dG_U, dB_U));
+          } else if (mode == BlendMode::Saturation) {
+              // Sat(Src), Hue(Dst), Lum(Dst) -> Take Dst, set Sat(Src)
+              setSat(r, g, b, getSat(sR_U, sG_U, sB_U));
+          } else if (mode == BlendMode::Color) {
+              // Hue(Src), Sat(Src), Lum(Dst) -> Take Src, set Lum(Dst)
+              r = sR_U; g = sG_U; b = sB_U;
+              setLum(r, g, b, getLum(dR_U, dG_U, dB_U));
+          } else if (mode == BlendMode::Luminosity) {
+              // Lum(Src), Hue(Dst), Sat(Dst) -> Take Dst, set Lum(Src)
+              setLum(r, g, b, getLum(sR_U, sG_U, sB_U));
+          }
+
+          // Composite: Result = Blend * SrcA + Dst * (1 - SrcA)
+          // But wait, HSL is the "Blend" result between S and D colors.
+          // Standard: out = (Blend(S,D) * DstA + S * (1-DstA)) ?? No.
+          // PDF Spec: Composite(Cb, Cs) = (1-ab)*Cs + (1-as)*Cb + as*ab*Blend(Cb, Cs)
+          // Simplified source-over: Out = Blend(S,D)*sA + D*(1-sA) (if D covers S)
+          
+          // Premultiply result
+          float resR = r * sA_f + dR_U * (1.0f - sA_f); // This is simplified. correct is blend result weighted by alpha coverage.
+          // Actually, for simple painting:
+          // newColor = lerp(dst, blended_result, srcAlpha)
+          
+          // Apply opacity/alpha blending
+          // r,g,b is the RESULT of the blend function (mix of src/dst).
+          // We mix that with the original destination based on Source Alpha.
+          float mixedR = r * sA_f + dR_U * (1.0f - sA_f);
+          float mixedG = g * sA_f + dG_U * (1.0f - sA_f);
+          float mixedB = b * sA_f + dB_U * (1.0f - sA_f);
+          
+          // Output is Premultiplied
+          float outA = sA_f + dA_f * (1.0f - sA_f);
+          if (outA > 0) {
+             // Re-premultiply
+             dstRow[0] = clampVal<int>(mixedR * outA * 255.0f, 0, 255);
+             dstRow[1] = clampVal<int>(mixedG * outA * 255.0f, 0, 255);
+             dstRow[2] = clampVal<int>(mixedB * outA * 255.0f, 0, 255);
+          } else {
+             dstRow[0] = dstRow[1] = dstRow[2] = 0;
+          }
+      } 
+      // Standard Per-Channel Blending
+      else {
+        for (int c = 0; c < 3; ++c) {
+          uint8_t sVal = static_cast<uint8_t>(srcRow[c] * srcA);
+          if (mode == BlendMode::Multiply) {
+             uint8_t dVal = dstRow[c];
+             dstRow[c] = (sVal * dVal) / 255;
+          } else if (mode == BlendMode::Screen) {
+             uint8_t dVal = dstRow[c];
+             dstRow[c] = clampVal<int>(sVal + dVal - (sVal * dVal) / 255, 0, 255);
+          } else if (mode == BlendMode::Overlay) {
+             uint8_t dVal = dstRow[c];
+             if (dVal < 128) dstRow[c] = (2 * sVal * dVal) / 255;
+             else dstRow[c] = clampVal<int>(255 - 2 * (255 - sVal) * (255 - dVal) / 255, 0, 255);
+          } else if (mode == BlendMode::Darken) {
+             dstRow[c] = std::min(sVal, dstRow[c]);
+          } else if (mode == BlendMode::Lighten) {
+             dstRow[c] = std::max(sVal, dstRow[c]);
+          } else if (mode == BlendMode::Difference) {
+             dstRow[c] = std::abs((int)sVal - (int)dstRow[c]);
+          } else if (mode == BlendMode::Exclusion) {
+             int p = (sVal * dstRow[c]) / 255;
+             dstRow[c] = clampVal<int>(sVal + dstRow[c] - 2 * p, 0, 255);
+          } else if (mode == BlendMode::ColorDodge) {
+             if (sVal == 255) dstRow[c] = 255;
+             else {
+                 int res = (dstRow[c] * 255) / (255 - sVal);
+                 dstRow[c] = std::min(255, res);
+             }
+          } else if (mode == BlendMode::ColorBurn) {
+             if (sVal == 0) dstRow[c] = 0;
+             else {
+                 int res = 255 - ((255 - dstRow[c]) * 255) / sVal;
+                 dstRow[c] = std::max(0, res);
+             }
+          } else if (mode == BlendMode::HardLight) {
+             uint8_t dVal = dstRow[c];
+             if (sVal < 128) dstRow[c] = (2 * sVal * dVal) / 255;
+             else dstRow[c] = clampVal<int>(255 - 2 * (255 - sVal) * (255 - dVal) / 255, 0, 255);
+          } else if (mode == BlendMode::SoftLight) {
+             float s = sVal / 255.0f;
+             float d = dstRow[c] / 255.0f;
+             float r = 0;
+             if (s < 0.5f) r = (1.0f - 2.0f * s) * d * d + 2.0f * s * d;
+             else r = (1.0f - (2.0f * s - 1.0f)) * d + (2.0f * s - 1.0f) * std::sqrt(d);
+             dstRow[c] = static_cast<uint8_t>(clampVal(r * 255.0f, 0.0f, 255.0f));
+          } else {
+             // Normal
+             uint8_t invSA = 255 - (uint8_t)(srcA * 255.0f);
+             dstRow[c] = clampVal<int>(sVal + (dstRow[c] * invSA) / 255, 0, 255);
+          }
         }
       }
       dstRow[3] = clampVal<int>(sA + (dstRow[3] * invSA) / 255, 0, 255);
