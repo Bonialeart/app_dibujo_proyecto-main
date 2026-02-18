@@ -1813,11 +1813,10 @@ Window {
                             y = (parent.height - height) / 2
                         }
                     }                    
-                    
-                    width: isHorizontal ? 460 * mainWindow.uiScale : 54 * mainWindow.uiScale
-                    height: isHorizontal ? 54 * mainWindow.uiScale : 480 * mainWindow.uiScale
+                    width: 54 * mainWindow.uiScale
+                    height: 520 * mainWindow.uiScale
                     radius: 27 * mainWindow.uiScale
-                    clip: false // Disable clip to allow shadows/popups if needed, or keep true if content overflows
+                    clip: true
                     
                     // Premium Matte Dark Body (Image 2 Style)
                     color: "#1c1c1e"
@@ -1826,11 +1825,17 @@ Window {
                     opacity: 0.98
                     z: 90
                     
-                    Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                     Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    
+                    // Subtle Shadow for depth
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true; shadowColor: "black"; shadowOpacity: 0.4; shadowBlur: 1.0; shadowVerticalOffset: 4
+                    }
                     
                     // Glass Background Blur Simulation (Subtle)
                     Rectangle { anchors.fill: parent; radius: parent.radius; color: "#ffffff"; opacity: 0.02 }
+                    Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: Qt.rgba(1, 1, 1, 0.05); border.width: 1; anchors.margins: 1 }
                     
                     // Soft Shadow
                     Rectangle {
@@ -1841,8 +1846,8 @@ Window {
                     // Drag Handle (Only this area is draggable)
                     Rectangle {
                         id: toolboxHeader
-                        width: sliderToolbox.isHorizontal ? 50 * mainWindow.uiScale : parent.width
-                        height: sliderToolbox.isHorizontal ? parent.height : 36 * mainWindow.uiScale
+                        width: sliderToolbox.isHorizontal ? 50 : parent.width
+                        height: sliderToolbox.isHorizontal ? parent.height : 36
                         color: "transparent"
                         anchors.left: sliderToolbox.isHorizontal ? parent.left : undefined
                         anchors.top: sliderToolbox.isHorizontal ? parent.top : parent.top
@@ -1884,14 +1889,12 @@ Window {
                     Column {
                         visible: !sliderToolbox.isHorizontal
                         anchors.top: toolboxHeader.bottom
-                        anchors.topMargin: 10 * mainWindow.uiScale
+                        anchors.topMargin: 5
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width
-                        spacing: 30 * mainWindow.uiScale
+                        spacing: 25 * uiScale
                         
                         ProSlider {
                             label: "Size"
-                            width: parent.width
                             value: mainCanvas.brushSize / 100.0
                             previewType: "size"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
@@ -1900,7 +1903,6 @@ Window {
                         
                         ProSlider {
                             label: "Opac"
-                            width: parent.width
                             value: mainCanvas.brushOpacity
                             previewType: "opacity"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
@@ -5272,246 +5274,459 @@ Window {
         }
     }
 
-    // === PREMIUM PRO SLIDER (ArtFlow V3 - Liquid Fill Style) ===
+    // === PREMIUM PRO SLIDER (ArtFlow V4 - Procreate Style) ===
     component ProSlider : Item {
         id: sliderRoot
-        width: parent.width; height: 195 * mainWindow.uiScale
-        
+        width: parent.width; height: 180 * mainWindow.uiScale
+
         property string label: ""
         property real value: 0.5
-        property string previewType: "size"
+        property string previewType: "size"  // "size" | "opacity"
         property bool previewOnRight: true
-        
-        // Track Background (The "Empty" Pill Segment)
+
+        // ── Track pill ──
         Rectangle {
             id: track
             anchors.fill: parent
-            anchors.margins: 2 * mainWindow.uiScale
-            radius: width/2
-            color: "#1c1c1e" // Dark base
-            clip: true
-            
-            // The "Liquid" Fill (Image 2 Style - Rellenando)
+            anchors.margins: 4 * mainWindow.uiScale
+            radius: width / 2
+
+            // Deep recessed groove
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#111113" }
+                GradientStop { position: 1.0; color: "#1e1e20" }
+            }
+            border.color: Qt.rgba(0, 0, 0, 0.6); border.width: 1
+
+            // Inner top-light shimmer
             Rectangle {
-                id: fillArea
-                width: parent.width; height: parent.height * sliderRoot.value
-                anchors.bottom: parent.bottom
-                radius: parent.radius
-                color: "#2c2c2e" // Matte gray fill
-                
-                opacity: sliderRoot.value > 0.005 ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-                
-                // Top Edge Highlight (Subtle Handle Replacement)
-                Rectangle {
-                    width: parent.width; height: 6 * mainWindow.uiScale
-                    anchors.top: parent.top
-                    color: "#4a4a4c"
-                    radius: 3 * mainWindow.uiScale
-                    opacity: sliderRoot.value > 0.05 ? 1.0 : 0.0
+                anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                height: parent.radius; radius: parent.radius
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(1,1,1,0.04) }
+                    GradientStop { position: 1.0; color: "transparent" }
                 }
-                
-                // Inner Shine for premium look
+            }
+
+            // Filled portion (accent glow)
+            Rectangle {
+                id: fillBar
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left; anchors.right: parent.right
+                anchors.margins: 1
+                height: (parent.height - 2) * sliderRoot.value
+                radius: parent.radius
+
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(mainWindow.colorAccent.r, mainWindow.colorAccent.g, mainWindow.colorAccent.b, 0.55) }
+                    GradientStop { position: 1.0; color: Qt.rgba(mainWindow.colorAccent.r, mainWindow.colorAccent.g, mainWindow.colorAccent.b, 0.25) }
+                }
+
+                Behavior on height { NumberAnimation { duration: 30; easing.type: Easing.OutQuad } }
+
+                // Glow line on top edge of fill
                 Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: parent.radius
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.03) }
-                        GradientStop { position: 1.0; color: "transparent" }
-                    }
+                    anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                    height: 2; radius: 1
+                    color: Qt.rgba(mainWindow.colorAccent.r, mainWindow.colorAccent.g, mainWindow.colorAccent.b, 0.9)
+                    opacity: sliderRoot.value > 0.02 ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 100 } }
                 }
             }
         }
-        
+
+        // ── Thumb pill ──
+        Rectangle {
+            id: thumb
+            width: parent.width - (8 * mainWindow.uiScale)
+            height: width * 0.55
+            radius: height / 2
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: track.y + (track.height - height) * (1 - sliderRoot.value) + 4 * mainWindow.uiScale
+
+            // Frosted glass surface
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: dragArea.pressed ? "#6a6a6e" : "#58585c" }
+                GradientStop { position: 1.0; color: dragArea.pressed ? "#48484c" : "#3c3c40" }
+            }
+            border.color: Qt.rgba(1, 1, 1, 0.14); border.width: 1
+
+            // Top specular
+            Rectangle {
+                anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                anchors.margins: 1
+                height: parent.height * 0.45; radius: parent.radius
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(1,1,1,0.18) }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
+
+            // Two grip dots
+            Row {
+                anchors.centerIn: parent; spacing: 4 * mainWindow.uiScale
+                Repeater {
+                    model: 3
+                    Rectangle { width: 2 * mainWindow.uiScale; height: 2 * mainWindow.uiScale; radius: 1; color: Qt.rgba(1,1,1,0.35) }
+                }
+            }
+
+            Behavior on y { NumberAnimation { duration: 30; easing.type: Easing.OutQuad } }
+            Behavior on gradient { ColorAnimation { duration: 120 } }
+
+            scale: dragArea.pressed ? 1.06 : (dragArea.containsMouse ? 1.03 : 1.0)
+            Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+        }
+
+        // ── Label above pill ──
+        Text {
+            text: sliderRoot.label
+            color: "#555"
+            font.pixelSize: 9 * mainWindow.uiScale
+            font.weight: Font.Medium
+            font.letterSpacing: 0.8
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: -14 * mainWindow.uiScale
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
+
         MouseArea {
             id: dragArea
-            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.SizeVerCursor
             function updateVal(my) {
-                var v = 1.0 - (my / parent.height)
-                sliderRoot.value = Math.max(0, Math.min(1.0, v))
+                var usable = track.height - thumb.height - 8 * mainWindow.uiScale
+                var v = 1.0 - ((my - thumb.height / 2 - 4 * mainWindow.uiScale) / usable)
+                sliderRoot.value = Math.max(0.0, Math.min(1.0, v))
             }
             onPressed: updateVal(mouseY)
             onPositionChanged: if (pressed) updateVal(mouseY)
         }
-        
-        // Floating Preview (Only shows on drag)
+
+        // ── Premium Floating Preview Panel ──
         Rectangle {
             id: previewPanel
-            x: previewOnRight ? parent.width + 15 : -215
-            y: (parent.height * (1 - sliderRoot.value)) - height/2
-            width: 200; height: 220; radius: 16
-            color: "#2c2c2e"; border.color: "#48484a"; border.width: 1
-            visible: dragArea.pressed; z: 5000
-            
-            scale: visible ? 1.0 : 0.8; opacity: visible ? 1.0 : 0.0
-            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-            Behavior on opacity { NumberAnimation { duration: 150 } }
-            
-            Rectangle { anchors.fill: parent; anchors.margins: -10; z: -1; radius: 24; color: "black"; opacity: 0.4 }
-            
-            Column {
-                anchors.fill: parent; anchors.margins: 18; spacing: 12
-                Text { 
-                    text: (sliderRoot.previewType === "size" ? "Size " : "Opacity ") + Math.round(sliderRoot.value * 100) + "%"
-                    color: "white"; font.pixelSize: 18; font.weight: Font.DemiBold; anchors.horizontalCenter: parent.horizontalCenter 
+            x: previewOnRight ? parent.width + 18 : -previewPanel.width - 18
+            y: thumb.y + thumb.height / 2 - height / 2
+            width: 188; height: 210
+            radius: 20
+            visible: dragArea.pressed
+            z: 9000
+            clip: false
+
+            // Deep glass background
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#2a2a2e" }
+                GradientStop { position: 1.0; color: "#1e1e22" }
+            }
+            border.color: Qt.rgba(1,1,1,0.1); border.width: 1
+
+            // Subtle drop shadow
+            Rectangle {
+                anchors.fill: parent; anchors.margins: -12
+                z: -1; radius: parent.radius + 10
+                color: "black"; opacity: 0.55
+                layer.enabled: true
+            }
+
+            // Top glass rim
+            Rectangle {
+                anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                anchors.margins: 1; height: 28; radius: parent.radius
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(1,1,1,0.06) }
+                    GradientStop { position: 1.0; color: "transparent" }
                 }
-                Rectangle {
-                    width: 164; height: 140; radius: 12; color: "#1a1a1c"; clip: true
-                    
-                    // The actual Brush Tip Preview
-                    Image {
-                        id: brushTipImage
-                        property real ds: sliderRoot.previewType === "size" ? Math.max(8, 120 * sliderRoot.value) : 60
-                        width: ds; height: ds
-                        anchors.centerIn: parent
-                        source: (mainCanvas && mainCanvas.brushTipImage) ? mainCanvas.brushTipImage : ""
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                        asynchronous: false // We want immediate feedback during drag
-                        
-                        opacity: sliderRoot.previewType === "opacity" ? sliderRoot.value : 1.0
-                        
-                        // Fallback circle if image fails to load or empty
-                        Rectangle {
-                            anchors.fill: parent; radius: width/2; color: mainCanvas ? mainCanvas.brushColor : "white"
-                            visible: brushTipImage.status !== Image.Ready
-                            border.color: Qt.rgba(1,1,1,0.2); border.width: 1
+            }
+
+            opacity: dragArea.pressed ? 1.0 : 0.0
+            scale: dragArea.pressed ? 1.0 : 0.82
+            transformOrigin: previewOnRight ? Item.Left : Item.Right
+            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on scale  { NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 1.5 } }
+
+            Column {
+                anchors.fill: parent; anchors.margins: 16; spacing: 0
+
+                // Header row
+                Item {
+                    width: parent.width; height: 28
+                    Text {
+                        text: sliderRoot.previewType === "size" ? "Size" : "Opacity"
+                        color: Qt.rgba(1,1,1,0.55); font.pixelSize: 11; font.weight: Font.Medium
+                        font.letterSpacing: 0.5
+                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: Math.round(sliderRoot.value * 100) + "%"
+                        color: "white"; font.pixelSize: 22; font.weight: Font.Bold
+                        font.letterSpacing: -0.5
+                        anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                // Divider
+                Rectangle { width: parent.width; height: 1; color: Qt.rgba(1,1,1,0.07); topPadding: 4 }
+
+                // Canvas area for brush preview
+                Item {
+                    width: parent.width; height: 148
+
+                    // Checker background (canvas feel)
+                    Grid {
+                        anchors.fill: parent
+                        rows: 6; columns: 8
+                        Repeater {
+                            model: 48
+                            Rectangle {
+                                width: parent.width / 8; height: parent.height / 6
+                                color: (Math.floor(index / 8) + index % 8) % 2 === 0 ? "#1a1a1c" : "#161618"
+                            }
                         }
-                        
-                        // If it's the size slider, we might want to color the tip? 
-                        // The base64 from C++ is white. We can use color overlay if needed, but white is standard for tip previews.
+                    }
+
+                    // ── BRUSH SHAPE PREVIEW (PNG + circle fallback) ──
+                    Item {
+                        id: brushPreviewItem
+                        anchors.centerIn: parent
+
+                        // Dynamic size for "size" type, fixed for "opacity"
+                        property real displaySize: sliderRoot.previewType === "size"
+                            ? Math.max(6, 128 * sliderRoot.value)
+                            : 64
+
+                        width: displaySize; height: displaySize
+                        Behavior on width  { NumberAnimation { duration: 60; easing.type: Easing.OutQuad } }
+                        Behavior on height { NumberAnimation { duration: 60; easing.type: Easing.OutQuad } }
+
+                        // Brush PNG image (uses currentBrushIcon if available, falls back gracefully)
+                        Image {
+                            id: brushImg
+                            anchors.fill: parent
+                            source: (mainCanvas && mainCanvas.currentBrushIcon && mainCanvas.currentBrushIcon !== "")
+                                    ? mainCanvas.currentBrushIcon
+                                    : ""
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
+                            antialiasing: true
+                            visible: status === Image.Ready
+                            opacity: sliderRoot.previewType === "opacity" ? sliderRoot.value : 1.0
+                            Behavior on opacity { NumberAnimation { duration: 60 } }
+
+                            // Colorize tint layer
+                            Rectangle {
+                                anchors.fill: parent
+                                color: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                                opacity: 0.0   // pure shape tint - set to 0 to keep natural color
+                            }
+                        }
+
+                        // Fallback: drawn circle with brush color when no PNG
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: width / 2
+                            visible: brushImg.status !== Image.Ready
+                            color: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            opacity: sliderRoot.previewType === "opacity" ? sliderRoot.value : 1.0
+                            border.color: Qt.rgba(1, 1, 1, 0.2); border.width: 1
+                            Behavior on opacity { NumberAnimation { duration: 60 } }
+                        }
                     }
                 }
             }
         }
     }
 
-    // === PREMIUM HORIZONTAL SLIDER (Liquid Fill Style) ===
+    // === PREMIUM HORIZONTAL SLIDER (For Top/Bottom Placement) ===
     component ProSliderHorizontal : Item {
         id: hSliderRoot
-        width: 180 * mainWindow.uiScale; height: 32 * mainWindow.uiScale
-        
+        width: 160; height: 36
+
         property string label: "Size"
         property real value: 0.5
         property string previewType: "size"
         property bool previewOnBottom: true
-        
-        // Track Background ("Empty" Capsule)
+
+        // Label
+        Text {
+            id: hLabel
+            text: hSliderRoot.label
+            color: "#555"
+            font.pixelSize: 9; font.weight: Font.Medium; font.letterSpacing: 0.7
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+        }
+
+        // Horizontal Track
         Rectangle {
             id: hTrack
-            anchors.fill: parent
-            radius: height/2
-            color: "#1c1c1e" // Dark base
-            clip: true
-            
-            // Liquid Fill
+            anchors.left: hLabel.right; anchors.leftMargin: 10
+            anchors.right: parent.right; anchors.rightMargin: 5
+            anchors.verticalCenter: parent.verticalCenter
+            height: 6; radius: 3
+
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "#111113" }
+                GradientStop { position: 1.0; color: "#1e1e20" }
+            }
+            border.color: Qt.rgba(0,0,0,0.5); border.width: 1
+
+            // Fill
             Rectangle {
-                id: hFillArea
-                height: parent.height; width: parent.width * hSliderRoot.value
-                anchors.left: parent.left
-                radius: parent.radius
-                color: "#2c2c2e" // Matte gray fill
-                
-                opacity: hSliderRoot.value > 0.01 ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-                
-                // Right Edge Highlight
-                Rectangle {
-                    height: parent.height; width: 6 * mainWindow.uiScale
-                    anchors.right: parent.right
-                    color: "#4a4a4c"
-                    radius: 3 * mainWindow.uiScale
-                    opacity: hSliderRoot.value > 0.05 ? 1.0 : 0.0
+                anchors.left: parent.left; anchors.leftMargin: 1
+                anchors.verticalCenter: parent.verticalCenter
+                width: Math.max(0, (parent.width - 2) * hSliderRoot.value)
+                height: parent.height - 2; radius: 2
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: Qt.rgba(mainWindow.colorAccent.r, mainWindow.colorAccent.g, mainWindow.colorAccent.b, 0.25) }
+                    GradientStop { position: 1.0; color: Qt.rgba(mainWindow.colorAccent.r, mainWindow.colorAccent.g, mainWindow.colorAccent.b, 0.6) }
                 }
-                
-                // Inner Shine
+                Behavior on width { NumberAnimation { duration: 30 } }
+            }
+
+            // Thumb pill
+            Rectangle {
+                id: hThumb
+                width: 18; height: 28; radius: 6
+                anchors.verticalCenter: parent.verticalCenter
+                x: (parent.width - width) * hSliderRoot.value
+                Behavior on x { NumberAnimation { duration: 30 } }
+
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: hDragArea.pressed ? "#6a6a6e" : "#58585c" }
+                    GradientStop { position: 1.0; color: hDragArea.pressed ? "#3c3c40" : "#323236" }
+                }
+                border.color: Qt.rgba(1,1,1,0.14); border.width: 1
+
+                // Specular
                 Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: parent.radius
+                    anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                    anchors.margins: 1; height: parent.height * 0.45; radius: parent.radius
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.03) }
+                        GradientStop { position: 0.0; color: Qt.rgba(1,1,1,0.2) }
                         GradientStop { position: 1.0; color: "transparent" }
                     }
                 }
-            }
-            
-            // Label Overlay (Subtle indication)
-            Text {
-                text: hSliderRoot.label
-                anchors.left: parent.left; anchors.leftMargin: 12 * mainWindow.uiScale
-                anchors.verticalCenter: parent.verticalCenter
-                color: "white"; opacity: 0.4
-                font.pixelSize: 11 * mainWindow.uiScale; font.weight: Font.DemiBold
+
+                // Grip dots
+                Column {
+                    anchors.centerIn: parent; spacing: 3
+                    Repeater {
+                        model: 2
+                        Rectangle { width: 10; height: 1.5; radius: 1; color: Qt.rgba(1,1,1,0.35) }
+                    }
+                }
+
+                scale: hDragArea.pressed ? 1.08 : (hDragArea.containsMouse ? 1.04 : 1.0)
+                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
             }
         }
-        
-        // Interaction
+
         MouseArea {
             id: hDragArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            
+            anchors.fill: hTrack; hoverEnabled: true; cursorShape: Qt.SizeHorCursor
             function updateVal(mx) {
-                var v = mx / parent.width
-                hSliderRoot.value = Math.max(0, Math.min(1.0, v))
+                var v = mx / hTrack.width
+                hSliderRoot.value = Math.max(0.0, Math.min(1.0, v))
             }
-            
             onPressed: updateVal(mouseX)
             onPositionChanged: if (pressed) updateVal(mouseX)
         }
-        
-        // Floating Preview
+
+        // Premium Preview Panel (horizontal mode)
         Rectangle {
             id: hPreviewPanel
-            x: (parent.width * hSliderRoot.value) - (width/2)
-            y: previewOnBottom ? parent.height + 15 : -height - 15
-            width: 140; height: 120
-            radius: 12
-            color: "#2c2c2e"
-            border.color: "#48484a"
-            border.width: 1
-            visible: hDragArea.pressed
-            z: 5000
-            
-            scale: visible ? 1.0 : 0.8; opacity: visible ? 1.0 : 0.0
-            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-            Behavior on opacity { NumberAnimation { duration: 150 } }
-            
-            // Shadow
-            Rectangle {
-                anchors.fill: parent; anchors.margins: -4
-                z: -1; radius: 16; color: "black"; opacity: 0.4
+            x: (parent.width / 2) - (width / 2)
+            y: previewOnBottom ? parent.height + 14 : -height - 14
+            width: 188; height: 190
+            radius: 20
+            visible: false
+            z: 9000
+
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: "#2a2a2e" }
+                GradientStop { position: 1.0; color: "#1e1e22" }
             }
-            
-            Column {
-                anchors.centerIn: parent
-                spacing: 8
-                
-                Text {
-                    text: hSliderRoot.label + " " + Math.round(hSliderRoot.value * 100) + "%"
-                    color: "white"
-                    font.pixelSize: 13; font.weight: Font.DemiBold
-                    anchors.horizontalCenter: parent.horizontalCenter
+            border.color: Qt.rgba(1,1,1,0.1); border.width: 1
+
+            Rectangle {
+                anchors.fill: parent; anchors.margins: -12
+                z: -1; radius: parent.radius + 10; color: "black"; opacity: 0.55
+            }
+            Rectangle {
+                anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                anchors.margins: 1; height: 28; radius: parent.radius
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(1,1,1,0.06) }
+                    GradientStop { position: 1.0; color: "transparent" }
                 }
-                
-                Rectangle {
-                    width: 100; height: 100; radius: 8; color: "#1a1a1c"; clip: true
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    
-                    Image {
-                        id: hBrushTipImage
-                        property real ds: hSliderRoot.previewType === "size" ? Math.max(8, 70 * hSliderRoot.value) : 40
-                        width: ds; height: ds
+            }
+
+            opacity: hDragArea.pressed ? 1.0 : 0.0
+            scale: hDragArea.pressed ? 1.0 : 0.82
+            transformOrigin: previewOnBottom ? Item.Top : Item.Bottom
+            Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+            Behavior on scale  { NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 1.5 } }
+
+            Column {
+                anchors.fill: parent; anchors.margins: 16; spacing: 0
+
+                Item {
+                    width: parent.width; height: 28
+                    Text {
+                        text: hSliderRoot.previewType === "size" ? "Size" : "Opacity"
+                        color: Qt.rgba(1,1,1,0.55); font.pixelSize: 11; font.weight: Font.Medium
+                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: Math.round(hSliderRoot.value * 100) + "%"
+                        color: "white"; font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: -0.5
+                        anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+
+                Rectangle { width: parent.width; height: 1; color: Qt.rgba(1,1,1,0.07) }
+
+                Item {
+                    width: parent.width; height: 130
+
+                    Grid {
+                        anchors.fill: parent; rows: 5; columns: 8
+                        Repeater {
+                            model: 40
+                            Rectangle {
+                                width: parent.width/8; height: parent.height/5
+                                color: (Math.floor(index/8) + index%8) % 2 === 0 ? "#1a1a1c" : "#161618"
+                            }
+                        }
+                    }
+
+                    Item {
                         anchors.centerIn: parent
-                        source: (mainCanvas && mainCanvas.brushTipImage) ? mainCanvas.brushTipImage : ""
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                        asynchronous: false
-                        opacity: hSliderRoot.previewType === "opacity" ? hSliderRoot.value : 1.0
+                        property real displaySize: hSliderRoot.previewType === "size"
+                            ? Math.max(6, 110 * hSliderRoot.value) : 56
+                        width: displaySize; height: displaySize
+                        Behavior on width  { NumberAnimation { duration: 60 } }
+                        Behavior on height { NumberAnimation { duration: 60 } }
+
+                        Image {
+                            anchors.fill: parent
+                            source: (mainCanvas && mainCanvas.currentBrushIcon && mainCanvas.currentBrushIcon !== "")
+                                    ? mainCanvas.currentBrushIcon : ""
+                            fillMode: Image.PreserveAspectFit; smooth: true
+                            visible: status === Image.Ready
+                            opacity: hSliderRoot.previewType === "opacity" ? hSliderRoot.value : 1.0
+                            Behavior on opacity { NumberAnimation { duration: 60 } }
+                        }
 
                         Rectangle {
-                            anchors.fill: parent; radius: width/2; color: mainCanvas ? mainCanvas.brushColor : "white"
-                            visible: hBrushTipImage.status !== Image.Ready
+                            anchors.fill: parent; radius: width / 2
+                            visible: parent.children[0].status !== Image.Ready
+                            color: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            opacity: hSliderRoot.previewType === "opacity" ? hSliderRoot.value : 1.0
                             border.color: Qt.rgba(1,1,1,0.2); border.width: 1
+                            Behavior on opacity { NumberAnimation { duration: 60 } }
                         }
                     }
                 }

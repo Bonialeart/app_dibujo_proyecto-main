@@ -69,6 +69,8 @@ public:
                  impastoSettingsChanged)
   Q_PROPERTY(float lightElevation READ lightElevation WRITE setLightElevation
                  NOTIFY impastoSettingsChanged)
+  Q_PROPERTY(float brushRoundness READ brushRoundness WRITE setBrushRoundness
+                 NOTIFY brushRoundnessChanged)
 
   Q_PROPERTY(
       float zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
@@ -110,6 +112,8 @@ public:
                  availableBrushesChanged)
   Q_PROPERTY(QString activeBrushName READ activeBrushName NOTIFY
                  activeBrushNameChanged)
+  Q_PROPERTY(
+      QString brushTipImage READ brushTipImage NOTIFY brushTipImageChanged)
 
   // ── Brush Studio editing state ──
   Q_PROPERTY(
@@ -137,6 +141,7 @@ public:
   float impastoStrength() const { return m_impastoStrength; }
   float lightAngle() const { return m_lightAngle; }
   float lightElevation() const { return m_lightElevation; }
+  float brushRoundness() const { return m_brushRoundness; }
 
   float zoomLevel() const { return m_zoomLevel; }
   QString currentTool() const { return m_currentToolStr; }
@@ -155,6 +160,7 @@ public:
   bool isEraser() const { return m_isEraser; }
   QVariantList availableBrushes() const { return m_availableBrushes; }
   QString activeBrushName() const { return m_activeBrushName; }
+  QString brushTipImage() const { return m_brushTipImage; }
   bool isEditingBrush() const { return m_isEditingBrush; }
 
   // Setters
@@ -173,6 +179,7 @@ public:
   void setImpastoStrength(float strength);
   void setLightAngle(float angle);
   void setLightElevation(float elevation);
+  void setBrushRoundness(float value);
   void setBrushAngle(float value);
   void setCursorRotation(float value);
   void setZoomLevel(float zoom);
@@ -269,7 +276,7 @@ public:
   Q_INVOKABLE QString getStampPreview();
 
   QVariantList pressureCurvePoints() const { return m_rawPoints; }
-  void setCurvePoints(const QVariantList &points);
+  Q_INVOKABLE void setCurvePoints(const QVariantList &points);
 
 signals:
   void brushSizeChanged();
@@ -285,6 +292,7 @@ signals:
   void brushSmudgeChanged();
   void impastoShininessChanged();
   void impastoSettingsChanged();
+  void brushRoundnessChanged();
 
   void zoomLevelChanged();
   void currentToolChanged();
@@ -304,6 +312,7 @@ signals:
   void layersChanged(const QVariantList &layers);
   void availableBrushesChanged();
   void activeBrushNameChanged();
+  void brushTipImageChanged();
   void isFlippedHChanged();
   void isFlippedVChanged();
 
@@ -360,6 +369,7 @@ private:
   float m_brushGrain;
   float m_brushWetness;
   float m_brushSmudge;
+  float m_brushRoundness = 1.0f;
 
   float m_zoomLevel;
   QString m_currentToolStr; // QML compatibility
@@ -379,6 +389,7 @@ private:
   QString m_brushTip;
   QVariantList m_availableBrushes;
   QString m_activeBrushName;
+  QString m_brushTipImage;
 
   // ── Brush Studio editing state ──
   bool m_isEditingBrush = false;
@@ -440,11 +451,14 @@ private:
   QString m_lastBrushTexturePath;
   float m_lastCursorSize = -1;
   float m_lastCursorRotation = -1;
+  QColor m_lastCursorColor;
   bool m_cursorCacheDirty = true;
 
   QImage loadAndProcessBrushTexture(const QString &texturePath, float size,
-                                    float rotation);
+                                    float rotation, float zoomOverride = 0.0f,
+                                    bool outline = false);
   void invalidateCursorCache();
+  void updateBrushTipImage();
 
   void capture_timelapse_frame();
 };

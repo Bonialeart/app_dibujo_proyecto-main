@@ -41,20 +41,26 @@ template <> constexpr inline auto TestCanvas::qt_create_metaobjectdata<qt_meta_t
         "TestCanvas",
         "curvePointsChanged",
         "",
+        "setCurvePoints",
+        "QVariantList",
+        "points",
         "clear",
-        "curvePoints",
-        "QVariantList"
+        "curvePoints"
     };
 
     QtMocHelpers::UintData qt_methods {
         // Signal 'curvePointsChanged'
         QtMocHelpers::SignalData<void()>(1, 2, QMC::AccessPublic, QMetaType::Void),
+        // Method 'setCurvePoints'
+        QtMocHelpers::MethodData<void(const QVariantList &)>(3, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 4, 5 },
+        }}),
         // Method 'clear'
-        QtMocHelpers::MethodData<void()>(3, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::MethodData<void()>(6, 2, QMC::AccessPublic, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
         // property 'curvePoints'
-        QtMocHelpers::PropertyData<QVariantList>(4, 0x80000000 | 5, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<QVariantList>(7, 0x80000000 | 4, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 0),
     };
     QtMocHelpers::UintData qt_enums {
     };
@@ -77,7 +83,8 @@ void TestCanvas::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
     if (_c == QMetaObject::InvokeMetaMethod) {
         switch (_id) {
         case 0: _t->curvePointsChanged(); break;
-        case 1: _t->clear(); break;
+        case 1: _t->setCurvePoints((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
+        case 2: _t->clear(); break;
         default: ;
         }
     }
@@ -120,14 +127,14 @@ int TestCanvas::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 2)
+        if (_id < 3)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 2;
+        _id -= 3;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 2)
+        if (_id < 3)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 2;
+        _id -= 3;
     }
     if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty

@@ -30,6 +30,7 @@
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/PopOverPanel.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/DockContainer.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/ProjectGroupView.qml",
+		"E:/app_dibujo_proyecto-main/src/ui/qml/components/ProSliderHorizontal.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/ProjectNavigator.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/DockArea.qml",
 		"E:/app_dibujo_proyecto-main/src/ui/qml/components/ToastManager.qml",

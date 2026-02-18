@@ -50,16 +50,18 @@ Item {
     opacity: panelVisible ? 1.0 : 0.0
     scale: panelVisible ? 1.0 : 0.92
 
+    // Bind position to initial values (breaks when dragged)
+    x: initialX
+    y: initialY
+
     Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
     Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutBack } }
 
-    // Initialize position
+    // Initialize dimensions (position is bound via x: initialX / y: initialY)
     Component.onCompleted: {
         if (!_initialized) {
-            panel.x = initialX
-            panel.y = initialY
-            panel.width = defaultWidth
-            panel.height = defaultHeight
+            root.width = defaultWidth
+            root.height = defaultHeight
             _initialized = true
         }
     }
@@ -67,8 +69,7 @@ Item {
     // ── PANEL BODY ──
     Item {
         id: panel
-        width: root.defaultWidth
-        height: root.defaultHeight
+        anchors.fill: parent
 
         // ── Shadow (Outer Glow) ──
         Rectangle {
@@ -210,7 +211,6 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                root.panelVisible = false
                                 root.closeRequested()
                             }
                         }
@@ -239,15 +239,15 @@ Item {
                         if (pressed) {
                             var dx = mouse.x - pressPos.x
                             var dy = mouse.y - pressPos.y
-                            var newX = panel.x + dx
-                            var newY = panel.y + dy
+                            var newX = root.x + dx
+                            var newY = root.y + dy
                             
                             // Constrain to parent
-                            newX = Math.max(-panel.width + 60, Math.min(newX, root.parent ? root.parent.width - 60 : 9999))
+                            newX = Math.max(-root.width + 60, Math.min(newX, root.parent ? root.parent.width - 60 : 9999))
                             newY = Math.max(0, Math.min(newY, root.parent ? root.parent.height - 40 : 9999))
                             
-                            panel.x = newX
-                            panel.y = newY
+                            root.x = newX
+                            root.y = newY
                         }
                     }
                 }
@@ -279,12 +279,12 @@ Item {
             State {
                 name: "minimized"
                 when: root._minimized
-                PropertyChanges { target: panel; height: 36 }
+                PropertyChanges { target: root; height: 36 }
             },
             State {
                 name: "normal"
                 when: !root._minimized
-                PropertyChanges { target: panel; height: panel._savedHeight > 0 ? panel._savedHeight : root.defaultHeight }
+                PropertyChanges { target: root; height: panel._savedHeight > 0 ? panel._savedHeight : root.defaultHeight }
             }
         ]
 
@@ -316,14 +316,14 @@ Item {
             
             onPressed: (mouse) => {
                 startX = mapToItem(root.parent, mouse.x, 0).x
-                startW = panel.width
+                startW = root.width
                 root.panelClicked()
             }
             onPositionChanged: (mouse) => {
                 if (pressed) {
                     var globalX = mapToItem(root.parent, mouse.x, 0).x
                     var delta = globalX - startX
-                    panel.width = Math.max(root.minWidth, Math.min(root.maxWidth, startW + delta))
+                    root.width = Math.max(root.minWidth, Math.min(root.maxWidth, startW + delta))
                 }
             }
         }
@@ -346,8 +346,8 @@ Item {
             
             onPressed: (mouse) => {
                 startX = mapToItem(root.parent, mouse.x, 0).x
-                startW = panel.width
-                startPanelX = panel.x
+                startW = root.width
+                startPanelX = root.x
                 root.panelClicked()
             }
             onPositionChanged: (mouse) => {
@@ -356,8 +356,8 @@ Item {
                     var delta = startX - globalX
                     var newW = Math.max(root.minWidth, Math.min(root.maxWidth, startW + delta))
                     var actualDelta = newW - startW
-                    panel.x = startPanelX - actualDelta
-                    panel.width = newW
+                    root.x = startPanelX - actualDelta
+                    root.width = newW
                 }
             }
         }
@@ -379,7 +379,7 @@ Item {
             
             onPressed: (mouse) => {
                 startY = mapToItem(root.parent, 0, mouse.y).y
-                startH = panel.height
+                startH = root.height
                 root.panelClicked()
             }
             onPositionChanged: (mouse) => {
@@ -387,7 +387,7 @@ Item {
                     var globalY = mapToItem(root.parent, 0, mouse.y).y
                     var delta = globalY - startY
                     var newH = Math.max(root.minHeight, Math.min(root.maxHeight, startH + delta))
-                    panel.height = newH
+                    root.height = newH
                     panel._savedHeight = newH
                 }
             }
@@ -411,8 +411,8 @@ Item {
             
             onPressed: (mouse) => {
                 startY = mapToItem(root.parent, 0, mouse.y).y
-                startH = panel.height
-                startPanelY = panel.y
+                startH = root.height
+                startPanelY = root.y
                 root.panelClicked()
             }
             onPositionChanged: (mouse) => {
@@ -421,8 +421,8 @@ Item {
                     var delta = startY - globalY
                     var newH = Math.max(root.minHeight, Math.min(root.maxHeight, startH + delta))
                     var actualDelta = newH - startH
-                    panel.y = startPanelY - actualDelta
-                    panel.height = newH
+                    root.y = startPanelY - actualDelta
+                    root.height = newH
                     panel._savedHeight = newH
                 }
             }
@@ -445,15 +445,15 @@ Item {
             onPressed: (mouse) => {
                 var gp = mapToItem(root.parent, mouse.x, mouse.y)
                 startX = gp.x; startY = gp.y
-                startW = panel.width; startH = panel.height
+                startW = root.width; startH = root.height
                 root.panelClicked()
             }
             onPositionChanged: (mouse) => {
                 if (pressed) {
                     var gp = mapToItem(root.parent, mouse.x, mouse.y)
-                    panel.width = Math.max(root.minWidth, Math.min(root.maxWidth, startW + (gp.x - startX)))
+                    root.width = Math.max(root.minWidth, Math.min(root.maxWidth, startW + (gp.x - startX)))
                     var newH = Math.max(root.minHeight, Math.min(root.maxHeight, startH + (gp.y - startY)))
-                    panel.height = newH
+                    root.height = newH
                     panel._savedHeight = newH
                 }
             }
@@ -477,8 +477,8 @@ Item {
             onPressed: (mouse) => {
                 var gp = mapToItem(root.parent, mouse.x, mouse.y)
                 startX = gp.x; startY = gp.y
-                startW = panel.width; startH = panel.height
-                startPanelX = panel.x
+                startW = root.width; startH = root.height
+                startPanelX = root.x
                 root.panelClicked()
             }
             onPositionChanged: (mouse) => {
@@ -486,10 +486,10 @@ Item {
                     var gp = mapToItem(root.parent, mouse.x, mouse.y)
                     var deltaX = startX - gp.x
                     var newW = Math.max(root.minWidth, Math.min(root.maxWidth, startW + deltaX))
-                    panel.x = startPanelX - (newW - startW)
-                    panel.width = newW
+                    root.x = startPanelX - (newW - startW)
+                    root.width = newW
                     var newH = Math.max(root.minHeight, Math.min(root.maxHeight, startH + (gp.y - startY)))
-                    panel.height = newH
+                    root.height = newH
                     panel._savedHeight = newH
                 }
             }
@@ -513,18 +513,18 @@ Item {
             onPressed: (mouse) => {
                 var gp = mapToItem(root.parent, mouse.x, mouse.y)
                 startX = gp.x; startY = gp.y
-                startW = panel.width; startH = panel.height
-                startPanelY = panel.y
+                startW = root.width; startH = root.height
+                startPanelY = root.y
                 root.panelClicked()
             }
             onPositionChanged: (mouse) => {
                 if (pressed) {
                     var gp = mapToItem(root.parent, mouse.x, mouse.y)
-                    panel.width = Math.max(root.minWidth, Math.min(root.maxWidth, startW + (gp.x - startX)))
+                    root.width = Math.max(root.minWidth, Math.min(root.maxWidth, startW + (gp.x - startX)))
                     var deltaY = startY - gp.y
                     var newH = Math.max(root.minHeight, Math.min(root.maxHeight, startH + deltaY))
-                    panel.y = startPanelY - (newH - startH)
-                    panel.height = newH
+                    root.y = startPanelY - (newH - startH)
+                    root.height = newH
                     panel._savedHeight = newH
                 }
             }
@@ -549,8 +549,8 @@ Item {
             onPressed: (mouse) => {
                 var gp = mapToItem(root.parent, mouse.x, mouse.y)
                 startX = gp.x; startY = gp.y
-                startW = panel.width; startH = panel.height
-                startPanelX = panel.x; startPanelY = panel.y
+                startW = root.width; startH = root.height
+                startPanelX = root.x; startPanelY = root.y
                 root.panelClicked()
             }
             onPositionChanged: (mouse) => {
@@ -558,12 +558,12 @@ Item {
                     var gp = mapToItem(root.parent, mouse.x, mouse.y)
                     var deltaX = startX - gp.x
                     var newW = Math.max(root.minWidth, Math.min(root.maxWidth, startW + deltaX))
-                    panel.x = startPanelX - (newW - startW)
-                    panel.width = newW
+                    root.x = startPanelX - (newW - startW)
+                    root.width = newW
                     var deltaY = startY - gp.y
                     var newH = Math.max(root.minHeight, Math.min(root.maxHeight, startH + deltaY))
-                    panel.y = startPanelY - (newH - startH)
-                    panel.height = newH
+                    root.y = startPanelY - (newH - startH)
+                    root.height = newH
                     panel._savedHeight = newH
                 }
             }
@@ -606,8 +606,6 @@ Item {
     }
 
     // ── Panel dimensions follow internal panel item ──
-    width: panel.width
-    height: panel.height
-    x: panel.x
-    y: panel.y
+    // ── Panel dimensions no longer bound to internal panel, but the other way around ──
+
 }

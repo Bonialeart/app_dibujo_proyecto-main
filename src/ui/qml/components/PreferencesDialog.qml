@@ -48,6 +48,7 @@ Popup {
     property string tempTabletMode: "WindowsInk"
     property int tempDragDist: 3
     property bool tempAutoSave: true
+    property double tempUiScale: 1.0
 
     readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
@@ -64,6 +65,7 @@ Popup {
             tempSwitchDelay = preferencesManager.toolSwitchDelay
             tempDragDist = preferencesManager.dragDistance
             tempAutoSave = preferencesManager.autoSaveEnabled
+            if (preferencesManager.uiScale) tempUiScale = preferencesManager.uiScale
         }
     }
     
@@ -79,6 +81,8 @@ Popup {
             preferencesManager.toolSwitchDelay = tempSwitchDelay
             preferencesManager.dragDistance = tempDragDist
             preferencesManager.autoSaveEnabled = tempAutoSave
+            preferencesManager.uiScale = tempUiScale
+            
             
             toastManager.show(root.qs("saved"), "success")
         }
@@ -291,6 +295,45 @@ Popup {
                                                 anchors.fill: parent
                                                 cursorShape: Qt.PointingHandCursor
                                                 onClicked: preferencesManager.themeAccent = modelData
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            SettingsGroup {
+                                title: "Interface Scale"
+                                description: "Adjust size of UI elements."
+                                
+                                Flow {
+                                    Layout.fillWidth: true
+                                    spacing: 12
+                                    
+                                    Repeater {
+                                        model: [
+                                            { label: "Small", value: 0.8 },
+                                            { label: "Medium", value: 1.0 },
+                                            { label: "Large", value: 1.2 }
+                                        ]
+                                        delegate: Rectangle {
+                                            width: 100; height: 40
+                                            color: (Math.abs(root.tempUiScale - modelData.value) < 0.01) ? colorAccent : colorPanel
+                                            radius: 6
+                                            border.color: colorBorder
+                                            border.width: 1
+                                            
+                                            Text {
+                                                text: modelData.label
+                                                anchors.centerIn: parent
+                                                color: (Math.abs(root.tempUiScale - modelData.value) < 0.01) ? "white" : colorText
+                                                font.bold: true
+                                                font.pixelSize: 13
+                                            }
+                                            
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: root.tempUiScale = modelData.value
                                             }
                                         }
                                     }

@@ -41,12 +41,13 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_brushSpacing(0.1f), m_brushStabilization(0.2f), m_brushStreamline(0.0f),
 
       m_brushGrain(0.0f), m_brushWetness(0.0f), m_brushSmudge(0.0f),
-      m_zoomLevel(1.0f), m_currentToolStr("brush"), m_tool(ToolType::Pen),
-      m_canvasWidth(1920), m_canvasHeight(1080), m_viewOffset(50, 50),
-      m_activeLayerIndex(0), m_isTransforming(false), m_brushAngle(0.0f),
-      m_cursorRotation(0.0f), m_backgroundColor(Qt::transparent),
-      m_currentProjectPath(""), m_currentProjectName("Untitled"),
-      m_brushTip("round"), m_lastPressure(1.0f), m_isDrawing(false),
+      m_brushRoundness(1.0f), m_zoomLevel(1.0f), m_currentToolStr("brush"),
+      m_tool(ToolType::Pen), m_canvasWidth(1920), m_canvasHeight(1080),
+      m_viewOffset(50, 50), m_activeLayerIndex(0), m_isTransforming(false),
+      m_brushAngle(0.0f), m_cursorRotation(0.0f),
+      m_backgroundColor(Qt::transparent), m_currentProjectPath(""),
+      m_currentProjectName("Untitled"), m_brushTip("round"),
+      m_lastPressure(1.0f), m_isDrawing(false),
       m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()) {
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
@@ -121,7 +122,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 
   m_activeBrushName = names.isEmpty() ? "Pencil HB" : names.first();
   usePreset(m_activeBrushName);
-
+  updateBrushTipImage();
   updateLayersList();
 }
 
@@ -422,18 +423,20 @@ void CanvasItem::paint(QPainter *painter) {
         (m_cursorCacheDirty || m_brushOutlineCache.isNull() ||
          m_lastBrushTexturePath != texturePath ||
          !qFuzzyCompare(m_lastCursorSize, size * m_zoomLevel) ||
-         !qFuzzyCompare(m_lastCursorRotation, rotation));
+         !qFuzzyCompare(m_lastCursorRotation, rotation) ||
+         m_lastCursorColor != m_brushColor);
 
     if (needsRegenerate) {
       m_brushOutlineCache =
-          loadAndProcessBrushTexture(texturePath, size, rotation);
+          loadAndProcessBrushTexture(texturePath, size, rotation, 0.0f, true);
       m_lastBrushTexturePath = texturePath;
       m_lastCursorSize = size * m_zoomLevel;
       m_lastCursorRotation = rotation;
+      m_lastCursorColor = m_brushColor;
       m_cursorCacheDirty = false;
 
       qDebug() << "Cursor regenerated for texture:" << texturePath
-               << "size:" << size << "zoom:" << m_zoomLevel;
+               << "size:" << size << "color:" << m_brushColor;
     }
 
     if (!m_brushOutlineCache.isNull()) {
@@ -1022,12 +1025,9 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     handleDraw(event->position(), pressure);
   }
 
-  // Solo actualizar el cursor si no estamos dibujando
-  if (!m_isDrawing) {
-    update();
-  }
-
+  m_cursorPos = event->position();
   m_lastMousePos = event->position();
+  update();
 }
 
 void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
@@ -1158,8 +1158,9 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
       }
     }
 
-    // handleDraw(event->position(), pressure, tiltFactor);
+    m_cursorPos = event->position();
     handleDraw(event->position(), pressure, tiltFactor);
+    update();
     event->accept();
 
   } else if (event->type() == QEvent::TabletRelease) {
@@ -1260,6 +1261,7 @@ void CanvasItem::setBrushHardness(float hardness) {
   m_brushEngine->setBrush(s);
   update();
   emit brushHardnessChanged();
+  updateBrushTipImage();
 }
 
 void CanvasItem::setBrushSpacing(float spacing) {
@@ -1314,6 +1316,7 @@ void CanvasItem::setImpastoShininess(float value) {
   if (qFuzzyCompare(m_impastoShininess, value))
     return;
   m_impastoShininess = value;
+  m_impastoShininess = value;
   emit impastoShininessChanged();
   update();
 }
@@ -1324,6 +1327,18 @@ void CanvasItem::setImpastoStrength(float strength) {
   m_impastoStrength = strength;
   emit impastoSettingsChanged();
   update();
+}
+
+void CanvasItem::setBrushRoundness(float value) {
+  if (!qFuzzyCompare(m_brushRoundness, value)) {
+    m_brushRoundness = value;
+    BrushSettings s = m_brushEngine->getBrush();
+    s.roundness = value;
+    m_brushEngine->setBrush(s);
+    emit brushRoundnessChanged();
+    update();
+    updateBrushTipImage();
+  }
 }
 
 void CanvasItem::setLightAngle(float angle) {
@@ -1345,7 +1360,9 @@ void CanvasItem::setLightElevation(float elevation) {
 void CanvasItem::setBrushAngle(float value) {
   m_brushAngle = value;
   invalidateCursorCache();
+  update();
   emit brushAngleChanged();
+  updateBrushTipImage();
 }
 
 void CanvasItem::setCursorRotation(float value) {
@@ -2012,6 +2029,7 @@ void CanvasItem::usePreset(const QString &name) {
 
   m_brushEngine->setBrush(s);
   invalidateCursorCache();
+  updateBrushTipImage();
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2819,19 +2837,52 @@ QString CanvasItem::getStampPreview() {
 }
 
 QString CanvasItem::get_brush_preview(const QString &brushName) {
-  QImage img(220, 100, QImage::Format_ARGB32);
+  // Aumentar resolución para un preview más nítido y "premium"
+  QImage img(400, 160, QImage::Format_ARGB32);
   img.fill(Qt::transparent);
+
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *preset = bpm->findByName(brushName);
+  if (!preset)
+    return "";
 
   QPainter painter(&img);
   painter.setRenderHint(QPainter::Antialiasing);
+  painter.setRenderHint(QPainter::SmoothPixmapTransform);
 
+  // Crear un motor temporal para no ensuciar el estado del principal
+  BrushEngine tempEngine;
+  BrushSettings s;
+  preset->applyToLegacy(s);
+
+  // Forzar color blanco y tamaño adecuado para el preview
+  s.color = Qt::white;
+  s.size = 35.0f;
+  s.opacity = 1.0f;
+  s.spacing = std::max(s.spacing, 0.05f); // Evitar espaciado demasiado denso
+  tempEngine.setBrush(s);
+
+  // Dibujar una curva elegante "S" para mostrar la textura
   QPainterPath path;
-  path.moveTo(30, 70);
-  path.cubicTo(80, 10, 140, 90, 190, 30);
+  path.moveTo(40, 100);
+  path.cubicTo(120, 20, 280, 140, 360, 60);
 
-  // Simple preview stroke
-  painter.setPen(QPen(Qt::white, 4));
-  painter.drawPath(path);
+  // Simular el trazo con interpolación para que el motor de pincel actúe
+  QPointF lastP = path.pointAtPercent(0);
+  tempEngine.resetRemainder();
+
+  int segments = 100;
+  for (int i = 1; i <= segments; ++i) {
+    float t = (float)i / segments;
+    QPointF currP = path.pointAtPercent(t);
+
+    // Simular presión variable para dar dinamismo (estilo caligráfico)
+    float pressure = 0.3f + 0.7f * std::sin(t * M_PI);
+
+    tempEngine.paintStroke(&painter, lastP, currP, pressure, s);
+    lastP = currP;
+  }
+
   painter.end();
 
   QByteArray ba;
@@ -2840,6 +2891,32 @@ QString CanvasItem::get_brush_preview(const QString &brushName) {
   img.save(&buffer, "PNG");
 
   return "data:image/png;base64," + ba.toBase64();
+}
+
+void CanvasItem::updateBrushTipImage() {
+  float size = 120.0f;
+  float rotation = 0.0f;
+  QString texturePath;
+
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *preset = bpm->findByName(m_activeBrushName);
+  if (preset) {
+    texturePath = preset->shape.tipTexture;
+    rotation = preset->shape.rotation;
+  }
+
+  // Generate a clean preview at 1.0 zoom
+  QImage img = loadAndProcessBrushTexture(texturePath, size, rotation, 1.0f);
+
+  if (img.isNull())
+    return;
+
+  QByteArray ba;
+  QBuffer buffer(&ba);
+  buffer.open(QIODevice::WriteOnly);
+  img.save(&buffer, "PNG");
+  m_brushTipImage = "data:image/png;base64," + ba.toBase64();
+  emit brushTipImageChanged();
 }
 
 void CanvasItem::capture_timelapse_frame() {
@@ -3060,10 +3137,13 @@ void CanvasItem::hoverLeaveEvent(QHoverEvent *event) {
 }
 
 QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
-                                              float size, float rotation) {
+                                              float size, float rotation,
+                                              float zoomOverride,
+                                              bool outline) {
+  float z = (zoomOverride > 0) ? zoomOverride : m_zoomLevel;
   if (texturePath.isEmpty()) {
     // Fallback: círculo simple si no hay textura
-    int iSize = std::max(8, std::min((int)(size * m_zoomLevel), 512));
+    int iSize = std::max(8, std::min((int)(size * z), 512));
     if (iSize % 2 == 0)
       iSize++;
 
@@ -3083,12 +3163,11 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
 
     // Contorno blanco
     p.setPen(QPen(QColor(255, 255, 255, 255), 1.0f));
+    if (outline) {
+      // Si es solo contorno, usar color de pincel para el círculo interno
+      p.setPen(QPen(m_brushColor, 1.0f));
+    }
     p.drawEllipse(QPointF(center, center), radius - 1, radius - 1);
-
-    // Crosshair
-    p.setPen(QPen(QColor(255, 255, 255, 255), 1.5f));
-    p.drawLine(QPointF(center - 4, center), QPointF(center + 4, center));
-    p.drawLine(QPointF(center, center - 4), QPointF(center, center + 4));
 
     p.end();
     return fallback;
@@ -3113,14 +3192,15 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
 
   if (fullPath.isEmpty() || !QFile::exists(fullPath)) {
     qDebug() << "loadAndProcessBrushTexture: Texture not found:" << texturePath;
-    return loadAndProcessBrushTexture("", size, rotation); // Fallback
+    return loadAndProcessBrushTexture("", size, rotation, z,
+                                      outline); // Fallback
   }
 
   // Cargar imagen original
   QImage original(fullPath);
   if (original.isNull()) {
     qDebug() << "loadAndProcessBrushTexture: Failed to load:" << fullPath;
-    return loadAndProcessBrushTexture("", size, rotation);
+    return loadAndProcessBrushTexture("", size, rotation, z, outline);
   }
 
   // Convertir a ARGB32 si no lo es
@@ -3150,7 +3230,7 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
   }
 
   // Escalar según el tamaño del pincel y zoom
-  int targetSize = std::max(8, std::min((int)(size * m_zoomLevel), 512));
+  int targetSize = std::max(8, std::min((int)(size * z), 512));
   QImage scaled = original.scaled(targetSize, targetSize, Qt::KeepAspectRatio,
                                   Qt::SmoothTransformation);
 
@@ -3163,50 +3243,48 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
     scaled = scaled.transformed(transform, Qt::SmoothTransformation);
   }
 
-  // 🎯 CREAR CONTORNO ESTILO KRITA (blanco con borde negro)
-  QImage outline(scaled.width() + 4, scaled.height() + 4,
-                 QImage::Format_ARGB32);
-  outline.fill(Qt::transparent);
+  // 🎯 CREAR CONTORNO ESTILO PROFESIONAL (Solo borde, alta visibilidad)
+  QImage canvas(scaled.width() + 4, scaled.height() + 4, QImage::Format_ARGB32);
+  canvas.fill(Qt::transparent);
 
-  QPainter p(&outline);
+  QPainter p(&canvas);
   p.setRenderHint(QPainter::Antialiasing);
   p.setRenderHint(QPainter::SmoothPixmapTransform);
 
-  // Dibujar sombra negra (borde exterior)
-  p.setCompositionMode(QPainter::CompositionMode_SourceOver);
-  for (int dx = -1; dx <= 1; dx++) {
-    for (int dy = -1; dy <= 1; dy++) {
-      if (dx == 0 && dy == 0)
-        continue;
-      p.setOpacity(0.8);
-      p.drawImage(2 + dx, 2 + dy, scaled);
+  if (outline) {
+    // 1. Dibujar silueta en negro (Borde exterior para contraste)
+    p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dy = -1; dy <= 1; dy++) {
+        if (dx == 0 && dy == 0)
+          continue;
+        p.setOpacity(0.6);
+        p.drawImage(2 + dx, 2 + dy, scaled);
+      }
     }
-  }
 
-  // Dibujar la forma principal en blanco
-  p.setCompositionMode(QPainter::CompositionMode_SourceOver);
-  p.setOpacity(1.0);
-  p.drawImage(2, 2, scaled);
+    // 2. Dibujar silueta en el color seleccionado (Borde interior)
+    QImage colorized = scaled;
+    {
+      QPainter cp(&colorized);
+      cp.setCompositionMode(QPainter::CompositionMode_SourceIn);
+      cp.fillRect(colorized.rect(), m_brushColor);
+      cp.end();
+    }
+    p.setOpacity(1.0);
+    p.drawImage(2, 2, colorized);
 
-  // Añadir crosshair central
-  if (PreferencesManager::instance()->cursorShowCrosshair()) {
-    float cx = outline.width() / 2.0f;
-    float cy = outline.height() / 2.0f;
-
-    // Cruz negra (fondo)
-    p.setPen(QPen(QColor(0, 0, 0, 200), 2.5f));
-    p.drawLine(QPointF(cx - 5, cy), QPointF(cx + 5, cy));
-    p.drawLine(QPointF(cx, cy - 5), QPointF(cx, cy + 5));
-
-    // Cruz blanca (frente)
-    p.setPen(QPen(QColor(255, 255, 255, 255), 1.5f));
-    p.drawLine(QPointF(cx - 5, cy), QPointF(cx + 5, cy));
-    p.drawLine(QPointF(cx, cy - 5), QPointF(cx, cy + 5));
+    // 3. HACER HUECO (Vaciar el centro)
+    p.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    p.drawImage(2, 2, scaled);
+  } else {
+    // Modo sólido (para previsualizaciones)
+    p.drawImage(2, 2, scaled);
   }
 
   p.end();
 
-  return outline;
+  return canvas;
 }
 
 void CanvasItem::invalidateCursorCache() {

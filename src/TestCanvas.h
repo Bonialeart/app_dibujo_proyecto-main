@@ -9,7 +9,6 @@
 #include <QVariant>
 #include <vector>
 
-
 class TestCanvas : public QQuickPaintedItem {
   Q_OBJECT
   Q_PROPERTY(QVariantList curvePoints READ curvePoints WRITE setCurvePoints
@@ -20,7 +19,7 @@ public:
   void paint(QPainter *painter) override;
 
   QVariantList curvePoints() const { return m_rawPoints; }
-  void setCurvePoints(const QVariantList &points);
+  Q_INVOKABLE void setCurvePoints(const QVariantList &points);
 
   // Limpia el área de prueba
   Q_INVOKABLE void clear();

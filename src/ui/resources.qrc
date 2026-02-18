@@ -11,6 +11,7 @@
     <file>qml/components/SidebarButton.qml</file>
     <file>qml/components/ToastManager.qml</file>
     <file>qml/components/ProSlider.qml</file>
+    <file>qml/components/ProSliderHorizontal.qml</file>
     <file>qml/components/SmartCursor.qml</file>
     <file>qml/components/LayerDelegate.qml</file>
     <file>qml/components/ColorDropOrb.qml</file>
