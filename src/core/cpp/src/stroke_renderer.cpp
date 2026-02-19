@@ -380,6 +380,15 @@ void StrokeRenderer::renderStroke(
   glEnable(GL_BLEND);
   glBlendEquation(GL_FUNC_ADD);
 
+  // --- STENCIL CLIPPING ---
+  if (m_clippingEnabled) {
+    glEnable(GL_STENCIL_TEST);
+    glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+  } else {
+    glDisable(GL_STENCIL_TEST);
+  }
+
   if (isEraser) {
     // ERASER MODE: Dest = Dest * (1 - SourceAlpha)
     this->glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,

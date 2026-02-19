@@ -934,7 +934,7 @@ Window {
                         ListElement { name: "ellipse"; label: "Ellipse"; icon: "shapes.svg" },
                         ListElement { name: "line"; label: "Line"; icon: "shapes.svg" }
                     ]}
-                    ListElement { name: "lasso"; icon: "lasso.svg"; label: "Lasso"; subTools: [] }
+                    ListElement { name: "lasso"; icon: "lasso.svg"; label: "Lasso Selection"; subTools: [] }
                     ListElement { name: "magnetic_lasso"; icon: "magnet.svg"; label: "Magnetic Lasso"; subTools: [] }
                     ListElement { name: "move"; icon: "move.svg"; label: "Transform & Move"; subTools: [] }
                     ListElement { name: "pen"; icon: "pen.svg"; label: "Pen"; subTools: [
@@ -996,7 +996,10 @@ Window {
                         if (toolData.name === "eraser") mainCanvas.usePreset("Eraser Soft")
                         if (toolData.name === "lasso") mainCanvas.currentTool = "lasso"
                         if (toolData.name === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
-                        if (toolData.name === "selection") mainCanvas.currentTool = "selection"
+                        if (toolData.name === "selection") {
+                            mainCanvas.isSelectionModeActive = !mainCanvas.isSelectionModeActive
+                            if (mainCanvas.isSelectionModeActive) mainCanvas.currentTool = "lasso"
+                        }
                         if (toolData.name === "move") mainCanvas.currentTool = "move"
                     }
                     
@@ -1145,8 +1148,8 @@ Window {
                                 width: 42 * uiScale; height: 42 * uiScale
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 radius: 14 * uiScale
-                                color: (index === canvasPage.activeToolIdx) ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (toolHover.containsMouse ? "#1affffff" : "transparent")
-                                border.color: (index === canvasPage.activeToolIdx) ? colorAccent : "transparent"
+                                color: (model.name === "selection" && mainCanvas.isSelectionModeActive) ? "#3b82f6" : ((index === canvasPage.activeToolIdx) ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (toolHover.containsMouse ? "#1affffff" : "transparent"))
+                                border.color: (model.name === "selection" && mainCanvas.isSelectionModeActive) ? "#60a5fa" : ((index === canvasPage.activeToolIdx) ? colorAccent : "transparent")
                                 border.width: 1
                                 
                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -4015,12 +4018,10 @@ Window {
             } // Fin Item (Canvas Page)
             
             // Placeholders
-            Item { Text { text: "Learn"; color: "white"; anchors.centerIn: parent } }
+
             // 3. LIBRARY (Integrated)
             Item { id: assetsPlaceholder; visible: false }
             
-            Item { Text { text: "Ghost Settings"; color: "white"; anchors.centerIn: parent } }
-
         } // Fin StackLayout
     } // Fin RowLayout
 

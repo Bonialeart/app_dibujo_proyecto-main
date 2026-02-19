@@ -30,6 +30,10 @@ public:
     Pen,
     Eraser,
     Lasso,
+    MagneticLasso,
+    RectSelect,
+    EllipseSelect,
+    MagicWand,
     Transform,
     Eyedropper,
     Hand,
@@ -104,6 +108,7 @@ public:
                  zoomLevelChanged)
   Q_PROPERTY(QPointF canvasOffset READ viewOffset WRITE setViewOffset NOTIFY
                  viewOffsetChanged)
+  Q_PROPERTY(QRectF transformBox READ transformBox NOTIFY transformBoxChanged)
 
   // Curva de Presión Bezier (P1x, P1y, P2x, P2y)
   Q_PROPERTY(QVariantList pressureCurvePoints READ pressureCurvePoints WRITE
@@ -118,8 +123,28 @@ public:
   // ── Brush Studio editing state ──
   Q_PROPERTY(
       bool isEditingBrush READ isEditingBrush NOTIFY isEditingBrushChanged)
+  Q_PROPERTY(bool hasSelection READ hasSelection NOTIFY hasSelectionChanged)
+  Q_PROPERTY(int selectionAddMode READ selectionAddMode WRITE setSelectionAddMode NOTIFY selectionAddModeChanged)
+  Q_PROPERTY(float selectionThreshold READ selectionThreshold WRITE setSelectionThreshold NOTIFY selectionThresholdChanged)
+  Q_PROPERTY(bool isSelectionModeActive READ isSelectionModeActive WRITE setIsSelectionModeActive NOTIFY isSelectionModeActiveChanged)
+
+  Q_PROPERTY(int transformMode READ transformMode WRITE setTransformMode NOTIFY transformModeChanged)
+
+  enum TransformSubMode { Free, Perspective, Warp, Mesh };
+  Q_ENUM(TransformSubMode)
 
 public:
+  int transformMode() const { return (int)m_transformSubMode; }
+  void setTransformMode(int mode) {
+      if ((int)m_transformSubMode == mode) return;
+      m_transformSubMode = (TransformSubMode)mode;
+      emit transformModeChanged();
+      update();
+  }
+
+  Q_INVOKABLE void applyTransform();
+  Q_INVOKABLE void cancelTransform();
+
   explicit CanvasItem(QQuickItem *parent = nullptr);
   ~CanvasItem() override;
 
@@ -162,6 +187,10 @@ public:
   QString activeBrushName() const { return m_activeBrushName; }
   QString brushTipImage() const { return m_brushTipImage; }
   bool isEditingBrush() const { return m_isEditingBrush; }
+  bool hasSelection() const { return m_hasSelection; }
+  int selectionAddMode() const { return m_selectionAddMode; }
+  float selectionThreshold() const { return m_selectionThreshold; }
+  bool isSelectionModeActive() const { return m_isSelectionModeActive; }
 
   // Setters
   void setBrushSize(int size);
@@ -186,6 +215,7 @@ public:
   void setViewOffset(const QPointF &offset);
   void setCurrentTool(const QString &tool);
   void commitTransform();
+  void beginTransform();
   void setIsFlippedH(bool flip);
   void setIsFlippedV(bool flip);
   void setIsEraser(bool eraser);
@@ -217,6 +247,21 @@ public:
   Q_INVOKABLE void setLayerPrivate(int index, bool isPrivate);
   Q_INVOKABLE void setActiveLayer(int index);
 
+  // Selection Manipulation
+  Q_INVOKABLE void invertSelection();
+  Q_INVOKABLE void featherSelection(float radius);
+  Q_INVOKABLE void duplicateSelection();
+  Q_INVOKABLE void maskSelection();
+  Q_INVOKABLE void colorSelection(const QColor &color);
+  Q_INVOKABLE void clearSelectionContent();
+  Q_INVOKABLE void deselect();
+  Q_INVOKABLE void selectAll();
+  Q_INVOKABLE void apply_color_drop(int x, int y, const QColor &color);
+  
+  void setSelectionAddMode(int mode);
+  void setSelectionThreshold(float threshold);
+  void setIsSelectionModeActive(bool active);
+
   // Color Utilities (HCL support for Pro Sliders)
   Q_INVOKABLE QString hclToHex(float h, float c, float l);
   Q_INVOKABLE QVariantList hexToHcl(const QString &hex);
@@ -230,6 +275,7 @@ public:
   // Q_INVOKABLE methods for Python compatibility
   Q_INVOKABLE void loadRecentProjectsAsync();
   Q_INVOKABLE QVariantList getRecentProjects(); // RE-ADDED
+  QRectF transformBox() const { return m_transformBox; }
   Q_INVOKABLE QVariantList get_project_list();  // RE-ADDED
   Q_INVOKABLE void load_file_path(const QString &path);
   Q_INVOKABLE void handle_shortcuts(int key, int modifiers);
@@ -304,6 +350,7 @@ signals:
   void viewOffsetChanged();
   void activeLayerChanged();
   void isTransformingChanged();
+  void transformModeChanged();
   void brushAngleChanged();
   void cursorRotationChanged();
   void currentProjectPathChanged();
@@ -319,9 +366,15 @@ signals:
   void isFlippedHChanged();
   void isFlippedVChanged();
 
+  void hasSelectionChanged();
+  void selectionAddModeChanged();
+  void selectionThresholdChanged();
+  void isSelectionModeActiveChanged();
+
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
   void notificationRequested(const QString &message, const QString &type);
+  void transformBoxChanged();
 
   // Brush Studio signals
   void isEditingBrushChanged();
@@ -334,6 +387,7 @@ protected:
   void mousePressEvent(QMouseEvent *event) override;
   void mouseMoveEvent(QMouseEvent *event) override;
   void mouseReleaseEvent(QMouseEvent *event) override;
+  void mouseDoubleClickEvent(QMouseEvent *event) override;
   void wheelEvent(QWheelEvent *event) override;
   void hoverMoveEvent(QHoverEvent *event) override;
   void hoverEnterEvent(QHoverEvent *event) override;
@@ -346,6 +400,7 @@ private:
   artflow::LayerManager *m_layerManager;
   artflow::UndoManager *m_undoManager;
   std::unique_ptr<artflow::ImageBuffer> m_strokeBeforeBuffer;
+  std::unique_ptr<artflow::ImageBuffer> m_transformBeforeBuffer;
 
   // Pressure Logic
   // Pressure Logic
@@ -446,8 +501,21 @@ private:
   QTransform m_transformMatrix;
   QRectF m_transformBox;
   bool m_isTransforming = false;
+  
+  int m_selectionAddMode = 0; // 0=New, 1=Add, 2=Subtract
+  float m_selectionThreshold = 0.5f;
+  bool m_isSelectionModeActive = false;
+  QString m_previousToolStr = "brush";
+  
+  // Advanced Selection State
+  QPointF m_lastSelectionPoint;
+  QPointF m_selectionStartPos;
+  bool m_isLassoDragging = false;
+  bool m_isMagneticLassoActive = false;
+  
   enum class TransformMode { None, Move, Scale, Rotate };
   TransformMode m_transformMode = TransformMode::None;
+  TransformSubMode m_transformSubMode = Free;
   QPointF m_transformStartPos;
   QTransform m_initialMatrix;
 

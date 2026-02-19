@@ -430,7 +430,7 @@ Window {
                         { text: "Undo", shortcut: "Ctrl+Z", action: function() { mainCanvas.undo() } },
                         { text: "Redo", shortcut: "Ctrl+Y", action: function() { mainCanvas.redo() } },
                         { isSeparator: true },
-                        { text: "Pen Pressure Settings...", action: function() { pressureDialog.open() } },
+                        { text: "Pen Pressure Config...", action: function() { pressureDialog.open() } },
                         { text: "Preferences", action: function() { preferencesDialog.open() } }
                     ]
                 }
@@ -585,7 +585,7 @@ Window {
                 Rectangle { width: 28; height: 1; color: "#18ffffff"; Layout.alignment: Qt.AlignHCenter }
                 Item { height: 2 }
 
-                SidebarButton { iconName: "settings.svg"; label: "Settings"; active: currentPage === 4; onClicked: currentPage = 4 }
+                SidebarButton { iconName: "settings.svg"; label: "Setup"; active: currentPage === 4; onClicked: currentPage = 4 }
 
                 Item { height: 6 }
             }
@@ -4032,11 +4032,11 @@ Window {
             } // Fin Item (Canvas Page)
             
             // Placeholders
-            Item { Text { text: "Learn"; color: "white"; anchors.centerIn: parent } }
+
             // 3. LIBRARY (Integrated)
             Item { id: assetsPlaceholder; visible: false }
             
-            Item { Text { text: "Settings"; color: "white"; anchors.centerIn: parent } }
+
 
         } // Fin StackLayout
     } // Fin RowLayout

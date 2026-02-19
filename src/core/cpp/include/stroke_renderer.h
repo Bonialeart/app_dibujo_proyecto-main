@@ -88,10 +88,14 @@ public:
       // Mode
       bool isEraser = false);
 
+  void setClippingEnabled(bool enabled) { m_clippingEnabled = enabled; }
+
 private:
   QOpenGLShaderProgram *m_program;
   QOpenGLVertexArrayObject m_vao;
   QOpenGLBuffer m_vbo;
+
+  bool m_clippingEnabled = false;
 
   // Texture IDs manageable by this class
   unsigned int m_brushTextureId = 0;

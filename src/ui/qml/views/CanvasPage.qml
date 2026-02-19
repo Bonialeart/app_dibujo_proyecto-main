@@ -71,47 +71,127 @@ import "../components"
                         // The Manipulator Item (The selection bounding box)
                         Rectangle {
                             id: manipulator
-                            // Initial pos 0,0 relative to container (Whole Canvas)
-                            width: parent.width
-                            height: parent.height
                             color: "transparent"
                             border.color: colorAccent
                             border.width: 2 / mainCanvas.zoomLevel
                             transformOrigin: Item.Center
                             
-                            // Reset state when shown
+                            // Bind to transformBox initially, but allow manual changes (DragHandler)
+                            // We use a connection to reset when the box changes (new transform start)
+                            // Also reset when becoming visible (first show)
                             onVisibleChanged: {
-                                if (visible) {
-                                    x = 0; y = 0
-                                    scale = 1; rotation = 0
-                                    mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
+                                if (visible && mainCanvas.isTransforming) {
+                                    manipulator.x = mainCanvas.transformBox.x
+                                    manipulator.y = mainCanvas.transformBox.y
+                                    manipulator.width = mainCanvas.transformBox.width
+                                    manipulator.height = mainCanvas.transformBox.height
+                                    manipulator.scale = 1
+                                    manipulator.rotation = 0
+                                }
+                            }
+                            
+                            Connections {
+                                target: mainCanvas
+                                function onTransformBoxChanged() {
+                                    if (mainCanvas.isTransforming) {
+                                        manipulator.x = mainCanvas.transformBox.x
+                                        manipulator.y = mainCanvas.transformBox.y
+                                        manipulator.width = mainCanvas.transformBox.width
+                                        manipulator.height = mainCanvas.transformBox.height
+                                        manipulator.scale = 1
+                                        manipulator.rotation = 0
+                                    }
                                 }
                             }
                             
                             PinchHandler { target: manipulator }
                             DragHandler { target: manipulator }
                             
-                            onXChanged: if (visible) updateTransform()
-                            onYChanged: if (visible) updateTransform()
-                            onScaleChanged: if (visible) updateTransform()
-                            onRotationChanged: if (visible) updateTransform()
+                            onXChanged: if (visible && mainCanvas.isTransforming) updateTransform()
+                            onYChanged: if (visible && mainCanvas.isTransforming) updateTransform()
+                            onScaleChanged: if (visible && mainCanvas.isTransforming) updateTransform()
+                            onRotationChanged: if (visible && mainCanvas.isTransforming) updateTransform()
                             
                             function updateTransform() {
                                 mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
                             }
                             
                             // Visual Handles (Corners) - Just for show in Essential version
-                            // Could implement interactive resize logic later
+                            // Interactive Resize Handles
+                            
+                            // Top-Left (Scale Logic Placeholder - Simplified for MVP)
+                            Rectangle {
+                                width: 20 / mainCanvas.zoomLevel; height: 20 / mainCanvas.zoomLevel
+                                x: -width/2; y: -height/2
+                                color: "white"; border.color: colorAccent
+                                radius: width/2
+                                DragHandler {
+                                    onActiveChanged: if (active) console.log("Drag TL")
+                                    // Complex resizing math usually here, for now relying on PinchHandler for scaling
+                                    // or just allow move anchor points in future
+                                }
+                            }
+
+                            // Bottom-Right Helper (Scale)
+                            Rectangle {
+                                width: 20 / mainCanvas.zoomLevel; height: 20 / mainCanvas.zoomLevel
+                                x: parent.width - width/2; y: parent.height - height/2
+                                color: "white"; border.color: colorAccent
+                                radius: width/2
+                                
+                                DragHandler {
+                                    id: scaleDragger
+                                    target: null // Don't drag this rectangle itself freely
+                                    // Use xAxis/yAxis drag
+                                    xAxis.enabled: true
+                                    yAxis.enabled: true
+                                    onActiveChanged: {
+                                        if (!active) {
+                                            // Commit or reset specific state if needed
+                                        }
+                                    }
+                                    onTranslationChanged: {
+                                        if (scaleDragger.active) {
+                                           // DragHandler accumulates delta in translation property
+                                           // We apply it and then likely need to reset it or handle accumulation carefully.
+                                           // Actually, DragHandler with target: null acts as a gesture recognizer.
+                                           // transformation is cumulative.
+                                           
+                                           // For simplicity, let's just use the MouseArea below for robust desktop resizing
+                                           // and keep DragHandler for touch but disabled for now to avoid conflict
+                                        }
+                                    }
+                                    enabled: false // Disabling in favor of MouseArea for reliability in this fix iteration
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.SizeFDiagCursor
+                                    // Fallback for desktop mouse
+                                    property point clickPos
+                                    onPressed: clickPos = Qt.point(mouse.x, mouse.y)
+                                    onPositionChanged: {
+                                        var dx = mouse.x - clickPos.x
+                                        var newW = manipulator.width + dx
+                                        if (newW > 10) {
+                                            var ratio = mainCanvas.transformBox.height / mainCanvas.transformBox.width
+                                            manipulator.width = newW
+                                            manipulator.height = newW * ratio
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Other corners (Visual for now)
                             Repeater {
                                 model: [
-                                    {x: 0, y: 0}, {x: manipulator.width, y: 0},
-                                    {x: 0, y: manipulator.height}, {x: manipulator.width, y: manipulator.height}
+                                    {x: manipulator.width, y: 0},
+                                    {x: 0, y: manipulator.height}
                                 ]
                                 delegate: Rectangle {
-                                    width: 12 / mainCanvas.zoomLevel; height: 12 / mainCanvas.zoomLevel
-                                    x: modelData.x - width/2; y: modelData.y - height/2
-                                    color: "white"; border.color: colorAccent
-                                    radius: width/2
+                                     width: 15 / mainCanvas.zoomLevel; height: 15 / mainCanvas.zoomLevel
+                                     x: modelData.x - width/2; y: modelData.y - height/2
+                                     color: "white"; border.color: colorAccent
+                                     radius: width/2
                                 }
                             }
                         }
@@ -307,8 +387,8 @@ import "../components"
                     id: contextBar
                     anchors.bottom: parent.bottom; anchors.bottomMargin: 30
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: 240; height: 48; radius: 24
-                    color: "#222226"
+                    width: 400; height: 60; radius: 30
+                    color: "#f01c1c1e"
                     border.color: "#3e3e42"
                     border.width: 1
                     visible: mainCanvas.isTransforming
@@ -318,17 +398,49 @@ import "../components"
                          anchors.centerIn: parent
                          spacing: 15
                          
+                         // Transform Modes
+                         Row {
+                             spacing: 10
+                             Repeater {
+                                 model: [
+                                     {name: "Free", value: 0},
+                                     {name: "Persp", value: 1},
+                                     {name: "Warp", value: 2},
+                                     {name: "Mesh", value: 3}
+                                 ]
+                                 delegate: Rectangle {
+                                     width: 50; height: 36; radius: 18
+                                     color: mainCanvas.transformMode === modelData.value ? "#33ffffff" : "transparent"
+                                     border.color: mainCanvas.transformMode === modelData.value ? colorAccent : "#44ffffff"
+                                     border.width: 1
+                                     Text { 
+                                         anchors.centerIn: parent
+                                         text: modelData.name
+                                         color: "white"
+                                         font.pixelSize: 10
+                                         font.bold: mainCanvas.transformMode === modelData.value
+                                     }
+                                     MouseArea { 
+                                         anchors.fill: parent
+                                         onClicked: mainCanvas.transformMode = modelData.value
+                                     }
+                                 }
+                             }
+                         }
+
+                         Rectangle { width: 1; height: 30; color: "#3e3e42" }
+                         
                          // Cancel Button
                          Rectangle {
-                             width: 90; height: 32; radius: 16; color: "#3a3a3c"
-                             Text { text: "Cancel"; color: "white"; anchors.centerIn: parent; font.bold: true }
+                             width: 80; height: 36; radius: 18; color: "#3a3a3c"
+                             Text { text: "Cancel"; color: "white"; anchors.centerIn: parent; font.bold: true; font.pixelSize: 11 }
                              MouseArea { anchors.fill: parent; onClicked: mainCanvas.cancelTransform() }
                          }
                          
                          // Apply Button
                          Rectangle {
-                             width: 90; height: 32; radius: 16; color: colorAccent
-                             Text { text: "Apply"; color: "white"; anchors.centerIn: parent; font.bold: true }
+                             width: 80; height: 36; radius: 18; color: colorAccent
+                             Text { text: "Apply"; color: "white"; anchors.centerIn: parent; font.bold: true; font.pixelSize: 11 }
                              MouseArea { anchors.fill: parent; onClicked: mainCanvas.applyTransform() }
                          }
                     }
@@ -2911,5 +3023,12 @@ import "../components"
                     anchors.centerIn: parent
                     visible: false
                     targetCanvas: mainCanvas 
+                }
+
+                SelectionToolbar {
+                    canvas: mainCanvas
+                    uiScale: canvasPage.uiScale
+                    accentColor: canvasPage.colorAccent
+                    z: 5000
                 }
             } // Fin Item (Canvas Page)

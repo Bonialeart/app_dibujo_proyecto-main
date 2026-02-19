@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <QRect>
 
 namespace artflow {
 
@@ -35,9 +36,15 @@ public:
   // Set pixel color
   void setPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
 
-  // Fill entire buffer
   void fill(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
   void clear();
+  
+  // Get the bounding box of non-transparent pixels
+  QRect getContentBounds() const;
+
+  // Flood fill at point (x, y) with target color. 
+  void floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a, float threshold = 0.1f, const ImageBuffer* mask = nullptr);
+
 
   // Blend a color onto pixel with alpha blending. Optional alphaLock restricts
   // painting to areas that already have some alpha.

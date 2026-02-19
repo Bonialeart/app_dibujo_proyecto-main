@@ -5,7 +5,9 @@
 #include "../include/image_buffer.h"
 #include <algorithm>
 #include <cmath>
+#include <cmath>
 #include <cstring>
+#include <QRect>
 
 namespace artflow {
 
@@ -57,6 +59,106 @@ void ImageBuffer::fill(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 }
 
 void ImageBuffer::clear() { std::memset(m_data.data(), 0, m_data.size()); }
+
+QRect ImageBuffer::getContentBounds() const {
+  int minX = m_width;
+  int minY = m_height;
+  int maxX = 0;
+  int maxY = 0;
+
+  bool found = false;
+
+  for (int y = 0; y < m_height; ++y) {
+    for (int x = 0; x < m_width; ++x) {
+      if (pixelAt(x, y)[3] > 0) { // Check Alpha
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+        found = true;
+      }
+    }
+  }
+
+  if (!found) {
+     return QRect(0, 0, 0, 0);
+  }
+  
+  return QRect(minX, minY, maxX - minX + 1, maxY - minY + 1);
+}
+
+void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a, float threshold, const ImageBuffer* mask) {
+  if (!isValidCoord(x, y)) return;
+
+  // If mask is provided, check if the start point is within the mask
+  if (mask) {
+    const uint8_t *mP = mask->pixelAt(x, y);
+    if (!mP || mP[3] == 0) return; // Clicked outside the selection
+  }
+
+  uint8_t *startPixel = pixelAt(x, y);
+  uint8_t startR = startPixel[0];
+  uint8_t startG = startPixel[1];
+  uint8_t startB = startPixel[2];
+  uint8_t startA = startPixel[3];
+
+  // If already the same color, skip to avoid infinite loop
+  if (startR == r && startG == g && startB == b && startA == a) return;
+
+  uint32_t thresholdSq = static_cast<uint32_t>(threshold * 255 * threshold * 255 * 3);
+  
+  std::vector<bool> visited(m_width * m_height, false);
+  std::vector<std::pair<int, int>> queue;
+  queue.reserve(m_width * m_height / 4);
+  queue.push_back({x, y});
+  visited[y * m_width + x] = true;
+
+  size_t head = 0;
+  while (head < queue.size()) {
+    std::pair<int, int> curr = queue[head++];
+    int cx = curr.first;
+    int cy = curr.second;
+
+    // Apply color (Premultiplied internally)
+    uint8_t premulR = (r * a) / 255;
+    uint8_t premulG = (g * a) / 255;
+    uint8_t premulB = (b * a) / 255;
+    setPixel(cx, cy, premulR, premulG, premulB, a);
+
+    // Neighbors
+    int dx[] = {0, 0, 1, -1};
+    int dy[] = {1, -1, 0, 0};
+
+    for (int i = 0; i < 4; ++i) {
+      int nx = cx + dx[i];
+      int ny = cy + dy[i];
+
+      if (isValidCoord(nx, ny) && !visited[ny * m_width + nx]) {
+        // If mask is provided, verify against mask
+        if (mask) {
+          const uint8_t *mP = mask->pixelAt(nx, ny);
+          if (!mP || mP[3] == 0) {
+              visited[ny * m_width + nx] = true; // Mark as visited to avoid re-checking
+              continue;
+          }
+        }
+
+        uint8_t *p = pixelAt(nx, ny);
+        uint32_t dr = static_cast<uint32_t>(p[0]) - startR;
+        uint32_t dg = static_cast<uint32_t>(p[1]) - startG;
+        uint32_t db = static_cast<uint32_t>(p[2]) - startB;
+        uint32_t da = static_cast<uint32_t>(p[3]) - startA;
+        
+        uint32_t diffSq = dr*dr + dg*dg + db*db + da*da;
+
+        if (diffSq <= thresholdSq || threshold >= 0.99f) {
+          visited[ny * m_width + nx] = true;
+          queue.push_back({nx, ny});
+        }
+      }
+    }
+  }
+}
 
 void ImageBuffer::blendPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b,
                              uint8_t a, bool alphaLock, bool isEraser) {

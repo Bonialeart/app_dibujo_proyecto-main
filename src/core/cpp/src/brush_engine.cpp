@@ -265,6 +265,9 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       m_renderer->initialize();
     }
 
+    // Sync clipping state from painter to native GL renderer
+    m_renderer->setClippingEnabled(painter->hasClipping());
+
     int w = painter->device()->width();
     int h = painter->device()->height();
 
