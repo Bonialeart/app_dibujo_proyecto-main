@@ -42,74 +42,78 @@ Item {
         return arr
     }
 
-    // FONDO DE SEGURIDAD (Si está vacío)
-    Rectangle {
-        visible: root._thumbList.length === 0
+    // 4. CONTENIDO DINÁMICO
+    // Si está vacío, mostramos un icono de Carpeta elegante
+    Item {
         anchors.centerIn: parent
-        width: 140; height: 180; radius: 14
-        color: "#1c1c1e"; border.color: "#333"
-        Text { 
-            anchors.centerIn: parent; 
-            text: (typeof dashboardRoot !== "undefined" && dashboardRoot.qs) ? dashboardRoot.qs("empty") : 
-                  ((typeof galleryRoot !== "undefined" && galleryRoot.qs) ? galleryRoot.qs("empty") : "Vacío"); 
-            color: "#444"; font.bold: true 
+        width: 130; height: 130
+        visible: root._thumbList.length === 0
+        
+        Rectangle {
+            anchors.fill: parent; radius: 24
+            color: "#1c1c1e"; border.color: "#333"; border.width: 1
+            Text { text: "📁"; font.pixelSize: 60; anchors.centerIn: parent; opacity: 0.5 }
         }
     }
 
-    // LA PILA (STAK)
+    // Si tiene contenido, mostramos la pila (adaptativa)
     Repeater {
-        model: Math.min(3, root._thumbList.length)
+        model: Math.min(3, Math.max(1, root._thumbList.length))
         
         delegate: Item {
             id: cardWrapper
-            width: 140; height: 180
+            width: 130; height: 130
             anchors.centerIn: parent
             z: 100 - index 
+            visible: root._thumbList.length > 0
 
-            // EFECTO DE PILA VISIBLE
+            // EFECTO DE PILA VISIBLE (Solo si hay > 1)
             rotation: {
-                if (index === 0) return 3 // Ligera inclinación al frente
-                var rot = (index === 1) ? -6 : 8
-                return root.isExpanded ? rot * 3 : rot
+                if (root._thumbList.length <= 1) return 0
+                if (index === 0) return 0
+                if (index === 1) return -7
+                return 7
             }
             
-            x: root.isExpanded ? (index === 1 ? -40 : 40) : (index === 0 ? 0 : (index === 1 ? -5 : 5))
-            y: root.isExpanded ? (index * 20) : (index * -4) // Las de atrás suben un poco
+            x: (root.isExpanded && root._thumbList.length > 1) ? (index === 1 ? -45 : 45) : 0
+            y: (root.isExpanded && root._thumbList.length > 1) ? (index * 15) : 0
 
-            Behavior on rotation { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
-            Behavior on x { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
-            Behavior on y { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
+            Behavior on rotation { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+            Behavior on x { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+            Behavior on y { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
 
             Rectangle {
                 anchors.fill: parent
-                radius: 12; color: "#161618"; border.color: "#333"; clip: true
+                radius: 12
+                color: "white" 
+                border.color: "#ddd"
+                border.width: 1
+                clip: true
                 
                 Image {
                     anchors.fill: parent
-                    source: root._thumbList[index] || ""
+                    anchors.margins: 4
+                    source: (root._thumbList && root._thumbList.length > index) ? root._thumbList[index] : ""
                     fillMode: Image.PreserveAspectCrop
+                    visible: status === Image.Ready
                     mipmap: true
-                }
-
-                // Sombra interna para separar cartas
-                Rectangle {
-                    anchors.fill: parent; color: "black"; radius: 12
-                    opacity: index === 0 ? 0.0 : 0.2 * index
                 }
             }
 
             layer.enabled: true
+            layer.samples: 8 // CALIDAD ULTRA: 8x Antialiasing para bordes perfectos
+            layer.smooth: true
             layer.effect: MultiEffect {
-                shadowEnabled: true; shadowBlur: 0.8
-                shadowColor: "black"; shadowOpacity: 0.5
-                shadowVerticalOffset: 3 + (index * 2)
+                shadowEnabled: true; shadowBlur: 0.6
+                shadowColor: "black"; shadowOpacity: 0.3
+                shadowVerticalOffset: 2 + index
             }
         }
     }
 
     Text {
-        anchors.top: parent.bottom; anchors.topMargin: 5
+        anchors.top: parent.bottom; anchors.topMargin: 15
         width: parent.width; horizontalAlignment: Text.AlignHCenter
-        text: root.title; color: "white"; font.bold: true; font.pixelSize: 14; elide: Text.ElideRight
+        text: root.title; color: "#f0f0f5"; font.bold: true; font.pixelSize: 13; opacity: 0.8
     }
 }

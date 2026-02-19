@@ -68,91 +68,70 @@ Item {
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 40; spacing: 40
 
-        // HEADER PREMIUM
+        // HEADER PREMIUM (Imagen 2)
         RowLayout {
-            Layout.fillWidth: true; spacing: 25
-            Rectangle {
-                width: 52; height: 52; radius: 16; color: "#161618"; border.color: "#333"
-                Text { text: "←"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent }
-                MouseArea { 
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                    onClicked: galleryRoot.backRequested()
-                    onPressed: parent.scale = 0.9; onReleased: parent.scale = 1.0
-                }
-                Behavior on scale { NumberAnimation { duration: 100 } }
-            }
-            Column {
-                Text { text: galleryRoot.qs("gallery_title"); color: "white"; font.pixelSize: 34; font.bold: true; font.letterSpacing: -0.5 }
-                Text { text: galleryRoot.qs("gallery_desc"); color: "#666"; font.pixelSize: 15 }
+            Layout.fillWidth: true; spacing: 15
+            Text { 
+                text: "Gallery"
+                color: "white"
+                font.pixelSize: 22
+                font.bold: true
             }
             Item { Layout.fillWidth: true }
-            Row {
-                spacing: 15
-                // Botón Nuevo Grupo
-                Rectangle {
-                    width: 160; height: 52; radius: 26; color: "#161618"; border.color: "#333"
-                    Text { text: galleryRoot.qs("new_group"); color: "white"; font.bold: true; anchors.centerIn: parent }
-                    MouseArea { 
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: galleryRoot.createNewGroup()
-                        onPressed: parent.scale = 0.95; onReleased: parent.scale = 1.0
-                    }
-                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                }
-                // Botón Nuevo Dibujo (Premium Style)
-                Rectangle {
-                    id: btnNewGal
-                    width: 180; height: 52; radius: 26
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#3c82f6" }
-                        GradientStop { position: 1.0; color: "#2563eb" }
-                    }
-                    Text { text: "+ " + galleryRoot.qs("new_drawing"); color: "white"; font.bold: true; anchors.centerIn: parent; anchors.horizontalCenterOffset: 12 }
-                    
-                    scale: maNewGal.pressed ? 0.95 : (maNewGal.containsMouse ? 1.05 : 1.0)
-                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                    
-                    // Efecto de brillo (Sin MultiEffect para asegurar visibilidad)
-                    Rectangle {
-                        anchors.fill: parent; radius: 26
-                        color: "white"; opacity: maNewGal.containsMouse ? 0.15 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
-                    }
-
-                    MouseArea { 
-                        id: maNewGal; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: galleryRoot.createNewProject() 
-                    }
-                }
+            
+            // Icono de salida/puerta (Imagen 2 arriba a la derecha)
+            Rectangle {
+                width: 44; height: 44; radius: 12; color: "transparent"; border.color: "#333"
+                Text { text: "🚪"; color: "white"; font.pixelSize: 18; anchors.centerIn: parent; opacity: 0.7 }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: galleryRoot.backRequested() }
             }
         }
 
-        // GRID DE PROYECTOS
+        // GRID DE PROYECTOS (Ajustado a Imagen 2)
         GridView {
             id: grid
             Layout.fillWidth: true; Layout.fillHeight: true
-            cellWidth: 220; cellHeight: 300
+            cellWidth: 200; cellHeight: 180
             model: projectModel; clip: true; interactive: galleryRoot.draggedIndex === -1
 
             delegate: Item {
                 id: delegateRoot; width: grid.cellWidth; height: grid.cellHeight
                 opacity: galleryRoot.draggedIndex === index ? 0.0 : 1.0
-                scale: (galleryRoot.targetIndex === index && galleryRoot.draggedIndex !== index) ? 1.1 : 1.0
+                scale: (galleryRoot.targetIndex === index && galleryRoot.draggedIndex !== index) ? 1.05 : 1.0
                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
 
-                Loader {
-                    id: cellLoaderGal
-                    anchors.centerIn: parent
-                    property var thumbnails: model.thumbnails || []
-                    property string title: model.name || ""
-                    property bool isExpanded: (galleryRoot.targetIndex === index)
-                    property string preview: model.preview || ""
-                    sourceComponent: (model.type === "folder" || model.type === "sketchbook") ? stackComp : drawingComp
+                Column {
+                    anchors.centerIn: parent; spacing: 8
+                    
+                    Rectangle {
+                        width: 170; height: 110; radius: 18
+                        color: "#16161a"
+                        border.color: maGalItem.containsMouse ? "#3c82f6" : "#222"
+                        border.width: maGalItem.containsMouse ? 2 : 1
+                        clip: true
+                        
+                        Loader {
+                            id: cellLoaderGal
+                            anchors.fill: parent
+                            property var thumbnails: (model.thumbnails && model.thumbnails.length) ? model.thumbnails : []
+                            property string title: model.name || ""
+                            property bool isExpanded: (galleryRoot.targetIndex === index)
+                            property string preview: model.preview || ""
+                            sourceComponent: (model.type === "folder" || model.type === "sketchbook") ? stackComp : drawingComp
+                        }
+                    }
+                    
+                    Text { 
+                        text: model.name || "Sin título"
+                        color: maGalItem.containsMouse ? "#3c82f6" : "#aaa"
+                        font.pixelSize: 12; font.weight: Font.Medium
+                        width: 170; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter 
+                    }
                 }
 
                 MouseArea {
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor; pressAndHoldInterval: 250
+                    id: maGalItem; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    pressAndHoldInterval: 250
                     onClicked: {
                         if (model.type === "folder" || model.type === "sketchbook") galleryRoot.openSketchbook(model.path, model.name)
                         else galleryRoot.openDrawing(model.path)
@@ -169,6 +148,44 @@ Item {
                 }
             }
         }
+    }
+
+    // TOOLBAR INFERIOR (Imagen 2)
+    Rectangle {
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 30
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: 320; height: 60; radius: 30; color: "#1c1c1e"
+        opacity: galleryRoot.draggedIndex === -1 ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 200 } }
+        
+        Row {
+            anchors.centerIn: parent; spacing: 12
+            
+            // Botones redondos premium
+            GalleryToolButton { icon: "✅"; onClicked: console.log("Select") }
+            GalleryToolButton { icon: "☆"; onClicked: console.log("Favorite") }
+            
+            // Botón central Grande "+"
+            Rectangle {
+                width: 50; height: 50; radius: 25
+                gradient: Gradient { GradientStop { position: 0; color: "#4facfe" } GradientStop { position: 1; color: "#00f2fe" } }
+                Text { text: "+"; color: "white"; font.pixelSize: 28; font.bold: true; anchors.centerIn: parent }
+                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: galleryRoot.createNewProject() }
+                scale: 1.1
+            }
+            
+            GalleryToolButton { icon: "📁"; onClicked: galleryRoot.createNewGroup() }
+            GalleryToolButton { icon: "📥"; onClicked: console.log("Import") }
+        }
+    }
+
+    // Componente interno para botones de la toolbar
+    component GalleryToolButton : Rectangle {
+        property string icon: ""
+        signal clicked()
+        width: 40; height: 40; radius: 20; color: "#2c2c2e"
+        Text { text: icon; color: "white"; font.pixelSize: 16; anchors.centerIn: parent; opacity: 0.8 }
+        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked() }
     }
 
     // 4. CONTROLADOR DE ARRASTRE GLOBAL
@@ -209,6 +226,13 @@ Item {
         }
     }
     Component.onCompleted: refreshGallery()
+    
+    Connections {
+        target: mainCanvas
+        function onProjectListChanged() {
+            refreshGallery()
+        }
+    }
 
     // COMPONENTES DELEGADOS
     Component { 
@@ -222,36 +246,31 @@ Item {
     Component { 
         id: drawingComp
         Item { 
-            width: 175; height: 235
-            Rectangle { 
-                anchors.fill: parent; anchors.bottomMargin: 40; radius: 18; color: "#161618"; 
-                border.color: (galleryRoot.targetIndex === index) ? colorAccent : "#333"; 
-                border.width: (galleryRoot.targetIndex === index) ? 2 : 1; clip: true
-                
-                Image { 
-                    id: imgPreviewGal
-                    anchors.fill: parent; source: model.preview || ""; fillMode: Image.PreserveAspectCrop; mipmap: true 
-                    asynchronous: true
-                }
-                // Placeholder
-                Rectangle {
-                    anchors.fill: parent; color: "#252529"
-                    visible: imgPreviewGal.status !== Image.Ready
-                    Text { anchors.centerIn: parent; text: "✎"; color: "#444"; font.pixelSize: 40 }
-                }
-                Rectangle { 
-                    anchors.fill: parent
-                    gradient: Gradient { 
-                        GradientStop { position: 0; color: "#10ffffff" }
-                        GradientStop { position: 1; color: "transparent" } 
-                    }
-                    opacity: 0.1 
+            anchors.fill: parent
+            
+            // Access model property directly for reliability
+            property string previewUrl: model.preview || ""
+
+            Image { 
+                id: imgPreviewGal
+                anchors.fill: parent
+                source: previewUrl
+                fillMode: Image.PreserveAspectCrop
+                mipmap: true 
+                asynchronous: true
+                // Removed explicit visible check to see if it's a loading/status issue
+                onStatusChanged: {
+                    if (status === Image.Error) console.log("Gallery Image Error: " + source)
                 }
             }
-            Text { 
-                anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter; 
-                text: model.name || "Sin título"; color: "white"; font.bold: true; font.pixelSize: 15; 
-                width: parent.width; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter 
+            
+            // Placeholder
+            Rectangle {
+                anchors.fill: parent; color: "#1a1a20"
+                // Only show placeholder if image is not ready AND we have a source url (loading) OR no source
+                visible: imgPreviewGal.status !== Image.Ready
+                z: -1 // Place behind
+                Text { anchors.centerIn: parent; text: "✎"; color: "#2a2a35"; font.pixelSize: 32 }
             }
         } 
     }

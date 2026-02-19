@@ -45,6 +45,7 @@
     <file>qml/components/FloatingPanel.qml</file>
     <file>qml/components/BrushSettingsPanel.qml</file>
     <file>qml/components/PremiumPanel.qml</file>
+    <file>qml/components/SettingsMenu.qml</file>
     <file>qml/views/CanvasPage.qml</file>
 </qresource>
 </RCC>

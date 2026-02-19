@@ -31,6 +31,10 @@
 #include <QUrl>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtMath>
+#include <QDateTime>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include <algorithm>
 
 using namespace artflow;
@@ -48,7 +52,8 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_backgroundColor(Qt::transparent), m_currentProjectPath(""),
       m_currentProjectName("Untitled"), m_brushTip("round"),
       m_lastPressure(1.0f), m_isDrawing(false),
-      m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()) {
+      m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()),
+      m_lastActiveLayerIndex(-1) {
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
   setAcceptTouchEvents(true);
@@ -640,6 +645,15 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   Layer *layer = m_layerManager->getActiveLayer();
   if (!layer || !layer->visible || layer->locked)
     return;
+
+  // DETECT LAYER SWITCH
+  if (m_lastActiveLayerIndex != m_activeLayerIndex) {
+      if (m_pingFBO) {
+          delete m_pingFBO; m_pingFBO = nullptr;
+          delete m_pongFBO; m_pongFBO = nullptr;
+      }
+      m_lastActiveLayerIndex = m_activeLayerIndex;
+  }
 
   QPointF lastCanvasPos = m_lastPos;
 
@@ -2115,28 +2129,6 @@ QVariantList CanvasItem::getRecentProjects() {
 
 QVariantList CanvasItem::get_project_list() { return _scanSync(); }
 
-QVariantList CanvasItem::_scanSync() {
-  QVariantList results;
-  QString path =
-      QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-      "/ArtFlowProjects";
-  QDir dir(path);
-
-  QFileInfoList entries = dir.entryInfoList(
-      QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Time);
-  for (const QFileInfo &info : entries) {
-    if (info.fileName().endsWith(".json") && info.isFile())
-      continue;
-
-    QVariantMap item;
-    item["name"] = info.fileName();
-    item["path"] = info.absoluteFilePath();
-    item["type"] = info.isDir() ? "folder" : "drawing";
-    item["date"] = info.lastModified();
-    results.append(item);
-  }
-  return results;
-}
 
 void CanvasItem::load_file_path(const QString &path) { loadProject(path); }
 void CanvasItem::handle_shortcuts(int key, int modifiers) {
@@ -2344,24 +2336,274 @@ void CanvasItem::setBackgroundColor(const QString &color) {
 }
 
 bool CanvasItem::loadProject(const QString &path) {
-  qDebug() << "Loading project from:" << path;
-  m_currentProjectPath = path;
-  m_currentProjectName = QFileInfo(path).baseName();
-  emit currentProjectPathChanged();
-  emit currentProjectNameChanged();
+    QString localPath = path;
+    if (localPath.startsWith("file:///")) {
+        localPath = QUrl(path).toLocalFile();
+    }
+    
+    QFileInfo info(localPath);
+    if (!info.exists()) return false;
 
-  // In a real app, you'd load layers from file here
-  fitToView();
-  return true;
+    qDebug() << "Loading project (Single File) from:" << localPath;
+    
+    QFile file(localPath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Could not open project file for reading";
+        return false;
+    }
+    
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+    QJsonObject obj = doc.object();
+    
+    int w = obj["width"].toInt();
+    int h = obj["height"].toInt();
+    
+    if (w <= 0 || h <= 0) {
+        w = 1920; h = 1080; // Fallback
+    }
+
+    // 1. Reset Canvas
+    resizeCanvas(w, h);
+    
+    // 2. Load Layers from Embedded Data
+    QJsonArray layersArray = obj["layers"].toArray();
+    
+    if (!layersArray.isEmpty()) {
+        // Remove default layer
+        if (m_layerManager->getLayerCount() > 0) {
+            m_layerManager->removeLayer(0);
+        }
+        
+        for (const QJsonValue &val : layersArray) {
+            QJsonObject layerObj = val.toObject();
+            QString name = layerObj["name"].toString();
+            
+            // Backwards compatibility: check for old 'file' property to warn user or handle legacy?
+            // For now, we assume new format. If "data" is missing, layer will be empty.
+            
+            int newIdx = m_layerManager->addLayer(name.toStdString());
+            Layer* newLayer = m_layerManager->getLayer(newIdx);
+            
+            if (newLayer) {
+                newLayer->opacity = (float)layerObj["opacity"].toDouble(1.0);
+                newLayer->visible = layerObj["visible"].toBool(true);
+                newLayer->locked = layerObj["locked"].toBool(false);
+                newLayer->alphaLock = layerObj["alphaLock"].toBool(false);
+                newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
+                newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
+
+                // Load Embedded Image Data (Base64)
+                QString b64Data = layerObj["data"].toString();
+                if (!b64Data.isEmpty()) {
+                    QByteArray data = QByteArray::fromBase64(b64Data.toLatin1());
+                    QImage img;
+                    if (img.loadFromData(data, "PNG")) {
+                        img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+                        if (img.width() == w && img.height() == h) {
+                            std::memcpy(newLayer->buffer->data(), img.constBits(), (size_t)w * h * 4);
+                        } else {
+                           QImage scaled = img.scaled(w, h, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+                           scaled = scaled.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+                           std::memcpy(newLayer->buffer->data(), scaled.constBits(), (size_t)w * h * 4);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    m_currentProjectPath = localPath;
+    m_currentProjectName = info.baseName();
+    
+    emit currentProjectPathChanged();
+    emit currentProjectNameChanged();
+    updateLayersList();
+    
+    emit notificationRequested("Project loaded: " + m_currentProjectName, "success");
+    
+    fitToView();
+    update();
+    return true;
 }
 
-bool CanvasItem::saveProject(const QString &path) {
-  qDebug() << "Saving project to:" << path;
-  return true;
+bool CanvasItem::saveProject(const QString &pathText) {
+    if (pathText.isEmpty()) return false;
+    
+    // SYNC GPU DATA TO CPU BEFORE SAVING
+    syncGpuToCpu();
+
+    QString baseDirStr = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
+    QDir baseDir(baseDirStr);
+    if (!baseDir.exists()) baseDir.mkpath(".");
+    
+    QString targetPath = pathText;
+    if (!targetPath.contains("/") && !targetPath.contains("\\")) {
+        targetPath = baseDir.filePath(targetPath);
+    }
+    
+    if (!targetPath.endsWith(".stxf")) {
+        targetPath += ".stxf";
+    }
+
+    qDebug() << "Saving project (Single File) to:" << targetPath;
+    QFileInfo info(targetPath);
+    
+    // 1. Prepare JSON Data
+    QJsonObject obj;
+    obj["title"] = info.baseName();
+    obj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    obj["width"] = m_canvasWidth;
+    obj["height"] = m_canvasHeight;
+    obj["version"] = 2; // Version 2: Embedded Data
+    
+    QJsonArray layersArray;
+    if (m_layerManager) {
+        for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+            Layer* layer = m_layerManager->getLayer(i);
+            if (!layer) continue;
+            
+            QJsonObject layerObj;
+            layerObj["name"] = QString::fromStdString(layer->name);
+            layerObj["opacity"] = layer->opacity;
+            layerObj["visible"] = layer->visible;
+            layerObj["locked"] = layer->locked;
+            layerObj["alphaLock"] = layer->alphaLock;
+            layerObj["blendMode"] = (int)layer->blendMode;
+            layerObj["type"] = (int)layer->type;
+            
+            // Embed Image Data as Base64 String
+            // Create deep copy for saving
+            QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
+            QBuffer buffer;
+            buffer.open(QIODevice::WriteOnly);
+            if (img.save(&buffer, "PNG")) {
+                QString b64 = QString::fromLatin1(buffer.data().toBase64());
+                layerObj["data"] = b64;
+                layersArray.append(layerObj);
+            } else {
+                qWarning() << "Failed to encode layer image";
+            }
+        }
+    }
+    obj["layers"] = layersArray;
+
+    // 3. Write Single .stxf File
+    QFile file(targetPath);
+    if (file.open(QIODevice::WriteOnly)) {
+        
+        // Generate Thumbnail (Small, efficiently encoded)
+        // Create composite image first
+        ImageBuffer composite(m_canvasWidth, m_canvasHeight);
+        if (m_layerManager) {
+            m_layerManager->compositeAll(composite);
+        }
+        
+        // Use a background for the thumbnail so it's not transparent/invisible
+        QImage imgComp(composite.data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
+        
+        // Force RGB32 (No Alpha) and White Background
+        QImage thumbFinal(512, 512, QImage::Format_RGB32);
+        thumbFinal.fill(Qt::white);
+        
+        QPainter p(&thumbFinal);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+        QImage scaled = imgComp.scaled(512, 512, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        p.drawImage((512 - scaled.width())/2, (512 - scaled.height())/2, scaled);
+        p.end();
+
+        QBuffer thumbBuf;
+        thumbBuf.open(QIODevice::WriteOnly);
+        thumbFinal.save(&thumbBuf, "PNG"); // PNG is more reliable for Data URLs
+        QString thumbB64 = QString::fromLatin1(thumbBuf.data().toBase64());
+        obj["thumbnail"] = thumbB64;
+
+        QJsonDocument doc(obj);
+        file.write(doc.toJson(QJsonDocument::Compact));
+        file.close();
+    } else {
+        return false;
+    }
+
+    // 4. Update current project path/name
+    m_currentProjectPath = targetPath;
+    m_currentProjectName = info.baseName();
+    emit currentProjectPathChanged();
+    emit currentProjectNameChanged();
+    
+    // NOTIFY UI TO REFRESH LISTS
+    emit projectListChanged();
+    
+    emit notificationRequested("Project saved successfully", "success");
+    return true;
+}
+
+QVariantList CanvasItem::_scanSync() {
+  QVariantList results;
+  QString path = (m_currentProjectPath.isEmpty() || !m_currentProjectPath.contains("ArtFlowProjects")) 
+                 ? QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects"
+                 : QFileInfo(m_currentProjectPath).path();
+                 
+  if (!QFileInfo(path).isDir()) {
+       path = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
+  }
+
+  QDir dir(path);
+  QFileInfoList entries = dir.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Time);
+      
+  for (const QFileInfo &info : entries) {
+    if (info.fileName().endsWith(".png") || info.fileName().endsWith(".jpg")) continue;
+    if (info.fileName().endsWith(".json")) continue;
+
+    if (info.isFile() && info.suffix() == "stxf") {
+        QVariantMap item;
+        item["name"] = info.completeBaseName();
+        item["path"] = info.absoluteFilePath();
+        item["type"] = "drawing";
+        item["date"] = info.lastModified().toString("dd MMM yyyy");
+        
+        QFile f(info.absoluteFilePath());
+        if (f.open(QIODevice::ReadOnly)) {
+            QByteArray jsonData = f.readAll();
+            QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+            if (!doc.isNull()) {
+                QJsonObject root = doc.object();
+                if (root.contains("thumbnail")) {
+                    QString b64 = root["thumbnail"].toString();
+                    if (!b64.isEmpty()) {
+                        item["preview"] = "data:image/png;base64," + b64;
+                    }
+                }
+                
+                // Fallback: Check for external preview ONLY IF embedded failed 
+                // e.g. legacy files without embedded thumb
+                if (!item.contains("preview")) {
+                     QString extPreview = info.absoluteFilePath() + ".png";
+                     if (QFile::exists(extPreview)) {
+                         item["preview"] = QUrl::fromLocalFile(extPreview).toString();
+                     }
+                }
+            }
+            f.close();
+        } else {
+            qDebug() << "Failed to open file for scan:" << info.absoluteFilePath();
+        }
+        results.append(item);
+    }
+    else if (info.isDir()) {
+        QVariantMap item;
+        item["name"] = info.fileName();
+        item["path"] = info.absoluteFilePath();
+        item["type"] = "folder";
+        item["date"] = info.lastModified().toString("dd MMM yyyy");
+        results.append(item);
+    }
+  }
+  return results;
 }
 
 bool CanvasItem::saveProjectAs(const QString &path) {
-  return saveProject(path);
+    return saveProject(path);
 }
 
 bool CanvasItem::exportImage(const QString &path, const QString &format) {
@@ -2372,15 +2614,21 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
   ImageBuffer composite(m_canvasWidth, m_canvasHeight);
   m_layerManager->compositeAll(composite);
 
-  QImage img(composite.data(), m_canvasWidth, m_canvasHeight,
-             QImage::Format_RGBA8888);
+  // Use ARGB32_Premultiplied which is standard for QImage unless you're sure about RGBA8888 byte order
+  // Create a deep copy to ensure the image owns its data
+  QImage img = QImage(composite.data(), m_canvasWidth, m_canvasHeight,
+             QImage::Format_RGBA8888_Premultiplied).copy();
+             
   // Convert path to local file if it's a URL
   QString localPath = path;
   if (localPath.startsWith("file:///")) {
     localPath = QUrl(path).toLocalFile();
   }
 
-  return img.save(localPath, format.toUpper().toStdString().c_str());
+  qDebug() << "Exporting image to:" << localPath;
+  bool success = img.save(localPath, format.toUpper().toStdString().c_str());
+  if(!success) qDebug() << "Failed to save image to:" << localPath;
+  return success; 
 }
 
 bool CanvasItem::importABR(const QString &path) {
@@ -2657,10 +2905,24 @@ void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
 
 void CanvasItem::setActiveLayer(int index) {
   if (m_layerManager && index >= 0 && index < m_layerManager->getLayerCount()) {
+    // SYNC CURRENT LAYER BEFORE SWITCHING
+    if (index != m_activeLayerIndex) {
+        syncGpuToCpu();
+    }
+    
     m_activeLayerIndex = index;
     m_layerManager->setActiveLayer(index);
     emit activeLayerChanged();
     updateLayersList();
+    
+    // Explicitly update m_lastActiveLayerIndex to prevent double-sync in handleDraw
+    m_lastActiveLayerIndex = m_activeLayerIndex;
+    
+    // Force FBO reload for the next draw
+    if (m_pingFBO) {
+        delete m_pingFBO; m_pingFBO = nullptr;
+        delete m_pongFBO; m_pongFBO = nullptr;
+    }
   }
 }
 
@@ -2779,6 +3041,22 @@ void CanvasItem::beginBrushEdit(const QString &brushName) {
   emit isEditingBrushChanged();
   emit editingPresetChanged();
   qDebug() << "beginBrushEdit: Editing" << brushName;
+}
+
+void CanvasItem::syncGpuToCpu() {
+    if (!m_layerManager) return;
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (!layer || !m_pingFBO) return;
+
+    QImage img = m_pingFBO->toImage();
+    if (img.format() != QImage::Format_RGBA8888 && img.format() != QImage::Format_RGBA8888_Premultiplied) {
+        img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+    }
+
+    if (img.width() == m_canvasWidth && img.height() == m_canvasHeight) {
+        std::memcpy(layer->buffer->data(), img.constBits(), (size_t)m_canvasWidth * m_canvasHeight * 4);
+        layer->dirty = true;
+    }
 }
 
 void CanvasItem::cancelBrushEdit() {

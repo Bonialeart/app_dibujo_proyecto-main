@@ -370,6 +370,7 @@ signals:
   void selectionAddModeChanged();
   void selectionThresholdChanged();
   void isSelectionModeActiveChanged();
+  void projectListChanged();
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
@@ -540,6 +541,8 @@ private:
   void updateBrushTipImage();
 
   void capture_timelapse_frame();
+  void syncGpuToCpu();
+  int m_lastActiveLayerIndex = -1;
 };
 
 #endif // CANVASITEM_H

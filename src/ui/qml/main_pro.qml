@@ -408,6 +408,62 @@ Window {
                     }
                 }
 
+                // TOP BAR ICONS: Return to Gallery & Settings
+                Item { width: 4 } // Spacer
+                
+                // Return to Gallery (Home)
+                Rectangle {
+                    width: 32; height: 32
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: galleryBtnMa.containsMouse ? "#25ffffff" : "transparent"
+                    radius: 6
+                    
+                    Image {
+                        anchors.centerIn: parent
+                        source: iconPath("home.svg") 
+                        sourceSize.width: 20; sourceSize.height: 20
+                        opacity: 1.0
+                    }
+                    MouseArea {
+                        id: galleryBtnMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: currentPage = 0
+                    }
+                    ToolTip { visible: galleryBtnMa.containsMouse; delay: 800; text: "Return to Gallery" }
+                }
+                
+                Item { width: 8 }
+
+                // Settings Button
+                Rectangle {
+                    width: 32; height: 32
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: setBtnMa.containsMouse ? "#25ffffff" : "transparent"
+                    radius: 6
+                    
+                    Image {
+                        anchors.centerIn: parent
+                        source: iconPath("settings.svg") 
+                        sourceSize.width: 20; sourceSize.height: 20
+                        opacity: 1.0
+                    }
+                    MouseArea {
+                        id: setBtnMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: settingsMenu.open()
+                    }
+                    ToolTip { visible: setBtnMa.containsMouse; delay: 800; text: "Settings" }
+                }
+                
+                Rectangle { 
+                    width: 1; height: 20
+                    color: "#33ffffff"
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.margins: 6
+                }
+
                 // FILE MENU
                 MenuButton {
                     label: "File"
@@ -2022,6 +2078,23 @@ Window {
                             }
 
                             Rectangle { width: 1; height: 16 * uiScale; color: "#22ffffff" } // Separator
+
+                            // Settings Button
+                            Rectangle {
+                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
+                                color: settingsBtnMouse.containsMouse ? "#22ffffff" : "transparent"
+                                Image { 
+                                    source: iconPath("settings.svg") 
+                                    width: 14 * uiScale; height: 14 * uiScale 
+                                    anchors.centerIn: parent 
+                                    opacity: 0.7 
+                                }
+                                MouseArea { 
+                                    id: settingsBtnMouse; anchors.fill: parent 
+                                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor 
+                                    onClicked: settingsMenu.open() 
+                                }
+                            }
 
                             // Reference Button
                             Rectangle {
@@ -5645,6 +5718,13 @@ Window {
     PreferencesDialog {
         id: preferencesDialog
         // Connect signals if needed, e.g. onSettingsChanged
+    }
+
+    // Main Settings Menu
+    SettingsMenu {
+        id: settingsMenu
+        windowRef: mainWindow
+        canvasRef: mainCanvas
     }
 
     // Feedback for Timelapse Export

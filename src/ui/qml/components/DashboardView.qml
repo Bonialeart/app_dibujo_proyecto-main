@@ -482,71 +482,60 @@ Item {
 
                 // Project Cards Grid
                 Flow {
-                    width: parent.width; spacing: 20
+                    width: parent.width; spacing: 25
                     Repeater {
                         model: dashboardRoot.externalModel || recentModel
                         delegate: Item {
-                            id: projItem; width: 230; height: 295
+                            id: projItem; width: 220; height: 260
 
                             // Staggered entrance animation
                             opacity: 0
-                            Component.onCompleted: {
-                                entranceAnim.start()
-                            }
+                            Component.onCompleted: entranceAnim.start()
                             NumberAnimation {
-                                id: entranceAnim
-                                target: projItem
-                                property: "opacity"
-                                from: 0; to: 1
-                                duration: 500
-                                easing.type: Easing.OutCubic
+                                id: entranceAnim; target: projItem; property: "opacity"
+                                from: 0; to: 1; duration: 600; easing.type: Easing.OutCubic
                             }
 
                             // Hover micro-interaction
-                            scale: maProj.containsMouse ? 1.04 : 1.0
+                            scale: maProj.containsMouse ? 1.05 : 1.0
                             Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
 
-                            Rectangle {
-                                anchors.fill: parent; radius: 22
-                                color: colorSurface
-                                border.color: maProj.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.5) : "#18ffffff"
-                                border.width: maProj.containsMouse ? 1.5 : 1
+                            Column {
+                                anchors.fill: parent; spacing: 12
+                                
+                                Rectangle {
+                                    width: parent.width; height: 180; radius: 24
+                                    color: "#16161a"
+                                    border.color: maProj.containsMouse ? colorAccent : "#18ffffff"
+                                    border.width: maProj.containsMouse ? 2 : 1
+                                    clip: true
+                                    
+                                    Behavior on border.color { ColorAnimation { duration: 250 } }
 
-                                Behavior on border.color { ColorAnimation { duration: 250 } }
-                                clip: true
-
-                                Loader {
-                                    id: cellLoader
-                                    anchors.fill: parent
-                                    property var thumbnails: model.thumbnails || []
-                                    property string title: model.name || ""
-                                    property string preview: model.preview || ""
-                                    sourceComponent: (model.type === "folder" || model.type === "sketchbook") ? stackComp : drawingComp
+                                    Loader {
+                                        id: cellLoader
+                                        anchors.fill: parent
+                                        property var thumbnails: (model.thumbnails && model.thumbnails.length) ? model.thumbnails : []
+                                        property string title: model.name || ""
+                                        property string preview: model.preview || ""
+                                        sourceComponent: (model.type === "folder" || model.type === "sketchbook") ? stackComp : drawingComp
+                                    }
                                 }
 
-                                // Glassmorphism hover overlay
-                                Rectangle {
-                                    anchors.fill: parent; radius: 22
-                                    gradient: Gradient {
-                                        GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.08) }
-                                        GradientStop { position: 1.0; color: "transparent" }
+                                Column {
+                                    width: parent.width; spacing: 2
+                                    Text {
+                                        text: model.name || dashboardRoot.qs("untitled")
+                                        color: colorTextPrimary; font.bold: true; font.pixelSize: 14
+                                        width: parent.width; elide: Text.ElideRight
+                                        horizontalAlignment: Text.AlignHCenter
                                     }
-                                    opacity: maProj.containsMouse ? 1.0 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 300 } }
-                                }
-
-                                // Bottom info gradient
-                                Rectangle {
-                                    anchors.left: parent.left; anchors.right: parent.right
-                                    anchors.bottom: parent.bottom
-                                    height: 80; radius: 22
-                                    gradient: Gradient {
-                                        GradientStop { position: 0.0; color: "transparent" }
-                                        GradientStop { position: 1.0; color: "#c0000000" }
+                                    Text {
+                                        text: model.date || ""
+                                        color: colorTextSecondary; font.pixelSize: 11
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        visible: text !== ""
                                     }
-                                    visible: maProj.containsMouse
-                                    opacity: maProj.containsMouse ? 1.0 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 250 } }
                                 }
                             }
 
@@ -723,53 +712,40 @@ Item {
         id: drawingComp
         Item {
             anchors.fill: parent
+            
+            // Thumbnail Image
+            Image {
+                id: imgPreview
+                anchors.fill: parent
+                source: model.preview || ""
+                fillMode: Image.PreserveAspectCrop; mipmap: true
+                asynchronous: true
+                visible: status === Image.Ready
+            }
+
+            // Placeholder
             Rectangle {
-                anchors.fill: parent; anchors.bottomMargin: 60; color: "#000"; clip: true
-                radius: 22
-
-                Image {
-                    id: imgPreview
-                    anchors.fill: parent
-                    source: model.preview || ""
-                    fillMode: Image.PreserveAspectCrop; mipmap: true
-                    asynchronous: true
-                }
-
-                // Placeholder
-                Rectangle {
-                    anchors.fill: parent
-                    color: "#16161a"
-                    visible: imgPreview.status !== Image.Ready
-                    radius: 22
-
-                    Column {
-                        anchors.centerIn: parent; spacing: 8
-                        Text { text: "✎"; color: "#333"; font.pixelSize: 36; anchors.horizontalCenter: parent.horizontalCenter }
-                        Text { text: model.name || ""; color: "#444"; font.pixelSize: 11; anchors.horizontalCenter: parent.horizontalCenter; elide: Text.ElideRight; width: 150; horizontalAlignment: Text.AlignHCenter }
+                anchors.fill: parent
+                color: "#1a1a20"
+                visible: imgPreview.status !== Image.Ready
+                
+                Column {
+                    anchors.centerIn: parent; spacing: 8
+                    Text { text: "✎"; color: "#2a2a35"; font.pixelSize: 42; anchors.horizontalCenter: parent.horizontalCenter }
+                    Text { 
+                        text: dashboardRoot.qs("empty")
+                        color: "#3a3a45"; font.pixelSize: 12; font.weight: Font.DemiBold
+                        anchors.horizontalCenter: parent.horizontalCenter 
                     }
                 }
             }
 
-            // Title area
-            Column {
-                anchors.bottom: parent.bottom; anchors.bottomMargin: 12
-                anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 3
-
-                Text {
-                    text: model.name || dashboardRoot.qs("untitled")
-                    color: colorTextPrimary; font.bold: true; font.pixelSize: 14
-                    width: parent.parent.width - 24; elide: Text.ElideRight
-                    horizontalAlignment: Text.AlignHCenter
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-
-                Text {
-                    text: model.date || ""
-                    color: colorTextSecondary; font.pixelSize: 11
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    visible: text !== ""
-                }
+            // Subtle inner glow/shadow
+            Rectangle {
+                anchors.fill: parent
+                color: "transparent"
+                border.color: "#10ffffff"; border.width: 1
+                radius: 24
             }
         }
     }

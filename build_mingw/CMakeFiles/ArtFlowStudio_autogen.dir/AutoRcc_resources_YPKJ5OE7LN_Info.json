@@ -32,6 +32,7 @@
 		"D:/app_dibujo_proyecto-main/src/ui/qml/components/ProjectGroupView.qml",
 		"D:/app_dibujo_proyecto-main/src/ui/qml/components/ProSliderHorizontal.qml",
 		"D:/app_dibujo_proyecto-main/src/ui/qml/components/ProjectNavigator.qml",
+		"D:/app_dibujo_proyecto-main/src/ui/qml/components/SettingsMenu.qml",
 		"D:/app_dibujo_proyecto-main/src/ui/qml/components/DockArea.qml",
 		"D:/app_dibujo_proyecto-main/src/ui/qml/components/ToastManager.qml",
 		"D:/app_dibujo_proyecto-main/src/ui/qml/components/FloatingPanel.qml",
