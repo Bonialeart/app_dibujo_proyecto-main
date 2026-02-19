@@ -167,6 +167,12 @@ Window {
                 recentProjectsModel.append(p)
             }
         }
+        
+        // Instant Refresh Implementation
+        function onProjectListChanged() {
+            // Reload recent projects list in Home
+            loadRecentProjects()
+        }
     }
 
     function refreshGallery() {
@@ -257,6 +263,18 @@ Window {
                     anchors.margins: 40
                     source: quickLookOverlay.source
                     smooth: true
+                    mipmap: true // <-- VITAL para encoger imágenes sin pixelar
+                    asynchronous: true // <-- VITAL para no congelar la app al cargar Base64 pesados
+                    
+                    // Sombra interna elegante para el visualizador
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: "#88000000"
+                        shadowBlur: 0.8
+                        shadowVerticalOffset: 10
+                        shadowOpacity: 0.5
+                    }
                 }
             }
             

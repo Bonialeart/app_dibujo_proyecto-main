@@ -708,44 +708,67 @@ Item {
     }
 
     // Drawing Card Component
+    // Drawing Card Component (Premium Version)
     Component {
         id: drawingComp
         Item {
             anchors.fill: parent
             
-            // Thumbnail Image
-            Image {
-                id: imgPreview
-                anchors.fill: parent
-                source: model.preview || ""
-                fillMode: Image.PreserveAspectCrop; mipmap: true
-                asynchronous: true
-                visible: status === Image.Ready
-            }
+            // Property injected by Loader
+            property string previewUrl: title !== "" ? preview : (model.preview || "") 
 
-            // Placeholder
+            // Card Container
             Rectangle {
+                id: card
                 anchors.fill: parent
-                color: "#1a1a20"
-                visible: imgPreview.status !== Image.Ready
+                color: "#1c1c22"
+                radius: 20 // Matching the outer container radius
                 
-                Column {
-                    anchors.centerIn: parent; spacing: 8
-                    Text { text: "✎"; color: "#2a2a35"; font.pixelSize: 42; anchors.horizontalCenter: parent.horizontalCenter }
-                    Text { 
-                        text: dashboardRoot.qs("empty")
-                        color: "#3a3a45"; font.pixelSize: 12; font.weight: Font.DemiBold
-                        anchors.horizontalCenter: parent.horizontalCenter 
+                // 1. Premium Shadow
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#80000000"
+                    shadowBlur: 1.0
+                    shadowVerticalOffset: 6
+                    shadowOpacity: 0.5
+                }
+
+                // 2. Thumbnail Image
+                Image {
+                    id: imgPreview
+                    anchors.fill: parent
+                    source: previewUrl
+                    fillMode: Image.PreserveAspectCrop
+                    mipmap: true
+                    asynchronous: true
+                    
+                    // Masking for rounded corners
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        maskEnabled: true
+                        maskSource: maskRectHome
                     }
                 }
-            }
 
-            // Subtle inner glow/shadow
-            Rectangle {
-                anchors.fill: parent
-                color: "transparent"
-                border.color: "#10ffffff"; border.width: 1
-                radius: 24
+                // 3. Mask Rectangle (Hidden)
+                Rectangle {
+                    id: maskRectHome
+                    anchors.fill: parent
+                    radius: 20
+                    visible: false
+                    layer.enabled: true
+                }
+                
+                // 4. Placeholder (if empty or loading)
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 8
+                    visible: imgPreview.status !== Image.Ready && imgPreview.source == ""
+                    
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "🎨"; font.pixelSize: 32; opacity: 0.4 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Empty"; color: "#555"; font.pixelSize: 11 }
+                }
             }
         }
     }

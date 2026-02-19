@@ -2499,17 +2499,30 @@ bool CanvasItem::saveProject(const QString &pathText) {
             m_layerManager->compositeAll(composite);
         }
         
-        // Use a background for the thumbnail so it's not transparent/invisible
+        // 1. Get raw composite image
         QImage imgComp(composite.data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
         
-        // Force RGB32 (No Alpha) and White Background
-        QImage thumbFinal(512, 512, QImage::Format_RGB32);
-        thumbFinal.fill(Qt::white);
+        // 2. Calculate target size maintaining Aspect Ratio (Max 600px)
+        QSize thumbSize(m_canvasWidth, m_canvasHeight);
+        thumbSize.scale(600, 600, Qt::KeepAspectRatio);
+
+        // 3. Create destination image supporting ARGB
+        QImage thumbFinal(thumbSize, QImage::Format_ARGB32);
         
+        // 4. Fill with background color (or white if transparent/undefined)
+        if (m_backgroundColor.alpha() > 0) {
+            thumbFinal.fill(m_backgroundColor);
+        } else {
+            thumbFinal.fill(Qt::white);
+        }
+
+        // 5. Draw scaled image with high quality
         QPainter p(&thumbFinal);
         p.setRenderHint(QPainter::SmoothPixmapTransform);
-        QImage scaled = imgComp.scaled(512, 512, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        p.drawImage((512 - scaled.width())/2, (512 - scaled.height())/2, scaled);
+        p.setRenderHint(QPainter::Antialiasing);
+        
+        QImage scaled = imgComp.scaled(thumbSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        p.drawImage(0, 0, scaled);
         p.end();
 
         QBuffer thumbBuf;

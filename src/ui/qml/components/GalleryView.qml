@@ -108,7 +108,7 @@ Item {
                         color: "#16161a"
                         border.color: maGalItem.containsMouse ? "#3c82f6" : "#222"
                         border.width: maGalItem.containsMouse ? 2 : 1
-                        clip: true
+                        clip: false // Enable shadow
                         
                         Loader {
                             id: cellLoaderGal
@@ -248,29 +248,67 @@ Item {
         Item { 
             anchors.fill: parent
             
-            // Access model property directly for reliability
-            property string previewUrl: model.preview || ""
+            // ✅ CORRECCIÓN 1: En lugar de usar `model.preview`, leemos 
+            // la propiedad que pasamos a través del Loader.
+            property string previewUrl: parent.preview || ""
 
-            Image { 
-                id: imgPreviewGal
+            // Contenedor principal de la tarjeta Premium
+            Rectangle {
+                id: card
                 anchors.fill: parent
-                source: previewUrl
-                fillMode: Image.PreserveAspectCrop
-                mipmap: true 
-                asynchronous: true
-                // Removed explicit visible check to see if it's a loading/status issue
-                onStatusChanged: {
-                    if (status === Image.Error) console.log("Gallery Image Error: " + source)
+                color: "#1c1c22" // Fondo oscuro base
+                radius: 16       // Bordes súper redondeados estilo Apple/Procreate
+                
+                // La Imagen de la Miniatura
+                Image {
+                    id: imgPreviewGal
+                    anchors.fill: parent
+                    source: previewUrl
+                    fillMode: Image.PreserveAspectCrop
+                    mipmap: true 
+                    asynchronous: true
+                    
+                    // ✅ CORRECCIÓN 2: Aplicación correcta de la máscara en Qt6
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        maskEnabled: true
+                        maskSource: maskRect
+                    }
                 }
+                
+                // Sombra Premium (A nivel de tarjeta, debajo de la imagen enmascarada)
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#80000000" // Sombra oscura y profunda
+                    shadowBlur: 1.0
+                    shadowVerticalOffset: 8
+                    shadowOpacity: 0.5
+                }
+                
+                // Máscara (El secreto para que la imagen respete los bordes redondeados)
+                Rectangle {
+                    id: maskRect
+                    anchors.fill: parent
+                    radius: 16
+                    visible: false
+                    layer.enabled: true // REQUISITO OBLIGATORIO PARA QUE FUNCIONE LA MÁSCARA
+                }
+                
+                // Borde sutil
+                border.color: maGalItem.containsMouse ? "#3c82f6" : "#333"
+                border.width: maGalItem.containsMouse ? 2 : 1
             }
             
-            // Placeholder
-            Rectangle {
-                anchors.fill: parent; color: "#1a1a20"
-                // Only show placeholder if image is not ready AND we have a source url (loading) OR no source
-                visible: imgPreviewGal.status !== Image.Ready
-                z: -1 // Place behind
-                Text { anchors.centerIn: parent; text: "✎"; color: "#2a2a35"; font.pixelSize: 32 }
+            // Placeholder: Si la imagen está cargando o C++ no envió nada, 
+            // mostramos un icono bonito en lugar de una caja negra vacía.
+            Column {
+                anchors.centerIn: parent
+                spacing: 8
+                visible: imgPreviewGal.status !== Image.Ready && imgPreviewGal.source == ""
+                
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "🎨"; font.pixelSize: 32; opacity: 0.4 }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "No preview"; color: "#555"; font.pixelSize: 10 }
             }
         } 
     }
