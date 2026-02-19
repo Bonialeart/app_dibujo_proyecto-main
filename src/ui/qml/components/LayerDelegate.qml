@@ -53,6 +53,30 @@ Item {
     property var thumbnailSource: listModel.thumbnail
     property int layerDepth: (typeof listModel.depth !== 'undefined' ? listModel.depth : 0)
     property bool isGroupExpanded: listModel.expanded
+
+    // --- NUEVO: SISTEMA DE REFRESCO DE MINIATURA EN TIEMPO REAL ---
+    property double thumbRefreshTime: Date.now()
+    
+    // Esta propiedad crea una URL única cada vez que cambia el modelo para obligar a QML a redibujar
+    property string activeThumbnail: {
+        var baseStr = thumbnailSource || ""
+        if (baseStr === "") return ""
+        // Añade el timestamp al final (ej. "image://capa_1?ts=1690000000")
+        var separator = baseStr.indexOf('?') !== -1 ? '&' : '?'
+        return baseStr + separator + "ts=" + thumbRefreshTime
+    }
+
+    // Escucha directamente las actualizaciones que manda C++ al modelo
+    Connections {
+        target: layersListRef.model
+        function onDataChanged(topLeft, bottomRight, roles) {
+            // Si la señal de cambio incluye a esta capa (listIndex), forzamos la recarga
+            if (layerDelegate.listIndex >= topLeft.row && layerDelegate.listIndex <= bottomRight.row) {
+                layerDelegate.thumbRefreshTime = Date.now()
+            }
+        }
+    }
+    // -------------------------------------------------------------
     
     width: layersListRef.width
     // Height changes if active or options are open
@@ -232,18 +256,28 @@ Item {
                     Layout.preferredHeight: 36
                     Layout.alignment: Qt.AlignVCenter
                     radius: 6
-                    color: layerType === "background" ? "white" : "#18181a"
+                    color: layerType === "background" ? (listModel.bgColor || "white") : "#ebebeb" // Use project background color
                     border.color: isActive ? "#ffffff50" : "#ffffff20"
                     border.width: 1
                     clip: true
                     
-                    Image { visible: layerType !== "background"; anchors.fill: parent; source: iconPath("grid_pattern.svg"); fillMode: Image.Tile; opacity: 0.05 }
+                    // High-contrast Checkerboard for transparency
+                    Image { 
+                        visible: layerType !== "background"
+                        anchors.fill: parent
+                        source: iconPath("grid_pattern.svg")
+                        fillMode: Image.Tile
+                        opacity: 0.5 // High opacity to see the squares clearly
+                    }
                     Image {
-                        visible: layerType !== "background" && layerType !== "group"
+                        visible: layerType !== "group" // Show for drawing and background layers
                         anchors.fill: parent; anchors.margins: 2
-                        source: thumbnailSource || ""
+                        source: layerDelegate.activeThumbnail
                         fillMode: Image.PreserveAspectFit
                         cache: false
+                        asynchronous: true
+                        smooth: true
+                        mipmap: true
                     }
                     Image { visible: isAlphaLocked; source: iconPath("lock.svg"); width: 10; height: 10; anchors.right:parent.right; anchors.bottom:parent.bottom; anchors.margins:2; opacity:0.8 }
                     

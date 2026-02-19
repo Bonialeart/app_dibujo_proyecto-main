@@ -48,17 +48,27 @@ Window {
     FocusScope {
         id: globalKeys
         anchors.fill: parent
-        focus: currentPage !== 0 || !newProjectDialog.visible // Simple heuristic
+        focus: true
         z: 9999
         
         // Only handle keys if we are on drawing page and no dialog is active
         enabled: currentPage === 1 && !newProjectDialog.visible && !newSketchbookDialog.visible && !preferencesDialog.visible && !pressureDialog.visible
         
+        onEnabledChanged: if (enabled) forceActiveFocus()
+        
         Keys.onPressed: (event) => {
+            // Prevent Space from scrolling Flickables
+            if (event.key === Qt.Key_Space) {
+                event.accepted = true;
+                if (event.isAutoRepeat) return;
+            }
             mainCanvas.handle_shortcuts(event.key, event.modifiers)
-            if (event.key === Qt.Key_Space) event.accepted = true
         }
         Keys.onReleased: (event) => {
+            if (event.key === Qt.Key_Space) {
+                event.accepted = true;
+                if (event.isAutoRepeat) return; // 💡 IGNORE pulses while holding
+            }
             mainCanvas.handle_key_release(event.key)
         }
     }
@@ -161,9 +171,18 @@ Window {
         function onProjectsLoaded(projects) {
             recentProjectsModel.clear()
             for(var i=0; i<projects.length; i++) {
-                // Compatibility mapping
                 var p = projects[i]
                 if (!p.name) p.name = p.title || "Untitled"
+                
+                // ✅ ARREGLO: Mapeo de miniaturas para que la pila funcione en el Home
+                if (p.thumbnails) {
+                    var th = []
+                    for(var j=0; j<p.thumbnails.length; j++) {
+                        th.push({ "modelData": p.thumbnails[j] })
+                    }
+                    p.thumbnails = th
+                }
+                
                 recentProjectsModel.append(p)
             }
         }
@@ -2242,6 +2261,10 @@ Window {
                                         var dist = Math.sqrt(Math.pow(mouse.x - startPos.x, 2) + Math.pow(mouse.y - startPos.y, 2))
                                         if (dist > 8 && !isDragging) {
                                             isDragging = true
+                                            // Guardar posición inicial para efecto Gooey
+                                            var startGlobal = mapToItem(canvasPage, startPos.x, startPos.y)
+                                            dropOrb.startX = startGlobal.x
+                                            dropOrb.startY = startGlobal.y
                                             dropOrb.active = true
                                         }
                                         if (isDragging) {

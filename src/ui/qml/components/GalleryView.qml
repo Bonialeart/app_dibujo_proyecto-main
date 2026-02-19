@@ -47,8 +47,7 @@ Item {
         rotation: visible ? 4 : 0
         Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
         Behavior on rotation { NumberAnimation { duration: 250 } }
-        Behavior on x { NumberAnimation { duration: dragController.pressed ? 45 : 0 } }
-        Behavior on y { NumberAnimation { duration: dragController.pressed ? 45 : 0 } }
+        // REMOVED BEHAVIORS ON X/Y FOR INSTANT FEEDBACK
 
         layer.enabled: true
         layer.effect: MultiEffect {
@@ -96,6 +95,7 @@ Item {
 
             delegate: Item {
                 id: delegateRoot; width: grid.cellWidth; height: grid.cellHeight
+                property bool isEditing: false
                 opacity: galleryRoot.draggedIndex === index ? 0.0 : 1.0
                 scale: (galleryRoot.targetIndex === index && galleryRoot.draggedIndex !== index) ? 1.05 : 1.0
                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
@@ -105,27 +105,102 @@ Item {
                     
                     Rectangle {
                         width: 170; height: 110; radius: 18
-                        color: "#16161a"
-                        border.color: maGalItem.containsMouse ? "#3c82f6" : "#222"
-                        border.width: maGalItem.containsMouse ? 2 : 1
-                        clip: false // Enable shadow
+                        
+                        // 1. Si es carpeta, fondo transparente. Si es lienzo, fondo oscuro.
+                        color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : "#16161a"
+                        // 2. Si es carpeta, sin bordes (los dibujaremos en la pila).
+                        border.color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : (maGalItem.containsMouse ? "#3c82f6" : "#222")
+                        border.width: (model.type === "folder" || model.type === "sketchbook") ? 0 : (maGalItem.containsMouse ? 2 : 1)
+                        // 3. VITAL: No recortar si es carpeta
+                        clip: (model.type === "folder" || model.type === "sketchbook") ? false : true 
                         
                         Loader {
                             id: cellLoaderGal
                             anchors.fill: parent
-                            property var thumbnails: (model.thumbnails && model.thumbnails.length) ? model.thumbnails : []
+                            // ✅ CORRECCIÓN 1: Pasar el modelo directo sin chequear .length
+                            property var thumbnails: model.thumbnails 
                             property string title: model.name || ""
                             property bool isExpanded: (galleryRoot.targetIndex === index)
                             property string preview: model.preview || ""
+                            // 4. NUEVO: Pasamos el estado del mouse para animar la pila
+                            property bool isHovered: maGalItem.containsMouse 
                             sourceComponent: (model.type === "folder" || model.type === "sketchbook") ? stackComp : drawingComp
                         }
                     }
                     
-                    Text { 
-                        text: model.name || "Sin título"
-                        color: maGalItem.containsMouse ? "#3c82f6" : "#aaa"
-                        font.pixelSize: 12; font.weight: Font.Medium
-                        width: 170; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter 
+                    Item {
+                        width: 170; height: 24
+                        Text { 
+                            anchors.fill: parent
+                            visible: !delegateRoot.isEditing
+                            text: model.name || "Sin título"
+                            color: maGalItem.containsMouse ? "#3c82f6" : "#aaa"
+                            font.pixelSize: 12; font.weight: Font.Medium
+                            elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter 
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        // ✅ RIGHT CLICK FOR RENAMING
+                        MouseArea {
+                            anchors.fill: parent
+                            visible: !delegateRoot.isEditing
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                            onClicked: (mouse) => {
+                                if (mouse.button === Qt.RightButton) {
+                                    delegateRoot.isEditing = true
+                                } else {
+                                    if (model.type === "folder" || model.type === "sketchbook") galleryRoot.openSketchbook(model.path, model.name)
+                                    else galleryRoot.openDrawing(model.path)
+                                }
+                            }
+                        }
+
+                        TextField {
+                            id: editField
+                            anchors.fill: parent
+                            visible: delegateRoot.isEditing
+                            text: model.name || ""
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            color: "white"
+                            selectByMouse: true
+                            background: Rectangle { 
+                                color: "#1a1a1e"
+                                radius: 4
+                                border.color: "#3c82f6"
+                                border.width: 1
+                            }
+                            onAccepted: {
+                                if (text !== "" && text !== model.name) {
+                                    mainCanvas.rename_item(model.path, text)
+                                }
+                                delegateRoot.isEditing = false
+                            }
+                            onEditingFinished: delegateRoot.isEditing = false
+                            Component.onCompleted: if(visible) forceActiveFocus()
+                            onVisibleChanged: if(visible) { text = model.name; forceActiveFocus(); selectAll(); }
+                        }
+                    }
+                }
+
+                // Action Buttons (Top Right)
+                Rectangle {
+                    width: 26; height: 26; radius: 13; z: 100
+                    anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 6
+                    color: maDel.containsMouse ? "#ef4444" : "#cc1c1c1e"
+                    border.color: "#30ffffff"; border.width: 1
+                    opacity: (maGalItem.containsMouse || maDel.containsMouse) ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                    Text { text: "✕"; color: "white"; font.pixelSize: 12; anchors.centerIn: parent }
+                    MouseArea {
+                        id: maDel; anchors.fill: parent; hoverEnabled: true
+                        onClicked: {
+                            if (model.type === "folder" || model.type === "sketchbook") {
+                                if (mainCanvas.deleteFolder(model.path)) refreshGallery()
+                            } else {
+                                if (mainCanvas.deleteProject(model.path)) refreshGallery()
+                            }
+                        }
                     }
                 }
 
@@ -139,11 +214,43 @@ Item {
                     onPressAndHold: (mouse) => {
                         galleryRoot.draggedIndex = index
                         ghost.ghostData = projectModel.get(index)
-                        var pos = delegateRoot.mapToItem(galleryRoot, 0, 0)
-                        ghost.x = pos.x + (delegateRoot.width - ghost.width)/2
-                        ghost.y = pos.y + (delegateRoot.height - ghost.height)/2
-                        var m = mapToItem(galleryRoot, mouse.x, mouse.y)
-                        galleryRoot.grabOffset = Qt.point(m.x - ghost.x, m.y - ghost.y)
+                        // Absolute mapping to global gallery root
+                        var globalGrab = maGalItem.mapToItem(galleryRoot, mouse.x, mouse.y)
+                        var itemPos = delegateRoot.mapToItem(galleryRoot, 0, 0)
+                        
+                        ghost.x = itemPos.x + (delegateRoot.width - ghost.width)/2
+                        ghost.y = itemPos.y + (delegateRoot.height - ghost.height)/2
+                        
+                        // Recalculate grabOffset based on ghost's top-left
+                        galleryRoot.grabOffset = Qt.point(globalGrab.x - ghost.x, globalGrab.y - ghost.y)
+                    }
+                    onPositionChanged: (mouse) => {
+                        if (galleryRoot.draggedIndex === index) {
+                            var globalPos = maGalItem.mapToItem(galleryRoot, mouse.x, mouse.y)
+                            ghost.x = globalPos.x - galleryRoot.grabOffset.x
+                            ghost.y = globalPos.y - galleryRoot.grabOffset.y
+                            
+                            var gridPos = galleryRoot.mapToItem(grid, globalPos.x, globalPos.y)
+                            var idx = grid.indexAt(gridPos.x, gridPos.y + grid.contentY)
+                            galleryRoot.targetIndex = (idx !== -1 && idx !== galleryRoot.draggedIndex) ? idx : -1
+                        }
+                    }
+                    onReleased: {
+                        if (galleryRoot.draggedIndex === index) {
+                            if (galleryRoot.targetIndex !== -1) {
+                                var a = projectModel.get(galleryRoot.draggedIndex)
+                                var b = projectModel.get(galleryRoot.targetIndex)
+                                if (mainCanvas.create_folder_from_merge(a.path, b.path)) {
+                                    refreshGallery()
+                                }
+                            }
+                        }
+                        galleryRoot.draggedIndex = -1
+                        galleryRoot.targetIndex = -1
+                    }
+                    onCanceled: {
+                        galleryRoot.draggedIndex = -1
+                        galleryRoot.targetIndex = -1
                     }
                 }
             }
@@ -188,25 +295,7 @@ Item {
         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked() }
     }
 
-    // 4. CONTROLADOR DE ARRASTRE GLOBAL
-    MouseArea {
-        id: dragController; anchors.fill: parent; enabled: galleryRoot.draggedIndex !== -1
-        onPositionChanged: (mouse) => {
-            ghost.x = mouse.x - galleryRoot.grabOffset.x
-            ghost.y = mouse.y - galleryRoot.grabOffset.y
-            var p = mapToItem(grid, mouse.x, mouse.y)
-            var idx = grid.indexAt(p.x, p.y + grid.contentY)
-            galleryRoot.targetIndex = (idx !== -1 && idx !== galleryRoot.draggedIndex) ? idx : -1
-        }
-        onReleased: {
-            if (galleryRoot.targetIndex !== -1) {
-                var a = projectModel.get(galleryRoot.draggedIndex)
-                var b = projectModel.get(galleryRoot.targetIndex)
-                if (mainCanvas.create_folder_from_merge(a.path, b.path)) refreshGallery()
-            }
-            galleryRoot.draggedIndex = -1; galleryRoot.targetIndex = -1
-        }
-    }
+
 
     // MODELO Y RECARGA
     ListModel { id: projectModel }
@@ -235,12 +324,129 @@ Item {
     }
 
     // COMPONENTES DELEGADOS
-    Component { 
+    Component {
         id: stackComp
-        StackFolder {
-            thumbnails: parent.thumbnails
-            title: parent.title
-            isExpanded: parent.isExpanded
+        Item {
+            id: stackRoot
+            anchors.fill: parent
+            property bool isHovered: parent.isHovered || false
+            
+            function getThumb(idx) {
+                if (!thumbnails) return "";
+                if (thumbnails.count !== undefined) {
+                    return idx < thumbnails.count ? thumbnails.get(idx).modelData : "";
+                }
+                if (thumbnails.length !== undefined) {
+                    return idx < thumbnails.length ? (thumbnails[idx].modelData || thumbnails[idx]) : "";
+                }
+                return "";
+            }
+
+            property int tCount: thumbnails ? (thumbnails.count !== undefined ? thumbnails.count : (thumbnails.length || 0)) : 0
+            property bool isEmpty: tCount === 0
+
+            // === CARD 3 (Al fondo) ===
+            Rectangle {
+                anchors.fill: parent; anchors.centerIn: parent
+                visible: tCount > 2
+                z: 1; radius: 18; color: "#1c1c22"
+                border.color: "#2a2a30"; border.width: 1
+                
+                // Rotación y offset significativos para que sea MUY visible
+                rotation: stackRoot.isHovered ? -18 : -10
+                scale: stackRoot.isHovered ? 0.95 : 0.92
+                x: stackRoot.isHovered ? -35 : -15
+                y: stackRoot.isHovered ? -12 : -6
+                
+                Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on x { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on y { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#cc000000"; shadowBlur: 1.0; shadowVerticalOffset: 4 }
+
+                Image {
+                    anchors.fill: parent; fillMode: Image.PreserveAspectCrop; mipmap: true; asynchronous: true
+                    source: getThumb(2)
+                    layer.enabled: true; layer.effect: MultiEffect { maskEnabled: true; maskSource: m3 }
+                }
+                Rectangle { id: m3; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
+            }
+
+            // === CARD 2 (Medio) ===
+            Rectangle {
+                anchors.fill: parent; anchors.centerIn: parent
+                visible: tCount > 1
+                z: 2; radius: 18; color: "#1c1c22"
+                border.color: "#2a2a30"; border.width: 1
+                
+                // ✅ MEJORA: Siempre visible con offset
+                rotation: stackRoot.isHovered ? 14 : 7
+                scale: stackRoot.isHovered ? 0.98 : 0.95
+                x: stackRoot.isHovered ? 35 : 15
+                y: stackRoot.isHovered ? -10 : -4
+                
+                Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on x { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on y { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#bb000000"; shadowBlur: 1.0; shadowVerticalOffset: 4 }
+
+                Image {
+                    anchors.fill: parent; fillMode: Image.PreserveAspectCrop; mipmap: true; asynchronous: true
+                    source: getThumb(1)
+                    layer.enabled: true; layer.effect: MultiEffect { maskEnabled: true; maskSource: m2 }
+                }
+                Rectangle { id: m2; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
+            }
+
+            // === CARD 1 (Frente) ===
+            Rectangle {
+                anchors.fill: parent; anchors.centerIn: parent
+                visible: !isEmpty
+                z: 3; radius: 18; color: "#1c1c22"
+                
+                border.color: stackRoot.isHovered ? "#3c82f6" : "#333"
+                border.width: stackRoot.isHovered ? 2 : 1
+                
+                scale: stackRoot.isHovered ? 1.02 : 1.0
+                y: stackRoot.isHovered ? 5 : 0
+                
+                Behavior on scale { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on y { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#99000000"; shadowBlur: 1.0; shadowVerticalOffset: 8 }
+
+                Image {
+                    anchors.fill: parent; fillMode: Image.PreserveAspectCrop; mipmap: true; asynchronous: true
+                    source: getThumb(0)
+                    layer.enabled: true; layer.effect: MultiEffect { maskEnabled: true; maskSource: m1 }
+                }
+                Rectangle { id: m1; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
+            }
+
+            // === ESTADO VACÍO (Carpeta nueva) ===
+            Rectangle {
+                anchors.fill: parent
+                visible: isEmpty
+                color: "#1c1c22"; radius: 18
+                border.color: stackRoot.isHovered ? "#3c82f6" : "#333"
+                border.width: stackRoot.isHovered ? 2 : 1
+
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#aa000000"; shadowBlur: 1.0; shadowVerticalOffset: 6 }
+
+                Column {
+                    anchors.centerIn: parent; spacing: 8
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "📁"; font.pixelSize: 32; opacity: 0.5 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Empty Group"; color: "#555"; font.pixelSize: 11 }
+                }
+            }
         }
     }
     Component { 

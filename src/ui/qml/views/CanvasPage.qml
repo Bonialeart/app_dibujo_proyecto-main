@@ -35,18 +35,28 @@ import "../components"
                         id: mainCanvas
                         width: canvasWidth * zoomLevel
                         height: canvasHeight * zoomLevel
-                        // anchors.fill: parent
-                    visible: isProjectActive
-                    isFlippedH: refWindow.flipH
-                    onVisibleChanged: if (visible) Qt.callLater(fitToView)
+                        visible: isProjectActive
+                        isFlippedH: refWindow.flipH
+                        onVisibleChanged: if (visible) Qt.callLater(fitToView)
 
-                    transform: Scale {
-                        origin.x: mainCanvas.width / 2
-                        origin.y: mainCanvas.height / 2
-                        xScale: mainCanvas.isFlippedH ? -1 : 1
-                        yScale: mainCanvas.isFlippedV ? -1 : 1
+                        // Fomce QML to respect the invisible cursor for drawing tools
+                        HoverHandler {
+                            acceptedDevices: PointerDevice.Mouse | PointerDevice.Stylus | PointerDevice.TouchPad
+                            cursorShape: {
+                                if (canvasPage.activeToolIdx === 12) return Qt.OpenHandCursor; // Hand tool
+                                if (canvasPage.activeToolIdx === 4) return Qt.ArrowCursor;     // Move/Transform tool
+                                if (canvasPage.activeToolIdx === 11) return Qt.CrossCursor;    // Eyedropper tool
+                                return Qt.BlankCursor; // Hide for Brush, Eraser, Lasso, etc.
+                            }
+                        }
+
+                        transform: Scale {
+                            origin.x: mainCanvas.width / 2
+                            origin.y: mainCanvas.height / 2
+                            xScale: mainCanvas.isFlippedH ? -1 : 1
+                            yScale: mainCanvas.isFlippedV ? -1 : 1
+                        }
                     }
-                    
                     // Sombra Dinámica que sigue al papel (y se escala)
                     Rectangle { 
                         z: -1; 
@@ -356,6 +366,8 @@ import "../components"
                     }
                     
                     // Picker Mouse Interaction Overlay
+                    MouseArea {
+                        anchors.fill: parent
                         enabled: isProjectActive && canvasPage.activeToolIdx === 11
                         z: 900 // Over canvas
                         cursorShape: Qt.CrossCursor
@@ -1146,6 +1158,10 @@ import "../components"
                                     var dist = Math.sqrt(Math.pow(mouse.x - startPos.x, 2) + Math.pow(mouse.y - startPos.y, 2))
                                     if (dist > 8 && !isDragging) {
                                         isDragging = true
+                                        // Guardar posición inicial para efecto Gooey
+                                        var startGlobal = mapToItem(canvasPage, startPos.x, startPos.y)
+                                        dropOrb.startX = startGlobal.x
+                                        dropOrb.startY = startGlobal.y
                                         dropOrb.active = true
                                     }
                                     if (isDragging) {

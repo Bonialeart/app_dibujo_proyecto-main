@@ -275,9 +275,15 @@ public:
   // Q_INVOKABLE methods for Python compatibility
   Q_INVOKABLE void loadRecentProjectsAsync();
   Q_INVOKABLE QVariantList getRecentProjects(); // RE-ADDED
+  Q_INVOKABLE bool create_folder_from_merge(const QString &sourcePath, const QString &targetPath);
   QRectF transformBox() const { return m_transformBox; }
   Q_INVOKABLE QVariantList get_project_list();  // RE-ADDED
+  Q_INVOKABLE QVariantList get_sketchbook_pages(const QString &folderPath);
   Q_INVOKABLE void load_file_path(const QString &path);
+  Q_INVOKABLE bool deleteProject(const QString &path);
+  Q_INVOKABLE bool deleteFolder(const QString &path);
+  Q_INVOKABLE bool rename_item(const QString &path, const QString &newName);
+  Q_INVOKABLE bool moveProjectOutOfFolder(const QString &path);
   Q_INVOKABLE void handle_shortcuts(int key, int modifiers);
   Q_INVOKABLE void handle_key_release(int key);
   Q_INVOKABLE void fitToView();
@@ -523,6 +529,7 @@ private:
   // Krita-style Brush Cursor
   QPointF m_cursorPos;
   bool m_cursorVisible = false;
+  bool m_spacePressed = false;
 
   // Composition Shader
   QOpenGLShaderProgram *m_compositionShader = nullptr;

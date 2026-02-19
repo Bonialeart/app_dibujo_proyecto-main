@@ -17,6 +17,10 @@ Item {
     signal openSketchbook(string path, string title)
     signal createNewProject()
 
+    property int draggedIndex: -1
+    property int targetIndex: -1
+    property point grabOffset: "0,0"
+
     readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
 
@@ -113,6 +117,42 @@ Item {
             }
         }
     }
+
+    // ═══════════════════════════════════════
+    // 1.5. EL FANTASMA Y DRAG CONTROLLER
+    // ═══════════════════════════════════════
+    Item {
+        id: ghost
+        width: 220; height: 260 // matches card size in Dashboard
+        z: 99999
+        visible: dashboardRoot.draggedIndex !== -1
+        property var ghostData: null
+
+        scale: visible ? 1.05 : 0.5
+        rotation: visible ? 4 : 0
+        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+        Behavior on rotation { NumberAnimation { duration: 250 } }
+        // REMOVED BEHAVIORS ON X/Y FOR INSTANT FEEDBACK
+
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true; shadowBlur: 1.0; shadowVerticalOffset: 15; shadowOpacity: 0.6
+        }
+
+        Rectangle {
+            anchors.fill: parent; radius: 24; color: "#16161a"; border.color: "#333"
+            clip: true
+            Loader {
+                anchors.fill: parent
+                // Expose properties exactly as the delegates expect:
+                property var thumbnails: (ghost.ghostData && ghost.ghostData.thumbnails) ? ghost.ghostData.thumbnails : []
+                property string title: ghost.ghostData ? ghost.ghostData.name : ""
+                property string preview: ghost.ghostData ? ghost.ghostData.preview : ""
+                sourceComponent: (ghost.ghostData && (ghost.ghostData.type === "folder" || ghost.ghostData.type === "sketchbook")) ? stackComp : drawingComp
+            }
+        }
+    }
+
 
     // ═══════════════════════════════════════
     // 2. SCROLLABLE CONTENT
@@ -482,22 +522,19 @@ Item {
 
                 // Project Cards Grid
                 Flow {
+                    id: flowGrid
                     width: parent.width; spacing: 25
                     Repeater {
                         model: dashboardRoot.externalModel || recentModel
                         delegate: Item {
                             id: projItem; width: 220; height: 260
+                            property int modelIndex: index // Exposed for the dragController
+                            property bool isEditing: false
+                            
+                            opacity: (dashboardRoot.draggedIndex === index) ? 0.0 : 1.0
 
-                            // Staggered entrance animation
-                            opacity: 0
-                            Component.onCompleted: entranceAnim.start()
-                            NumberAnimation {
-                                id: entranceAnim; target: projItem; property: "opacity"
-                                from: 0; to: 1; duration: 600; easing.type: Easing.OutCubic
-                            }
-
-                            // Hover micro-interaction
-                            scale: maProj.containsMouse ? 1.05 : 1.0
+                            // Hover and Target micro-interaction
+                            scale: (dashboardRoot.targetIndex === index && dashboardRoot.draggedIndex !== index) ? 1.05 : (maProj.containsMouse ? 1.05 : 1.0)
                             Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
 
                             Column {
@@ -505,30 +542,82 @@ Item {
                                 
                                 Rectangle {
                                     width: parent.width; height: 180; radius: 24
-                                    color: "#16161a"
-                                    border.color: maProj.containsMouse ? colorAccent : "#18ffffff"
-                                    border.width: maProj.containsMouse ? 2 : 1
-                                    clip: true
+                                    
+                                    color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : "#16161a"
+                                    border.color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : (maProj.containsMouse ? colorAccent : "#18ffffff")
+                                    border.width: (model.type === "folder" || model.type === "sketchbook") ? 0 : (maProj.containsMouse ? 2 : 1)
+                                    clip: (model.type === "folder" || model.type === "sketchbook") ? false : true 
                                     
                                     Behavior on border.color { ColorAnimation { duration: 250 } }
 
                                     Loader {
                                         id: cellLoader
                                         anchors.fill: parent
-                                        property var thumbnails: (model.thumbnails && model.thumbnails.length) ? model.thumbnails : []
+                                        
+                                        // ✅ CORRECCIÓN 1: Pasar el modelo directo sin chequear .length
+                                        property var thumbnails: model.thumbnails 
+                                        
                                         property string title: model.name || ""
                                         property string preview: model.preview || ""
+                                        // NUEVO: Pasamos el estado del mouse
+                                        property bool isHovered: maProj.containsMouse 
                                         sourceComponent: (model.type === "folder" || model.type === "sketchbook") ? stackComp : drawingComp
                                     }
                                 }
 
                                 Column {
                                     width: parent.width; spacing: 2
-                                    Text {
-                                        text: model.name || dashboardRoot.qs("untitled")
-                                        color: colorTextPrimary; font.bold: true; font.pixelSize: 14
-                                        width: parent.width; elide: Text.ElideRight
-                                        horizontalAlignment: Text.AlignHCenter
+                                    Item {
+                                        width: parent.width; height: 24
+                                        Text {
+                                            anchors.fill: parent
+                                            visible: !projItem.isEditing
+                                            text: model.name || dashboardRoot.qs("untitled")
+                                            color: colorTextPrimary; font.bold: true; font.pixelSize: 14
+                                            elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+
+                                        // ✅ RIGHT CLICK FOR RENAMING
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            visible: !projItem.isEditing
+                                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                            onClicked: (mouse) => {
+                                                if (mouse.button === Qt.RightButton) {
+                                                    projItem.isEditing = true
+                                                } else {
+                                                    if (model.type === "folder" || model.type === "sketchbook") dashboardRoot.openSketchbook(model.path, model.name)
+                                                    else dashboardRoot.openProject(model.path)
+                                                }
+                                            }
+                                        }
+
+                                        TextField {
+                                            id: editField
+                                            anchors.fill: parent
+                                            visible: projItem.isEditing
+                                            text: model.name || ""
+                                            font.pixelSize: 14; font.bold: true
+                                            horizontalAlignment: Text.AlignHCenter
+                                            color: "white"
+                                            selectByMouse: true
+                                            background: Rectangle { 
+                                                color: "#1a1a1e"
+                                                radius: 4
+                                                border.color: colorAccent
+                                                border.width: 1
+                                            }
+                                            onAccepted: {
+                                                if (text !== "" && text !== model.name) {
+                                                    mainCanvas.rename_item(model.path, text)
+                                                }
+                                                projItem.isEditing = false
+                                            }
+                                            onEditingFinished: projItem.isEditing = false
+                                            Component.onCompleted: if(visible) forceActiveFocus()
+                                            onVisibleChanged: if(visible) { text = model.name; forceActiveFocus(); selectAll(); }
+                                        }
                                     }
                                     Text {
                                         text: model.date || ""
@@ -539,11 +628,92 @@ Item {
                                 }
                             }
 
+                            // Action Buttons (Top Right)
+                            Rectangle {
+                                width: 28; height: 28; radius: 14; z: 100
+                                anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 10
+                                color: maDel.containsMouse ? "#ef4444" : "#dd1c1c1e"
+                                border.color: "#30ffffff"; border.width: 1
+                                opacity: (maProj.containsMouse || maDel.containsMouse) ? 1.0 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 200 } }
+                                Text { text: "✕"; color: "white"; font.pixelSize: 13; anchors.centerIn: parent }
+                                MouseArea {
+                                    id: maDel; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: {
+                                        if (model.type === "folder" || model.type === "sketchbook") {
+                                            if (mainCanvas.deleteFolder(model.path)) dashboardRoot.refresh()
+                                        } else {
+                                            if (mainCanvas.deleteProject(model.path)) dashboardRoot.refresh()
+                                        }
+                                    }
+                                }
+                            }
+
                             MouseArea {
                                 id: maProj; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                pressAndHoldInterval: 250
                                 onClicked: {
                                     if (model.type === "folder" || model.type === "sketchbook") dashboardRoot.openSketchbook(model.path, model.name)
                                     else dashboardRoot.openProject(model.path)
+                                }
+                                onPressAndHold: (mouse) => {
+                                    dashboardRoot.draggedIndex = index
+                                    var md = (dashboardRoot.externalModel || recentModel)
+                                    
+                                    // Extract data properly for ghost
+                                    var dataObj = md.get(index)
+                                    ghost.ghostData = {
+                                        name: dataObj.name,
+                                        preview: dataObj.preview,
+                                        type: dataObj.type,
+                                        thumbnails: dataObj.thumbnails
+                                    }
+
+                                    // Absolute mapping to global root
+                                    var globalGrab = maProj.mapToItem(dashboardRoot, mouse.x, mouse.y)
+                                    var itemPos = projItem.mapToItem(dashboardRoot, 0, 0)
+                                    
+                                    dashboardRoot.grabOffset = Qt.point(globalGrab.x - itemPos.x, globalGrab.y - itemPos.y)
+                                    ghost.x = itemPos.x
+                                    ghost.y = itemPos.y
+                                }
+                                onPositionChanged: (mouse) => {
+                                    if (dashboardRoot.draggedIndex === index) {
+                                        var globalPos = maProj.mapToItem(dashboardRoot, mouse.x, mouse.y)
+                                        ghost.x = globalPos.x - dashboardRoot.grabOffset.x
+                                        ghost.y = globalPos.y - dashboardRoot.grabOffset.y
+                                        
+                                        var targetIdx = -1
+                                        for (var i = 0; i < flowGrid.children.length; i++) {
+                                            var c = flowGrid.children[i]
+                                            if (c.modelIndex !== undefined) {
+                                                var childPos = dashboardRoot.mapToItem(c, globalPos.x, globalPos.y)
+                                                if (childPos.x >= 0 && childPos.x < c.width && childPos.y >= 0 && childPos.y < c.height) {
+                                                    targetIdx = c.modelIndex
+                                                    break
+                                                }
+                                            }
+                                        }
+                                        dashboardRoot.targetIndex = (targetIdx !== -1 && targetIdx !== dashboardRoot.draggedIndex) ? targetIdx : -1
+                                    }
+                                }
+                                onReleased: {
+                                    if (dashboardRoot.draggedIndex === index) {
+                                        if (dashboardRoot.targetIndex !== -1) {
+                                            var model = (dashboardRoot.externalModel || recentModel)
+                                            var a = model.get(dashboardRoot.draggedIndex)
+                                            var b = model.get(dashboardRoot.targetIndex)
+                                            if (mainCanvas.create_folder_from_merge(a.path, b.path)) {
+                                                dashboardRoot.refresh()
+                                            }
+                                        }
+                                    }
+                                    dashboardRoot.draggedIndex = -1
+                                    dashboardRoot.targetIndex = -1
+                                }
+                                onCanceled: {
+                                    dashboardRoot.draggedIndex = -1
+                                    dashboardRoot.targetIndex = -1
                                 }
                             }
                         }
@@ -947,9 +1117,126 @@ Item {
 
     Component {
         id: stackComp
-        StackFolder {
-            thumbnails: parent.thumbnails
-            title: parent.title
+        Item {
+            id: stackRoot
+            anchors.fill: parent
+            property bool isHovered: parent.isHovered || false
+            
+            function getThumb(idx) {
+                if (!thumbnails) return "";
+                if (thumbnails.count !== undefined) {
+                    return idx < thumbnails.count ? thumbnails.get(idx).modelData : "";
+                }
+                if (thumbnails.length !== undefined) {
+                    return idx < thumbnails.length ? (thumbnails[idx].modelData || thumbnails[idx]) : "";
+                }
+                return "";
+            }
+
+            property int tCount: thumbnails ? (thumbnails.count !== undefined ? thumbnails.count : (thumbnails.length || 0)) : 0
+            property bool isEmpty: tCount === 0
+
+            // === CARD 3 (Al fondo) ===
+            Rectangle {
+                anchors.fill: parent; anchors.centerIn: parent
+                visible: tCount > 2
+                z: 1; radius: 18; color: "#1c1c22"
+                border.color: "#2a2a30"; border.width: 1
+                
+                // Rotación y offset significativos para que sea MUY visible
+                rotation: stackRoot.isHovered ? -18 : -10
+                scale: stackRoot.isHovered ? 0.95 : 0.92
+                x: stackRoot.isHovered ? -35 : -15
+                y: stackRoot.isHovered ? -12 : -6
+                
+                Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on x { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on y { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#cc000000"; shadowBlur: 1.0; shadowVerticalOffset: 4 }
+
+                Image {
+                    anchors.fill: parent; fillMode: Image.PreserveAspectCrop; mipmap: true; asynchronous: true
+                    source: getThumb(2)
+                    layer.enabled: true; layer.effect: MultiEffect { maskEnabled: true; maskSource: m3 }
+                }
+                Rectangle { id: m3; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
+            }
+
+            // === CARD 2 (Medio) ===
+            Rectangle {
+                anchors.fill: parent; anchors.centerIn: parent
+                visible: tCount > 1
+                z: 2; radius: 18; color: "#1c1c22"
+                border.color: "#2a2a30"; border.width: 1
+                
+                rotation: stackRoot.isHovered ? 14 : 7
+                scale: stackRoot.isHovered ? 0.98 : 0.95
+                x: stackRoot.isHovered ? 35 : 15
+                y: stackRoot.isHovered ? -10 : -4
+                
+                Behavior on rotation { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on scale { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on x { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on y { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#bb000000"; shadowBlur: 1.0; shadowVerticalOffset: 4 }
+
+                Image {
+                    anchors.fill: parent; fillMode: Image.PreserveAspectCrop; mipmap: true; asynchronous: true
+                    source: getThumb(1)
+                    layer.enabled: true; layer.effect: MultiEffect { maskEnabled: true; maskSource: m2 }
+                }
+                Rectangle { id: m2; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
+            }
+
+            // === CARD 1 (Al frente) ===
+            Rectangle {
+                anchors.fill: parent; anchors.centerIn: parent
+                visible: !isEmpty
+                z: 3; radius: 18; color: "#1c1c22"
+                
+                border.color: stackRoot.isHovered ? "#3c82f6" : "#333"
+                border.width: stackRoot.isHovered ? 2 : 1
+                
+                scale: stackRoot.isHovered ? 1.02 : 1.0
+                y: stackRoot.isHovered ? 5 : 0
+                
+                Behavior on scale { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on y { NumberAnimation { duration: 450; easing.type: Easing.OutBack } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#99000000"; shadowBlur: 1.0; shadowVerticalOffset: 8 }
+
+                Image {
+                    anchors.fill: parent; fillMode: Image.PreserveAspectCrop; mipmap: true; asynchronous: true
+                    source: getThumb(0)
+                    layer.enabled: true; layer.effect: MultiEffect { maskEnabled: true; maskSource: m1 }
+                }
+                Rectangle { id: m1; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
+            }
+
+            // === ESTADO VACÍO (Carpeta nueva) ===
+            Rectangle {
+                anchors.fill: parent
+                visible: isEmpty
+                color: "#1c1c22"; radius: 18
+                border.color: stackRoot.isHovered ? "#3c82f6" : "#333"
+                border.width: stackRoot.isHovered ? 2 : 1
+
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowColor: "#aa000000"; shadowBlur: 1.0; shadowVerticalOffset: 6 }
+
+                Column {
+                    anchors.centerIn: parent; spacing: 8
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "📁"; font.pixelSize: 32; opacity: 0.5 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Empty Group"; color: "#555"; font.pixelSize: 11 }
+                }
+            }
         }
     }
 }

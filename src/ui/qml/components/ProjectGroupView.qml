@@ -99,7 +99,7 @@ Item {
                 
                 Image {
                     anchors.fill: parent
-                    source: model.path
+                    source: model.preview || ""
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                 }
@@ -113,26 +113,56 @@ Item {
                     id: mouseArea
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: insideRoot.pageSelected(model.realPath || model.path)
                     hoverEnabled: true
+                    onClicked: insideRoot.pageSelected(model.realPath || model.path)
                     onEntered: pageCard.scale = 1.02
                     onExited: pageCard.scale = 1.0
                 }
 
-                // Delete Button
-                Rectangle {
-                    width: 28; height: 28; radius: 14; z: 10
-                    color: deleteMouse.containsMouse ? "#ef4444" : "#aa1c1c1e"
-                    anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 12
-                    visible: mouseArea.containsMouse
-                    Text { text: "✕"; color: "white"; font.pixelSize: 14; anchors.centerIn: parent }
+                // Action Buttons (Top Right)
+                Row {
+                    anchors.top: parent.top; anchors.right: parent.right
+                    anchors.margins: 12; spacing: 8
+                    z: 99
+                    opacity: (mouseArea.containsMouse || hoverTools.containsMouse) ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
+
                     MouseArea {
-                        id: deleteMouse
-                        anchors.fill: parent; hoverEnabled: true
-                        onClicked: {
-                            var targetPath = model.realPath || model.path
-                            if (mainCanvas.deleteProject(targetPath)) {
-                                pagesModel.remove(index)
+                        id: hoverTools; width: childrenRect.width; height: childrenRect.height
+                        hoverEnabled: true
+                        Row {
+                            spacing: 8
+                            // Move Out Button (Premium Blue)
+                            Rectangle {
+                                width: 32; height: 32; radius: 16
+                                color: maMove.containsMouse ? "#3b82f6" : "#dd1c1c1e"
+                                border.color: "#30ffffff"; border.width: 1
+                                Text { text: "📤"; color: "white"; font.pixelSize: 14; anchors.centerIn: parent }
+                                MouseArea {
+                                    id: maMove; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: {
+                                        var targetPath = model.realPath || model.path
+                                        if (mainCanvas.moveProjectOutOfFolder(targetPath)) {
+                                            pagesModel.remove(index)
+                                        }
+                                    }
+                                }
+                            }
+                            // Delete Button (Premium Red)
+                            Rectangle {
+                                width: 32; height: 32; radius: 16
+                                color: maDel.containsMouse ? "#ef4444" : "#dd1c1c1e"
+                                border.color: "#30ffffff"; border.width: 1
+                                Text { text: "✕"; color: "white"; font.pixelSize: 14; anchors.centerIn: parent }
+                                MouseArea {
+                                    id: maDel; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: {
+                                        var targetPath = model.realPath || model.path
+                                        if (mainCanvas.deleteProject(targetPath)) {
+                                            pagesModel.remove(index)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

@@ -1,4 +1,6 @@
 // Re-verify includes
+#include <QEvent>
+#include <QWindow>
 #include "CanvasItem.h"
 #include "PreferencesManager.h"
 #include "core/cpp/include/brush_preset_manager.h"
@@ -39,6 +41,62 @@
 
 using namespace artflow;
 
+static QCursor getModernCursor() {
+    static QCursor modernCursor;
+    static bool initialized = false;
+    
+    if (!initialized) {
+        QPixmap cursorPix(32, 32);
+        cursorPix.fill(Qt::transparent);
+        QPainter p(&cursorPix);
+        p.setRenderHint(QPainter::Antialiasing);
+
+        QPainterPath path;
+        // Diseño de flecha moderna (más esbelta y geométrica)
+        path.moveTo(3, 3);
+        path.lineTo(11, 24);
+        path.lineTo(14, 16);
+        path.lineTo(24, 11);
+        path.closeSubpath();
+
+        // Sombra suave paralela
+        p.setBrush(QColor(0, 0, 0, 50));
+        p.setPen(Qt::NoPen);
+        p.translate(1, 2);
+        p.drawPath(path);
+        p.translate(-1, -2);
+
+        // Cuerpo oscuro elegante con borde blanco nítido
+        p.setBrush(QColor(30, 30, 35)); // Gris muy oscuro
+        p.setPen(QPen(Qt::white, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.drawPath(path);
+
+        modernCursor = QCursor(cursorPix, 3, 3);
+        initialized = true;
+    }
+    return modernCursor;
+}
+
+// 2. AÑADE ESTA CLASE MAESTRA AQUÍ:
+class CursorOverrideFilter : public QObject {
+public:
+    CursorOverrideFilter(QObject *parent = nullptr) : QObject(parent) {}
+    
+    bool eventFilter(QObject *obj, QEvent *event) override {
+        // Detectamos cada vez que la ventana intenta cambiar de cursor
+        if (event->type() == QEvent::CursorChange) {
+            QWindow *window = qobject_cast<QWindow*>(obj);
+            // Si QML intenta poner la flecha fea de Windows (ArrowCursor)...
+            if (window && window->cursor().shape() == Qt::ArrowCursor) {
+                // ...¡La secuestramos y ponemos la tuya Premium!
+                window->setCursor(getModernCursor());
+                return false; 
+            }
+        }
+        return QObject::eventFilter(obj, event);
+    }
+};
+
 CanvasItem::CanvasItem(QQuickItem *parent)
     : QQuickPaintedItem(parent), m_brushSize(20), m_brushColor(Qt::black),
       m_brushOpacity(1.0f), m_brushFlow(1.0f), m_brushHardness(0.8f),
@@ -54,6 +112,16 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_lastPressure(1.0f), m_isDrawing(false),
       m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()),
       m_lastActiveLayerIndex(-1) {
+  
+  // ---> AÑADE ESTAS LÍNEAS AQUÍ <---
+  // Instalar el vigilante global de cursores
+  static CursorOverrideFilter *globalCursorFilter = nullptr;
+  if (!globalCursorFilter) {
+      globalCursorFilter = new CursorOverrideFilter(qApp);
+      qApp->installEventFilter(globalCursorFilter);
+  }
+  // ---------------------------------
+
   setAcceptHoverEvents(true);
   setAcceptedMouseButtons(Qt::AllButtons);
   setAcceptTouchEvents(true);
@@ -87,7 +155,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_layerManager->setActiveLayer(m_activeLayerIndex);
 
   // ✅ OCULTAR CURSOR DEL SISTEMA COMPLETAMENTE
-  setCursor(Qt::BlankCursor);
+  setCursor(QCursor(Qt::BlankCursor));
   setFlag(QQuickItem::ItemHasContents, true);
 
   // === Data-Driven Brush Loading ===
@@ -173,6 +241,16 @@ CanvasItem::~CanvasItem() {
 void CanvasItem::paint(QPainter *painter) {
   if (!m_layerManager)
     return;
+
+  // --- APLICACIÓN INICIAL DEL CURSOR ---
+  static bool windowCursorSet = false;
+  if (!windowCursorSet && window()) {
+      if (window()->cursor().shape() == Qt::ArrowCursor) {
+          window()->setCursor(getModernCursor());
+      }
+      windowCursorSet = true;
+  }
+  // -------------------------------------
 
   // 0. Initialize Composition Shader
   if (!m_compositionShader) {
@@ -544,7 +622,7 @@ void CanvasItem::paint(QPainter *painter) {
   // 🎯 CURSOR PERSONALIZADO AL FINAL (ENCIMA DE TODO)
   // ══════════════════════════════════════════════════════════════
 
-  if (m_cursorVisible &&
+  if (m_cursorVisible && !m_spacePressed &&
       (m_tool == ToolType::Pen || m_tool == ToolType::Eraser)) {
 
     // Obtener valores actuales del pincel
@@ -612,32 +690,29 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // Cursores para otras herramientas (opcionales)
-  else if (m_cursorVisible) {
-    // Crosshair simple para eyedropper, lasso, etc.
-    if (m_tool == ToolType::Eyedropper || m_tool == ToolType::Lasso) {
-      // 🎯 Professional Precision Cursor (Crosshair with Circle)
-      painter->save();
-      painter->setRenderHint(QPainter::Antialiasing);
-      
-      // Outer Glow/Shadow (Black outline for visibility on light areas)
-      painter->setPen(QPen(QColor(0,0,0,120), 2.5f));
-      painter->drawEllipse(m_cursorPos, 5, 5);
-      painter->drawLine(m_cursorPos + QPointF(-9, 0), m_cursorPos + QPointF(-2, 0));
-      painter->drawLine(m_cursorPos + QPointF(9, 0), m_cursorPos + QPointF(2, 0));
-      painter->drawLine(m_cursorPos + QPointF(0, -9), m_cursorPos + QPointF(0, -2));
-      painter->drawLine(m_cursorPos + QPointF(0, 9), m_cursorPos + QPointF(0, 2));
+  else if (m_cursorVisible && !m_spacePressed && m_tool != ToolType::Hand && m_tool != ToolType::Transform) {
+    // 🎯 Professional Precision Cursor (Crosshair with Circle) para eyedropper, lasso, fill, etc.
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    
+    // Outer Glow/Shadow (Black outline for visibility on light areas)
+    painter->setPen(QPen(QColor(0,0,0,120), 2.5f));
+    painter->drawEllipse(m_cursorPos, 5, 5);
+    painter->drawLine(m_cursorPos + QPointF(-9, 0), m_cursorPos + QPointF(-2, 0));
+    painter->drawLine(m_cursorPos + QPointF(9, 0), m_cursorPos + QPointF(2, 0));
+    painter->drawLine(m_cursorPos + QPointF(0, -9), m_cursorPos + QPointF(0, -2));
+    painter->drawLine(m_cursorPos + QPointF(0, 9), m_cursorPos + QPointF(0, 2));
 
-      // Precision Core (White lines for visibility on dark areas)
-      QPen whitePen(Qt::white, 1.2f);
-      painter->setPen(whitePen);
-      painter->drawEllipse(m_cursorPos, 4, 4);
-      painter->drawLine(m_cursorPos + QPointF(-8, 0), m_cursorPos + QPointF(-3, 0));
-      painter->drawLine(m_cursorPos + QPointF(8, 0), m_cursorPos + QPointF(3, 0));
-      painter->drawLine(m_cursorPos + QPointF(0, -8), m_cursorPos + QPointF(0, -3));
-      painter->drawLine(m_cursorPos + QPointF(0, 8), m_cursorPos + QPointF(0, 3));
-      
-      painter->restore();
-    }
+    // Precision Core (White lines for visibility on dark areas)
+    QPen whitePen(Qt::white, 1.2f);
+    painter->setPen(whitePen);
+    painter->drawEllipse(m_cursorPos, 4, 4);
+    painter->drawLine(m_cursorPos + QPointF(-8, 0), m_cursorPos + QPointF(-3, 0));
+    painter->drawLine(m_cursorPos + QPointF(8, 0), m_cursorPos + QPointF(3, 0));
+    painter->drawLine(m_cursorPos + QPointF(0, -8), m_cursorPos + QPointF(0, -3));
+    painter->drawLine(m_cursorPos + QPointF(0, 8), m_cursorPos + QPointF(0, 3));
+    
+    painter->restore();
   }
 }
 
@@ -1002,8 +1077,11 @@ void CanvasItem::drawCircle(const QPointF &center, float radius) {
 void CanvasItem::mousePressEvent(QMouseEvent *event) {
   m_lastMousePos = event->position();
 
-  if (m_tool == ToolType::Hand) {
-    QGuiApplication::setOverrideCursor(Qt::ClosedHandCursor);
+  if (m_tool == ToolType::Hand || m_spacePressed) {
+    event->accept();
+    // Change the existing override cursor instead of pushing a new one
+    if (m_spacePressed) QGuiApplication::changeOverrideCursor(Qt::ClosedHandCursor); 
+    else setCursor(Qt::ClosedHandCursor);
     return;
   }
 
@@ -1179,18 +1257,26 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
-  // 🔒 FORCE HIDE CURSOR (Reinforce C++)
-  if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser) {
-    setCursor(Qt::BlankCursor);
+  event->accept(); // Evita que el evento suba a QML
+
+  // Actualizar cursor si estamos arrastrando
+  if (m_spacePressed || m_tool == ToolType::Hand) {
+      if (event->buttons() & Qt::LeftButton) setCursor(Qt::ClosedHandCursor);
+      else setCursor(Qt::OpenHandCursor);
+  } else if (m_tool == ToolType::Transform) {
+      setCursor(getModernCursor());
+  } else {
+      setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
   }
 
+  // --- Mantenemos tu código original para actualizar el trazo ---
   m_cursorPos = event->position();
   m_cursorVisible = true;
-  update(); // Ensure repaint
+  update(); 
 
   emit cursorPosChanged(event->position().x(), event->position().y());
 
-  if (m_tool == ToolType::Hand && (event->buttons() & Qt::LeftButton)) {
+  if ((m_tool == ToolType::Hand || m_spacePressed) && (event->buttons() & Qt::LeftButton)) {
     QPointF delta = (event->position() - m_lastMousePos) / m_zoomLevel;
     m_viewOffset += delta;
     m_lastMousePos = event->position();
@@ -1263,6 +1349,13 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
+  if (m_tool == ToolType::Hand || m_spacePressed) {
+    if (m_spacePressed) {
+        QGuiApplication::changeOverrideCursor(Qt::OpenHandCursor);
+    } else {
+        setCursor(Qt::OpenHandCursor);
+    }
+  }
   if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect || m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
     QPointF canvasPos = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
     
@@ -1907,11 +2000,11 @@ void CanvasItem::setCurrentTool(const QString &tool) {
   if (tool == "brush" || tool == "pen" || tool == "pencil" ||
       tool == "watercolor" || tool == "airbrush") {
     m_tool = ToolType::Pen;
-    setCursor(Qt::BlankCursor);
+    setCursor(QCursor(Qt::BlankCursor));
     setIsSelectionModeActive(false);
   } else if (tool == "eraser") {
     m_tool = ToolType::Eraser;
-    setCursor(Qt::BlankCursor);
+    setCursor(QCursor(Qt::BlankCursor));
     setIsSelectionModeActive(false);
   } else if (tool == "lasso" || tool == "magnetic_lasso" || tool == "select_rect" || tool == "select_ellipse" || tool == "select_wand") {
     setIsSelectionModeActive(true);
@@ -1926,20 +2019,20 @@ void CanvasItem::setCurrentTool(const QString &tool) {
     } else if (tool == "select_wand") {
       m_tool = ToolType::MagicWand;
     }
-    setCursor(Qt::CrossCursor);
+    setCursor(QCursor(Qt::BlankCursor));
   } else if (tool == "transform" || tool == "move") {
     m_tool = ToolType::Transform;
-    setCursor(Qt::ArrowCursor);
+    setCursor(getModernCursor()); 
     beginTransform();
   } else if (tool == "eyedropper") {
     m_tool = ToolType::Eyedropper;
-    setCursor(Qt::CrossCursor);
+    setCursor(QCursor(Qt::BlankCursor));
   } else if (tool == "hand") {
     m_tool = ToolType::Hand;
-    setCursor(Qt::OpenHandCursor);
+    setCursor(QCursor(Qt::OpenHandCursor));
   } else if (tool == "fill" || tool == "BUCKET") {
     m_tool = ToolType::Fill;
-    setCursor(Qt::CrossCursor);
+    setCursor(QCursor(Qt::BlankCursor));
   }
 
   invalidateCursorCache();
@@ -2129,6 +2222,51 @@ QVariantList CanvasItem::getRecentProjects() {
 
 QVariantList CanvasItem::get_project_list() { return _scanSync(); }
 
+bool CanvasItem::create_folder_from_merge(const QString &sourcePath, const QString &targetPath) {
+    if (sourcePath.isEmpty() || targetPath.isEmpty() || sourcePath == targetPath) return false;
+
+    QFileInfo srcInfo(sourcePath);
+    QFileInfo tgtInfo(targetPath);
+
+    if (!srcInfo.exists() || !tgtInfo.exists()) return false;
+
+    QDir parentDir = srcInfo.dir(); // Assuming both in same parent dir for simplicity
+
+    if (tgtInfo.isDir()) {
+        // Target is a folder, move source inside
+        QString newPath = tgtInfo.absoluteFilePath() + "/" + srcInfo.fileName();
+        bool success = QFile::rename(sourcePath, newPath);
+        if (success) {
+            emit projectListChanged();
+        }
+        return success;
+    } else if (srcInfo.isDir()) {
+        // Source is a folder, move target inside (just in case they dragged folder onto a drawing somehow)
+        QString newPath = srcInfo.absoluteFilePath() + "/" + tgtInfo.fileName();
+        bool success = QFile::rename(targetPath, newPath);
+        if (success) {
+            emit projectListChanged();
+        }
+        return success;
+    } else {
+        // Both are files, create a new folder
+        QString folderName = "Group_" + QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+        QString newDirPath = parentDir.absolutePath() + "/" + folderName;
+        
+        if (parentDir.mkdir(folderName)) {
+            bool success1 = QFile::rename(sourcePath, newDirPath + "/" + srcInfo.fileName());
+            bool success2 = QFile::rename(targetPath, newDirPath + "/" + tgtInfo.fileName());
+            
+            if (success1 || success2) {
+                emit projectListChanged();
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
 
 void CanvasItem::load_file_path(const QString &path) { loadProject(path); }
 void CanvasItem::handle_shortcuts(int key, int modifiers) {
@@ -2156,7 +2294,10 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
   }
   // Space (Pan)
   else if (key == Qt::Key_Space) {
-    QGuiApplication::setOverrideCursor(QCursor(Qt::OpenHandCursor));
+    if (!m_spacePressed) {
+      m_spacePressed = true;
+      QGuiApplication::setOverrideCursor(Qt::OpenHandCursor);
+    }
   }
   // Brush Size/Opacity
   else if (key == Qt::Key_BracketLeft)
@@ -2185,7 +2326,18 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
 
 void CanvasItem::handle_key_release(int key) {
   if (key == Qt::Key_Space) {
-    QGuiApplication::restoreOverrideCursor();
+    m_spacePressed = false;
+    
+    // Restaurar cursor correcto al soltar espacio
+    if (m_tool != ToolType::Hand && m_tool != ToolType::Transform) {
+        setCursor(Qt::BlankCursor);
+    } else if (m_tool == ToolType::Hand) {
+        setCursor(Qt::OpenHandCursor);
+    } else if (m_tool == ToolType::Transform) {
+        setCursor(getModernCursor());
+    }
+    
+    update(); 
   }
 }
 void CanvasItem::fitToView() {
@@ -2322,8 +2474,8 @@ void CanvasItem::setBackgroundColor(const QString &color) {
             emit notificationRequested("Background layer is locked", "warning");
             continue;
           }
-          // Swap R and B for QImage::Format_ARGB32 (BGRA)
-          l->buffer->fill(newColor.blue(), newColor.green(), newColor.red(),
+          // Use natural color order (Red, Green, Blue) for the buffer fill
+          l->buffer->fill(newColor.red(), newColor.green(), newColor.blue(),
                           255); // Force opaque for background layer
           l->dirty = true;      // Mark dirty for rendering
           updateLayersList();   // Refresh UI thumbnails
@@ -2553,12 +2705,11 @@ bool CanvasItem::saveProject(const QString &pathText) {
 
 QVariantList CanvasItem::_scanSync() {
   QVariantList results;
-  QString path = (m_currentProjectPath.isEmpty() || !m_currentProjectPath.contains("ArtFlowProjects")) 
-                 ? QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects"
-                 : QFileInfo(m_currentProjectPath).path();
-                 
+  // Always scan the main project directory for the root lists (Home/Gallery)
+  QString path = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
+                  
   if (!QFileInfo(path).isDir()) {
-       path = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
+       QDir().mkpath(path);
   }
 
   QDir dir(path);
@@ -2587,19 +2738,8 @@ QVariantList CanvasItem::_scanSync() {
                         item["preview"] = "data:image/png;base64," + b64;
                     }
                 }
-                
-                // Fallback: Check for external preview ONLY IF embedded failed 
-                // e.g. legacy files without embedded thumb
-                if (!item.contains("preview")) {
-                     QString extPreview = info.absoluteFilePath() + ".png";
-                     if (QFile::exists(extPreview)) {
-                         item["preview"] = QUrl::fromLocalFile(extPreview).toString();
-                     }
-                }
             }
             f.close();
-        } else {
-            qDebug() << "Failed to open file for scan:" << info.absoluteFilePath();
         }
         results.append(item);
     }
@@ -2609,10 +2749,138 @@ QVariantList CanvasItem::_scanSync() {
         item["path"] = info.absoluteFilePath();
         item["type"] = "folder";
         item["date"] = info.lastModified().toString("dd MMM yyyy");
+        
+        // Scan folder for internal thumbnails to show the "stack" look
+        QDir subDir(info.absoluteFilePath());
+        QFileInfoList subEntries = subDir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Time);
+        QVariantList thumbs;
+        for (int i=0; i < qMin(subEntries.size(), 3); ++i) {
+             QFile f(subEntries[i].absoluteFilePath());
+             if (f.open(QIODevice::ReadOnly)) {
+                 QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+                 if (!doc.isNull() && doc.object().contains("thumbnail")) {
+                     thumbs.append("data:image/png;base64," + doc.object()["thumbnail"].toString());
+                 }
+                 f.close();
+             }
+        }
+        item["thumbnails"] = thumbs;
+        if (thumbs.size() > 0) item["preview"] = thumbs[0]; // Front cover
+        
         results.append(item);
     }
   }
   return results;
+}
+
+QVariantList CanvasItem::get_sketchbook_pages(const QString &folderPath) {
+    QVariantList results;
+    QDir dir(folderPath);
+    if (!dir.exists()) return results;
+
+    QFileInfoList entries = dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Time);
+    for (const QFileInfo &info : entries) {
+        QVariantMap item;
+        item["name"] = info.completeBaseName();
+        item["path"] = QUrl::fromLocalFile(info.absoluteFilePath()).toString();
+        item["realPath"] = info.absoluteFilePath();
+        item["type"] = "drawing";
+        item["date"] = info.lastModified().toString("dd MMM yyyy");
+
+        QFile f(info.absoluteFilePath());
+        if (f.open(QIODevice::ReadOnly)) {
+            QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+            if (!doc.isNull() && doc.object().contains("thumbnail")) {
+                item["preview"] = "data:image/png;base64," + doc.object()["thumbnail"].toString();
+            }
+            f.close();
+        }
+        results.append(item);
+    }
+    return results;
+}
+
+bool CanvasItem::deleteProject(const QString &path) {
+    if (path.isEmpty()) return false;
+    QString localPath = QUrl(path).toLocalFile();
+    if (localPath.isEmpty()) localPath = path;
+    
+    QFileInfo info(localPath);
+    QString dirPath = info.absolutePath();
+    
+    if (QFile::remove(localPath)) {
+        // Cleanup if the folder is now empty (and not the root)
+        QString rootPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
+        QDir dir(dirPath);
+        if (dirPath != rootPath && dir.exists() && dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries).isEmpty()) {
+            dir.rmdir(".");
+        }
+        
+        emit projectListChanged();
+        return true;
+    }
+    return false;
+}
+
+bool CanvasItem::deleteFolder(const QString &path) {
+    if (path.isEmpty()) return false;
+    QString localPath = QUrl(path).toLocalFile();
+    if (localPath.isEmpty()) localPath = path;
+
+    QDir dir(localPath);
+    if (dir.exists() && dir.removeRecursively()) {
+        emit projectListChanged();
+        return true;
+    }
+    return false;
+}
+bool CanvasItem::rename_item(const QString &path, const QString &newName) {
+    if (path.isEmpty() || newName.isEmpty()) return false;
+    QString localPath = QUrl(path).toLocalFile();
+    if (localPath.isEmpty()) localPath = path;
+
+    QFileInfo info(localPath);
+    if (!info.exists()) return false;
+
+    QString newPath;
+    if (info.isFile()) {
+        newPath = info.absolutePath() + "/" + newName + "." + info.suffix();
+    } else {
+        QDir parentDir = info.dir();
+        newPath = parentDir.absoluteFilePath(newName);
+    }
+
+    if (QFile::rename(localPath, newPath)) {
+        emit projectListChanged();
+        return true;
+    }
+    return false;
+}
+
+bool CanvasItem::moveProjectOutOfFolder(const QString &path) {
+    if (path.isEmpty()) return false;
+    QString localPath = QUrl(path).toLocalFile();
+    if (localPath.isEmpty()) localPath = path;
+
+    QFileInfo info(localPath);
+    if (!info.exists()) return false;
+
+    QString sourceDirPath = info.absolutePath();
+    // Root ArtFlowProjects path
+    QString rootPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
+    QString newPath = rootPath + "/" + info.fileName();
+
+    if (QFile::rename(localPath, newPath)) {
+        // Cleanup if the source folder is now empty (and not the root)
+        QDir dir(sourceDirPath);
+        if (sourceDirPath != rootPath && dir.exists() && dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries).isEmpty()) {
+            dir.rmdir(".");
+        }
+        
+        emit projectListChanged();
+        return true;
+    }
+    return false;
 }
 
 bool CanvasItem::saveProjectAs(const QString &path) {
@@ -2701,6 +2969,7 @@ void CanvasItem::updateLayersList() {
     layer["is_private"] = l->isPrivate;
     layer["active"] = (i == m_activeLayerIndex);
     layer["type"] = (i == 0) ? "background" : "drawing";
+    if (i == 0) layer["bgColor"] = m_backgroundColor.name();
 
     // Convert internal BlendMode enum back to string for QML
     QString bModeStr = "Normal";
@@ -2728,35 +2997,21 @@ void CanvasItem::updateLayersList() {
     if (l->buffer && l->buffer->width() > 0 && l->buffer->height() > 0) {
         // OPTIMIZATION: Only generate if needed. For now, we only 
         // regenerate the active layer to keep UI responsive.
-        if (i == m_activeLayerIndex) {
-            int tw = 60, th = 40;
-      // Use QImage wrapper around existing buffer (no copy yet)
-      QImage full(l->buffer->data(), l->buffer->width(), l->buffer->height(),
-                  QImage::Format_ARGB32);
+        int tw = 60, th = 40;
+        // Use QImage wrapper around existing buffer (no copy yet)
+        QImage full(l->buffer->data(), l->buffer->width(), l->buffer->height(),
+                    QImage::Format_RGBA8888_Premultiplied);
 
-      // Debug logging
-      if (l->buffer->width() > 0 && l->buffer->height() > 0) {
-        uint32_t *pixels = reinterpret_cast<uint32_t *>(l->buffer->data());
-        qDebug() << "Layer:" << i << "Buf:" << l->buffer->width() << "x"
-                 << l->buffer->height()
-                 << "Pixel[0]:" << QString::number(pixels[0], 16)
-                 << "Pixel[Center]:"
-                 << QString::number(
-                        pixels[l->buffer->width() * l->buffer->height() / 2],
-                        16);
-      }
+        // Scale down (Fast for responsiveness)
+        QImage thumb =
+            full.scaled(tw, th, Qt::KeepAspectRatio, Qt::FastTransformation);
 
-      // Scale down (Fast for responsiveness)
-      QImage thumb =
-          full.scaled(tw, th, Qt::KeepAspectRatio, Qt::FastTransformation);
-
-      QByteArray ba;
-      QBuffer buffer(&ba);
-      buffer.open(QIODevice::WriteOnly);
-      thumb.save(&buffer, "PNG");
-      QString b64 = QString::fromLatin1(ba.toBase64());
-      layer["thumbnail"] = "data:image/png;base64," + b64;
-        }
+        QByteArray ba;
+        QBuffer buffer(&ba);
+        buffer.open(QIODevice::WriteOnly);
+        thumb.save(&buffer, "PNG");
+        QString b64 = QString::fromLatin1(ba.toBase64());
+        layer["thumbnail"] = "data:image/png;base64," + b64;
     } else {
       layer["thumbnail"] = "";
     }
@@ -4124,27 +4379,39 @@ float CanvasItem::applyPressureCurve(float input) {
   return m_lut[idx];
 }
 
-void CanvasItem::hoverMoveEvent(QHoverEvent *event) {
-  // 🔒 FORCE HIDE CURSOR (Reinforce C++)
-  if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser) {
-    setCursor(Qt::BlankCursor);
-  }
-
-  m_cursorPos = event->position();
-  m_cursorVisible = true;
-  update(); // Actualizar para redibujar cursor
-  emit cursorPosChanged(event->position().x(), event->position().y());
-}
-
 void CanvasItem::hoverEnterEvent(QHoverEvent *event) {
+  event->accept();
   m_cursorVisible = true;
   m_cursorPos = event->position();
-  setCursor(Qt::BlankCursor); // Asegurar que está oculto
+  
+  // Decide el cursor solo para el área del Canvas
+  if (m_spacePressed || m_tool == ToolType::Hand) setCursor(Qt::OpenHandCursor);
+  else if (m_tool == ToolType::Transform) setCursor(getModernCursor());
+  else setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
+  
   update();
 }
 
+void CanvasItem::hoverMoveEvent(QHoverEvent *event) {
+  event->accept(); 
+  m_cursorPos = event->position();
+  m_cursorVisible = true;
+
+  if (m_spacePressed || m_tool == ToolType::Hand) setCursor(Qt::OpenHandCursor);
+  else if (m_tool == ToolType::Transform) setCursor(getModernCursor());
+  else setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
+
+  update();
+  emit cursorPosChanged(event->position().x(), event->position().y());
+}
+
 void CanvasItem::hoverLeaveEvent(QHoverEvent *event) {
+  event->accept();
   m_cursorVisible = false;
+  
+  // Soltamos el control del cursor. 
+  // Al hacer esto, QML regresará automáticamente al cursor moderno de la ventana.
+  unsetCursor(); 
   update();
 }
 
