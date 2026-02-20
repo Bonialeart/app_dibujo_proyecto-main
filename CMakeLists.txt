@@ -37,6 +37,8 @@ set(CORE_SOURCES
     src/core/cpp/src/ColorPickerImpl.cpp
     src/core/cpp/include/ColorPicker.h
     src/core/cpp/include/ColorPickerImpl.h
+    src/core/brushes/abr_importer.cpp
+    src/core/brushes/abr_importer.h
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)

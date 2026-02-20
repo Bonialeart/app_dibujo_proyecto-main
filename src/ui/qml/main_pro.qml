@@ -192,6 +192,12 @@ Window {
             // Reload recent projects list in Home
             loadRecentProjects()
         }
+
+        function onNotificationRequested(message, type) {
+            if (toastManager) {
+                toastManager.show(message, type)
+            }
+        }
     }
 
     function refreshGallery() {

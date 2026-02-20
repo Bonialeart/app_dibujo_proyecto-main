@@ -389,10 +389,9 @@ import "../components"
                             if (canvasPage.altPressed) {
                                 canvasPage.activeToolIdx = canvasPage.lastToolIdx
                             }
-                        }
                     } 
                 }
-                }
+            }
                 
                 // --- CONTEXT BAR (APPLY/CANCEL TRANSFORM) ---
                 Rectangle {

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Dialogs
 
 Rectangle {
     id: root
@@ -38,6 +39,11 @@ Rectangle {
     Connections {
         target: root.contextPage
         function onSelectedBrushCategoryChanged() { updateBrushList() }
+    }
+
+    Connections {
+        target: root.targetCanvas
+        function onAvailableBrushesChanged() { updateBrushList() }
     }
 
     function updateBrushList() {
@@ -90,7 +96,27 @@ Rectangle {
                     Text { text: "+"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent }
                     MouseArea {
                         id: addMa; anchors.fill: parent; hoverEnabled: true
-                        onClicked: root.importRequested()
+                        onClicked: importDialog.open()
+                    }
+                }
+            }
+
+            // Dialogo para importar archivos ABR
+            FileDialog {
+                id: importDialog
+                title: "Import Brush Pack (.abr)"
+                nameFilters: ["Photoshop Brushes (*.abr)", "All Files (*)"]
+                fileMode: FileDialog.OpenFile
+                onAccepted: {
+                    if (root.targetCanvas) {
+                        var success = root.targetCanvas.importABR(selectedFile)
+                        if (success) {
+                            // Cambiar a la categoría Imported para ver los nuevos pinceles
+                            if (root.contextPage) {
+                                root.contextPage.selectedBrushCategory = "Imported"
+                            }
+                            root.updateBrushList()
+                        }
                     }
                 }
             }

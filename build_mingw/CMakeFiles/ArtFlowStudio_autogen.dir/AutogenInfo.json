@@ -927,6 +927,12 @@
 			null
 		],
 		[
+			"D:/app_dibujo_proyecto-main/src/core/brushes/abr_importer.h",
+			"MU",
+			"BBAANJR52U/moc_abr_importer.cpp",
+			null
+		],
+		[
 			"D:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h",
 			"MU",
 			"H4ZJWAWVOH/moc_ColorPicker.cpp",
@@ -1036,6 +1042,11 @@
 		[ "D:/app_dibujo_proyecto-main/src/PreferencesManager.cpp", "MU", null ],
 		[ "D:/app_dibujo_proyecto-main/src/ProjectModel.cpp", "MU", null ],
 		[ "D:/app_dibujo_proyecto-main/src/TestCanvas.cpp", "MU", null ],
+		[
+			"D:/app_dibujo_proyecto-main/src/core/brushes/abr_importer.cpp",
+			"MU",
+			null
+		],
 		[
 			"D:/app_dibujo_proyecto-main/src/core/cpp/src/ColorPicker.cpp",
 			"MU",

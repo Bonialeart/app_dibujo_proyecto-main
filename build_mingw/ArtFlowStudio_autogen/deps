@@ -1193,6 +1193,8 @@ ArtFlowStudio_autogen/timestamp: \
 	D:/app_dibujo_proyecto-main/src/ProjectModel.h \
 	D:/app_dibujo_proyecto-main/src/TestCanvas.cpp \
 	D:/app_dibujo_proyecto-main/src/TestCanvas.h \
+	D:/app_dibujo_proyecto-main/src/core/brushes/abr_importer.cpp \
+	D:/app_dibujo_proyecto-main/src/core/brushes/abr_importer.h \
 	D:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPicker.h \
 	D:/app_dibujo_proyecto-main/src/core/cpp/include/ColorPickerImpl.h \
 	D:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \

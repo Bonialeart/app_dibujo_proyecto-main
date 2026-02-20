@@ -27,32 +27,35 @@ static uint32_t loadTexture(const QString &name) {
   if (g_textureCache.contains(name))
     return g_textureCache[name];
 
-  // Try multiple paths (searching up to root from executable or CWD)
-  QStringList searchPaths;
-  searchPaths << "assets/textures/" + name;
-  searchPaths << "assets/brushes/tips/" + name;
-  searchPaths << "../assets/textures/" + name;
-  searchPaths << "../assets/brushes/tips/" + name;
-  searchPaths << "../../assets/textures/" + name;
-  searchPaths << QCoreApplication::applicationDirPath() + "/assets/textures/" +
-                     name;
-  searchPaths << QCoreApplication::applicationDirPath() +
-                     "/../assets/textures/" + name;
-  searchPaths << "src/assets/textures/" + name;
-  searchPaths << ":/textures/" + name;
-
+  // First, check if name is already a valid absolute or relative path
   QString path;
   bool found = false;
-  for (const QString &p : searchPaths) {
-    if (QFile::exists(p)) {
-      path = p;
-      found = true;
-      break;
+  if (QFile::exists(name)) {
+    path = name;
+    found = true;
+  } else {
+    // Try multiple paths (searching up to root from executable or CWD)
+    QStringList searchPaths;
+    searchPaths << "assets/textures/" + name;
+    searchPaths << "assets/brushes/tips/" + name;
+    searchPaths << "../assets/textures/" + name;
+    searchPaths << "../assets/brushes/tips/" + name;
+    searchPaths << "../../assets/textures/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() + "/assets/textures/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() + "/../assets/textures/" + name;
+    searchPaths << "src/assets/textures/" + name;
+    searchPaths << ":/textures/" + name;
+
+    for (const QString &p : searchPaths) {
+      if (QFile::exists(p)) {
+        path = p;
+        found = true;
+        break;
+      }
     }
   }
 
-  qDebug() << "BrushEngine: Loading texture:" << name << "Found:" << found
-           << "Path:" << path;
+  qDebug() << "BrushEngine: Loading texture:" << name << "Found:" << found << "Path:" << path;
 
   QImage img;
   if (found) {
@@ -81,8 +84,7 @@ static uint32_t loadTexture(const QString &name) {
   }
 
   // Convert to format OpenGL understands well
-  QImage glImg =
-      img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical);
+  QImage glImg = img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical);
 
   QOpenGLTexture *tex = new QOpenGLTexture(glImg);
   tex->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
@@ -102,19 +104,21 @@ static QImage getTextureImage(const QString &name) {
   if (s_imageTextureCache.contains(name))
     return s_imageTextureCache[name];
 
-  // Try multiple paths (same as loadTexture)
-  QString path = "assets/textures/" + name;
+  QString path = name; // Primero verificar si es ruta absoluta
   if (!QFile::exists(path)) {
-    path = "src/assets/textures/" + name;
+    // Try multiple paths (same as loadTexture)
+    path = "assets/textures/" + name;
     if (!QFile::exists(path)) {
-      path = "assets/brushes/tips/" + name;
+      path = "src/assets/textures/" + name;
       if (!QFile::exists(path)) {
-        path = "src/assets/brushes/tips/" + name;
+        path = "assets/brushes/tips/" + name;
         if (!QFile::exists(path)) {
-          path = QCoreApplication::applicationDirPath() + "/assets/textures/" +
-                 name;
+          path = "src/assets/brushes/tips/" + name;
           if (!QFile::exists(path)) {
-            path = ":/textures/" + name;
+            path = QCoreApplication::applicationDirPath() + "/assets/textures/" + name;
+            if (!QFile::exists(path)) {
+              path = ":/textures/" + name;
+            }
           }
         }
       }
@@ -133,7 +137,20 @@ static QImage getTextureImage(const QString &name) {
       p.drawPoint(rand() % 256, rand() % 256);
     }
   } else {
+    bool hasAlpha = img.hasAlphaChannel();
     img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    for (int y = 0; y < img.height(); ++y) {
+      QRgb *scanline = reinterpret_cast<QRgb *>(img.scanLine(y));
+      for (int x = 0; x < img.width(); ++x) {
+        QRgb pixel = scanline[x];
+        int luma = qGray(pixel);
+        int a = hasAlpha ? qAlpha(pixel) : 255;
+        // Combina luma y alpha. Para la engine Raster, el alpha define la forma
+        int finalAlpha = (luma * a) / 255;
+        // Asignamos blanco sólido pero con la opacidad combinada (premultiplicado)
+        scanline[x] = qRgba(finalAlpha, finalAlpha, finalAlpha, finalAlpha);
+      }
+    }
   }
 
   s_imageTextureCache[name] = img;

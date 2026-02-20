@@ -22,6 +22,7 @@
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
 #include <QPainter>
+#include <QStandardPaths>
 #include <QPainterPath>
 #include <QQuickItem>
 #include <QQuickPaintedItem> // Ensure base class is known
@@ -2920,9 +2921,30 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
   return success; 
 }
 
+#include "core/brushes/abr_importer.h"
+
 bool CanvasItem::importABR(const QString &path) {
-  qDebug() << "Importing ABR:" << path;
-  return true;
+    QString localPath = path;
+    if (localPath.startsWith("file://")) {
+        localPath = QUrl(localPath).toLocalFile();
+    }
+
+    qDebug() << "[CanvasItem] Importing ABR:" << localPath;
+    
+    // Usar AppData para guardar texturas importadas de forma segura y persistente
+    QString texturesDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/imported_brushes";
+    QDir().mkpath(texturesDir);
+    
+    bool success = artflow::AbrImporter::importFile(localPath, texturesDir);
+    
+    if (success) {
+        emit availableBrushesChanged();
+        emit notificationRequested("Pinceles importados correctamente", "success");
+        return true;
+    } else {
+        emit notificationRequested("Error al importar pinceles ABR", "error");
+        return false;
+    }
 }
 
 void CanvasItem::updateTransformProperties(float x, float y, float scale,
@@ -4462,20 +4484,25 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
   }
 
   // 🎯 CARGAR TEXTURA REAL DEL PINCEL
-  QStringList searchPaths;
-  searchPaths << "assets/textures"
-              << "src/assets/textures"
-              << QCoreApplication::applicationDirPath() + "/assets/textures"
-              << QCoreApplication::applicationDirPath() + "/../assets/textures"
-              << QCoreApplication::applicationDirPath() + "/textures";
-
   QString fullPath;
-  for (const QString &base : searchPaths) {
-    QString candidate = base + "/" + texturePath;
-    if (QFile::exists(candidate)) {
-      fullPath = candidate;
-      break;
-    }
+  if (QFileInfo(texturePath).isAbsolute() && QFile::exists(texturePath)) {
+      fullPath = texturePath;
+  } else {
+      QStringList searchPaths;
+      searchPaths << "assets/textures"
+                  << "src/assets/textures"
+                  << QCoreApplication::applicationDirPath() + "/assets/textures"
+                  << QCoreApplication::applicationDirPath() + "/../assets/textures"
+                  << QCoreApplication::applicationDirPath() + "/textures"
+                  << QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/imported_brushes";
+
+      for (const QString &base : searchPaths) {
+        QString candidate = base + "/" + texturePath;
+        if (QFile::exists(candidate)) {
+          fullPath = candidate;
+          break;
+        }
+      }
   }
 
   if (fullPath.isEmpty() || !QFile::exists(fullPath)) {

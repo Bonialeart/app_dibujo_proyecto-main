@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Dialogs 1.3
 
 Item {
     id: root
@@ -42,7 +43,7 @@ Item {
                 id: catRow; spacing: 4
 
                 Repeater {
-                    model: ["Manga", "Sketching", "Inking", "Drawing", "Painting", "Artistic", "Watercolor", "Oil Painting", "Calligraphy", "Airbrushing", "Textures", "Charcoal", "Sprays"]
+                    model: ["Manga", "Sketching", "Inking", "Drawing", "Painting", "Artistic", "Watercolor", "Oil Painting", "Calligraphy", "Airbrushing", "Textures", "Charcoal", "Sprays", "Imported"]
                     Rectangle {
                         width: catText.implicitWidth + 16; height: 22; radius: 11
                         color: studioSelectedCategory === modelData ? accentColor : (catMa.containsMouse ? "#222226" : "#141418")
@@ -147,6 +148,42 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: { if (mainCanvas) mainCanvas.usePreset(modelData) }
                 }
+            }
+        }
+
+        // Import Button
+        Rectangle {
+            Layout.fillWidth: true; Layout.preferredHeight: 36
+            color: "#1a1a1e"; radius: 6
+            border.color: hoverImport.containsMouse ? accentColor : "#2a2a2e"
+            border.width: 1
+
+            RowLayout {
+                anchors.centerIn: parent
+                spacing: 8
+                Text { text: "+ Import .abr"; color: hoverImport.containsMouse ? "#fff" : "#ccc"; font.pixelSize: 12; font.weight: Font.Medium }
+            }
+
+            MouseArea {
+                id: hoverImport
+                anchors.fill: parent; hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    importDialog.open()
+                }
+            }
+        }
+    }
+
+    FileDialog {
+        id: importDialog
+        title: "Import .abr Brushes"
+        nameFilters: ["Photoshop Brushes (*.abr)"]
+        onAccepted: {
+            if (mainCanvas) {
+                mainCanvas.importABR(importDialog.fileUrl.toString())
+                studioSelectedCategory = "Imported"
+                updateStudioBrushList()
             }
         }
     }
