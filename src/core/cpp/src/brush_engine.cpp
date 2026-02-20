@@ -41,8 +41,10 @@ static uint32_t loadTexture(const QString &name) {
     searchPaths << "../assets/textures/" + name;
     searchPaths << "../assets/brushes/tips/" + name;
     searchPaths << "../../assets/textures/" + name;
-    searchPaths << QCoreApplication::applicationDirPath() + "/assets/textures/" + name;
-    searchPaths << QCoreApplication::applicationDirPath() + "/../assets/textures/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() +
+                       "/assets/textures/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() +
+                       "/../assets/textures/" + name;
     searchPaths << "src/assets/textures/" + name;
     searchPaths << ":/textures/" + name;
 
@@ -55,7 +57,8 @@ static uint32_t loadTexture(const QString &name) {
     }
   }
 
-  qDebug() << "BrushEngine: Loading texture:" << name << "Found:" << found << "Path:" << path;
+  qDebug() << "BrushEngine: Loading texture:" << name << "Found:" << found
+           << "Path:" << path;
 
   QImage img;
   if (found) {
@@ -84,7 +87,8 @@ static uint32_t loadTexture(const QString &name) {
   }
 
   // Convert to format OpenGL understands well
-  QImage glImg = img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical);
+  QImage glImg =
+      img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical);
 
   QOpenGLTexture *tex = new QOpenGLTexture(glImg);
   tex->setMinificationFilter(QOpenGLTexture::LinearMipMapLinear);
@@ -115,7 +119,8 @@ static QImage getTextureImage(const QString &name) {
         if (!QFile::exists(path)) {
           path = "src/assets/brushes/tips/" + name;
           if (!QFile::exists(path)) {
-            path = QCoreApplication::applicationDirPath() + "/assets/textures/" + name;
+            path = QCoreApplication::applicationDirPath() +
+                   "/assets/textures/" + name;
             if (!QFile::exists(path)) {
               path = ":/textures/" + name;
             }
@@ -147,7 +152,8 @@ static QImage getTextureImage(const QString &name) {
         int a = hasAlpha ? qAlpha(pixel) : 255;
         // Combina luma y alpha. Para la engine Raster, el alpha define la forma
         int finalAlpha = (luma * a) / 255;
-        // Asignamos blanco sólido pero con la opacidad combinada (premultiplicado)
+        // Asignamos blanco sólido pero con la opacidad combinada
+        // (premultiplicado)
         scanline[x] = qRgba(finalAlpha, finalAlpha, finalAlpha, finalAlpha);
       }
     }
@@ -404,10 +410,17 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
         // devSizeBase * jSize, effectivePressure, and settings.tipRotation +
         // jRot based on the original code and the context.
 
-        // Skip drawing if size is too small (prevents micro-dots at end of
-        // stroke)
-        if (devSizeBase < 0.6f)
+        // Safety: Skip dabs that are too small or have near-zero pressure
+        // This prevents the "brush shape staying at the end" (stray marks)
+        if (devSizeBase < 1.0f || effectivePressure < 0.001f ||
+            opacityBase < 0.001f)
           continue;
+
+        // Calculate base rotation
+        float currentTipRot = settings.tipRotation;
+        if (settings.rotateWithStroke) {
+          currentTipRot += strokeAngle;
+        }
 
         m_renderer->renderStroke(
             devPt.x() + jX, devPt.y() + jY, devSizeBase * jSize,
@@ -418,7 +431,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             grainTexID, (grainTexID != 0 && settings.useTexture),
             settings.textureScale * scaleFactor, settings.textureIntensity,
             // Tip
-            tipTexID, (tipTexID != 0), settings.tipRotation + jRot,
+            tipTexID, (tipTexID != 0), currentTipRot + jRot,
             // Dynamics
             tilt, velocity, settings.flow,
             // Wet Mix
@@ -573,9 +586,16 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
         finalColor.setHslF(h, s, l, a);
       }
 
+      // Calculate base rotation for legacy path
+      float strokeAngle = std::atan2(dy, dx);
+      float currentTipRot = settings.tipRotation;
+      if (settings.rotateWithStroke) {
+        currentTipRot += strokeAngle;
+      }
+
       if (!settings.tipTextureName.isEmpty()) {
         paintTipRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
-                       settings.tipRotation + jRot, settings.tipTextureName);
+                       currentTipRot + jRot, settings.tipTextureName);
       } else if (settings.useTexture && !settings.textureName.isEmpty()) {
         paintTexturedRaster(painter, finalPt, finalSize, finalOpacity,
                             finalColor, settings.textureName);
@@ -631,12 +651,17 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
   float dy = currentPos.y() - m_lastPos.y();
   float dist = std::hypot(dx, dy);
 
+  // Skip negligible moves to prevent stamping artifacts at the end of a stroke
+  if (dist < 0.01f && m_remainder > 0.1f)
+    return;
+
   float size = m_currentSettings.size;
   if (m_currentSettings.sizeByPressure) {
     size *= point.pressure;
   }
 
-  float spacing = std::max(1.0f, size * m_currentSettings.spacing);
+  // Ensure spacing is at least 2.0 pixels to prevent extreme performance lag
+  float spacing = std::max(2.0f, size * m_currentSettings.spacing);
 
   if (m_remainder < 0.0f) {
     m_remainder = spacing;
@@ -735,6 +760,13 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         finalColor.setHslF(h, s, l, a);
       }
 
+      // Calculate base rotation
+      float strokeAngle = std::atan2(dy, dx);
+      float currentTipRot = m_currentSettings.tipRotation;
+      if (m_currentSettings.rotateWithStroke) {
+        currentTipRot += strokeAngle;
+      }
+
       m_renderer->renderStroke(
           pt.x() + jX, pt.y() + jY, devSizeBase * jSize, point.pressure,
           m_currentSettings.hardness, finalColor, (int)m_currentSettings.type,
@@ -743,7 +775,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
           grainTexId, hasGrain, m_currentSettings.textureScale,
           m_currentSettings.textureIntensity,
           // Tip
-          tipTexId, hasTip, m_currentSettings.tipRotation + jRot,
+          tipTexId, hasTip, currentTipRot + jRot,
           // Dynamics
           0.0f, 0.0f, m_currentSettings.flow,
           // Wet Mix

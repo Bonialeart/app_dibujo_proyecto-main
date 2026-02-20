@@ -120,16 +120,31 @@ public:
                  activeBrushNameChanged)
   Q_PROPERTY(
       QString brushTipImage READ brushTipImage NOTIFY brushTipImageChanged)
+  Q_PROPERTY(QVariantList brushCategories READ getBrushCategories NOTIFY
+                 brushCategoriesChanged)
 
   // ── Brush Studio editing state ──
   Q_PROPERTY(
       bool isEditingBrush READ isEditingBrush NOTIFY isEditingBrushChanged)
   Q_PROPERTY(bool hasSelection READ hasSelection NOTIFY hasSelectionChanged)
-  Q_PROPERTY(int selectionAddMode READ selectionAddMode WRITE setSelectionAddMode NOTIFY selectionAddModeChanged)
-  Q_PROPERTY(float selectionThreshold READ selectionThreshold WRITE setSelectionThreshold NOTIFY selectionThresholdChanged)
-  Q_PROPERTY(bool isSelectionModeActive READ isSelectionModeActive WRITE setIsSelectionModeActive NOTIFY isSelectionModeActiveChanged)
+  Q_PROPERTY(int selectionAddMode READ selectionAddMode WRITE
+                 setSelectionAddMode NOTIFY selectionAddModeChanged)
+  Q_PROPERTY(float selectionThreshold READ selectionThreshold WRITE
+                 setSelectionThreshold NOTIFY selectionThresholdChanged)
+  Q_PROPERTY(bool isSelectionModeActive READ isSelectionModeActive WRITE
+                 setIsSelectionModeActive NOTIFY isSelectionModeActiveChanged)
+  Q_PROPERTY(bool isImporting READ isImporting NOTIFY isImportingChanged)
+  Q_PROPERTY(
+      float importProgress READ importProgress NOTIFY importProgressChanged)
 
-  Q_PROPERTY(int transformMode READ transformMode WRITE setTransformMode NOTIFY transformModeChanged)
+  Q_PROPERTY(int transformMode READ transformMode WRITE setTransformMode NOTIFY
+                 transformModeChanged)
+  Q_PROPERTY(bool sizeByPressure READ sizeByPressure WRITE setSizeByPressure
+                 NOTIFY sizeByPressureChanged)
+  Q_PROPERTY(bool opacityByPressure READ opacityByPressure WRITE
+                 setOpacityByPressure NOTIFY opacityByPressureChanged)
+  Q_PROPERTY(bool flowByPressure READ flowByPressure WRITE setFlowByPressure
+                 NOTIFY flowByPressureChanged)
 
   enum TransformSubMode { Free, Perspective, Warp, Mesh };
   Q_ENUM(TransformSubMode)
@@ -137,10 +152,11 @@ public:
 public:
   int transformMode() const { return (int)m_transformSubMode; }
   void setTransformMode(int mode) {
-      if ((int)m_transformSubMode == mode) return;
-      m_transformSubMode = (TransformSubMode)mode;
-      emit transformModeChanged();
-      update();
+    if ((int)m_transformSubMode == mode)
+      return;
+    m_transformSubMode = (TransformSubMode)mode;
+    emit transformModeChanged();
+    update();
   }
 
   Q_INVOKABLE void applyTransform();
@@ -193,6 +209,11 @@ public:
   int selectionAddMode() const { return m_selectionAddMode; }
   float selectionThreshold() const { return m_selectionThreshold; }
   bool isSelectionModeActive() const { return m_isSelectionModeActive; }
+  bool isImporting() const { return m_isImporting; }
+  float importProgress() const { return m_importProgress; }
+  bool sizeByPressure() const { return m_sizeByPressure; }
+  bool opacityByPressure() const { return m_opacityByPressure; }
+  bool flowByPressure() const { return m_flowByPressure; }
 
   // Setters
   void setBrushSize(int size);
@@ -210,6 +231,9 @@ public:
   void setImpastoStrength(float strength);
   void setLightAngle(float angle);
   void setLightElevation(float elevation);
+  void setSizeByPressure(bool v);
+  void setOpacityByPressure(bool v);
+  void setFlowByPressure(bool v);
   void setBrushRoundness(float value);
   void setBrushAngle(float value);
   void setCursorRotation(float value);
@@ -244,7 +268,9 @@ public:
   Q_INVOKABLE void toggleLock(int index);
   Q_INVOKABLE void clearLayer(int index);
   Q_INVOKABLE void setLayerOpacity(int index, float opacity);
-  Q_INVOKABLE void setLayerOpacityPreview(int index, float opacity); // Fast update without model refresh
+  Q_INVOKABLE void
+  setLayerOpacityPreview(int index,
+                         float opacity); // Fast update without model refresh
   Q_INVOKABLE void setLayerBlendMode(int index, const QString &mode);
   Q_INVOKABLE void setLayerPrivate(int index, bool isPrivate);
   Q_INVOKABLE void setActiveLayer(int index);
@@ -259,7 +285,7 @@ public:
   Q_INVOKABLE void deselect();
   Q_INVOKABLE void selectAll();
   Q_INVOKABLE void apply_color_drop(int x, int y, const QColor &color);
-  
+
   void setSelectionAddMode(int mode);
   void setSelectionThreshold(float threshold);
   void setIsSelectionModeActive(bool active);
@@ -277,9 +303,10 @@ public:
   // Q_INVOKABLE methods for Python compatibility
   Q_INVOKABLE void loadRecentProjectsAsync();
   Q_INVOKABLE QVariantList getRecentProjects(); // RE-ADDED
-  Q_INVOKABLE bool create_folder_from_merge(const QString &sourcePath, const QString &targetPath);
+  Q_INVOKABLE bool create_folder_from_merge(const QString &sourcePath,
+                                            const QString &targetPath);
   QRectF transformBox() const { return m_transformBox; }
-  Q_INVOKABLE QVariantList get_project_list();  // RE-ADDED
+  Q_INVOKABLE QVariantList get_project_list(); // RE-ADDED
   Q_INVOKABLE QVariantList get_sketchbook_pages(const QString &folderPath);
   Q_INVOKABLE void load_file_path(const QString &path);
   Q_INVOKABLE bool deleteProject(const QString &path);
@@ -300,6 +327,8 @@ public:
                                const QVariantMap &params);
   Q_INVOKABLE QString get_brush_preview(const QString &brushName);
   Q_INVOKABLE QVariantList getBrushesForCategory(const QString &category);
+  Q_INVOKABLE QVariantList getBrushCategories();
+  Q_INVOKABLE QStringList getBrushCategoryNames();
 
   // ══════════════════════════════════════════════════════════════
   // Brush Studio — Property Bridge API
@@ -380,6 +409,12 @@ signals:
   void selectionThresholdChanged();
   void isSelectionModeActiveChanged();
   void projectListChanged();
+  void brushCategoriesChanged();
+  void isImportingChanged();
+  void importProgressChanged();
+  void sizeByPressureChanged();
+  void opacityByPressureChanged();
+  void flowByPressureChanged();
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
@@ -512,18 +547,23 @@ private:
   QTransform m_transformMatrix;
   QRectF m_transformBox;
   bool m_isTransforming = false;
-  
+
   int m_selectionAddMode = 0; // 0=New, 1=Add, 2=Subtract
   float m_selectionThreshold = 0.5f;
   bool m_isSelectionModeActive = false;
+  bool m_isImporting = false;
+  float m_importProgress = 0.0f;
+  bool m_sizeByPressure = true;
+  bool m_opacityByPressure = true;
+  bool m_flowByPressure = false;
   QString m_previousToolStr = "brush";
-  
+
   // Advanced Selection State
   QPointF m_lastSelectionPoint;
   QPointF m_selectionStartPos;
   bool m_isLassoDragging = false;
   bool m_isMagneticLassoActive = false;
-  
+
   enum class TransformMode { None, Move, Scale, Rotate };
   TransformMode m_transformMode = TransformMode::None;
   TransformSubMode m_transformSubMode = Free;
@@ -537,7 +577,9 @@ private:
 
   // Composition Shader
   QOpenGLShaderProgram *m_compositionShader = nullptr;
-  void blendWithShader(QPainter *painter, artflow::Layer *layer, const QRectF &rect, artflow::Layer *maskLayer = nullptr, uint32_t overrideTextureId = 0);
+  void blendWithShader(QPainter *painter, artflow::Layer *layer,
+                       const QRectF &rect, artflow::Layer *maskLayer = nullptr,
+                       uint32_t overrideTextureId = 0);
   QImage m_brushOutlineCache;
   QString m_lastBrushTexturePath;
   float m_lastCursorSize = -1;

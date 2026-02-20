@@ -230,19 +230,7 @@ Rectangle {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 
-                model: [
-                    { name: "Favorites", icon: "cat_favorites" },
-                    { name: "Sketching", icon: "cat_sketching" },
-                    { name: "Inking", icon: "cat_inking" },
-                    { name: "Drawing", icon: "marker" },
-                    { name: "Painting", icon: "cat_painting" },
-                    { name: "Artistic", icon: "palette" },
-                    { name: "Airbrushing", icon: "airbrush" },
-                    { name: "Charcoal", icon: "cat_charcoal" },
-                    { name: "Textures", icon: "cat_textures" },
-                    { name: "Luminance", icon: "cat_luminance" },
-                    { name: "Imported", icon: "cat_imported" }
-                ]
+                model: root.targetCanvas ? root.targetCanvas.brushCategories : []
 
                 ScrollBar.vertical: ScrollBar { 
                     width: 2; policy: ScrollBar.AsNeeded
@@ -281,6 +269,58 @@ Rectangle {
                     ToolTip.text: modelData.name
                     ToolTip.delay: 300
                 }
+            }
+        }
+    }
+
+    // 3. LOADING OVERLAY (ABR Import)
+    Rectangle {
+        id: importOverlay
+        anchors.fill: parent
+        color: Qt.rgba(0, 0, 0, 0.7)
+        visible: root.targetCanvas && root.targetCanvas.isImporting
+        z: 1000
+
+        // Bloquear clics mientras importa
+        MouseArea { anchors.fill: parent }
+
+        ColumnLayout {
+            anchors.centerIn: parent
+            width: parent.width * 0.7
+            spacing: 16
+
+            Text {
+                text: "Importing Brushes..."
+                color: "white"
+                font.pixelSize: 16
+                font.weight: Font.DemiBold
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            // Barra de progreso personalizada
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 8
+                color: "#1a1a1c"
+                radius: 4
+
+                Rectangle {
+                    width: parent.width * (root.targetCanvas ? root.targetCanvas.importProgress : 0)
+                    height: parent.height
+                    color: root.accentColor
+                    radius: 4
+                    
+                    Behavior on width {
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                    }
+                }
+            }
+
+            Text {
+                text: root.targetCanvas ? Math.round(root.targetCanvas.importProgress * 100) + "%" : "0%"
+                color: "#888"
+                font.pixelSize: 12
+                Layout.alignment: Qt.AlignHCenter
             }
         }
     }

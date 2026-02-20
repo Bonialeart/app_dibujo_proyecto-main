@@ -7,13 +7,17 @@
 #include <QMap>
 #include <QString>
 #include <QVariant>
+#include <functional>
 
 namespace artflow {
 
 class AbrImporter {
 public:
+  using ProgressCallback = std::function<void(int current, int total)>;
+
   static bool importFile(const QString &filePath,
-                         const QString &textureSavePath);
+                         const QString &textureSavePath,
+                         ProgressCallback progress = nullptr);
 
   struct ExtractedBrush {
     QImage image;

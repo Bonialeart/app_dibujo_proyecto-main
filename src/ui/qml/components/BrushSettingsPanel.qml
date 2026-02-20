@@ -66,7 +66,40 @@ Item {
                 onMoved: (val) => { if (mainCanvas) mainCanvas.brushHardness = val }
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: "#1a1a1e" }
+            Rectangle { Layout.fillWidth: true; height: 1; color: "#25252a" }
+
+            // Pressure Dynamics Quick Toggles
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 12
+                
+                Text { 
+                    text: "PRESSURE SENSITIVITY"
+                    font.pixelSize: 10; font.weight: Font.Bold
+                    color: "#6b7280"; Layout.fillWidth: true
+                    font.letterSpacing: 1
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "Size Response"; color: "white"; font.pixelSize: 12; Layout.fillWidth: true }
+                    Switch {
+                        checked: mainCanvas ? mainCanvas.sizeByPressure : true
+                        onCheckedChanged: if(mainCanvas) mainCanvas.sizeByPressure = checked
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Text { text: "Opacity Response"; color: "white"; font.pixelSize: 12; Layout.fillWidth: true }
+                    Switch {
+                        checked: mainCanvas ? mainCanvas.opacityByPressure : true
+                        onCheckedChanged: if(mainCanvas) mainCanvas.opacityByPressure = checked
+                    }
+                }
+            }
+
+            Rectangle { Layout.fillWidth: true; height: 1; color: "#25252a" }
 
             // Spacing
             StudioSlider {

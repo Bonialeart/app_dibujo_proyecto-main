@@ -80,7 +80,8 @@ static QList<Block8BIM> findAll8BIMBlocks(const QByteArray &data) {
 // ============================================================================
 
 bool AbrImporter::importFile(const QString &filePath,
-                             const QString &textureSavePath) {
+                             const QString &textureSavePath,
+                             ProgressCallback progress) {
   qDebug() << "========== ABR IMPORT V3 (MULTI-BLOCK) ==========";
 
   QString realPath = filePath;
@@ -224,7 +225,7 @@ bool AbrImporter::importFile(const QString &filePath,
       preset.name = QString("%1 %2").arg(groupName).arg(i + 1);
     }
 
-    preset.category = "Imported";
+    preset.category = groupName;
     preset.author = "ABR Import (" + groupName + ")";
 
     preset.shape.tipTexture = QDir::cleanPath(textureFullPath);
@@ -233,7 +234,8 @@ bool AbrImporter::importFile(const QString &filePath,
     preset.shape.roundness = extBrush.roundness / 100.0f;
     preset.shape.scatter = extBrush.scatter / 100.0f;
 
-    preset.stroke.spacing = extBrush.spacing / 100.0f;
+    // Enforce a minimum spacing of 8% to prevent extreme lag
+    preset.stroke.spacing = qMax(0.08f, extBrush.spacing / 100.0f);
 
     if (extBrush.diameter > 0) {
       preset.defaultSize = extBrush.diameter;
@@ -263,6 +265,10 @@ bool AbrImporter::importFile(const QString &filePath,
     }
     if (extBrush.opacityJitter > 0) {
       preset.randomize.opacityJitter = extBrush.opacityJitter / 100.0f;
+    }
+
+    if (progress) {
+      progress(i + 1, extractedBrushes.size());
     }
 
     bpm->addPreset(preset);
@@ -679,7 +685,15 @@ AbrImporter::splitParamsIntoBrushes(const QList<DescParam> &params) {
     if (keyMap.contains(shortKey)) {
       QString mappedKey = keyMap[shortKey];
       if (mappedKey != "name") {
-        current[mappedKey] = p.value;
+        if (p.type == "enum") {
+          // Detect pressure control
+          QString enumVal = p.value.toString();
+          if (enumVal.contains("Pen Pressure", Qt::CaseInsensitive)) {
+            current[mappedKey + "_control"] = "pressure";
+          }
+        } else {
+          current[mappedKey] = p.value;
+        }
       }
     }
 
@@ -775,6 +789,18 @@ void AbrImporter::applyMetadataToSingleBrush(
     brush.minimumSize = md["minimum_size"].toFloat();
   if (md.contains("minimum_opacity"))
     brush.minimumOpacity = md["minimum_opacity"].toFloat();
+
+  // If Photoshop says Opacity control is Pen Pressure,
+  // ensure we have a working minLimit if it wasn't already set
+  if (md.value("opacity_control").toString() == "pressure") {
+    if (!md.contains("minimum_opacity")) {
+      brush.minimumOpacity = 0.0f; // Default for pressure if mnmO missing
+    }
+  }
+  // Same for flow
+  if (md.value("flow_control").toString() == "pressure") {
+    brush.minimumOpacity = 0.0f; // Flow pressure often maps to minOpac too
+  }
 }
 
 // ============================================================================
@@ -822,7 +848,6 @@ bool AbrImporter::readAbrV1(const QByteArray &data, QDataStream &in,
             break;
           in.readRawData((char *)img.scanLine(y), width);
         }
-        img.invertPixels();
         ExtractedBrush b;
         b.image = img;
         b.spacing = spacing;
@@ -904,7 +929,6 @@ bool AbrImporter::readImageBlock(const QByteArray &blockData,
           memcpy(img.scanLine(y), blockData.constData() + srcOff, w);
           srcOff += w;
         }
-        img.invertPixels();
         bBrush.image = img;
         success = true;
         pos = pixelDataStart + rawSize;
@@ -947,7 +971,6 @@ bool AbrImporter::readImageBlock(const QByteArray &blockData,
 
       QImage img = decodeRLEImage(rleDataStream, w, h);
       if (!img.isNull()) {
-        img.invertPixels();
         bBrush.image = img;
         success = true;
       }

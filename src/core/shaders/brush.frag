@@ -172,7 +172,7 @@ void main() {
     }
 
     // === 3. FLOW & PRESSURE COMBINATION ===
-    float effectiveFlow = flow * pressure;
+    float effectiveFlow = flow; // Pressure is now handled by C++ engine for more control
     float baseAlpha = color.a * shapeAlpha * grainFactor * effectiveFlow;
 
     // --- PIGMENT MIGRATION (Watercolor Diffusion) ---

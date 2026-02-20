@@ -138,9 +138,9 @@ Item {
         height: 56 // Fixed height matching header
         spacing: 4
         
-        visible: layerDelegate.isSwipedOpen
-        opacity: layerDelegate.isSwipedOpen ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: 200 } }
+        visible: layerContent.x < -10
+        opacity: Math.min(1.0, Math.abs(layerContent.x) / 80)
+        Behavior on opacity { NumberAnimation { duration: 150 } }
         
         // Copy
         Rectangle {
@@ -198,6 +198,49 @@ Item {
             }
         }
     }
+    
+    // --- 1.5. CLIPPING HINT (Revealed when swiping RIGHT) ---
+    Rectangle {
+        id: clippingHint
+        anchors.left: parent.left
+        anchors.leftMargin: 6
+        anchors.verticalCenter: parent.verticalCenter
+        height: headerContent.height - 8
+        width: Math.max(0, layerContent.x - (isClipped ? 20 : 4))
+        radius: 12
+        visible: layerContent.x > 10
+        opacity: Math.min(1.0, parent.width / 120)
+        z: 0
+        
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0.0; color: isClipped ? "#ff9500" : "#34c759" }
+            GradientStop { position: 1.0; color: isClipped ? "#ffcc00" : "#30d158" }
+        }
+
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowColor: "#40000000"
+            shadowBlur: 8
+        }
+        
+        Row {
+            anchors.centerIn: parent
+            spacing: 10
+            visible: parent.width > 50
+            Image { 
+                source: iconPath("arrow-down-left.svg")
+                width: 22; height: 22
+                rotation: -90
+            }
+            Text { 
+                text: isClipped ? "RELEASE" : "CLIPPING"
+                color: "white"; font.pixelSize: 10; font.weight: Font.Black
+                font.letterSpacing: 1
+            }
+        }
+    }
 
     // --- 2. MAIN SWIPEABLE CONTENT ---
     Rectangle {
@@ -207,9 +250,11 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         
         // --- POSITION & ANIMATION ---
-        property real baseX: (layerDelegate.isSwipedOpen ? -150 : 2) + (isClipped ? 24 : 0)
+        property real baseX: (layerDelegate.isSwipedOpen ? -158 : 2) + (isClipped ? 24 : 0)
         x: baseX 
-        
+        z: 10
+        scale: (dragArea.pressed || isSwipedOpen) ? 0.98 : 1.0
+        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }        
         radius: 10 // Cleaner, less rounded
         // Dark background for all states (Active gets border only)
         color: isClipped ? "#151517" : "#1c1c1e" 
@@ -223,14 +268,14 @@ Item {
         layer.enabled: isActive
         layer.effect: MultiEffect {
             shadowEnabled: true
-            shadowColor: "#40000000"
-            shadowBlur: 8
-            shadowVerticalOffset: 2
+            shadowColor: "#60000000"
+            shadowBlur: 10
+            shadowVerticalOffset: 3
         }
 
         Behavior on x { 
             enabled: !dragArea.drag.active
-            NumberAnimation { duration: 300; easing.type: Easing.OutBack; easing.overshoot: 0.6 } 
+            NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 0.5 } 
         }
 
         // --- CONTENT ROW ---
@@ -393,11 +438,17 @@ Item {
                         layersListRef.dropTargetIndex = -1
                     } else {
                         var delta = mouse.x - startX
-                        if (layerDelegate.isSwipedOpen && delta < -20) {
+                        if (layerDelegate.isSwipedOpen && delta > 30) {
                             layersListRef.swipedIndex = -1
                         } else if (!layerDelegate.isSwipedOpen && isSwiping) {
-                            if (delta > 35) layersListRef.swipedIndex = listIndex
-                            else if (delta < -45) mainCanvas.toggleClipping(layerIndex)
+                            if (delta > 60) {
+                                // Deslizar a la DERECHA -> Clipping Mask
+                                mainCanvas.toggleClipping(layerIndex)
+                            }
+                            else if (delta < -60) {
+                                // Deslizar a la IZQUIERDA -> Revelar Opciones
+                                layersListRef.swipedIndex = listIndex
+                            }
                         }
                     }
                     

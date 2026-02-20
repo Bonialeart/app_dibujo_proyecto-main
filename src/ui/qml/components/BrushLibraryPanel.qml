@@ -43,7 +43,7 @@ Item {
                 id: catRow; spacing: 4
 
                 Repeater {
-                    model: ["Manga", "Sketching", "Inking", "Drawing", "Painting", "Artistic", "Watercolor", "Oil Painting", "Calligraphy", "Airbrushing", "Textures", "Charcoal", "Sprays", "Imported"]
+                    model: root.targetCanvas ? root.targetCanvas.getBrushCategoryNames() : []
                     Rectangle {
                         width: catText.implicitWidth + 16; height: 22; radius: 11
                         color: studioSelectedCategory === modelData ? accentColor : (catMa.containsMouse ? "#222226" : "#141418")

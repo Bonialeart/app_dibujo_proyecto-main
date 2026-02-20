@@ -148,11 +148,11 @@
     },
     "meta": {
         "author": "ABR Import (suke2023)",
-        "category": "Imported",
+        "category": "suke2023",
         "date_created": "",
         "name": "样本画笔 1",
         "notes": "",
-        "uuid": "d8de6ef2-89c3-4b40-a0d9-e785af5a8487",
+        "uuid": "d52badb5-804c-40d0-9862-800c660ebb7d",
         "version": 1
     },
     "pigment": {
@@ -187,7 +187,7 @@
         "rotation": 0,
         "roundness": 1,
         "scatter": 0,
-        "tip_texture": "C:/Users/bonil/AppData/Roaming/ArtFlowStudio/ArtFlow Pro/imported_brushes/abr_fcecbd32-e7ec-4dd8-a3c9-8bb4c35565c0.png"
+        "tip_texture": "C:/Users/bonil/AppData/Roaming/ArtFlowStudio/ArtFlow Pro/imported_brushes/abr_79d3167f-939f-4ed7-8099-8ebef753470a.png"
     },
     "smudge": {
         "blend_mode": "normal",
@@ -203,7 +203,7 @@
         "fall_off": 0,
         "jitter_lateral": 0,
         "jitter_linear": 0,
-        "spacing": 0.009999999776482582,
+        "spacing": 0.07999999821186066,
         "stabilization": 0,
         "streamline": 0,
         "taper_end": 0,

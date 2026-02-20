@@ -148,11 +148,11 @@
     },
     "meta": {
         "author": "ABR Import (suke2023)",
-        "category": "Imported",
+        "category": "suke2023",
         "date_created": "",
         "name": "5 ★ suke VAL",
         "notes": "",
-        "uuid": "bde91035-7f9f-4d6d-842b-2adc8b863677",
+        "uuid": "2f2f57c9-0608-458d-8c61-3bc75c94bbc3",
         "version": 1
     },
     "pigment": {
@@ -187,7 +187,7 @@
         "rotation": 0,
         "roundness": 1,
         "scatter": 0,
-        "tip_texture": "C:/Users/bonil/AppData/Roaming/ArtFlowStudio/ArtFlow Pro/imported_brushes/abr_be638ab3-2c56-4fca-9514-e5235a1e4822.png"
+        "tip_texture": "C:/Users/bonil/AppData/Roaming/ArtFlowStudio/ArtFlow Pro/imported_brushes/abr_9a5d256c-6db0-4459-a05c-389c1899dede.png"
     },
     "smudge": {
         "blend_mode": "normal",

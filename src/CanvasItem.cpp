@@ -11,6 +11,7 @@
 #include <QEvent>
 #include <QFile>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QGuiApplication>
 #include <QHoverEvent>
 #include <QJsonArray>
@@ -34,8 +35,11 @@
 #include <QTabletEvent>
 #include <QTimer>
 #include <QUrl>
+#include <QUuid>
+#include <QVariant>
 #include <QWindow>
 #include <QtConcurrent/QtConcurrentRun>
+#include <QtConcurrent>
 #include <QtMath>
 #include <algorithm>
 
@@ -848,19 +852,33 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     // SIZE dynamics: evaluate curve and apply range
     float sizeT = activePreset->sizeDynamics.evaluate(rawPressure);
     float sizeMultiplier = sizeT; // 0..1 multiplier for brush size
+
+    // Master Toggle: If sizeByPressure is manually disabled, keep it at 100%
+    if (!m_sizeByPressure)
+      sizeMultiplier = 1.0f;
+
     settings.size = m_brushSize * sizeMultiplier;
-    if (settings.size < 0.5f)
-      settings.size = 0.5f;
+    // Lower minimum size floor to allow cleaner fade-outs
+    if (settings.size < 0.1f)
+      settings.size = 0.1f;
 
     // OPACITY dynamics
-    if (activePreset->opacityDynamics.minLimit < 0.99f) {
-      float opacT = activePreset->opacityDynamics.evaluate(rawPressure);
+    float opacT = 1.0f;
+    if (activePreset->opacityDynamics.minLimit < 0.99f || m_opacityByPressure) {
+      opacT = activePreset->opacityDynamics.evaluate(rawPressure);
+      // Master Toggle check
+      if (!m_opacityByPressure)
+        opacT = 1.0f;
       settings.opacity = m_brushOpacity * opacT;
     }
 
     // FLOW dynamics
-    if (activePreset->flowDynamics.minLimit < 0.99f) {
-      float flowT = activePreset->flowDynamics.evaluate(rawPressure);
+    float flowT = 1.0f;
+    if (activePreset->flowDynamics.minLimit < 0.99f || m_flowByPressure) {
+      flowT = activePreset->flowDynamics.evaluate(rawPressure);
+      // Master Toggle check
+      if (!m_flowByPressure)
+        flowT = 1.0f;
       settings.flow = m_brushFlow * flowT;
     }
 
@@ -892,6 +910,19 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   } else {
     // Apply global pressure curve for erasers or when no preset is active
     effectivePressure = applyPressureCurve(pressure);
+
+    // Fallback for simple tools: use global toggles
+    if (m_sizeByPressure) {
+      settings.size = m_brushSize * effectivePressure;
+      if (settings.size < 1.0f)
+        settings.size = 1.0f;
+    }
+    if (m_opacityByPressure) {
+      settings.opacity = m_brushOpacity * effectivePressure;
+    }
+    if (m_flowByPressure) {
+      settings.flow = m_brushFlow * effectivePressure;
+    }
   }
 
   // Create QImage wrapper around layer buffer (Use RGBA8888_Premultiplied)
@@ -1632,7 +1663,11 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     }
 
     m_cursorPos = event->position();
-    handleDraw(event->position(), pressure, tiltFactor);
+    // Only draw if there's actual pressure or we are using a tool that doesn't
+    // strictly require it, otherwise we leave "stamp" markers at the end
+    if (pressure > 0.001f || m_tool == ToolType::Eraser) {
+      handleDraw(event->position(), pressure, tiltFactor);
+    }
     update();
     event->accept();
 
@@ -1783,6 +1818,30 @@ void CanvasItem::setBrushSmudge(float value) {
   s.smudge = value;
   m_brushEngine->setBrush(s);
   emit brushSmudgeChanged();
+}
+
+void CanvasItem::setSizeByPressure(bool v) {
+  if (m_sizeByPressure != v) {
+    m_sizeByPressure = v;
+    emit sizeByPressureChanged();
+    update();
+  }
+}
+
+void CanvasItem::setOpacityByPressure(bool v) {
+  if (m_opacityByPressure != v) {
+    m_opacityByPressure = v;
+    emit opacityByPressureChanged();
+    update();
+  }
+}
+
+void CanvasItem::setFlowByPressure(bool v) {
+  if (m_flowByPressure != v) {
+    m_flowByPressure = v;
+    emit flowByPressureChanged();
+    update();
+  }
 }
 
 void CanvasItem::setImpastoShininess(float value) {
@@ -3107,29 +3166,62 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
 #include "core/abr_importer.h"
 
 bool CanvasItem::importABR(const QString &path) {
+  if (m_isImporting)
+    return false;
+
   QString localPath = path;
   if (localPath.startsWith("file://")) {
     localPath = QUrl(localPath).toLocalFile();
   }
 
-  qDebug() << "[CanvasItem] Importing ABR:" << localPath;
+  qDebug() << "[CanvasItem] Importing ABR (Async):" << localPath;
 
-  // Usar AppData para guardar texturas importadas de forma segura y persistente
+  // AppData for textures
   QString texturesDir =
       QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
       "/imported_brushes";
   QDir().mkpath(texturesDir);
 
-  bool success = artflow::AbrImporter::importFile(localPath, texturesDir);
+  m_isImporting = true;
+  m_importProgress = 0.0f;
+  emit isImportingChanged();
+  emit importProgressChanged();
 
-  if (success) {
-    emit availableBrushesChanged();
-    emit notificationRequested("Pinceles importados correctamente", "success");
-    return true;
-  } else {
-    emit notificationRequested("Error al importar pinceles ABR", "error");
-    return false;
-  }
+  auto *watcher = new QFutureWatcher<bool>(this);
+  connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher]() {
+    m_isImporting = false;
+    m_importProgress = 1.0f;
+    bool success = watcher->result();
+    emit isImportingChanged();
+    emit importProgressChanged();
+
+    if (success) {
+      emit availableBrushesChanged();
+      emit brushCategoriesChanged();
+      emit notificationRequested("Pinceles importados correctamente",
+                                 "success");
+    } else {
+      emit notificationRequested("Error al importar pinceles ABR", "error");
+    }
+    watcher->deleteLater();
+  });
+
+  QFuture<bool> future = QtConcurrent::run([this, localPath, texturesDir]() {
+    return artflow::AbrImporter::importFile(
+        localPath, texturesDir, [this](int current, int total) {
+          float p = (float)current / (float)total;
+          QMetaObject::invokeMethod(
+              this,
+              [this, p]() {
+                m_importProgress = p;
+                emit importProgressChanged();
+              },
+              Qt::QueuedConnection);
+        });
+  });
+
+  watcher->setFuture(future);
+  return true;
 }
 
 void CanvasItem::updateTransformProperties(float x, float y, float scale,
@@ -3528,6 +3620,15 @@ void CanvasItem::usePreset(const QString &name) {
   setBrushHardness(preset->defaultHardness);
   setBrushSpacing(preset->stroke.spacing);
   setBrushStabilization(preset->stroke.streamline);
+
+  // Sync quick toggles
+  m_sizeByPressure = (preset->sizeDynamics.baseValue > 0.01f ||
+                      preset->sizeDynamics.minLimit < 0.99f);
+  m_opacityByPressure = (preset->opacityDynamics.minLimit < 0.99f);
+  m_flowByPressure = (preset->flowDynamics.minLimit < 0.99f);
+  emit sizeByPressureChanged();
+  emit opacityByPressureChanged();
+  emit flowByPressureChanged();
 
   // Apply to engine's BrushSettings via the legacy adapter
   BrushSettings s = m_brushEngine->getBrush();
@@ -4282,6 +4383,53 @@ QVariantList CanvasItem::getBrushesForCategory(const QString &category) {
   for (const auto *p : presets) {
     if (p)
       result.append(p->name);
+  }
+  return result;
+}
+
+QVariantList CanvasItem::getBrushCategories() {
+  QVariantList result;
+  auto *bpm = artflow::BrushPresetManager::instance();
+  auto groups = bpm->groups();
+
+  // Map of known built-in categories to icons
+  // Fixed icons for premium aesthetic
+  static QMap<QString, QString> builtInIcons = {
+      {"Favorites", "cat_favorites"}, {"Sketching", "cat_sketching"},
+      {"Inking", "cat_inking"},       {"Drawing", "marker"},
+      {"Painting", "cat_painting"},   {"Artistic", "palette"},
+      {"Watercolor", "palette"},      {"Oil Painting", "palette"},
+      {"Calligraphy", "cat_inking"},  {"Airbrushing", "airbrush"},
+      {"Textures", "cat_textures"},   {"Luminance", "cat_luminance"},
+      {"Charcoal", "cat_charcoal"},   {"Imported", "cat_imported"},
+      {"Manga", "palette"},           {"Sprays", "airbrush"}};
+
+  for (const auto &group : groups) {
+    if (group.brushes.empty())
+      continue;
+
+    QVariantMap map;
+    map["name"] = group.name;
+    if (builtInIcons.contains(group.name)) {
+      map["icon"] = builtInIcons[group.name];
+    } else {
+      // It's a dynamically imported group from an .abr
+      map["icon"] = "cat_imported"; // Use the 'imported' icon as default
+    }
+    result.append(map);
+  }
+  return result;
+}
+
+QStringList CanvasItem::getBrushCategoryNames() {
+  QStringList result;
+  auto *bpm = artflow::BrushPresetManager::instance();
+  auto groups = bpm->groups();
+
+  for (const auto &group : groups) {
+    if (!group.brushes.empty()) {
+      result.append(group.name);
+    }
   }
   return result;
 }
