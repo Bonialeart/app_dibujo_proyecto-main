@@ -5,171 +5,249 @@ Item {
 
     // --- MODELS ---
     property alias leftDockModel: leftModel
+    property alias leftDockModel2: leftModel2
     property alias rightDockModel: rightModel
+    property alias rightDockModel2: rightModel2
     property alias floatingModel: floatModel
 
     // --- STATE ---
     property string activeLeftPanel: ""
     property string activeRightPanel: ""
     property bool leftCollapsed: true
+    property bool leftCollapsed2: true
     property bool rightCollapsed: true
+    property bool rightCollapsed2: true
+    
+    // Tracks the currently active panelId for a given groupId
+    property var activeGroupTabs: ({})
+
+    function setActiveTab(groupId, panelId) {
+        if (!groupId || groupId === "") return;
+        var newTabs = Object.assign({}, activeGroupTabs);
+        newTabs[groupId] = panelId;
+        activeGroupTabs = newTabs;
+    }
 
     // --- INTERNAL STORAGE ---
     ListModel {
         id: leftModel
-        // Each item: { panelId, name, icon, source, visible }
-        // Default Left Panels: Tool Options (Settings), Brushes?
-        ListElement {
-            panelId: "brushes"
-            name: "Brushes"
-            icon: "brush.svg"
-            source: "BrushLibraryPanel.qml"
-            visible: true
-        }
-        ListElement {
-            panelId: "settings"
-            name: "StudioConfig" 
-            icon: "sliders.svg" 
-            source: "BrushSettingsPanel.qml" 
-            visible: true 
-        }
+        ListElement { panelId: "brushes"; name: "Brushes"; icon: "brush.svg"; source: "BrushLibraryPanel.qml"; visible: false; groupId: "" }
+        ListElement { panelId: "settings"; name: "StudioConfig"; icon: "sliders.svg"; source: "BrushSettingsPanel.qml"; visible: false; groupId: "" }
     }
-
+    ListModel { id: leftModel2 }
     ListModel {
         id: rightModel
-        // Default Right Panels: Color, Layers, Navigator
-        ListElement {
-            panelId: "color"
-            name: "Color"
-            icon: "palette.svg"
-            source: "ColorPanel.qml" // TBD
-            visible: true
-        }
-        ListElement {
-            panelId: "layers"
-            name: "Layers"
-            icon: "layers.svg"
-            source: "LayerPanel.qml" // TBD wrapper
-            visible: true
-        }
-        ListElement {
-            panelId: "navigator"
-            name: "Navigator"
-            icon: "compass.svg"
-            source: "NavigatorPanel.qml" // TBD wrapper
-            visible: true
-        }
+        ListElement { panelId: "color"; name: "Color"; icon: "palette.svg"; source: "ColorPanel.qml"; visible: false; groupId: "" }
+        ListElement { panelId: "layers"; name: "Layers"; icon: "layers.svg"; source: "LayerPanel.qml"; visible: false; groupId: "" }
+        ListElement { panelId: "navigator"; name: "Navigator"; icon: "compass.svg"; source: "NavigatorPanel.qml"; visible: false; groupId: "" }
     }
-
-    ListModel {
-        id: floatModel
-        // Panels that are floating
-    }
+    ListModel { id: rightModel2 }
+    ListModel { id: floatModel }
 
     // --- ACTIONS ---
 
-    function toggleLeftPanel(panelId) {
-        if (activeLeftPanel === panelId) {
-            // If clicking active, toggle collapse
-            leftCollapsed = !leftCollapsed
-            if (leftCollapsed) activeLeftPanel = "" // Clear active if collapsed? Or keep it? keeping it is better state.
-            // Actually, usually clicking the icon of an open panel closes it.
-            if (leftCollapsed) activeLeftPanel = "" 
-        } else {
-            activeLeftPanel = panelId
-            leftCollapsed = false
-        }
-    }
+    function togglePanel(panelId) {
+        var targetModel = findPanelModel(panelId);
+        if (!targetModel || targetModel === floatModel) return;
 
-    function toggleRightPanel(panelId) {
-        if (activeRightPanel === panelId) {
-            rightCollapsed = !rightCollapsed
-            if (rightCollapsed) activeRightPanel = ""
-        } else {
-            activeRightPanel = panelId
-            rightCollapsed = false
-        }
-    }
-
-    function movePanel(panelId, targetDock) {
-        // Logic to move between models
-        // 1. Find panel in current model (left/right/float)
-        // 2. Remove
-        // 3. Add to target
-        var sourceModel = findPanelModel(panelId)
-        if (!sourceModel) return
-
-        var item = null
-        for(var i=0; i<sourceModel.count; i++) {
-            if (sourceModel.get(i).panelId === panelId) {
-                item = sourceModel.get(i)
-                sourceModel.remove(i)
-                break
-            }
-        }
-
-        if (item) {
-            if (targetDock === "left") {
-                leftModel.append(item)
-                activeLeftPanel = panelId
-                leftCollapsed = false
-            }
-            else if (targetDock === "right") {
-                rightModel.append(item)
-                activeRightPanel = panelId
-                rightCollapsed = false
-            }
-            else if (targetDock === "float") {
-                 // item needs x,y props if not present, but ListModel elements are static?
-                 // We can set properties on the item after appending if we pass them.
-                 // But ListElement structure is strict.
-                 // We need to ensure floatModel has x,y roles or we use a parallel object?
-                 // ListModel supports dynamic roles if not defined in ListElement initially?
-                 // Better to just append and let the FloatingPanel wrapper handle position via an external map or just standard properties if we can.
-                 // Let's assume we can add x,y to the item copy.
-                 item.x = 300 // default or passed
-                 item.y = 200
-                 floatModel.append(item)
-            }
-        }
-    }
-
-    function movePanelToFloat(panelId, x, y) {
-        var sourceModel = findPanelModel(panelId)
-        if (!sourceModel) return
-
-        var item = null
-        for(var i=0; i<sourceModel.count; i++) {
-            if (sourceModel.get(i).panelId === panelId) {
-                item = sourceModel.get(i)
-                sourceModel.remove(i)
-                break
+        var panelIdx = -1;
+        var groupId = "";
+        var currentlyVisible = false;
+        
+        for (var i = 0; i < targetModel.count; ++i) {
+            if (targetModel.get(i).panelId === panelId) {
+                panelIdx = i;
+                groupId = targetModel.get(i).groupId || "";
+                currentlyVisible = targetModel.get(i).visible;
+                break;
             }
         }
         
-        if (item) {
-             // We need to inject x and y
-             var obj = {
-                 "panelId": item.panelId,
-                 "name": item.name,
-                 "icon": item.icon,
-                 "source": item.source,
-                 "visible": true,
-                 "x": x,
-                 "y": y
-             }
-             floatModel.append(obj)
-             
-             // Clear active state if it was docked
-             if (activeLeftPanel === panelId) activeLeftPanel = ""
-             if (activeRightPanel === panelId) activeRightPanel = ""
+        if (panelIdx === -1) return;
+
+        var isDockCollapsed = getDockCollapsed(targetModel);
+        
+        // Logic:
+        // 1. If dock is closed, open it with this panel/group.
+        // 2. If dock is open and this panel is a tab in the current group, but NOT active -> switch tab.
+        // 3. If dock is open and this panel is ALREADY active -> close group.
+        // 4. If dock is open and this is a different independent panel -> switch to it.
+
+        if (isDockCollapsed) {
+            // Case 1: Open dock
+            if (groupId !== "") setActiveTab(groupId, panelId);
+            setDockVisibility(targetModel, panelId, groupId, true);
+        } else {
+            if (groupId !== "") {
+                var currentTab = activeGroupTabs[groupId] || "";
+                if (currentlyVisible && currentTab !== panelId) {
+                    // Case 2: Switch tab
+                    setActiveTab(groupId, panelId);
+                } else {
+                    // Case 3: Toggle current
+                    setDockVisibility(targetModel, panelId, groupId, !currentlyVisible);
+                }
+            } else {
+                // Case 4: Independent panel toggle
+                setDockVisibility(targetModel, panelId, "", !currentlyVisible);
+            }
+        }
+
+        if (groupId !== "") {
+             // Ensure active tab matches if we just opened/switched
+             if (activeGroupTabs[groupId] === undefined) setActiveTab(groupId, panelId);
+        }
+
+        cleanDocks();
+    }
+
+    function setDockVisibility(model, panelId, groupId, state) {
+        if (state) {
+            // Hide all others in THIS dock to prevent stacking unless grouped
+            for (var i = 0; i < model.count; i++) model.setProperty(i, "visible", false);
+        }
+        for (var i = 0; i < model.count; i++) {
+            var it = model.get(i);
+            if (it.panelId === panelId || (groupId !== "" && it.groupId === groupId)) {
+                model.setProperty(i, "visible", state);
+            }
         }
     }
 
+    function getDockCollapsed(model) {
+        if (model === leftModel) return leftCollapsed;
+        if (model === leftModel2) return leftCollapsed2;
+        if (model === rightModel) return rightCollapsed;
+        if (model === rightModel2) return rightCollapsed2;
+        return true;
+    }
+
+    function collapseDock(dockSide) {
+        var m = findDockModel(dockSide);
+        if (!m) return;
+        for (var i = 0; i < m.count; i++) m.setProperty(i, "visible", false);
+        cleanDocks();
+    }
+    
+    function reorderPanel(dockSide, sourceIdx, targetIdx, mode) {
+        var m = findDockModel(dockSide);
+        if (!m || sourceIdx < 0 || targetIdx < 0 || sourceIdx >= m.count || targetIdx >= m.count) return;
+        
+        var src = m.get(sourceIdx);
+        var tgt = m.get(targetIdx);
+        
+        var clone = {
+            panelId: src.panelId, name: src.name, icon: src.icon,
+            source: src.source, visible: src.visible, groupId: src.groupId
+        };
+        
+        if (mode === "group") {
+            var gId = tgt.groupId || ("grp_" + tgt.panelId);
+            m.setProperty(targetIdx, "groupId", gId);
+            clone.groupId = gId;
+            
+            m.remove(sourceIdx);
+            var adjTgt = (sourceIdx < targetIdx) ? (targetIdx - 1) : targetIdx;
+            m.insert(adjTgt + 1, clone);
+            setActiveTab(gId, clone.panelId);
+        } else {
+            clone.groupId = "";
+            m.remove(sourceIdx);
+            var adjTgt = (sourceIdx < targetIdx) ? (targetIdx - 1) : targetIdx;
+            if (mode === "before") m.insert(adjTgt, clone);
+            else m.insert(adjTgt + 1, clone);
+        }
+        cleanDocks();
+    }
+
+    function movePanel(panelId, targetDock, targetIndex = -1, mode = "insert") {
+        var sourceModel = findPanelModel(panelId);
+        if (!sourceModel) return;
+
+        var it = null;
+        for(var i=0; i<sourceModel.count; i++) {
+            if (sourceModel.get(i).panelId === panelId) {
+                var el = sourceModel.get(i);
+                it = { 
+                    panelId: el.panelId, name: el.name, icon: el.icon, 
+                    source: el.source, visible: true, groupId: el.groupId || "" 
+                };
+                sourceModel.remove(i);
+                break;
+            }
+        }
+
+        if (it) {
+            var m = findDockModel(targetDock);
+            if (m) {
+                // If grouping, we find the panel at targetIndex and use its groupId
+                if (mode === "group" && targetIndex >= 0 && targetIndex < m.count) {
+                    var tgt = m.get(targetIndex);
+                    var gId = tgt.groupId || ("grp_" + tgt.panelId);
+                    m.setProperty(targetIndex, "groupId", gId);
+                    it.groupId = gId;
+                    m.insert(targetIndex + 1, it);
+                    setActiveTab(gId, it.panelId);
+                } else {
+                    it.groupId = ""; // Break group when moving to new position as single
+                    if (targetIndex >= 0 && targetIndex <= m.count) m.insert(targetIndex, it);
+                    else m.append(it);
+                }
+                setDockCollapsed(targetDock, false);
+            }
+        }
+        cleanDocks();
+    }
+
+    function setDockCollapsed(dock, state) {
+        if (dock === "left") leftCollapsed = state;
+        else if (dock === "left2") leftCollapsed2 = state;
+        else if (dock === "right") rightCollapsed = state;
+        else if (dock === "right2") rightCollapsed2 = state;
+    }
+
+    function movePanelToFloat(panelId, x, y) {
+        var sourceModel = findPanelModel(panelId);
+        if (!sourceModel) return;
+
+        var it = null;
+        for(var i=0; i<sourceModel.count; i++) {
+            if (sourceModel.get(i).panelId === panelId) {
+                var el = sourceModel.get(i);
+                it = { panelId: el.panelId, name: el.name, icon: el.icon, source: el.source, visible: true, groupId: "", x: x, y: y };
+                sourceModel.remove(i);
+                break;
+            }
+        }
+        if (it) floatModel.append(it);
+        cleanDocks();
+    }
+
     function findPanelModel(panelId) {
-        for(var i=0; i<leftModel.count; i++) if (leftModel.get(i).panelId === panelId) return leftModel
-        for(var i=0; i<rightModel.count; i++) if (rightModel.get(i).panelId === panelId) return rightModel
-        for(var i=0; i<floatModel.count; i++) if (floatModel.get(i).panelId === panelId) return floatModel
-        return null
+        var docks = [leftModel, leftModel2, rightModel, rightModel2, floatModel];
+        for (var j=0; j<docks.length; j++) {
+            for(var i=0; i<docks[j].count; i++) if (docks[j].get(i).panelId === panelId) return docks[j];
+        }
+        return null;
+    }
+
+    function findDockModel(side) {
+        if (side === "left") return leftModel;
+        if (side === "left2") return leftModel2;
+        if (side === "right") return rightModel;
+        if (side === "right2") return rightModel2;
+        return null;
+    }
+
+    function cleanDocks() {
+        leftCollapsed = !hasVisible(leftModel);
+        leftCollapsed2 = !hasVisible(leftModel2);
+        rightCollapsed = !hasVisible(rightModel);
+        rightCollapsed2 = !hasVisible(rightModel2);
+    }
+
+    function hasVisible(model) {
+        for (var i = 0; i < model.count; ++i) if (model.get(i).visible) return true;
+        return false;
     }
 }

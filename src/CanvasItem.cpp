@@ -2375,6 +2375,14 @@ void CanvasItem::addLayer() {
   update();
 }
 
+void CanvasItem::addGroup() {
+  m_layerManager->addLayer("New Group", artflow::Layer::Type::Group);
+  m_activeLayerIndex = m_layerManager->getLayerCount() - 1;
+  emit activeLayerChanged();
+  updateLayersList();
+  update();
+}
+
 void CanvasItem::removeLayer(int index) {
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->locked) {
@@ -3018,6 +3026,7 @@ void CanvasItem::updateLayersList() {
 
     layerList.prepend(layer);
   }
+  m_layerModel = layerList;
   emit layersChanged(layerList);
 }
 

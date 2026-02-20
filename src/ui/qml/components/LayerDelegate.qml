@@ -9,30 +9,64 @@ Item {
     
     // Properties passed from the main list
     property int listIndex: index // The special 'index' variable from Delegate
-    property var listModel: model // THe special 'model' variable from Delegate
+    property var listModel: (typeof modelData !== "undefined") ? modelData : model // The special 'model' variable from Delegate
     
     // External References
     property var layersListRef: ListView.view 
     property var dragGhostRef: null // Reference to the drag ghost
+    property var rootRef: null // Reference to the main panel root
     
     // Helper
     property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#007aff"
 
-    // --- 0. DROP INDICATOR (Blue Line) ---
-    Rectangle {
+    // --- 0. DROP INDICATOR (Dual-Position Dot & Line) ---
+    Item {
         id: dropIndicator
-        // Show if this item is the target AND we are dragging something AND it's not this item
+        // Only show if we are THE specific target (above) OR previous item is target (could be below)
+        // Actually, let's keep it simple: It shows at the TOP of the target index.
         visible: layersListRef && layersListRef.draggedIndex !== -1 && layersListRef.dropTargetIndex === listIndex && layersListRef.draggedIndex !== listIndex
-        width: parent.width - 16
-        height: 2
-        color: layerDelegate.accentColor
-        anchors.bottom: parent.bottom // Drop below by default
+        width: parent.width - 8
+        height: 10
+        anchors.top: parent.top
+        anchors.topMargin: -5
         anchors.horizontalCenter: parent.horizontalCenter
         z: 999
         
-        // Add a small glow
-        layer.enabled: true
-        layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 4; shadowColor: layerDelegate.accentColor }
+        Rectangle {
+            width: 6; height: 6; radius: 3
+            color: layerDelegate.accentColor
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+        }
+        
+        Rectangle {
+            height: 2
+            anchors.left: parent.left; anchors.leftMargin: 6
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            color: layerDelegate.accentColor
+            radius: 1
+            
+            layer.enabled: true
+            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 6; shadowColor: layerDelegate.accentColor }
+        }
+    }
+    
+    // Bottom indicator for the very last item in the list
+    Item {
+        id: lastDropIndicator
+        visible: layersListRef && layersListRef.draggedIndex !== -1 && layersListRef.dropTargetIndex === listIndex + 1 && listIndex === (layersListRef.count - 1)
+        width: parent.width - 8; height: 10
+        anchors.bottom: parent.bottom; anchors.bottomMargin: -5
+        anchors.horizontalCenter: parent.horizontalCenter
+        z: 999
+        
+        Rectangle { width: 6; height: 6; radius: 3; color: layerDelegate.accentColor; anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+        Rectangle {
+            height: 2; anchors.left: parent.left; anchors.leftMargin: 6; anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter; color: layerDelegate.accentColor; radius: 1
+            layer.enabled: true; layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 6; shadowColor: layerDelegate.accentColor }
+        }
     }
     
     // Signals
@@ -57,10 +91,13 @@ Item {
     // --- NUEVO: SISTEMA DE REFRESCO DE MINIATURA EN TIEMPO REAL ---
     property double thumbRefreshTime: Date.now()
     
-    // Esta propiedad crea una URL única cada vez que cambia el modelo para obligar a QML a redibujar
     property string activeThumbnail: {
         var baseStr = thumbnailSource || ""
         if (baseStr === "") return ""
+        
+        // If it's a data URI, the data itself is the image and appending a query param corrupts it
+        if (baseStr.indexOf("data:image") === 0) return baseStr;
+        
         // Añade el timestamp al final (ej. "image://capa_1?ts=1690000000")
         var separator = baseStr.indexOf('?') !== -1 ? '&' : '?'
         return baseStr + separator + "ts=" + thumbRefreshTime
@@ -176,6 +213,7 @@ Item {
         radius: 10 // Cleaner, less rounded
         // Dark background for all states (Active gets border only)
         color: isClipped ? "#151517" : "#1c1c1e" 
+        opacity: layersListRef.draggedIndex === listIndex ? 0.2 : 1.0 // Dim when dragging
         border.width: isActive ? 2 : 1
         border.color: isActive ? layerDelegate.accentColor : (isClipped ? "#333" : "#2c2c2e")
         
@@ -202,16 +240,117 @@ Item {
             height: isActive ? 82 : 48
             anchors.top: parent.top
             
-            // MouseArea for Dragging & Selection
             MouseArea {
                 id: dragArea
                 anchors.fill: parent
                 property real startX: 0
-                drag.target: layerContent
+                property real startY: 0
+                property real dragYOffset: 0
+                property bool isReordering: false
+                property bool isSwiping: false
+                
+                // Only connect the drag engine when we detect horizontal intent
+                drag.target: isSwiping ? layerContent : null
                 drag.axis: Drag.XAxis
+                preventStealing: isReordering || isSwiping
                 drag.minimumX: -220; drag.maximumX: 180
                 drag.filterChildren: true 
-                onPressed: { startX = mouseX }
+                
+                onPressed: { 
+                    startX = mouse.x
+                    startY = mouse.y
+                    isReordering = false
+                    isSwiping = false
+                    
+                    // Normalize grab offset
+                    if (dragGhostRef) {
+                        var ratio = mouse.y / dragArea.height
+                        dragYOffset = ratio * dragGhostRef.height
+                    } else {
+                        dragYOffset = mouse.y
+                    }
+                }
+                
+                onPositionChanged: {
+                    var dx = Math.abs(mouse.x - startX)
+                    var dy = Math.abs(mouse.y - startY)
+
+                    // Intent detection (first ~8 pixels of movement)
+                    if (pressed && !isReordering && !isSwiping && layerType !== "background") {
+                        if (dy > 8 || dx > 8) {
+                            if (dy > dx) { 
+                                // Vertical intent: Reorder
+                                isReordering = true
+                                if (rootRef) rootRef.draggedIndex = listIndex
+                                layersListRef.draggedIndex = listIndex
+                                if (dragGhostRef) {
+                                    dragGhostRef.visible = true
+                                    dragGhostRef.infoText = layerName || "Layer"
+                                }
+                            } else {
+                                // Horizontal intent: Swipe
+                                isSwiping = true
+                            }
+                        }
+                    }
+                    
+                    if (isReordering && dragGhostRef) {
+                        // 1. POSITION GHOST
+                        // Map mouse from our area to the Ghost's parent coordinate system
+                        var pParent = dragArea.mapToItem(dragGhostRef.parent, mouse.x, mouse.y)
+                        var newY = pParent.y - dragYOffset
+                        
+                        // Bounds check within parent
+                        if (newY < 0) newY = 0
+                        if (newY > dragGhostRef.parent.height - dragGhostRef.height) 
+                             newY = dragGhostRef.parent.height - dragGhostRef.height
+                        dragGhostRef.y = newY
+                        
+                        // 2. FIND TARGET INDEX
+                        // Map mouse to the ListView coordinate system
+                        var pList = dragArea.mapToItem(layersListRef, mouse.x, mouse.y)
+                        var targetIdx = layersListRef.indexAt(10, pList.y + layersListRef.contentY)
+                        
+                        if (targetIdx !== -1) {
+                            var itm = layersListRef.itemAt(10, pList.y + layersListRef.contentY)
+                            if (itm) {
+                                var localY = itm.mapFromItem(layersListRef, 10, pList.y + layersListRef.contentY).y
+                                // Threshold: if in bottom 50%, target the NEXT index
+                                if (localY > itm.height * 0.5) {
+                                    targetIdx = targetIdx + 1
+                                }
+                            }
+                            
+                            // Visual safety: Hide indicator if dropping results in NO CHANGE
+                            if (targetIdx === listIndex || targetIdx === listIndex + 1) {
+                                if (rootRef) rootRef.dropTargetIndex = -1
+                                layersListRef.dropTargetIndex = -1
+                            } else {
+                                if (rootRef) rootRef.dropTargetIndex = targetIdx
+                                layersListRef.dropTargetIndex = targetIdx
+                            }
+                        }
+                    }
+                }
+
+                onPressAndHold: {
+                    if (layerType !== "background" && !isReordering) {
+                        isReordering = true
+                        if (rootRef) rootRef.draggedIndex = listIndex
+                        layersListRef.draggedIndex = listIndex
+                        if (dragGhostRef) {
+                            dragGhostRef.visible = true
+                            dragGhostRef.infoText = layerName || "Layer"
+                            
+                            // INITIAL SYNC: Use the same item-to-item mapping
+                            var pParent = dragArea.mapToItem(dragGhostRef.parent, startX, startY)
+                            dragGhostRef.y = pParent.y - dragYOffset
+                        }
+                        // Visual feedback (dim the moving item)
+                        layerContent.opacity = 0.2
+                    }
+                }
+
                 onClicked: {
                     if (layersListRef.swipedIndex !== -1 || layersListRef.optionsIndex !== -1) {
                         layersListRef.swipedIndex = -1; layersListRef.optionsIndex = -1; return
@@ -219,13 +358,51 @@ Item {
                     mainCanvas.setActiveLayer(layerIndex)
                     if (layerType === "background") layerDelegate.requestBackgroundEdit()
                 }
+
                 onReleased: {
-                    var delta = mouseX - startX
-                    if (layerDelegate.isSwipedOpen && delta < -20) layersListRef.swipedIndex = -1 // Close if swiped back left
-                    else if (!layerDelegate.isSwipedOpen) {
-                        if (delta > 35) layersListRef.swipedIndex = listIndex // Swipe Right -> Open Menu
-                        else if (delta < -45) mainCanvas.toggleClipping(layerIndex) // Swipe Left -> Toggle Clip
+                    if (layerContent) layerContent.scale = 1.0 // Restore appearance
+                    
+                    if (isReordering) {
+                        isReordering = false
+                        if (dragGhostRef) dragGhostRef.visible = false
+                        
+                        var finalTargetIdx = layersListRef.dropTargetIndex
+                        if (finalTargetIdx !== -1) {
+                            var model = layersListRef.model
+                            var targetId = -1
+                            
+                            // Logic: Move layerIndex TO finalTargetIdx
+                            // If moving to very bottom (count), use parent logic or target last item + handled by moveLayer
+                            var queryIdx = (finalTargetIdx >= layersListRef.count) ? layersListRef.count - 1 : finalTargetIdx
+                            
+                            if (model && queryIdx >= 0) {
+                                var item = (typeof model.get === "function") ? model.get(queryIdx) : model[queryIdx]
+                                if (item) targetId = item.layerId
+                            }
+                            
+                            if (targetId !== -1 && targetId !== undefined) {
+                                mainCanvas.moveLayer(layerIndex, targetId)
+                            }
+                        }
+                        
+                        if (rootRef) {
+                            rootRef.draggedIndex = -1
+                            rootRef.dropTargetIndex = -1
+                        }
+                        layersListRef.draggedIndex = -1
+                        layersListRef.dropTargetIndex = -1
+                    } else {
+                        var delta = mouse.x - startX
+                        if (layerDelegate.isSwipedOpen && delta < -20) {
+                            layersListRef.swipedIndex = -1
+                        } else if (!layerDelegate.isSwipedOpen && isSwiping) {
+                            if (delta > 35) layersListRef.swipedIndex = listIndex
+                            else if (delta < -45) mainCanvas.toggleClipping(layerIndex)
+                        }
                     }
+                    
+                    isSwiping = false
+                    isReordering = false
                     layerContent.x = Qt.binding(function() { return layerContent.baseX })
                 }
             }

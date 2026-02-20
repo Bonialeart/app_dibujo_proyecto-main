@@ -78,6 +78,7 @@ public:
 
   Q_PROPERTY(
       float zoomLevel READ zoomLevel WRITE setZoomLevel NOTIFY zoomLevelChanged)
+  Q_PROPERTY(QVariantList layerModel READ layerModel NOTIFY layersChanged)
   Q_PROPERTY(QString currentTool READ currentTool WRITE setCurrentTool NOTIFY
                  currentToolChanged)
   Q_PROPERTY(int canvasWidth READ canvasWidth NOTIFY canvasWidthChanged)
@@ -174,6 +175,7 @@ public:
   int canvasHeight() const { return m_canvasHeight; }
   QPointF viewOffset() const { return m_viewOffset; }
   int activeLayerIndex() const { return m_activeLayerIndex; }
+  QVariantList layerModel() const { return m_layerModel; }
   bool isTransforming() const { return m_isTransforming; }
   float brushAngle() const { return m_brushAngle; }
   float cursorRotation() const { return m_cursorRotation; }
@@ -288,6 +290,7 @@ public:
   Q_INVOKABLE void handle_key_release(int key);
   Q_INVOKABLE void fitToView();
   Q_INVOKABLE void addLayer();
+  Q_INVOKABLE void addGroup();
   Q_INVOKABLE void removeLayer(int index);
   Q_INVOKABLE void duplicateLayer(int index);
   Q_INVOKABLE void moveLayer(int fromIndex, int toIndex);
@@ -459,6 +462,7 @@ private:
   QVariantList m_availableBrushes;
   QString m_activeBrushName;
   QString m_brushTipImage;
+  QVariantList m_layerModel;
 
   // ── Brush Studio editing state ──
   bool m_isEditingBrush = false;

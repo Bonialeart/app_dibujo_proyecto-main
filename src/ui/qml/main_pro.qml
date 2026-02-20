@@ -3423,6 +3423,11 @@ Window {
                         property string infoText: "Moving Layer"
                         property int targetDepth: 0
                         
+                        // Premium Feel
+                        scale: visible ? 1.04 : 0.8
+                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                        // Reactive motion
+                        
                         Row {
                             anchors.centerIn: parent
                             spacing: 8
@@ -3557,6 +3562,25 @@ Window {
                         }
                     }
                     
+
+                    // DropArea for reordering
+                    DropArea {
+                        anchors.fill: layersList
+                        onDropped: {
+                            if (layersList.draggedIndex >= 0) {
+                                if (layersList.dropTargetIndex !== -1 && layersList.dropTargetIndex !== layersList.draggedIndex) {
+                                   var fromLayer = layerModel.get(layersList.draggedIndex)
+                                   var toLayer = layerModel.get(layersList.dropTargetIndex)
+                                   if (fromLayer && toLayer && fromLayer.layerId !== undefined && toLayer.layerId !== undefined) {
+                                       mainCanvas.moveLayer(fromLayer.layerId, toLayer.layerId)
+                                   }
+                                }
+                                layersList.draggedIndex = -1
+                                layersList.dropTargetIndex = -1
+                            }
+                        }
+                    }
+
                     // Lista de Capas
                     ListView {
                         id: layersList
