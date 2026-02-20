@@ -1,18 +1,21 @@
 // Re-verify includes
-#include <QEvent>
-#include <QWindow>
 #include "CanvasItem.h"
 #include "PreferencesManager.h"
 #include "core/cpp/include/brush_preset_manager.h"
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QCursor>
+#include <QDateTime>
 #include <QDebug>
 #include <QDir>
+#include <QEvent>
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QHoverEvent>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMouseEvent>
 #include <QOpenGLContext>
 #include <QOpenGLFramebufferObject>
@@ -22,7 +25,6 @@
 #include <QOpenGLShaderProgram>
 #include <QOpenGLTexture>
 #include <QPainter>
-#include <QStandardPaths>
 #include <QPainterPath>
 #include <QQuickItem>
 #include <QQuickPaintedItem> // Ensure base class is known
@@ -32,70 +34,67 @@
 #include <QTabletEvent>
 #include <QTimer>
 #include <QUrl>
+#include <QWindow>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtMath>
-#include <QDateTime>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonArray>
 #include <algorithm>
 
 using namespace artflow;
 
 static QCursor getModernCursor() {
-    static QCursor modernCursor;
-    static bool initialized = false;
-    
-    if (!initialized) {
-        QPixmap cursorPix(32, 32);
-        cursorPix.fill(Qt::transparent);
-        QPainter p(&cursorPix);
-        p.setRenderHint(QPainter::Antialiasing);
+  static QCursor modernCursor;
+  static bool initialized = false;
 
-        QPainterPath path;
-        // Diseño de flecha moderna (más esbelta y geométrica)
-        path.moveTo(3, 3);
-        path.lineTo(11, 24);
-        path.lineTo(14, 16);
-        path.lineTo(24, 11);
-        path.closeSubpath();
+  if (!initialized) {
+    QPixmap cursorPix(32, 32);
+    cursorPix.fill(Qt::transparent);
+    QPainter p(&cursorPix);
+    p.setRenderHint(QPainter::Antialiasing);
 
-        // Sombra suave paralela
-        p.setBrush(QColor(0, 0, 0, 50));
-        p.setPen(Qt::NoPen);
-        p.translate(1, 2);
-        p.drawPath(path);
-        p.translate(-1, -2);
+    QPainterPath path;
+    // Diseño de flecha moderna (más esbelta y geométrica)
+    path.moveTo(3, 3);
+    path.lineTo(11, 24);
+    path.lineTo(14, 16);
+    path.lineTo(24, 11);
+    path.closeSubpath();
 
-        // Cuerpo oscuro elegante con borde blanco nítido
-        p.setBrush(QColor(30, 30, 35)); // Gris muy oscuro
-        p.setPen(QPen(Qt::white, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        p.drawPath(path);
+    // Sombra suave paralela
+    p.setBrush(QColor(0, 0, 0, 50));
+    p.setPen(Qt::NoPen);
+    p.translate(1, 2);
+    p.drawPath(path);
+    p.translate(-1, -2);
 
-        modernCursor = QCursor(cursorPix, 3, 3);
-        initialized = true;
-    }
-    return modernCursor;
+    // Cuerpo oscuro elegante con borde blanco nítido
+    p.setBrush(QColor(30, 30, 35)); // Gris muy oscuro
+    p.setPen(QPen(Qt::white, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    p.drawPath(path);
+
+    modernCursor = QCursor(cursorPix, 3, 3);
+    initialized = true;
+  }
+  return modernCursor;
 }
 
 // 2. AÑADE ESTA CLASE MAESTRA AQUÍ:
 class CursorOverrideFilter : public QObject {
 public:
-    CursorOverrideFilter(QObject *parent = nullptr) : QObject(parent) {}
-    
-    bool eventFilter(QObject *obj, QEvent *event) override {
-        // Detectamos cada vez que la ventana intenta cambiar de cursor
-        if (event->type() == QEvent::CursorChange) {
-            QWindow *window = qobject_cast<QWindow*>(obj);
-            // Si QML intenta poner la flecha fea de Windows (ArrowCursor)...
-            if (window && window->cursor().shape() == Qt::ArrowCursor) {
-                // ...¡La secuestramos y ponemos la tuya Premium!
-                window->setCursor(getModernCursor());
-                return false; 
-            }
-        }
-        return QObject::eventFilter(obj, event);
+  CursorOverrideFilter(QObject *parent = nullptr) : QObject(parent) {}
+
+  bool eventFilter(QObject *obj, QEvent *event) override {
+    // Detectamos cada vez que la ventana intenta cambiar de cursor
+    if (event->type() == QEvent::CursorChange) {
+      QWindow *window = qobject_cast<QWindow *>(obj);
+      // Si QML intenta poner la flecha fea de Windows (ArrowCursor)...
+      if (window && window->cursor().shape() == Qt::ArrowCursor) {
+        // ...¡La secuestramos y ponemos la tuya Premium!
+        window->setCursor(getModernCursor());
+        return false;
+      }
     }
+    return QObject::eventFilter(obj, event);
+  }
 };
 
 CanvasItem::CanvasItem(QQuickItem *parent)
@@ -113,13 +112,13 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_lastPressure(1.0f), m_isDrawing(false),
       m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()),
       m_lastActiveLayerIndex(-1) {
-  
+
   // ---> AÑADE ESTAS LÍNEAS AQUÍ <---
   // Instalar el vigilante global de cursores
   static CursorOverrideFilter *globalCursorFilter = nullptr;
   if (!globalCursorFilter) {
-      globalCursorFilter = new CursorOverrideFilter(qApp);
-      qApp->installEventFilter(globalCursorFilter);
+    globalCursorFilter = new CursorOverrideFilter(qApp);
+    qApp->installEventFilter(globalCursorFilter);
   }
   // ---------------------------------
 
@@ -150,7 +149,6 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_undoManager->setMaxLevels(PreferencesManager::instance()->undoLevels());
 
   // Escuchar cambios en preferencias para actualizar el sistema en tiempo real
-
 
   m_activeLayerIndex = 1;
   m_layerManager->setActiveLayer(m_activeLayerIndex);
@@ -194,26 +192,31 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 
   // Initial Theme Setup
   auto updateTheme = [this]() {
-      QString theme = PreferencesManager::instance()->themeMode();
-      QString accent = PreferencesManager::instance()->themeAccent();
-      
-      // Theme Background Colors
-      if (theme == "Dark") m_workspaceColor = QColor("#1e1e1e");
-      else if (theme == "Light") m_workspaceColor = QColor("#e0e0e0"); // Soft Grey
-      else if (theme == "Midnight") m_workspaceColor = QColor("#000000"); // Pitch Black
-      else if (theme == "Blue-Grey") m_workspaceColor = QColor("#263238"); // Material Blue Grey 900
-      else m_workspaceColor = QColor("#1e1e1e"); // Fallback
+    QString theme = PreferencesManager::instance()->themeMode();
+    QString accent = PreferencesManager::instance()->themeAccent();
 
-      // Accent Color
-      if (QColor::isValidColorName(accent)) {
-          m_accentColor = QColor(accent);
-      } else {
-          m_accentColor = QColor("#007bff"); // Default Blue
-      }
-      
-      update();
+    // Theme Background Colors
+    if (theme == "Dark")
+      m_workspaceColor = QColor("#1e1e1e");
+    else if (theme == "Light")
+      m_workspaceColor = QColor("#e0e0e0"); // Soft Grey
+    else if (theme == "Midnight")
+      m_workspaceColor = QColor("#000000"); // Pitch Black
+    else if (theme == "Blue-Grey")
+      m_workspaceColor = QColor("#263238"); // Material Blue Grey 900
+    else
+      m_workspaceColor = QColor("#1e1e1e"); // Fallback
+
+    // Accent Color
+    if (QColor::isValidColorName(accent)) {
+      m_accentColor = QColor(accent);
+    } else {
+      m_accentColor = QColor("#007bff"); // Default Blue
+    }
+
+    update();
   };
-  
+
   // Connect to Preferences
   connect(PreferencesManager::instance(), &PreferencesManager::settingsChanged,
           this, [this, updateTheme]() {
@@ -246,34 +249,37 @@ void CanvasItem::paint(QPainter *painter) {
   // --- APLICACIÓN INICIAL DEL CURSOR ---
   static bool windowCursorSet = false;
   if (!windowCursorSet && window()) {
-      if (window()->cursor().shape() == Qt::ArrowCursor) {
-          window()->setCursor(getModernCursor());
-      }
-      windowCursorSet = true;
+    if (window()->cursor().shape() == Qt::ArrowCursor) {
+      window()->setCursor(getModernCursor());
+    }
+    windowCursorSet = true;
   }
   // -------------------------------------
 
   // 0. Initialize Composition Shader
   if (!m_compositionShader) {
-      m_compositionShader = new QOpenGLShaderProgram();
-      QStringList paths;
-      paths << QCoreApplication::applicationDirPath() + "/shaders/";
-      paths << "src/core/shaders/";
-      QString vertPath, fragPath;
-      for (const QString &path : paths) {
-          if (QFile::exists(path + "composition.vert") && QFile::exists(path + "composition.frag")) {
-              vertPath = path + "composition.vert";
-              fragPath = path + "composition.frag";
-              break;
-          }
+    m_compositionShader = new QOpenGLShaderProgram();
+    QStringList paths;
+    paths << QCoreApplication::applicationDirPath() + "/shaders/";
+    paths << "src/core/shaders/";
+    QString vertPath, fragPath;
+    for (const QString &path : paths) {
+      if (QFile::exists(path + "composition.vert") &&
+          QFile::exists(path + "composition.frag")) {
+        vertPath = path + "composition.vert";
+        fragPath = path + "composition.frag";
+        break;
       }
-      if (!vertPath.isEmpty()) {
-          m_compositionShader->addShaderFromSourceFile(QOpenGLShader::Vertex, vertPath);
-          m_compositionShader->addShaderFromSourceFile(QOpenGLShader::Fragment, fragPath);
-          m_compositionShader->link();
-      } else {
-          qWarning() << "Composition shaders not found!";
-      }
+    }
+    if (!vertPath.isEmpty()) {
+      m_compositionShader->addShaderFromSourceFile(QOpenGLShader::Vertex,
+                                                   vertPath);
+      m_compositionShader->addShaderFromSourceFile(QOpenGLShader::Fragment,
+                                                   fragPath);
+      m_compositionShader->link();
+    } else {
+      qWarning() << "Composition shaders not found!";
+    }
   }
 
   // 1. Inicializar Shaders Premium si es necesario
@@ -352,15 +358,15 @@ void CanvasItem::paint(QPainter *painter) {
     Layer *clippingBase = nullptr;
     for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
       Layer *layer = m_layerManager->getLayer(i);
-      
+
       // Track clipping base (bottom-up)
       Layer *maskLayer = nullptr;
       if (layer) {
-          if (layer->clipped) {
-              maskLayer = clippingBase;
-          } else {
-              clippingBase = layer;
-          }
+        if (layer->clipped) {
+          maskLayer = clippingBase;
+        } else {
+          clippingBase = layer;
+        }
       }
 
       if (!layer || !layer->visible)
@@ -378,20 +384,23 @@ void CanvasItem::paint(QPainter *painter) {
       bool renderedWithShader = false;
       // DIBUJAR VISTA PREVIA DE OPENGL (FBO) si estamos dibujando en esta capa
       if (m_isDrawing && i == m_activeLayerIndex && m_pingFBO) {
-          // PREMIUM: Renderizar directamente desde el FBO usando el shader de composición.
-          // Esto elimina la latencia de copiar texturas de GPU a CPU y permite ver 
-          // el clipping mask y blend modes EN TIEMPO REAL mientras pintas.
-          if (m_compositionShader && m_compositionShader->isLinked()) {
-              blendWithShader(painter, layer, targetRect, maskLayer, m_pingFBO->texture());
-              renderedWithShader = true;
-          } else {
-              QImage fboImg = m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888_Premultiplied);
-              painter->save();
-              painter->setOpacity(layer->opacity);
-              painter->drawImage(targetRect, fboImg);
-              painter->restore();
-              renderedWithShader = true;
-          }
+        // PREMIUM: Renderizar directamente desde el FBO usando el shader de
+        // composición. Esto elimina la latencia de copiar texturas de GPU a CPU
+        // y permite ver el clipping mask y blend modes EN TIEMPO REAL mientras
+        // pintas.
+        if (m_compositionShader && m_compositionShader->isLinked()) {
+          blendWithShader(painter, layer, targetRect, maskLayer,
+                          m_pingFBO->texture());
+          renderedWithShader = true;
+        } else {
+          QImage fboImg = m_pingFBO->toImage(true).convertToFormat(
+              QImage::Format_RGBA8888_Premultiplied);
+          painter->save();
+          painter->setOpacity(layer->opacity);
+          painter->drawImage(targetRect, fboImg);
+          painter->restore();
+          renderedWithShader = true;
+        }
       }
 
       // Intentar usar shaders (Impasto)
@@ -467,10 +476,11 @@ void CanvasItem::paint(QPainter *painter) {
 
       if (!renderedWithShader) {
         // Advanced Blending via Shader (Post-Processing Style)
-        // Only use shader for modes that QPainter DOES NOT support natively (HSL modes)
-        // OR if you really want to force GPU composition for everything.
-        // For robustness with Clipping + Blending, we prefer QPainter where possible.
-        bool isNativeMode = (layer->blendMode == BlendMode::Multiply || 
+        // Only use shader for modes that QPainter DOES NOT support natively
+        // (HSL modes) OR if you really want to force GPU composition for
+        // everything. For robustness with Clipping + Blending, we prefer
+        // QPainter where possible.
+        bool isNativeMode = (layer->blendMode == BlendMode::Multiply ||
                              layer->blendMode == BlendMode::Screen ||
                              layer->blendMode == BlendMode::Overlay ||
                              layer->blendMode == BlendMode::Darken ||
@@ -480,62 +490,96 @@ void CanvasItem::paint(QPainter *painter) {
                              layer->blendMode == BlendMode::HardLight ||
                              layer->blendMode == BlendMode::SoftLight ||
                              layer->blendMode == BlendMode::Difference ||
-                             layer->blendMode == BlendMode::Exclusion || 
+                             layer->blendMode == BlendMode::Exclusion ||
                              layer->blendMode == BlendMode::Normal);
 
-        bool useCompositionShader = (!isNativeMode && m_compositionShader && m_compositionShader->isLinked());
-        
-        // Force shader if specifically requested/configured, but for now disable for robustness on Clipped Multiply
-        if (layer->clipped && isNativeMode) useCompositionShader = false;
+        bool useCompositionShader = (!isNativeMode && m_compositionShader &&
+                                     m_compositionShader->isLinked());
+
+        // Force shader if specifically requested/configured, but for now
+        // disable for robustness on Clipped Multiply
+        if (layer->clipped && isNativeMode)
+          useCompositionShader = false;
 
         if (useCompositionShader) {
-            blendWithShader(painter, layer, targetRect, maskLayer);
+          blendWithShader(painter, layer, targetRect, maskLayer);
         } else {
-            // Fallback (Software Rendering via QPainter) - NOW WITH CLIPPING SUPPORT
-            painter->save();
-            painter->setOpacity(layer->opacity);
+          // Fallback (Software Rendering via QPainter) - NOW WITH CLIPPING
+          // SUPPORT
+          painter->save();
+          painter->setOpacity(layer->opacity);
 
-            // Determine correct blend mode
-            QPainter::CompositionMode compMode = QPainter::CompositionMode_SourceOver;
-            switch (layer->blendMode) {
-              case BlendMode::Multiply: compMode = QPainter::CompositionMode_Multiply; break;
-              case BlendMode::Screen: compMode = QPainter::CompositionMode_Screen; break;
-              case BlendMode::Overlay: compMode = QPainter::CompositionMode_Overlay; break;
-              case BlendMode::Darken: compMode = QPainter::CompositionMode_Darken; break;
-              case BlendMode::Lighten: compMode = QPainter::CompositionMode_Lighten; break;
-              case BlendMode::ColorDodge: compMode = QPainter::CompositionMode_ColorDodge; break;
-              case BlendMode::ColorBurn: compMode = QPainter::CompositionMode_ColorBurn; break;
-              case BlendMode::HardLight: compMode = QPainter::CompositionMode_HardLight; break;
-              case BlendMode::SoftLight: compMode = QPainter::CompositionMode_SoftLight; break;
-              case BlendMode::Difference: compMode = QPainter::CompositionMode_Difference; break;
-              case BlendMode::Exclusion: compMode = QPainter::CompositionMode_Exclusion; break;
-              default: compMode = QPainter::CompositionMode_SourceOver; break;
-            }
+          // Determine correct blend mode
+          QPainter::CompositionMode compMode =
+              QPainter::CompositionMode_SourceOver;
+          switch (layer->blendMode) {
+          case BlendMode::Multiply:
+            compMode = QPainter::CompositionMode_Multiply;
+            break;
+          case BlendMode::Screen:
+            compMode = QPainter::CompositionMode_Screen;
+            break;
+          case BlendMode::Overlay:
+            compMode = QPainter::CompositionMode_Overlay;
+            break;
+          case BlendMode::Darken:
+            compMode = QPainter::CompositionMode_Darken;
+            break;
+          case BlendMode::Lighten:
+            compMode = QPainter::CompositionMode_Lighten;
+            break;
+          case BlendMode::ColorDodge:
+            compMode = QPainter::CompositionMode_ColorDodge;
+            break;
+          case BlendMode::ColorBurn:
+            compMode = QPainter::CompositionMode_ColorBurn;
+            break;
+          case BlendMode::HardLight:
+            compMode = QPainter::CompositionMode_HardLight;
+            break;
+          case BlendMode::SoftLight:
+            compMode = QPainter::CompositionMode_SoftLight;
+            break;
+          case BlendMode::Difference:
+            compMode = QPainter::CompositionMode_Difference;
+            break;
+          case BlendMode::Exclusion:
+            compMode = QPainter::CompositionMode_Exclusion;
+            break;
+          default:
+            compMode = QPainter::CompositionMode_SourceOver;
+            break;
+          }
 
-            if (layer->clipped && maskLayer) {
-                // Manual Clipping in Software
-                // 1. Create a copy of the layer image to modify
-                QImage maskedImg = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
-                
-                // 2. Get the mask image (Base Layer)
-                QImage baseMask(maskLayer->buffer->data(), maskLayer->buffer->width(), maskLayer->buffer->height(), QImage::Format_RGBA8888_Premultiplied);
-                
-                // 3. Apply the mask using DestinationIn (keeps source where dest is opaque)
-                // Result = Source (Layer) * DestAlpha (Mask)
-                QPainter p(&maskedImg);
-                p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-                p.drawImage(0, 0, baseMask);
-                p.end();
+          if (layer->clipped && maskLayer) {
+            // Manual Clipping in Software
+            // 1. Create a copy of the layer image to modify
+            QImage maskedImg =
+                img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
 
-                // 4. Draw the MASKED content onto the canvas using the CORRECT BLEND MODE
-                painter->setCompositionMode(compMode);
-                painter->drawImage(targetRect, maskedImg);
-            } else {
-                // Standard Non-Clipped Drawing
-                painter->setCompositionMode(compMode);
-                painter->drawImage(targetRect, img);
-            }
-            painter->restore();
+            // 2. Get the mask image (Base Layer)
+            QImage baseMask(maskLayer->buffer->data(),
+                            maskLayer->buffer->width(),
+                            maskLayer->buffer->height(),
+                            QImage::Format_RGBA8888_Premultiplied);
+
+            // 3. Apply the mask using DestinationIn (keeps source where dest is
+            // opaque) Result = Source (Layer) * DestAlpha (Mask)
+            QPainter p(&maskedImg);
+            p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+            p.drawImage(0, 0, baseMask);
+            p.end();
+
+            // 4. Draw the MASKED content onto the canvas using the CORRECT
+            // BLEND MODE
+            painter->setCompositionMode(compMode);
+            painter->drawImage(targetRect, maskedImg);
+          } else {
+            // Standard Non-Clipped Drawing
+            painter->setCompositionMode(compMode);
+            painter->drawImage(targetRect, img);
+          }
+          painter->restore();
         }
       }
     }
@@ -568,56 +612,60 @@ void CanvasItem::paint(QPainter *painter) {
     painter->restore();
   }
 
-    // 4. Selección (Lasso) Feedback (Professional Marching Ants)
-    if (!m_selectionPath.isEmpty()) {
-        painter->save();
-        // Transformar de Canvas a Pantalla para el feedback
-        painter->translate(m_viewOffset.x() * m_zoomLevel,
-                           m_viewOffset.y() * m_zoomLevel);
-        painter->scale(m_zoomLevel, m_zoomLevel);
+  // 4. Selección (Lasso) Feedback (Professional Marching Ants)
+  if (!m_selectionPath.isEmpty()) {
+    painter->save();
+    // Transformar de Canvas a Pantalla para el feedback
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
 
-        // Calculate animation offset based on time
-        static float dashOffset = 0;
-        dashOffset += 0.2f;
-        if (dashOffset > 20) dashOffset = 0;
+    // Calculate animation offset based on time
+    static float dashOffset = 0;
+    dashOffset += 0.2f;
+    if (dashOffset > 20)
+      dashOffset = 0;
 
-        // Base Solid White (Visibility)
-        QPen whitePen(Qt::white, 1.5f / m_zoomLevel, Qt::SolidLine);
-        painter->setPen(whitePen);
-        painter->drawPath(m_selectionPath);
+    // Base Solid White (Visibility)
+    QPen whitePen(Qt::white, 1.5f / m_zoomLevel, Qt::SolidLine);
+    painter->setPen(whitePen);
+    painter->drawPath(m_selectionPath);
 
-        // Dashed Accent/Black (Marching Effect)
-        QColor lassoColor = m_accentColor;
-        if (lassoColor.value() < 50) lassoColor = Qt::black;
-        
-        QPen dashPen(lassoColor, 1.5f / m_zoomLevel, Qt::CustomDashLine);
-        dashPen.setDashPattern({4, 4});
-        dashPen.setDashOffset(dashOffset);
-        painter->setPen(dashPen);
-        painter->drawPath(m_selectionPath);
+    // Dashed Accent/Black (Marching Effect)
+    QColor lassoColor = m_accentColor;
+    if (lassoColor.value() < 50)
+      lassoColor = Qt::black;
 
-        painter->restore();
-        
-        // Trigger a redraw for animation if selection exists
-        QTimer::singleShot(50, this, [this](){ update(); });
-    }
+    QPen dashPen(lassoColor, 1.5f / m_zoomLevel, Qt::CustomDashLine);
+    dashPen.setDashPattern({4, 4});
+    dashPen.setDashOffset(dashOffset);
+    painter->setPen(dashPen);
+    painter->drawPath(m_selectionPath);
 
-    // 4.1 Predictive line for Magnetic/Polygonal Lasso
-    if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive && !m_selectionPath.isEmpty()) {
-         painter->save();
-         // Transformar de Canvas a Pantalla para el feedback
-         painter->translate(m_viewOffset.x() * m_zoomLevel,
-                            m_viewOffset.y() * m_zoomLevel);
-         painter->scale(m_zoomLevel, m_zoomLevel);
-         
-         QPointF lastPoint = m_selectionPath.currentPosition();
-         QPointF canvasCursorPos = (m_cursorPos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-         
-         QPen predictPen(m_accentColor, 1.2f / m_zoomLevel, Qt::DashLine);
-         painter->setPen(predictPen);
-         painter->drawLine(lastPoint, canvasCursorPos);
-         painter->restore();
-    }
+    painter->restore();
+
+    // Trigger a redraw for animation if selection exists
+    QTimer::singleShot(50, this, [this]() { update(); });
+  }
+
+  // 4.1 Predictive line for Magnetic/Polygonal Lasso
+  if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive &&
+      !m_selectionPath.isEmpty()) {
+    painter->save();
+    // Transformar de Canvas a Pantalla para el feedback
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+
+    QPointF lastPoint = m_selectionPath.currentPosition();
+    QPointF canvasCursorPos =
+        (m_cursorPos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
+    QPen predictPen(m_accentColor, 1.2f / m_zoomLevel, Qt::DashLine);
+    painter->setPen(predictPen);
+    painter->drawLine(lastPoint, canvasCursorPos);
+    painter->restore();
+  }
 
   // ══════════════════════════════════════════════════════════════
   // 🎯 CURSOR PERSONALIZADO AL FINAL (ENCIMA DE TODO)
@@ -691,28 +739,34 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // Cursores para otras herramientas (opcionales)
-  else if (m_cursorVisible && !m_spacePressed && m_tool != ToolType::Hand && m_tool != ToolType::Transform) {
-    // 🎯 Professional Precision Cursor (Crosshair with Circle) para eyedropper, lasso, fill, etc.
+  else if (m_cursorVisible && !m_spacePressed && m_tool != ToolType::Hand &&
+           m_tool != ToolType::Transform) {
+    // 🎯 Professional Precision Cursor (Crosshair with Circle) para eyedropper,
+    // lasso, fill, etc.
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
-    
+
     // Outer Glow/Shadow (Black outline for visibility on light areas)
-    painter->setPen(QPen(QColor(0,0,0,120), 2.5f));
+    painter->setPen(QPen(QColor(0, 0, 0, 120), 2.5f));
     painter->drawEllipse(m_cursorPos, 5, 5);
-    painter->drawLine(m_cursorPos + QPointF(-9, 0), m_cursorPos + QPointF(-2, 0));
+    painter->drawLine(m_cursorPos + QPointF(-9, 0),
+                      m_cursorPos + QPointF(-2, 0));
     painter->drawLine(m_cursorPos + QPointF(9, 0), m_cursorPos + QPointF(2, 0));
-    painter->drawLine(m_cursorPos + QPointF(0, -9), m_cursorPos + QPointF(0, -2));
+    painter->drawLine(m_cursorPos + QPointF(0, -9),
+                      m_cursorPos + QPointF(0, -2));
     painter->drawLine(m_cursorPos + QPointF(0, 9), m_cursorPos + QPointF(0, 2));
 
     // Precision Core (White lines for visibility on dark areas)
     QPen whitePen(Qt::white, 1.2f);
     painter->setPen(whitePen);
     painter->drawEllipse(m_cursorPos, 4, 4);
-    painter->drawLine(m_cursorPos + QPointF(-8, 0), m_cursorPos + QPointF(-3, 0));
+    painter->drawLine(m_cursorPos + QPointF(-8, 0),
+                      m_cursorPos + QPointF(-3, 0));
     painter->drawLine(m_cursorPos + QPointF(8, 0), m_cursorPos + QPointF(3, 0));
-    painter->drawLine(m_cursorPos + QPointF(0, -8), m_cursorPos + QPointF(0, -3));
+    painter->drawLine(m_cursorPos + QPointF(0, -8),
+                      m_cursorPos + QPointF(0, -3));
     painter->drawLine(m_cursorPos + QPointF(0, 8), m_cursorPos + QPointF(0, 3));
-    
+
     painter->restore();
   }
 }
@@ -724,11 +778,13 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
   // DETECT LAYER SWITCH
   if (m_lastActiveLayerIndex != m_activeLayerIndex) {
-      if (m_pingFBO) {
-          delete m_pingFBO; m_pingFBO = nullptr;
-          delete m_pongFBO; m_pongFBO = nullptr;
-      }
-      m_lastActiveLayerIndex = m_activeLayerIndex;
+    if (m_pingFBO) {
+      delete m_pingFBO;
+      m_pingFBO = nullptr;
+      delete m_pongFBO;
+      m_pongFBO = nullptr;
+    }
+    m_lastActiveLayerIndex = m_activeLayerIndex;
   }
 
   QPointF lastCanvasPos = m_lastPos;
@@ -889,7 +945,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
     // ✅ Selection Clipping (Premium Selection Support)
     if (!m_selectionPath.isEmpty()) {
-        fboPainter2.setClipPath(m_selectionPath);
+      fboPainter2.setClipPath(m_selectionPath);
     }
 
     // Dibujar nuevo trazo sobre el fondo ya copiado
@@ -912,7 +968,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
     // ✅ Selection Clipping (Premium Selection Support)
     if (!m_selectionPath.isEmpty()) {
-        painter.setClipPath(m_selectionPath);
+      painter.setClipPath(m_selectionPath);
     }
 
     if (settings.type == BrushSettings::Type::Eraser) {
@@ -1081,8 +1137,10 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
   if (m_tool == ToolType::Hand || m_spacePressed) {
     event->accept();
     // Change the existing override cursor instead of pushing a new one
-    if (m_spacePressed) QGuiApplication::changeOverrideCursor(Qt::ClosedHandCursor); 
-    else setCursor(Qt::ClosedHandCursor);
+    if (m_spacePressed)
+      QGuiApplication::changeOverrideCursor(Qt::ClosedHandCursor);
+    else
+      setCursor(Qt::ClosedHandCursor);
     return;
   }
 
@@ -1093,40 +1151,47 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     return;
   }
 
-  if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect || m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
-    QPointF canvasPos = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-    
+  if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
+      m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
     // New Selection Mode logic
     if (m_selectionAddMode == 0) { // New
-        if (m_tool == ToolType::Lasso) {
-            // Poly-Lasso logic: if near start, close it
-            if (!m_selectionPath.isEmpty() && QLineF(canvasPos, m_selectionPath.elementAt(0)).length() < 10.0f / m_zoomLevel) {
-                m_selectionPath.closeSubpath();
-                m_hasSelection = true;
-                emit hasSelectionChanged();
-            } else {
-                if (m_selectionPath.isEmpty()) m_selectionPath.moveTo(canvasPos);
-                else m_selectionPath.lineTo(canvasPos);
-            }
-        } else if (m_tool == ToolType::MagneticLasso) {
-            // Polygonal behavior: add point and don't close yet
-            if (!m_isMagneticLassoActive) {
-                if (m_selectionAddMode == 0) m_selectionPath = QPainterPath();
-                m_selectionPath.moveTo(canvasPos);
-                m_isMagneticLassoActive = true;
-            } else {
-                m_selectionPath.lineTo(canvasPos);
-            }
+      if (m_tool == ToolType::Lasso) {
+        // Poly-Lasso logic: if near start, close it
+        if (!m_selectionPath.isEmpty() &&
+            QLineF(canvasPos, m_selectionPath.elementAt(0)).length() <
+                10.0f / m_zoomLevel) {
+          m_selectionPath.closeSubpath();
+          m_hasSelection = true;
+          emit hasSelectionChanged();
         } else {
-            // Rect/Ellipse: Clear previous path if starting a NEW selection
-            m_selectionPath = QPainterPath();
+          if (m_selectionPath.isEmpty())
             m_selectionPath.moveTo(canvasPos);
+          else
+            m_selectionPath.lineTo(canvasPos);
         }
-    } else {
-        // Add/Subtract modes: start a new contour in the same path
+      } else if (m_tool == ToolType::MagneticLasso) {
+        // Polygonal behavior: add point and don't close yet
+        if (!m_isMagneticLassoActive) {
+          if (m_selectionAddMode == 0)
+            m_selectionPath = QPainterPath();
+          m_selectionPath.moveTo(canvasPos);
+          m_isMagneticLassoActive = true;
+        } else {
+          m_selectionPath.lineTo(canvasPos);
+        }
+      } else {
+        // Rect/Ellipse: Clear previous path if starting a NEW selection
+        m_selectionPath = QPainterPath();
         m_selectionPath.moveTo(canvasPos);
+      }
+    } else {
+      // Add/Subtract modes: start a new contour in the same path
+      m_selectionPath.moveTo(canvasPos);
     }
-    
+
     m_selectionStartPos = canvasPos;
     m_lastSelectionPoint = canvasPos;
     m_isLassoDragging = false;
@@ -1135,15 +1200,19 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
   }
 
   if (m_tool == ToolType::MagicWand) {
-      QPointF canvasPos = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-      // In a real app, we'd start the circular threshold UI here if held, 
-      // or just pick color on click.
-      emit notificationRequested("Auto Select at " + QString::number(canvasPos.x()) + "," + QString::number(canvasPos.y()), "info");
-      // Placeholder: select the whole layer for now
-      m_hasSelection = true;
-      m_selectionPath.addRect(0, 0, m_canvasWidth, m_canvasHeight);
-      update();
-      return;
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    // In a real app, we'd start the circular threshold UI here if held,
+    // or just pick color on click.
+    emit notificationRequested("Auto Select at " +
+                                   QString::number(canvasPos.x()) + "," +
+                                   QString::number(canvasPos.y()),
+                               "info");
+    // Placeholder: select the whole layer for now
+    m_hasSelection = true;
+    m_selectionPath.addRect(0, 0, m_canvasWidth, m_canvasHeight);
+    update();
+    return;
   }
 
   if (m_tool == ToolType::Transform) {
@@ -1216,9 +1285,11 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       return;
     }
 
-    QPointF canvasPos = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
     if (m_tool == ToolType::Fill) {
-      apply_color_drop(static_cast<int>(event->position().x()), static_cast<int>(event->position().y()), m_brushColor);
+      apply_color_drop(static_cast<int>(event->position().x()),
+                       static_cast<int>(event->position().y()), m_brushColor);
       return;
     }
 
@@ -1262,22 +1333,25 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 
   // Actualizar cursor si estamos arrastrando
   if (m_spacePressed || m_tool == ToolType::Hand) {
-      if (event->buttons() & Qt::LeftButton) setCursor(Qt::ClosedHandCursor);
-      else setCursor(Qt::OpenHandCursor);
+    if (event->buttons() & Qt::LeftButton)
+      setCursor(Qt::ClosedHandCursor);
+    else
+      setCursor(Qt::OpenHandCursor);
   } else if (m_tool == ToolType::Transform) {
-      setCursor(getModernCursor());
+    setCursor(getModernCursor());
   } else {
-      setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
+    setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
   }
 
   // --- Mantenemos tu código original para actualizar el trazo ---
   m_cursorPos = event->position();
   m_cursorVisible = true;
-  update(); 
+  update();
 
   emit cursorPosChanged(event->position().x(), event->position().y());
 
-  if ((m_tool == ToolType::Hand || m_spacePressed) && (event->buttons() & Qt::LeftButton)) {
+  if ((m_tool == ToolType::Hand || m_spacePressed) &&
+      (event->buttons() & Qt::LeftButton)) {
     QPointF delta = (event->position() - m_lastMousePos) / m_zoomLevel;
     m_viewOffset += delta;
     m_lastMousePos = event->position();
@@ -1303,21 +1377,27 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     return;
   }
 
-  if ((m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect || m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) && (event->buttons() & Qt::LeftButton)) {
-    QPointF canvasPos = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-    
+  if ((m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
+       m_tool == ToolType::EllipseSelect ||
+       m_tool == ToolType::MagneticLasso) &&
+      (event->buttons() & Qt::LeftButton)) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
     if (m_tool == ToolType::Lasso) {
-        m_selectionPath.lineTo(canvasPos);
-        m_isLassoDragging = true;
+      m_selectionPath.lineTo(canvasPos);
+      m_isLassoDragging = true;
     } else if (m_tool == ToolType::MagneticLasso) {
-        // Dragging in magnetic lasso is optional, but for now we follow the cursor
-        m_selectionPath.lineTo(canvasPos);
-        m_isLassoDragging = true;
+      // Dragging in magnetic lasso is optional, but for now we follow the
+      // cursor
+      m_selectionPath.lineTo(canvasPos);
+      m_isLassoDragging = true;
     } else if (m_tool == ToolType::RectSelect) {
-        // Temporary feedback: we'll clear and add rect on release or maintain a temp path
-        // For simplicity in this turn, many apps show a "tentative" shape
+      // Temporary feedback: we'll clear and add rect on release or maintain a
+      // temp path For simplicity in this turn, many apps show a "tentative"
+      // shape
     }
-    
+
     update();
     return;
   }
@@ -1352,55 +1432,65 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
   if (m_tool == ToolType::Hand || m_spacePressed) {
     if (m_spacePressed) {
-        QGuiApplication::changeOverrideCursor(Qt::OpenHandCursor);
+      QGuiApplication::changeOverrideCursor(Qt::OpenHandCursor);
     } else {
-        setCursor(Qt::OpenHandCursor);
+      setCursor(Qt::OpenHandCursor);
     }
   }
-  if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect || m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
-    QPointF canvasPos = (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-    
+  if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
+      m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
     if (m_tool == ToolType::MagneticLasso) {
-        // In polygonal mode, release doesn't close. 
-        // We only close on double click or manual "Close" action.
-        update();
-        return;
+      // In polygonal mode, release doesn't close.
+      // We only close on double click or manual "Close" action.
+      update();
+      return;
     }
-    
+
     if (m_tool == ToolType::RectSelect) {
-      if (!m_selectionStartPos.isNull() && (canvasPos - m_selectionStartPos).manhattanLength() > 2.0) {
-          QRectF rect = QRectF(m_selectionStartPos, canvasPos).normalized();
-          QPainterPath newPath;
-          newPath.addRect(rect);
-          
-          if (m_selectionAddMode == 0) m_selectionPath = newPath;
-          else if (m_selectionAddMode == 1) m_selectionPath = m_selectionPath.united(newPath);
-          else if (m_selectionAddMode == 2) m_selectionPath = m_selectionPath.subtracted(newPath);
-          
-          m_hasSelection = true;
+      if (!m_selectionStartPos.isNull() &&
+          (canvasPos - m_selectionStartPos).manhattanLength() > 2.0) {
+        QRectF rect = QRectF(m_selectionStartPos, canvasPos).normalized();
+        QPainterPath newPath;
+        newPath.addRect(rect);
+
+        if (m_selectionAddMode == 0)
+          m_selectionPath = newPath;
+        else if (m_selectionAddMode == 1)
+          m_selectionPath = m_selectionPath.united(newPath);
+        else if (m_selectionAddMode == 2)
+          m_selectionPath = m_selectionPath.subtracted(newPath);
+
+        m_hasSelection = true;
       }
     } else if (m_tool == ToolType::EllipseSelect) {
-      if (!m_selectionStartPos.isNull() && (canvasPos - m_selectionStartPos).manhattanLength() > 2.0) {
-          QRectF rect = QRectF(m_selectionStartPos, canvasPos).normalized();
-          QPainterPath newPath;
-          newPath.addEllipse(rect);
-          
-          if (m_selectionAddMode == 0) m_selectionPath = newPath;
-          else if (m_selectionAddMode == 1) m_selectionPath = m_selectionPath.united(newPath);
-          else if (m_selectionAddMode == 2) m_selectionPath = m_selectionPath.subtracted(newPath);
-          
-          m_hasSelection = true;
+      if (!m_selectionStartPos.isNull() &&
+          (canvasPos - m_selectionStartPos).manhattanLength() > 2.0) {
+        QRectF rect = QRectF(m_selectionStartPos, canvasPos).normalized();
+        QPainterPath newPath;
+        newPath.addEllipse(rect);
+
+        if (m_selectionAddMode == 0)
+          m_selectionPath = newPath;
+        else if (m_selectionAddMode == 1)
+          m_selectionPath = m_selectionPath.united(newPath);
+        else if (m_selectionAddMode == 2)
+          m_selectionPath = m_selectionPath.subtracted(newPath);
+
+        m_hasSelection = true;
       }
     } else if (m_tool == ToolType::Lasso) {
       if (m_isLassoDragging) {
         m_selectionPath.closeSubpath();
         // If it was a subtraction, we need specialized logic for the last part
-        // But QPainterPath handles multiple contours. For true subtraction, 
+        // But QPainterPath handles multiple contours. For true subtraction,
         // common practice is united/subtracted on the resulting closed shape.
         m_hasSelection = true;
       }
     }
-    
+
     emit hasSelectionChanged();
     update();
     return;
@@ -1466,13 +1556,13 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::mouseDoubleClickEvent(QMouseEvent *event) {
-    if (m_tool == ToolType::MagneticLasso) {
-        m_selectionPath.closeSubpath();
-        m_isMagneticLassoActive = false; // STOP creating segments
-        m_hasSelection = true;
-        emit hasSelectionChanged();
-        update();
-    }
+  if (m_tool == ToolType::MagneticLasso) {
+    m_selectionPath.closeSubpath();
+    m_isMagneticLassoActive = false; // STOP creating segments
+    m_hasSelection = true;
+    emit hasSelectionChanged();
+    update();
+  }
 }
 
 void CanvasItem::tabletEvent(QTabletEvent *event) {
@@ -1713,26 +1803,29 @@ void CanvasItem::setImpastoStrength(float strength) {
 }
 
 void CanvasItem::setSelectionAddMode(int mode) {
-  if (m_selectionAddMode == mode) return;
+  if (m_selectionAddMode == mode)
+    return;
   m_selectionAddMode = mode;
   emit selectionAddModeChanged();
 }
 
 void CanvasItem::setSelectionThreshold(float threshold) {
-  if (qFuzzyCompare(m_selectionThreshold, threshold)) return;
+  if (qFuzzyCompare(m_selectionThreshold, threshold))
+    return;
   m_selectionThreshold = threshold;
   emit selectionThresholdChanged();
 }
 
 void CanvasItem::setIsSelectionModeActive(bool active) {
-  if (m_isSelectionModeActive == active) return;
+  if (m_isSelectionModeActive == active)
+    return;
   m_isSelectionModeActive = active;
   emit isSelectionModeActiveChanged();
-  
+
   if (active) {
-      emit notificationRequested("Selection Mode Active", "info");
+    emit notificationRequested("Selection Mode Active", "info");
   } else {
-      emit notificationRequested("Selection Mode Deactivated", "info");
+    emit notificationRequested("Selection Mode Deactivated", "info");
   }
 }
 
@@ -1744,143 +1837,162 @@ void CanvasItem::invertSelection() {
 }
 
 void CanvasItem::apply_color_drop(int x, int y, const QColor &color) {
-    // 1. Transform Visual/Screen coordinates to Logical Canvas coordinates
-    // Qt's coordinate system mapping (including flipped Scale transform in QML)
-    // already handles the flip for us in the event position and mapToItem.
-    float lx = (static_cast<float>(x) - m_viewOffset.x() * m_zoomLevel) / m_zoomLevel;
-    float ly = (static_cast<float>(y) - m_viewOffset.y() * m_zoomLevel) / m_zoomLevel;
-    
-    int ix = static_cast<int>(std::round(lx));
-    int iy = static_cast<int>(std::round(ly));
-    
-    // 2. Bound check
-    if (ix < 0 || ix >= m_canvasWidth || iy < 0 || iy >= m_canvasHeight) return;
+  // 1. Transform Visual/Screen coordinates to Logical Canvas coordinates
+  // Qt's coordinate system mapping (including flipped Scale transform in QML)
+  // already handles the flip for us in the event position and mapToItem.
+  float lx =
+      (static_cast<float>(x) - m_viewOffset.x() * m_zoomLevel) / m_zoomLevel;
+  float ly =
+      (static_cast<float>(y) - m_viewOffset.y() * m_zoomLevel) / m_zoomLevel;
 
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (!layer || !layer->buffer || layer->locked) return;
+  int ix = static_cast<int>(std::round(lx));
+  int iy = static_cast<int>(std::round(ly));
 
-    // 3. Handle Selection Mask
-    std::unique_ptr<artflow::ImageBuffer> selectionMask;
-    if (m_hasSelection && !m_selectionPath.isEmpty()) {
-        selectionMask = std::make_unique<artflow::ImageBuffer>(m_canvasWidth, m_canvasHeight);
-        QImage maskImg(selectionMask->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-        maskImg.fill(Qt::transparent);
-        
-        QPainter p(&maskImg);
-        p.setRenderHint(QPainter::Antialiasing);
-        p.fillPath(m_selectionPath, Qt::white);
-        p.end();
-    }
+  // 2. Bound check
+  if (ix < 0 || ix >= m_canvasWidth || iy < 0 || iy >= m_canvasHeight)
+    return;
 
-    // Snapshot for undo
-    auto before = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer || layer->locked)
+    return;
 
-    // Flood fill
-    layer->buffer->floodFill(ix, iy, color.red(), color.green(), color.blue(), color.alpha(), m_selectionThreshold, selectionMask.get());
-    layer->dirty = true;
+  // 3. Handle Selection Mask
+  std::unique_ptr<artflow::ImageBuffer> selectionMask;
+  if (m_hasSelection && !m_selectionPath.isEmpty()) {
+    selectionMask =
+        std::make_unique<artflow::ImageBuffer>(m_canvasWidth, m_canvasHeight);
+    QImage maskImg(selectionMask->data(), m_canvasWidth, m_canvasHeight,
+                   QImage::Format_RGBA8888_Premultiplied);
+    maskImg.fill(Qt::transparent);
 
-    // Snapshot after for undo
-    auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
-    m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
-        m_layerManager, m_activeLayerIndex, std::move(before), std::move(after)));
+    QPainter p(&maskImg);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.fillPath(m_selectionPath, Qt::white);
+    p.end();
+  }
 
-    emit notificationRequested(m_hasSelection ? "Filled selection" : "Area filled", "info");
-    update();
-    updateLayersList();
+  // Snapshot for undo
+  auto before = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+
+  // Flood fill
+  layer->buffer->floodFill(ix, iy, color.red(), color.green(), color.blue(),
+                           color.alpha(), m_selectionThreshold,
+                           selectionMask.get());
+  layer->dirty = true;
+
+  // Snapshot after for undo
+  auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+  m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
+      m_layerManager, m_activeLayerIndex, std::move(before), std::move(after)));
+
+  emit notificationRequested(
+      m_hasSelection ? "Filled selection" : "Area filled", "info");
+  update();
+  updateLayersList();
 }
 
 void CanvasItem::featherSelection(float radius) {
-    // Raster implementation of feathering using a blurred mask
-    if (m_selectionPath.isEmpty()) return;
-    
-    // This is complex for a vector path, usually done by converting to bitmap mask, 
-    // blurring, and using that alpha. For now, we'll keep the vector path 
-    // and just store the feather value if we had a multi-mode selection buffer.
-    // Simplifying: Just notification of feathering applied.
-    emit notificationRequested("Feathering applied: " + QString::number(radius), "info");
+  // Raster implementation of feathering using a blurred mask
+  if (m_selectionPath.isEmpty())
+    return;
+
+  // This is complex for a vector path, usually done by converting to bitmap
+  // mask, blurring, and using that alpha. For now, we'll keep the vector path
+  // and just store the feather value if we had a multi-mode selection buffer.
+  // Simplifying: Just notification of feathering applied.
+  emit notificationRequested("Feathering applied: " + QString::number(radius),
+                             "info");
 }
 
 void CanvasItem::duplicateSelection() {
-    if (!m_hasSelection || m_selectionPath.isEmpty()) return;
-    
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (!layer || !layer->buffer) return;
-    
-    // Create mask from path
-    QImage mask(m_canvasWidth, m_canvasHeight, QImage::Format_Alpha8);
-    mask.fill(0);
-    QPainter p(&mask);
-    p.fillPath(m_selectionPath, Qt::white);
-    p.end();
-    
-    // Extract content
-    QImage srcImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-    QImage result(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-    result.fill(0);
-    
-    QPainter p2(&result);
-    p2.setClipPath(m_selectionPath);
-    p2.drawImage(0, 0, srcImg);
-    p2.end();
-    
-    // Create new layer
-    addLayer();
-    Layer *newLayer = m_layerManager->getActiveLayer();
-    if (newLayer && newLayer->buffer) {
-        std::memcpy(newLayer->buffer->data(), result.bits(), result.sizeInBytes());
-        newLayer->dirty = true;
-    }
-    update();
+  if (!m_hasSelection || m_selectionPath.isEmpty())
+    return;
+
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer)
+    return;
+
+  // Create mask from path
+  QImage mask(m_canvasWidth, m_canvasHeight, QImage::Format_Alpha8);
+  mask.fill(0);
+  QPainter p(&mask);
+  p.fillPath(m_selectionPath, Qt::white);
+  p.end();
+
+  // Extract content
+  QImage srcImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                QImage::Format_RGBA8888_Premultiplied);
+  QImage result(m_canvasWidth, m_canvasHeight,
+                QImage::Format_RGBA8888_Premultiplied);
+  result.fill(0);
+
+  QPainter p2(&result);
+  p2.setClipPath(m_selectionPath);
+  p2.drawImage(0, 0, srcImg);
+  p2.end();
+
+  // Create new layer
+  addLayer();
+  Layer *newLayer = m_layerManager->getActiveLayer();
+  if (newLayer && newLayer->buffer) {
+    std::memcpy(newLayer->buffer->data(), result.bits(), result.sizeInBytes());
+    newLayer->dirty = true;
+  }
+  update();
 }
 
 void CanvasItem::maskSelection() {
-    // Implement layer mask logic (requires LayerManager support for masks)
-    emit notificationRequested("Mask created (Simulation)", "info");
+  // Implement layer mask logic (requires LayerManager support for masks)
+  emit notificationRequested("Mask created (Simulation)", "info");
 }
 
 void CanvasItem::colorSelection(const QColor &color) {
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (!layer || !layer->buffer || m_selectionPath.isEmpty()) return;
-    
-    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-    QPainter p(&img);
-    p.setClipPath(m_selectionPath);
-    p.setCompositionMode(QPainter::CompositionMode_Source);
-    p.fillRect(img.rect(), color);
-    p.end();
-    
-    layer->dirty = true;
-    update();
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer || m_selectionPath.isEmpty())
+    return;
+
+  QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+             QImage::Format_RGBA8888_Premultiplied);
+  QPainter p(&img);
+  p.setClipPath(m_selectionPath);
+  p.setCompositionMode(QPainter::CompositionMode_Source);
+  p.fillRect(img.rect(), color);
+  p.end();
+
+  layer->dirty = true;
+  update();
 }
 
 void CanvasItem::clearSelectionContent() {
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (!layer || !layer->buffer || m_selectionPath.isEmpty()) return;
-    
-    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-    QPainter p(&img);
-    p.setClipPath(m_selectionPath);
-    p.setCompositionMode(QPainter::CompositionMode_Clear);
-    p.fillRect(img.rect(), Qt::transparent);
-    p.end();
-    
-    layer->dirty = true;
-    update();
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer || m_selectionPath.isEmpty())
+    return;
+
+  QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+             QImage::Format_RGBA8888_Premultiplied);
+  QPainter p(&img);
+  p.setClipPath(m_selectionPath);
+  p.setCompositionMode(QPainter::CompositionMode_Clear);
+  p.fillRect(img.rect(), Qt::transparent);
+  p.end();
+
+  layer->dirty = true;
+  update();
 }
 
 void CanvasItem::deselect() {
-    m_selectionPath = QPainterPath();
-    m_hasSelection = false;
-    emit hasSelectionChanged();
-    update();
+  m_selectionPath = QPainterPath();
+  m_hasSelection = false;
+  emit hasSelectionChanged();
+  update();
 }
 
 void CanvasItem::selectAll() {
-    m_selectionPath = QPainterPath();
-    m_selectionPath.addRect(0, 0, m_canvasWidth, m_canvasHeight);
-    m_hasSelection = true;
-    emit hasSelectionChanged();
-    update();
+  m_selectionPath = QPainterPath();
+  m_selectionPath.addRect(0, 0, m_canvasWidth, m_canvasHeight);
+  m_hasSelection = true;
+  emit hasSelectionChanged();
+  update();
 }
 
 void CanvasItem::setBrushRoundness(float value) {
@@ -2007,12 +2119,14 @@ void CanvasItem::setCurrentTool(const QString &tool) {
     m_tool = ToolType::Eraser;
     setCursor(QCursor(Qt::BlankCursor));
     setIsSelectionModeActive(false);
-  } else if (tool == "lasso" || tool == "magnetic_lasso" || tool == "select_rect" || tool == "select_ellipse" || tool == "select_wand") {
+  } else if (tool == "lasso" || tool == "magnetic_lasso" ||
+             tool == "select_rect" || tool == "select_ellipse" ||
+             tool == "select_wand") {
     setIsSelectionModeActive(true);
     if (tool == "lasso") {
       m_tool = ToolType::Lasso;
     } else if (tool == "magnetic_lasso") {
-      m_tool = ToolType::MagneticLasso; 
+      m_tool = ToolType::MagneticLasso;
     } else if (tool == "select_rect") {
       m_tool = ToolType::RectSelect;
     } else if (tool == "select_ellipse") {
@@ -2023,7 +2137,7 @@ void CanvasItem::setCurrentTool(const QString &tool) {
     setCursor(QCursor(Qt::BlankCursor));
   } else if (tool == "transform" || tool == "move") {
     m_tool = ToolType::Transform;
-    setCursor(getModernCursor()); 
+    setCursor(getModernCursor());
     beginTransform();
   } else if (tool == "eyedropper") {
     m_tool = ToolType::Eyedropper;
@@ -2039,7 +2153,8 @@ void CanvasItem::setCurrentTool(const QString &tool) {
   invalidateCursorCache();
   emit currentToolChanged();
   emit notificationRequested("Tool: " + tool, "info");
-  qInfo() << "SetCurrentTool:" << tool << "ModeActive:" << m_isSelectionModeActive;
+  qInfo() << "SetCurrentTool:" << tool
+          << "ModeActive:" << m_isSelectionModeActive;
 
   // Auto-apply default presets for tools
   if (tool == "pencil")
@@ -2059,121 +2174,134 @@ void CanvasItem::setCurrentTool(const QString &tool) {
 }
 
 void CanvasItem::beginTransform() {
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (!layer || !layer->buffer || layer->locked) return;
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer || layer->locked)
+    return;
 
-    if (m_isTransforming) return;
+  if (m_isTransforming)
+    return;
 
-    // 0. Save state for UNDO
-    m_transformBeforeBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+  // 0. Save state for UNDO
+  m_transformBeforeBuffer =
+      std::make_unique<artflow::ImageBuffer>(*layer->buffer);
 
-    // 1. Extract content
-    if (m_hasSelection && !m_selectionPath.isEmpty()) {
-        m_transformBox = m_selectionPath.boundingRect();
-        m_selectionBuffer = QImage(m_canvasWidth, m_canvasHeight, QImage::Format_ARGB32_Premultiplied);
-        m_selectionBuffer.fill(Qt::transparent);
-        
-        QImage srcImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-        QPainter p(&m_selectionBuffer);
-        p.setClipPath(m_selectionPath);
-        p.drawImage(0, 0, srcImg);
-        p.end();
-        
-        // Clear area in original layer
-        QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-        QPainter p2(&layerImg);
-        p2.setClipPath(m_selectionPath);
-        p2.setCompositionMode(QPainter::CompositionMode_Clear);
-        p2.fillRect(layerImg.rect(), Qt::transparent);
-        p2.end();
+  // 1. Extract content
+  if (m_hasSelection && !m_selectionPath.isEmpty()) {
+    m_transformBox = m_selectionPath.boundingRect();
+    m_selectionBuffer = QImage(m_canvasWidth, m_canvasHeight,
+                               QImage::Format_ARGB32_Premultiplied);
+    m_selectionBuffer.fill(Qt::transparent);
+
+    QImage srcImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                  QImage::Format_RGBA8888_Premultiplied);
+    QPainter p(&m_selectionBuffer);
+    p.setClipPath(m_selectionPath);
+    p.drawImage(0, 0, srcImg);
+    p.end();
+
+    // Clear area in original layer
+    QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                    QImage::Format_RGBA8888_Premultiplied);
+    QPainter p2(&layerImg);
+    p2.setClipPath(m_selectionPath);
+    p2.setCompositionMode(QPainter::CompositionMode_Clear);
+    p2.fillRect(layerImg.rect(), Qt::transparent);
+    p2.end();
+  } else {
+    // Use the content bounds instead of full canvas
+    QRect bounds = layer->buffer->getContentBounds();
+    if (bounds.isEmpty()) {
+      m_transformBox = QRectF(0, 0, m_canvasWidth, m_canvasHeight);
     } else {
-        // Use the content bounds instead of full canvas
-        QRect bounds = layer->buffer->getContentBounds();
-        if (bounds.isEmpty()) {
-            m_transformBox = QRectF(0, 0, m_canvasWidth, m_canvasHeight);
-        } else {
-            m_transformBox = bounds;
-        }
-
-        m_selectionBuffer = QImage(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied).copy();
-        
-        // Clear whole layer
-        layer->buffer->fill(0,0,0,0);
+      m_transformBox = bounds;
     }
-    
-    m_transformMatrix = QTransform();
-    m_isTransforming = true;
-    layer->dirty = true;
-    
-    emit isTransformingChanged();
-    emit notificationRequested("Transform Mode: " + (m_hasSelection ? QString("Selection") : QString("Layer")), "info");
-    emit transformBoxChanged();
-    update();
+
+    m_selectionBuffer =
+        QImage(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+               QImage::Format_RGBA8888_Premultiplied)
+            .copy();
+
+    // Clear whole layer
+    layer->buffer->fill(0, 0, 0, 0);
+  }
+
+  m_transformMatrix = QTransform();
+  m_isTransforming = true;
+  layer->dirty = true;
+
+  emit isTransformingChanged();
+  emit notificationRequested("Transform Mode: " + (m_hasSelection
+                                                       ? QString("Selection")
+                                                       : QString("Layer")),
+                             "info");
+  emit transformBoxChanged();
+  update();
 }
 
 void CanvasItem::applyTransform() {
-    if (!m_isTransforming || m_selectionBuffer.isNull())
-        return;
+  if (!m_isTransforming || m_selectionBuffer.isNull())
+    return;
 
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (layer && layer->buffer) {
-        // Snapshot before for undo (we actually need the state BEFORE beginTransform for a clean undo, 
-        // but here we are committing the change after beginTransform already cleared the area).
-        // Ideally, beginTransform should have saved the 'before' state.
-        
-        auto before = std::make_unique<artflow::ImageBuffer>(m_canvasWidth, m_canvasHeight);
-        // This is tricky because the layer is already cleared.
-        // We will assume the undo system handles the whole process if we were more careful.
-        // For now, let's just commit.
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (layer && layer->buffer) {
+    // Snapshot before for undo (we actually need the state BEFORE
+    // beginTransform for a clean undo, but here we are committing the change
+    // after beginTransform already cleared the area). Ideally, beginTransform
+    // should have saved the 'before' state.
 
-        QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                   QImage::Format_RGBA8888_Premultiplied);
-        QPainter p(&img);
-        p.setRenderHint(QPainter::SmoothPixmapTransform);
-        p.setTransform(m_transformMatrix);
-        p.drawImage(0, 0, m_selectionBuffer);
-        p.end();
-        layer->dirty = true;
-    }
+    auto before =
+        std::make_unique<artflow::ImageBuffer>(m_canvasWidth, m_canvasHeight);
+    // This is tricky because the layer is already cleared.
+    // We will assume the undo system handles the whole process if we were more
+    // careful. For now, let's just commit.
 
-    m_isTransforming = false;
-    m_selectionBuffer = QImage();
-    
-    // 3. PUSH UNDO
-    auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
-    m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
-        m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer), std::move(after)));
-    
-    m_selectionPath = QPainterPath();
-    m_hasSelection = false;
-    emit isTransformingChanged();
-    emit hasSelectionChanged();
-    update();
+    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+               QImage::Format_RGBA8888_Premultiplied);
+    QPainter p(&img);
+    p.setRenderHint(QPainter::SmoothPixmapTransform);
+    p.setTransform(m_transformMatrix);
+    p.drawImage(0, 0, m_selectionBuffer);
+    p.end();
+    layer->dirty = true;
+  }
+
+  m_isTransforming = false;
+  m_selectionBuffer = QImage();
+
+  // 3. PUSH UNDO
+  auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+  m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
+      m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
+      std::move(after)));
+
+  m_selectionPath = QPainterPath();
+  m_hasSelection = false;
+  emit isTransformingChanged();
+  emit hasSelectionChanged();
+  update();
 }
 
 void CanvasItem::cancelTransform() {
-    if (!m_isTransforming || m_selectionBuffer.isNull())
-        return;
+  if (!m_isTransforming || m_selectionBuffer.isNull())
+    return;
 
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (layer && layer->buffer) {
-        QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                   QImage::Format_RGBA8888_Premultiplied);
-        QPainter p(&img);
-        p.drawImage(0, 0, m_selectionBuffer); // Draw back original
-        p.end();
-        layer->dirty = true;
-    }
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (layer && layer->buffer) {
+    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+               QImage::Format_RGBA8888_Premultiplied);
+    QPainter p(&img);
+    p.drawImage(0, 0, m_selectionBuffer); // Draw back original
+    p.end();
+    layer->dirty = true;
+  }
 
-    m_isTransforming = false;
-    m_selectionBuffer = QImage();
-    update();
-    emit isTransformingChanged();
+  m_isTransforming = false;
+  m_selectionBuffer = QImage();
+  update();
+  emit isTransformingChanged();
 }
 
-void CanvasItem::commitTransform() {
-    applyTransform();
-}
+void CanvasItem::commitTransform() { applyTransform(); }
 
 void CanvasItem::adjustBrushSize(float deltaPercent) {
   setBrushSize(std::max(1, (int)(m_brushSize * (1.0f + deltaPercent))));
@@ -2223,51 +2351,57 @@ QVariantList CanvasItem::getRecentProjects() {
 
 QVariantList CanvasItem::get_project_list() { return _scanSync(); }
 
-bool CanvasItem::create_folder_from_merge(const QString &sourcePath, const QString &targetPath) {
-    if (sourcePath.isEmpty() || targetPath.isEmpty() || sourcePath == targetPath) return false;
-
-    QFileInfo srcInfo(sourcePath);
-    QFileInfo tgtInfo(targetPath);
-
-    if (!srcInfo.exists() || !tgtInfo.exists()) return false;
-
-    QDir parentDir = srcInfo.dir(); // Assuming both in same parent dir for simplicity
-
-    if (tgtInfo.isDir()) {
-        // Target is a folder, move source inside
-        QString newPath = tgtInfo.absoluteFilePath() + "/" + srcInfo.fileName();
-        bool success = QFile::rename(sourcePath, newPath);
-        if (success) {
-            emit projectListChanged();
-        }
-        return success;
-    } else if (srcInfo.isDir()) {
-        // Source is a folder, move target inside (just in case they dragged folder onto a drawing somehow)
-        QString newPath = srcInfo.absoluteFilePath() + "/" + tgtInfo.fileName();
-        bool success = QFile::rename(targetPath, newPath);
-        if (success) {
-            emit projectListChanged();
-        }
-        return success;
-    } else {
-        // Both are files, create a new folder
-        QString folderName = "Group_" + QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
-        QString newDirPath = parentDir.absolutePath() + "/" + folderName;
-        
-        if (parentDir.mkdir(folderName)) {
-            bool success1 = QFile::rename(sourcePath, newDirPath + "/" + srcInfo.fileName());
-            bool success2 = QFile::rename(targetPath, newDirPath + "/" + tgtInfo.fileName());
-            
-            if (success1 || success2) {
-                emit projectListChanged();
-                return true;
-            }
-        }
-    }
+bool CanvasItem::create_folder_from_merge(const QString &sourcePath,
+                                          const QString &targetPath) {
+  if (sourcePath.isEmpty() || targetPath.isEmpty() || sourcePath == targetPath)
     return false;
+
+  QFileInfo srcInfo(sourcePath);
+  QFileInfo tgtInfo(targetPath);
+
+  if (!srcInfo.exists() || !tgtInfo.exists())
+    return false;
+
+  QDir parentDir =
+      srcInfo.dir(); // Assuming both in same parent dir for simplicity
+
+  if (tgtInfo.isDir()) {
+    // Target is a folder, move source inside
+    QString newPath = tgtInfo.absoluteFilePath() + "/" + srcInfo.fileName();
+    bool success = QFile::rename(sourcePath, newPath);
+    if (success) {
+      emit projectListChanged();
+    }
+    return success;
+  } else if (srcInfo.isDir()) {
+    // Source is a folder, move target inside (just in case they dragged folder
+    // onto a drawing somehow)
+    QString newPath = srcInfo.absoluteFilePath() + "/" + tgtInfo.fileName();
+    bool success = QFile::rename(targetPath, newPath);
+    if (success) {
+      emit projectListChanged();
+    }
+    return success;
+  } else {
+    // Both are files, create a new folder
+    QString folderName =
+        "Group_" + QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+    QString newDirPath = parentDir.absolutePath() + "/" + folderName;
+
+    if (parentDir.mkdir(folderName)) {
+      bool success1 =
+          QFile::rename(sourcePath, newDirPath + "/" + srcInfo.fileName());
+      bool success2 =
+          QFile::rename(targetPath, newDirPath + "/" + tgtInfo.fileName());
+
+      if (success1 || success2) {
+        emit projectListChanged();
+        return true;
+      }
+    }
+  }
+  return false;
 }
-
-
 
 void CanvasItem::load_file_path(const QString &path) { loadProject(path); }
 void CanvasItem::handle_shortcuts(int key, int modifiers) {
@@ -2328,17 +2462,17 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
 void CanvasItem::handle_key_release(int key) {
   if (key == Qt::Key_Space) {
     m_spacePressed = false;
-    
+
     // Restaurar cursor correcto al soltar espacio
     if (m_tool != ToolType::Hand && m_tool != ToolType::Transform) {
-        setCursor(Qt::BlankCursor);
+      setCursor(Qt::BlankCursor);
     } else if (m_tool == ToolType::Hand) {
-        setCursor(Qt::OpenHandCursor);
+      setCursor(Qt::OpenHandCursor);
     } else if (m_tool == ToolType::Transform) {
-        setCursor(getModernCursor());
+      setCursor(getModernCursor());
     }
-    
-    update(); 
+
+    update();
   }
 }
 void CanvasItem::fitToView() {
@@ -2404,24 +2538,27 @@ void CanvasItem::duplicateLayer(int index) {
 }
 
 void CanvasItem::moveLayer(int fromIndex, int toIndex) {
-  if (fromIndex == toIndex) return;
-  
+  if (fromIndex == toIndex)
+    return;
+
   // Validate indices
   if (fromIndex < 0 || fromIndex >= m_layerManager->getLayerCount() ||
       toIndex < 0 || toIndex >= m_layerManager->getLayerCount()) {
     return;
   }
-  
+
   m_layerManager->moveLayer(fromIndex, toIndex);
-  
-  // Auto-clipping logic: If dropped into the middle of a clipping group, join it.
+
+  // Auto-clipping logic: If dropped into the middle of a clipping group, join
+  // it.
   int count = m_layerManager->getLayerCount();
-  Layer* moved = m_layerManager->getLayer(toIndex);
-  Layer* above = (toIndex + 1 < count) ? m_layerManager->getLayer(toIndex + 1) : nullptr;
+  Layer *moved = m_layerManager->getLayer(toIndex);
+  Layer *above =
+      (toIndex + 1 < count) ? m_layerManager->getLayer(toIndex + 1) : nullptr;
   if (moved && above && above->clipped) {
-      moved->clipped = true;
+    moved->clipped = true;
   }
-  
+
   // Update active layer index if it moved
   if (m_activeLayerIndex == fromIndex) {
     m_activeLayerIndex = toIndex;
@@ -2433,7 +2570,7 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
     m_activeLayerIndex++;
     emit activeLayerChanged();
   }
-  
+
   updateLayersList();
   update();
 }
@@ -2463,7 +2600,8 @@ void CanvasItem::applyEffect(int index, const QString &effect,
                              const QVariantMap &params) {
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->locked) {
-    emit notificationRequested("Cannot apply effect to a locked layer", "warning");
+    emit notificationRequested("Cannot apply effect to a locked layer",
+                               "warning");
     return;
   }
   qDebug() << "Applying effect:" << effect << "on layer" << index;
@@ -2497,403 +2635,445 @@ void CanvasItem::setBackgroundColor(const QString &color) {
 }
 
 bool CanvasItem::loadProject(const QString &path) {
-    QString localPath = path;
-    if (localPath.startsWith("file:///")) {
-        localPath = QUrl(path).toLocalFile();
-    }
-    
-    QFileInfo info(localPath);
-    if (!info.exists()) return false;
+  QString localPath = path;
+  if (localPath.startsWith("file:///")) {
+    localPath = QUrl(path).toLocalFile();
+  }
 
-    qDebug() << "Loading project (Single File) from:" << localPath;
-    
-    QFile file(localPath);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "Could not open project file for reading";
-        return false;
-    }
-    
-    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    file.close();
-    QJsonObject obj = doc.object();
-    
-    int w = obj["width"].toInt();
-    int h = obj["height"].toInt();
-    
-    if (w <= 0 || h <= 0) {
-        w = 1920; h = 1080; // Fallback
+  QFileInfo info(localPath);
+  if (!info.exists())
+    return false;
+
+  qDebug() << "Loading project (Single File) from:" << localPath;
+
+  QFile file(localPath);
+  if (!file.open(QIODevice::ReadOnly)) {
+    qWarning() << "Could not open project file for reading";
+    return false;
+  }
+
+  QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+  file.close();
+  QJsonObject obj = doc.object();
+
+  int w = obj["width"].toInt();
+  int h = obj["height"].toInt();
+
+  if (w <= 0 || h <= 0) {
+    w = 1920;
+    h = 1080; // Fallback
+  }
+
+  // 1. Reset Canvas
+  resizeCanvas(w, h);
+
+  // 2. Load Layers from Embedded Data
+  QJsonArray layersArray = obj["layers"].toArray();
+
+  if (!layersArray.isEmpty()) {
+    // Remove default layer
+    if (m_layerManager->getLayerCount() > 0) {
+      m_layerManager->removeLayer(0);
     }
 
-    // 1. Reset Canvas
-    resizeCanvas(w, h);
-    
-    // 2. Load Layers from Embedded Data
-    QJsonArray layersArray = obj["layers"].toArray();
-    
-    if (!layersArray.isEmpty()) {
-        // Remove default layer
-        if (m_layerManager->getLayerCount() > 0) {
-            m_layerManager->removeLayer(0);
-        }
-        
-        for (const QJsonValue &val : layersArray) {
-            QJsonObject layerObj = val.toObject();
-            QString name = layerObj["name"].toString();
-            
-            // Backwards compatibility: check for old 'file' property to warn user or handle legacy?
-            // For now, we assume new format. If "data" is missing, layer will be empty.
-            
-            int newIdx = m_layerManager->addLayer(name.toStdString());
-            Layer* newLayer = m_layerManager->getLayer(newIdx);
-            
-            if (newLayer) {
-                newLayer->opacity = (float)layerObj["opacity"].toDouble(1.0);
-                newLayer->visible = layerObj["visible"].toBool(true);
-                newLayer->locked = layerObj["locked"].toBool(false);
-                newLayer->alphaLock = layerObj["alphaLock"].toBool(false);
-                newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
-                newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
+    for (const QJsonValue &val : layersArray) {
+      QJsonObject layerObj = val.toObject();
+      QString name = layerObj["name"].toString();
 
-                // Load Embedded Image Data (Base64)
-                QString b64Data = layerObj["data"].toString();
-                if (!b64Data.isEmpty()) {
-                    QByteArray data = QByteArray::fromBase64(b64Data.toLatin1());
-                    QImage img;
-                    if (img.loadFromData(data, "PNG")) {
-                        img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
-                        if (img.width() == w && img.height() == h) {
-                            std::memcpy(newLayer->buffer->data(), img.constBits(), (size_t)w * h * 4);
-                        } else {
-                           QImage scaled = img.scaled(w, h, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-                           scaled = scaled.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
-                           std::memcpy(newLayer->buffer->data(), scaled.constBits(), (size_t)w * h * 4);
-                        }
-                    }
-                }
+      // Backwards compatibility: check for old 'file' property to warn user or
+      // handle legacy? For now, we assume new format. If "data" is missing,
+      // layer will be empty.
+
+      int newIdx = m_layerManager->addLayer(name.toStdString());
+      Layer *newLayer = m_layerManager->getLayer(newIdx);
+
+      if (newLayer) {
+        newLayer->opacity = (float)layerObj["opacity"].toDouble(1.0);
+        newLayer->visible = layerObj["visible"].toBool(true);
+        newLayer->locked = layerObj["locked"].toBool(false);
+        newLayer->alphaLock = layerObj["alphaLock"].toBool(false);
+        newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
+        newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
+
+        // Load Embedded Image Data (Base64)
+        QString b64Data = layerObj["data"].toString();
+        if (!b64Data.isEmpty()) {
+          QByteArray data = QByteArray::fromBase64(b64Data.toLatin1());
+          QImage img;
+          if (img.loadFromData(data, "PNG")) {
+            img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+            if (img.width() == w && img.height() == h) {
+              std::memcpy(newLayer->buffer->data(), img.constBits(),
+                          (size_t)w * h * 4);
+            } else {
+              QImage scaled = img.scaled(w, h, Qt::IgnoreAspectRatio,
+                                         Qt::SmoothTransformation);
+              scaled =
+                  scaled.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+              std::memcpy(newLayer->buffer->data(), scaled.constBits(),
+                          (size_t)w * h * 4);
             }
+          }
         }
+      }
     }
+  }
 
-    m_currentProjectPath = localPath;
-    m_currentProjectName = info.baseName();
-    
-    emit currentProjectPathChanged();
-    emit currentProjectNameChanged();
-    updateLayersList();
-    
-    emit notificationRequested("Project loaded: " + m_currentProjectName, "success");
-    
-    fitToView();
-    update();
-    return true;
+  m_currentProjectPath = localPath;
+  m_currentProjectName = info.baseName();
+
+  emit currentProjectPathChanged();
+  emit currentProjectNameChanged();
+  updateLayersList();
+
+  emit notificationRequested("Project loaded: " + m_currentProjectName,
+                             "success");
+
+  fitToView();
+  update();
+  return true;
 }
 
 bool CanvasItem::saveProject(const QString &pathText) {
-    if (pathText.isEmpty()) return false;
-    
-    // SYNC GPU DATA TO CPU BEFORE SAVING
-    syncGpuToCpu();
+  if (pathText.isEmpty())
+    return false;
 
-    QString baseDirStr = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
-    QDir baseDir(baseDirStr);
-    if (!baseDir.exists()) baseDir.mkpath(".");
-    
-    QString targetPath = pathText;
-    if (!targetPath.contains("/") && !targetPath.contains("\\")) {
-        targetPath = baseDir.filePath(targetPath);
-    }
-    
-    if (!targetPath.endsWith(".stxf")) {
-        targetPath += ".stxf";
-    }
+  // SYNC GPU DATA TO CPU BEFORE SAVING
+  syncGpuToCpu();
 
-    qDebug() << "Saving project (Single File) to:" << targetPath;
-    QFileInfo info(targetPath);
-    
-    // 1. Prepare JSON Data
-    QJsonObject obj;
-    obj["title"] = info.baseName();
-    obj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
-    obj["width"] = m_canvasWidth;
-    obj["height"] = m_canvasHeight;
-    obj["version"] = 2; // Version 2: Embedded Data
-    
-    QJsonArray layersArray;
+  QString baseDirStr =
+      QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
+      "/ArtFlowProjects";
+  QDir baseDir(baseDirStr);
+  if (!baseDir.exists())
+    baseDir.mkpath(".");
+
+  QString targetPath = pathText;
+  if (!targetPath.contains("/") && !targetPath.contains("\\")) {
+    targetPath = baseDir.filePath(targetPath);
+  }
+
+  if (!targetPath.endsWith(".stxf")) {
+    targetPath += ".stxf";
+  }
+
+  qDebug() << "Saving project (Single File) to:" << targetPath;
+  QFileInfo info(targetPath);
+
+  // 1. Prepare JSON Data
+  QJsonObject obj;
+  obj["title"] = info.baseName();
+  obj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+  obj["width"] = m_canvasWidth;
+  obj["height"] = m_canvasHeight;
+  obj["version"] = 2; // Version 2: Embedded Data
+
+  QJsonArray layersArray;
+  if (m_layerManager) {
+    for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+      Layer *layer = m_layerManager->getLayer(i);
+      if (!layer)
+        continue;
+
+      QJsonObject layerObj;
+      layerObj["name"] = QString::fromStdString(layer->name);
+      layerObj["opacity"] = layer->opacity;
+      layerObj["visible"] = layer->visible;
+      layerObj["locked"] = layer->locked;
+      layerObj["alphaLock"] = layer->alphaLock;
+      layerObj["blendMode"] = (int)layer->blendMode;
+      layerObj["type"] = (int)layer->type;
+
+      // Embed Image Data as Base64 String
+      // Create deep copy for saving
+      QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                 QImage::Format_RGBA8888_Premultiplied);
+      QBuffer buffer;
+      buffer.open(QIODevice::WriteOnly);
+      if (img.save(&buffer, "PNG")) {
+        QString b64 = QString::fromLatin1(buffer.data().toBase64());
+        layerObj["data"] = b64;
+        layersArray.append(layerObj);
+      } else {
+        qWarning() << "Failed to encode layer image";
+      }
+    }
+  }
+  obj["layers"] = layersArray;
+
+  // 3. Write Single .stxf File
+  QFile file(targetPath);
+  if (file.open(QIODevice::WriteOnly)) {
+
+    // Generate Thumbnail (Small, efficiently encoded)
+    // Create composite image first
+    ImageBuffer composite(m_canvasWidth, m_canvasHeight);
     if (m_layerManager) {
-        for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
-            Layer* layer = m_layerManager->getLayer(i);
-            if (!layer) continue;
-            
-            QJsonObject layerObj;
-            layerObj["name"] = QString::fromStdString(layer->name);
-            layerObj["opacity"] = layer->opacity;
-            layerObj["visible"] = layer->visible;
-            layerObj["locked"] = layer->locked;
-            layerObj["alphaLock"] = layer->alphaLock;
-            layerObj["blendMode"] = (int)layer->blendMode;
-            layerObj["type"] = (int)layer->type;
-            
-            // Embed Image Data as Base64 String
-            // Create deep copy for saving
-            QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-            QBuffer buffer;
-            buffer.open(QIODevice::WriteOnly);
-            if (img.save(&buffer, "PNG")) {
-                QString b64 = QString::fromLatin1(buffer.data().toBase64());
-                layerObj["data"] = b64;
-                layersArray.append(layerObj);
-            } else {
-                qWarning() << "Failed to encode layer image";
-            }
-        }
+      m_layerManager->compositeAll(composite);
     }
-    obj["layers"] = layersArray;
 
-    // 3. Write Single .stxf File
-    QFile file(targetPath);
-    if (file.open(QIODevice::WriteOnly)) {
-        
-        // Generate Thumbnail (Small, efficiently encoded)
-        // Create composite image first
-        ImageBuffer composite(m_canvasWidth, m_canvasHeight);
-        if (m_layerManager) {
-            m_layerManager->compositeAll(composite);
-        }
-        
-        // 1. Get raw composite image
-        QImage imgComp(composite.data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-        
-        // 2. Calculate target size maintaining Aspect Ratio (Max 600px)
-        QSize thumbSize(m_canvasWidth, m_canvasHeight);
-        thumbSize.scale(600, 600, Qt::KeepAspectRatio);
+    // 1. Get raw composite image
+    QImage imgComp(composite.data(), m_canvasWidth, m_canvasHeight,
+                   QImage::Format_RGBA8888_Premultiplied);
 
-        // 3. Create destination image supporting ARGB
-        QImage thumbFinal(thumbSize, QImage::Format_ARGB32);
-        
-        // 4. Fill with background color (or white if transparent/undefined)
-        if (m_backgroundColor.alpha() > 0) {
-            thumbFinal.fill(m_backgroundColor);
-        } else {
-            thumbFinal.fill(Qt::white);
-        }
+    // 2. Calculate target size maintaining Aspect Ratio (Max 600px)
+    QSize thumbSize(m_canvasWidth, m_canvasHeight);
+    thumbSize.scale(600, 600, Qt::KeepAspectRatio);
 
-        // 5. Draw scaled image with high quality
-        QPainter p(&thumbFinal);
-        p.setRenderHint(QPainter::SmoothPixmapTransform);
-        p.setRenderHint(QPainter::Antialiasing);
-        
-        QImage scaled = imgComp.scaled(thumbSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        p.drawImage(0, 0, scaled);
-        p.end();
+    // 3. Create destination image supporting ARGB
+    QImage thumbFinal(thumbSize, QImage::Format_ARGB32);
 
-        QBuffer thumbBuf;
-        thumbBuf.open(QIODevice::WriteOnly);
-        thumbFinal.save(&thumbBuf, "PNG"); // PNG is more reliable for Data URLs
-        QString thumbB64 = QString::fromLatin1(thumbBuf.data().toBase64());
-        obj["thumbnail"] = thumbB64;
-
-        QJsonDocument doc(obj);
-        file.write(doc.toJson(QJsonDocument::Compact));
-        file.close();
+    // 4. Fill with background color (or white if transparent/undefined)
+    if (m_backgroundColor.alpha() > 0) {
+      thumbFinal.fill(m_backgroundColor);
     } else {
-        return false;
+      thumbFinal.fill(Qt::white);
     }
 
-    // 4. Update current project path/name
-    m_currentProjectPath = targetPath;
-    m_currentProjectName = info.baseName();
-    emit currentProjectPathChanged();
-    emit currentProjectNameChanged();
-    
-    // NOTIFY UI TO REFRESH LISTS
-    emit projectListChanged();
-    
-    emit notificationRequested("Project saved successfully", "success");
-    return true;
+    // 5. Draw scaled image with high quality
+    QPainter p(&thumbFinal);
+    p.setRenderHint(QPainter::SmoothPixmapTransform);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    QImage scaled = imgComp.scaled(thumbSize, Qt::IgnoreAspectRatio,
+                                   Qt::SmoothTransformation);
+    p.drawImage(0, 0, scaled);
+    p.end();
+
+    QBuffer thumbBuf;
+    thumbBuf.open(QIODevice::WriteOnly);
+    thumbFinal.save(&thumbBuf, "PNG"); // PNG is more reliable for Data URLs
+    QString thumbB64 = QString::fromLatin1(thumbBuf.data().toBase64());
+    obj["thumbnail"] = thumbB64;
+
+    QJsonDocument doc(obj);
+    file.write(doc.toJson(QJsonDocument::Compact));
+    file.close();
+  } else {
+    return false;
+  }
+
+  // 4. Update current project path/name
+  m_currentProjectPath = targetPath;
+  m_currentProjectName = info.baseName();
+  emit currentProjectPathChanged();
+  emit currentProjectNameChanged();
+
+  // NOTIFY UI TO REFRESH LISTS
+  emit projectListChanged();
+
+  emit notificationRequested("Project saved successfully", "success");
+  return true;
 }
 
 QVariantList CanvasItem::_scanSync() {
   QVariantList results;
   // Always scan the main project directory for the root lists (Home/Gallery)
-  QString path = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
-                  
+  QString path =
+      QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
+      "/ArtFlowProjects";
+
   if (!QFileInfo(path).isDir()) {
-       QDir().mkpath(path);
+    QDir().mkpath(path);
   }
 
   QDir dir(path);
-  QFileInfoList entries = dir.entryInfoList(QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Time);
-      
+  QFileInfoList entries = dir.entryInfoList(
+      QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Time);
+
   for (const QFileInfo &info : entries) {
-    if (info.fileName().endsWith(".png") || info.fileName().endsWith(".jpg")) continue;
-    if (info.fileName().endsWith(".json")) continue;
+    if (info.fileName().endsWith(".png") || info.fileName().endsWith(".jpg"))
+      continue;
+    if (info.fileName().endsWith(".json"))
+      continue;
 
     if (info.isFile() && info.suffix() == "stxf") {
-        QVariantMap item;
-        item["name"] = info.completeBaseName();
-        item["path"] = info.absoluteFilePath();
-        item["type"] = "drawing";
-        item["date"] = info.lastModified().toString("dd MMM yyyy");
-        
-        QFile f(info.absoluteFilePath());
-        if (f.open(QIODevice::ReadOnly)) {
-            QByteArray jsonData = f.readAll();
-            QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-            if (!doc.isNull()) {
-                QJsonObject root = doc.object();
-                if (root.contains("thumbnail")) {
-                    QString b64 = root["thumbnail"].toString();
-                    if (!b64.isEmpty()) {
-                        item["preview"] = "data:image/png;base64," + b64;
-                    }
-                }
+      QVariantMap item;
+      item["name"] = info.completeBaseName();
+      item["path"] = info.absoluteFilePath();
+      item["type"] = "drawing";
+      item["date"] = info.lastModified().toString("dd MMM yyyy");
+
+      QFile f(info.absoluteFilePath());
+      if (f.open(QIODevice::ReadOnly)) {
+        QByteArray jsonData = f.readAll();
+        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
+        if (!doc.isNull()) {
+          QJsonObject root = doc.object();
+          if (root.contains("thumbnail")) {
+            QString b64 = root["thumbnail"].toString();
+            if (!b64.isEmpty()) {
+              item["preview"] = "data:image/png;base64," + b64;
             }
-            f.close();
+          }
         }
-        results.append(item);
-    }
-    else if (info.isDir()) {
-        QVariantMap item;
-        item["name"] = info.fileName();
-        item["path"] = info.absoluteFilePath();
-        item["type"] = "folder";
-        item["date"] = info.lastModified().toString("dd MMM yyyy");
-        
-        // Scan folder for internal thumbnails to show the "stack" look
-        QDir subDir(info.absoluteFilePath());
-        QFileInfoList subEntries = subDir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Time);
-        QVariantList thumbs;
-        for (int i=0; i < qMin(subEntries.size(), 3); ++i) {
-             QFile f(subEntries[i].absoluteFilePath());
-             if (f.open(QIODevice::ReadOnly)) {
-                 QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-                 if (!doc.isNull() && doc.object().contains("thumbnail")) {
-                     thumbs.append("data:image/png;base64," + doc.object()["thumbnail"].toString());
-                 }
-                 f.close();
-             }
+        f.close();
+      }
+      results.append(item);
+    } else if (info.isDir()) {
+      QVariantMap item;
+      item["name"] = info.fileName();
+      item["path"] = info.absoluteFilePath();
+      item["type"] = "folder";
+      item["date"] = info.lastModified().toString("dd MMM yyyy");
+
+      // Scan folder for internal thumbnails to show the "stack" look
+      QDir subDir(info.absoluteFilePath());
+      QFileInfoList subEntries = subDir.entryInfoList(QStringList() << "*.stxf",
+                                                      QDir::Files, QDir::Time);
+      QVariantList thumbs;
+      for (int i = 0; i < qMin(subEntries.size(), 3); ++i) {
+        QFile f(subEntries[i].absoluteFilePath());
+        if (f.open(QIODevice::ReadOnly)) {
+          QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+          if (!doc.isNull() && doc.object().contains("thumbnail")) {
+            thumbs.append("data:image/png;base64," +
+                          doc.object()["thumbnail"].toString());
+          }
+          f.close();
         }
-        item["thumbnails"] = thumbs;
-        if (thumbs.size() > 0) item["preview"] = thumbs[0]; // Front cover
-        
-        results.append(item);
+      }
+      item["thumbnails"] = thumbs;
+      if (thumbs.size() > 0)
+        item["preview"] = thumbs[0]; // Front cover
+
+      results.append(item);
     }
   }
   return results;
 }
 
 QVariantList CanvasItem::get_sketchbook_pages(const QString &folderPath) {
-    QVariantList results;
-    QDir dir(folderPath);
-    if (!dir.exists()) return results;
-
-    QFileInfoList entries = dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Time);
-    for (const QFileInfo &info : entries) {
-        QVariantMap item;
-        item["name"] = info.completeBaseName();
-        item["path"] = QUrl::fromLocalFile(info.absoluteFilePath()).toString();
-        item["realPath"] = info.absoluteFilePath();
-        item["type"] = "drawing";
-        item["date"] = info.lastModified().toString("dd MMM yyyy");
-
-        QFile f(info.absoluteFilePath());
-        if (f.open(QIODevice::ReadOnly)) {
-            QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-            if (!doc.isNull() && doc.object().contains("thumbnail")) {
-                item["preview"] = "data:image/png;base64," + doc.object()["thumbnail"].toString();
-            }
-            f.close();
-        }
-        results.append(item);
-    }
+  QVariantList results;
+  QDir dir(folderPath);
+  if (!dir.exists())
     return results;
+
+  QFileInfoList entries =
+      dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Time);
+  for (const QFileInfo &info : entries) {
+    QVariantMap item;
+    item["name"] = info.completeBaseName();
+    item["path"] = QUrl::fromLocalFile(info.absoluteFilePath()).toString();
+    item["realPath"] = info.absoluteFilePath();
+    item["type"] = "drawing";
+    item["date"] = info.lastModified().toString("dd MMM yyyy");
+
+    QFile f(info.absoluteFilePath());
+    if (f.open(QIODevice::ReadOnly)) {
+      QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+      if (!doc.isNull() && doc.object().contains("thumbnail")) {
+        item["preview"] =
+            "data:image/png;base64," + doc.object()["thumbnail"].toString();
+      }
+      f.close();
+    }
+    results.append(item);
+  }
+  return results;
 }
 
 bool CanvasItem::deleteProject(const QString &path) {
-    if (path.isEmpty()) return false;
-    QString localPath = QUrl(path).toLocalFile();
-    if (localPath.isEmpty()) localPath = path;
-    
-    QFileInfo info(localPath);
-    QString dirPath = info.absolutePath();
-    
-    if (QFile::remove(localPath)) {
-        // Cleanup if the folder is now empty (and not the root)
-        QString rootPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
-        QDir dir(dirPath);
-        if (dirPath != rootPath && dir.exists() && dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries).isEmpty()) {
-            dir.rmdir(".");
-        }
-        
-        emit projectListChanged();
-        return true;
-    }
+  if (path.isEmpty())
     return false;
+  QString localPath = QUrl(path).toLocalFile();
+  if (localPath.isEmpty())
+    localPath = path;
+
+  QFileInfo info(localPath);
+  QString dirPath = info.absolutePath();
+
+  if (QFile::remove(localPath)) {
+    // Cleanup if the folder is now empty (and not the root)
+    QString rootPath =
+        QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
+        "/ArtFlowProjects";
+    QDir dir(dirPath);
+    if (dirPath != rootPath && dir.exists() &&
+        dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries).isEmpty()) {
+      dir.rmdir(".");
+    }
+
+    emit projectListChanged();
+    return true;
+  }
+  return false;
 }
 
 bool CanvasItem::deleteFolder(const QString &path) {
-    if (path.isEmpty()) return false;
-    QString localPath = QUrl(path).toLocalFile();
-    if (localPath.isEmpty()) localPath = path;
-
-    QDir dir(localPath);
-    if (dir.exists() && dir.removeRecursively()) {
-        emit projectListChanged();
-        return true;
-    }
+  if (path.isEmpty())
     return false;
+  QString localPath = QUrl(path).toLocalFile();
+  if (localPath.isEmpty())
+    localPath = path;
+
+  QDir dir(localPath);
+  if (dir.exists() && dir.removeRecursively()) {
+    emit projectListChanged();
+    return true;
+  }
+  return false;
 }
 bool CanvasItem::rename_item(const QString &path, const QString &newName) {
-    if (path.isEmpty() || newName.isEmpty()) return false;
-    QString localPath = QUrl(path).toLocalFile();
-    if (localPath.isEmpty()) localPath = path;
-
-    QFileInfo info(localPath);
-    if (!info.exists()) return false;
-
-    QString newPath;
-    if (info.isFile()) {
-        newPath = info.absolutePath() + "/" + newName + "." + info.suffix();
-    } else {
-        QDir parentDir = info.dir();
-        newPath = parentDir.absoluteFilePath(newName);
-    }
-
-    if (QFile::rename(localPath, newPath)) {
-        emit projectListChanged();
-        return true;
-    }
+  if (path.isEmpty() || newName.isEmpty())
     return false;
+  QString localPath = QUrl(path).toLocalFile();
+  if (localPath.isEmpty())
+    localPath = path;
+
+  QFileInfo info(localPath);
+  if (!info.exists())
+    return false;
+
+  QString newPath;
+  if (info.isFile()) {
+    newPath = info.absolutePath() + "/" + newName + "." + info.suffix();
+  } else {
+    QDir parentDir = info.dir();
+    newPath = parentDir.absoluteFilePath(newName);
+  }
+
+  if (QFile::rename(localPath, newPath)) {
+    emit projectListChanged();
+    return true;
+  }
+  return false;
 }
 
 bool CanvasItem::moveProjectOutOfFolder(const QString &path) {
-    if (path.isEmpty()) return false;
-    QString localPath = QUrl(path).toLocalFile();
-    if (localPath.isEmpty()) localPath = path;
-
-    QFileInfo info(localPath);
-    if (!info.exists()) return false;
-
-    QString sourceDirPath = info.absolutePath();
-    // Root ArtFlowProjects path
-    QString rootPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
-    QString newPath = rootPath + "/" + info.fileName();
-
-    if (QFile::rename(localPath, newPath)) {
-        // Cleanup if the source folder is now empty (and not the root)
-        QDir dir(sourceDirPath);
-        if (sourceDirPath != rootPath && dir.exists() && dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries).isEmpty()) {
-            dir.rmdir(".");
-        }
-        
-        emit projectListChanged();
-        return true;
-    }
+  if (path.isEmpty())
     return false;
+  QString localPath = QUrl(path).toLocalFile();
+  if (localPath.isEmpty())
+    localPath = path;
+
+  QFileInfo info(localPath);
+  if (!info.exists())
+    return false;
+
+  QString sourceDirPath = info.absolutePath();
+  // Root ArtFlowProjects path
+  QString rootPath =
+      QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
+      "/ArtFlowProjects";
+  QString newPath = rootPath + "/" + info.fileName();
+
+  if (QFile::rename(localPath, newPath)) {
+    // Cleanup if the source folder is now empty (and not the root)
+    QDir dir(sourceDirPath);
+    if (sourceDirPath != rootPath && dir.exists() &&
+        dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries).isEmpty()) {
+      dir.rmdir(".");
+    }
+
+    emit projectListChanged();
+    return true;
+  }
+  return false;
 }
 
 bool CanvasItem::saveProjectAs(const QString &path) {
-    return saveProject(path);
+  return saveProject(path);
 }
 
 bool CanvasItem::exportImage(const QString &path, const QString &format) {
@@ -2904,11 +3084,13 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
   ImageBuffer composite(m_canvasWidth, m_canvasHeight);
   m_layerManager->compositeAll(composite);
 
-  // Use ARGB32_Premultiplied which is standard for QImage unless you're sure about RGBA8888 byte order
-  // Create a deep copy to ensure the image owns its data
+  // Use ARGB32_Premultiplied which is standard for QImage unless you're sure
+  // about RGBA8888 byte order Create a deep copy to ensure the image owns its
+  // data
   QImage img = QImage(composite.data(), m_canvasWidth, m_canvasHeight,
-             QImage::Format_RGBA8888_Premultiplied).copy();
-             
+                      QImage::Format_RGBA8888_Premultiplied)
+                   .copy();
+
   // Convert path to local file if it's a URL
   QString localPath = path;
   if (localPath.startsWith("file:///")) {
@@ -2917,67 +3099,72 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
 
   qDebug() << "Exporting image to:" << localPath;
   bool success = img.save(localPath, format.toUpper().toStdString().c_str());
-  if(!success) qDebug() << "Failed to save image to:" << localPath;
-  return success; 
+  if (!success)
+    qDebug() << "Failed to save image to:" << localPath;
+  return success;
 }
 
-#include "core/brushes/abr_importer.h"
+#include "core/abr_importer.h"
 
 bool CanvasItem::importABR(const QString &path) {
-    QString localPath = path;
-    if (localPath.startsWith("file://")) {
-        localPath = QUrl(localPath).toLocalFile();
-    }
+  QString localPath = path;
+  if (localPath.startsWith("file://")) {
+    localPath = QUrl(localPath).toLocalFile();
+  }
 
-    qDebug() << "[CanvasItem] Importing ABR:" << localPath;
-    
-    // Usar AppData para guardar texturas importadas de forma segura y persistente
-    QString texturesDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/imported_brushes";
-    QDir().mkpath(texturesDir);
-    
-    bool success = artflow::AbrImporter::importFile(localPath, texturesDir);
-    
-    if (success) {
-        emit availableBrushesChanged();
-        emit notificationRequested("Pinceles importados correctamente", "success");
-        return true;
-    } else {
-        emit notificationRequested("Error al importar pinceles ABR", "error");
-        return false;
-    }
+  qDebug() << "[CanvasItem] Importing ABR:" << localPath;
+
+  // Usar AppData para guardar texturas importadas de forma segura y persistente
+  QString texturesDir =
+      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+      "/imported_brushes";
+  QDir().mkpath(texturesDir);
+
+  bool success = artflow::AbrImporter::importFile(localPath, texturesDir);
+
+  if (success) {
+    emit availableBrushesChanged();
+    emit notificationRequested("Pinceles importados correctamente", "success");
+    return true;
+  } else {
+    emit notificationRequested("Error al importar pinceles ABR", "error");
+    return false;
+  }
 }
 
 void CanvasItem::updateTransformProperties(float x, float y, float scale,
                                            float rotation, float w, float h) {
-  if (!m_isTransforming) return;
-  
+  if (!m_isTransforming)
+    return;
+
   // Create transform matrix from QML properties
   // 'x' and 'y' are the top-left corner of the manipulator in canvas space.
   // 'width' and 'height' are the current dimensions (if resized).
   // 'scale' and 'rotation' are applied around the center.
-  
+
   m_transformMatrix = QTransform();
-  
+
   // Original center
   float cx = m_transformBox.x() + m_transformBox.width() / 2.0f;
   float cy = m_transformBox.y() + m_transformBox.height() / 2.0f;
-  
+
   // Current center (based on manipulator position)
-  // Note: we use the unscaled width/height from QML properties for the center calculation, 
-  // because scaling is handled by the matrix scale() operation usually.
+  // Note: we use the unscaled width/height from QML properties for the center
+  // calculation, because scaling is handled by the matrix scale() operation
+  // usually.
   float newCx = x + w / 2.0f;
   float newCy = y + h / 2.0f;
-  
+
   // 1. Move to new center
   m_transformMatrix.translate(newCx, newCy);
-  
+
   // 2. Rotate and Scale
   m_transformMatrix.rotate(rotation);
   m_transformMatrix.scale(scale, scale);
-  
+
   // 3. Move back relative to ORIGINAL center (to map original pixels)
   m_transformMatrix.translate(-cx, -cy);
-  
+
   update();
 }
 
@@ -2999,49 +3186,81 @@ void CanvasItem::updateLayersList() {
     layer["is_private"] = l->isPrivate;
     layer["active"] = (i == m_activeLayerIndex);
     layer["type"] = (i == 0) ? "background" : "drawing";
-    if (i == 0) layer["bgColor"] = m_backgroundColor.name();
+    if (i == 0)
+      layer["bgColor"] = m_backgroundColor.name();
 
     // Convert internal BlendMode enum back to string for QML
     QString bModeStr = "Normal";
-    switch(l->blendMode) {
-        case BlendMode::Multiply: bModeStr = "Multiply"; break;
-        case BlendMode::Screen: bModeStr = "Screen"; break;
-        case BlendMode::Overlay: bModeStr = "Overlay"; break;
-        case BlendMode::Darken: bModeStr = "Darken"; break;
-        case BlendMode::Lighten: bModeStr = "Lighten"; break;
-        case BlendMode::ColorDodge: bModeStr = "Color Dodge"; break;
-        case BlendMode::ColorBurn: bModeStr = "Color Burn"; break;
-        case BlendMode::SoftLight: bModeStr = "Soft Light"; break;
-        case BlendMode::HardLight: bModeStr = "Hard Light"; break;
-        case BlendMode::Difference: bModeStr = "Difference"; break;
-        case BlendMode::Exclusion: bModeStr = "Exclusion"; break;
-        case BlendMode::Hue: bModeStr = "Hue"; break;
-        case BlendMode::Saturation: bModeStr = "Saturation"; break;
-        case BlendMode::Color: bModeStr = "Color"; break;
-        case BlendMode::Luminosity: bModeStr = "Luminosity"; break;
-        default: bModeStr = "Normal";
+    switch (l->blendMode) {
+    case BlendMode::Multiply:
+      bModeStr = "Multiply";
+      break;
+    case BlendMode::Screen:
+      bModeStr = "Screen";
+      break;
+    case BlendMode::Overlay:
+      bModeStr = "Overlay";
+      break;
+    case BlendMode::Darken:
+      bModeStr = "Darken";
+      break;
+    case BlendMode::Lighten:
+      bModeStr = "Lighten";
+      break;
+    case BlendMode::ColorDodge:
+      bModeStr = "Color Dodge";
+      break;
+    case BlendMode::ColorBurn:
+      bModeStr = "Color Burn";
+      break;
+    case BlendMode::SoftLight:
+      bModeStr = "Soft Light";
+      break;
+    case BlendMode::HardLight:
+      bModeStr = "Hard Light";
+      break;
+    case BlendMode::Difference:
+      bModeStr = "Difference";
+      break;
+    case BlendMode::Exclusion:
+      bModeStr = "Exclusion";
+      break;
+    case BlendMode::Hue:
+      bModeStr = "Hue";
+      break;
+    case BlendMode::Saturation:
+      bModeStr = "Saturation";
+      break;
+    case BlendMode::Color:
+      bModeStr = "Color";
+      break;
+    case BlendMode::Luminosity:
+      bModeStr = "Luminosity";
+      break;
+    default:
+      bModeStr = "Normal";
     }
     layer["blendMode"] = bModeStr;
 
     // Add thumbnail for ALL layers
     if (l->buffer && l->buffer->width() > 0 && l->buffer->height() > 0) {
-        // OPTIMIZATION: Only generate if needed. For now, we only 
-        // regenerate the active layer to keep UI responsive.
-        int tw = 60, th = 40;
-        // Use QImage wrapper around existing buffer (no copy yet)
-        QImage full(l->buffer->data(), l->buffer->width(), l->buffer->height(),
-                    QImage::Format_RGBA8888_Premultiplied);
+      // OPTIMIZATION: Only generate if needed. For now, we only
+      // regenerate the active layer to keep UI responsive.
+      int tw = 60, th = 40;
+      // Use QImage wrapper around existing buffer (no copy yet)
+      QImage full(l->buffer->data(), l->buffer->width(), l->buffer->height(),
+                  QImage::Format_RGBA8888_Premultiplied);
 
-        // Scale down (Fast for responsiveness)
-        QImage thumb =
-            full.scaled(tw, th, Qt::KeepAspectRatio, Qt::FastTransformation);
+      // Scale down (Fast for responsiveness)
+      QImage thumb =
+          full.scaled(tw, th, Qt::KeepAspectRatio, Qt::FastTransformation);
 
-        QByteArray ba;
-        QBuffer buffer(&ba);
-        buffer.open(QIODevice::WriteOnly);
-        thumb.save(&buffer, "PNG");
-        QString b64 = QString::fromLatin1(ba.toBase64());
-        layer["thumbnail"] = "data:image/png;base64," + b64;
+      QByteArray ba;
+      QBuffer buffer(&ba);
+      buffer.open(QIODevice::WriteOnly);
+      thumb.save(&buffer, "PNG");
+      QString b64 = QString::fromLatin1(ba.toBase64());
+      layer["thumbnail"] = "data:image/png;base64," + b64;
     } else {
       layer["thumbnail"] = "";
     }
@@ -3147,7 +3366,7 @@ void CanvasItem::clearLayer(int index) {
 void CanvasItem::setLayerOpacity(int index, float opacity) {
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->locked) {
-    // We don't necessarily need a notification for every slider drag, 
+    // We don't necessarily need a notification for every slider drag,
     // but the UI should ideally handle this. Let's emit one to be safe.
     emit notificationRequested("Layer is locked", "warning");
     return;
@@ -3161,7 +3380,8 @@ void CanvasItem::setLayerOpacity(int index, float opacity) {
 
 void CanvasItem::setLayerOpacityPreview(int index, float opacity) {
   Layer *l = m_layerManager->getLayer(index);
-  if (l && l->locked) return; 
+  if (l && l->locked)
+    return;
   if (l) {
     l->opacity = opacity;
     // Skip updateLayersList() for smooth preview
@@ -3177,24 +3397,41 @@ void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
   }
   if (l) {
     BlendMode newMode = BlendMode::Normal;
-    if (mode == "Normal") newMode = BlendMode::Normal;
-    else if (mode == "Multiply") newMode = BlendMode::Multiply;
-    else if (mode == "Screen") newMode = BlendMode::Screen;
-    else if (mode == "Overlay") newMode = BlendMode::Overlay;
-    else if (mode == "Darken") newMode = BlendMode::Darken;
-    else if (mode == "Lighten") newMode = BlendMode::Lighten;
-    else if (mode == "Color Dodge") newMode = BlendMode::ColorDodge;
-    else if (mode == "Color Burn") newMode = BlendMode::ColorBurn;
-    else if (mode == "Soft Light") newMode = BlendMode::SoftLight;
-    else if (mode == "Hard Light") newMode = BlendMode::HardLight;
-    else if (mode == "Difference") newMode = BlendMode::Difference;
-    else if (mode == "Exclusion") newMode = BlendMode::Exclusion;
-    else if (mode == "Hue") newMode = BlendMode::Hue;
-    else if (mode == "Saturation") newMode = BlendMode::Saturation;
-    else if (mode == "Color") newMode = BlendMode::Color;
-    else if (mode == "Luminosity") newMode = BlendMode::Luminosity;
-    
-    if (l->blendMode == newMode) return;
+    if (mode == "Normal")
+      newMode = BlendMode::Normal;
+    else if (mode == "Multiply")
+      newMode = BlendMode::Multiply;
+    else if (mode == "Screen")
+      newMode = BlendMode::Screen;
+    else if (mode == "Overlay")
+      newMode = BlendMode::Overlay;
+    else if (mode == "Darken")
+      newMode = BlendMode::Darken;
+    else if (mode == "Lighten")
+      newMode = BlendMode::Lighten;
+    else if (mode == "Color Dodge")
+      newMode = BlendMode::ColorDodge;
+    else if (mode == "Color Burn")
+      newMode = BlendMode::ColorBurn;
+    else if (mode == "Soft Light")
+      newMode = BlendMode::SoftLight;
+    else if (mode == "Hard Light")
+      newMode = BlendMode::HardLight;
+    else if (mode == "Difference")
+      newMode = BlendMode::Difference;
+    else if (mode == "Exclusion")
+      newMode = BlendMode::Exclusion;
+    else if (mode == "Hue")
+      newMode = BlendMode::Hue;
+    else if (mode == "Saturation")
+      newMode = BlendMode::Saturation;
+    else if (mode == "Color")
+      newMode = BlendMode::Color;
+    else if (mode == "Luminosity")
+      newMode = BlendMode::Luminosity;
+
+    if (l->blendMode == newMode)
+      return;
 
     l->blendMode = newMode;
     updateLayersList();
@@ -3206,21 +3443,24 @@ void CanvasItem::setActiveLayer(int index) {
   if (m_layerManager && index >= 0 && index < m_layerManager->getLayerCount()) {
     // SYNC CURRENT LAYER BEFORE SWITCHING
     if (index != m_activeLayerIndex) {
-        syncGpuToCpu();
+      syncGpuToCpu();
     }
-    
+
     m_activeLayerIndex = index;
     m_layerManager->setActiveLayer(index);
     emit activeLayerChanged();
     updateLayersList();
-    
-    // Explicitly update m_lastActiveLayerIndex to prevent double-sync in handleDraw
+
+    // Explicitly update m_lastActiveLayerIndex to prevent double-sync in
+    // handleDraw
     m_lastActiveLayerIndex = m_activeLayerIndex;
-    
+
     // Force FBO reload for the next draw
     if (m_pingFBO) {
-        delete m_pingFBO; m_pingFBO = nullptr;
-        delete m_pongFBO; m_pongFBO = nullptr;
+      delete m_pingFBO;
+      m_pingFBO = nullptr;
+      delete m_pongFBO;
+      m_pongFBO = nullptr;
     }
   }
 }
@@ -3343,19 +3583,23 @@ void CanvasItem::beginBrushEdit(const QString &brushName) {
 }
 
 void CanvasItem::syncGpuToCpu() {
-    if (!m_layerManager) return;
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (!layer || !m_pingFBO) return;
+  if (!m_layerManager)
+    return;
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !m_pingFBO)
+    return;
 
-    QImage img = m_pingFBO->toImage();
-    if (img.format() != QImage::Format_RGBA8888 && img.format() != QImage::Format_RGBA8888_Premultiplied) {
-        img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
-    }
+  QImage img = m_pingFBO->toImage();
+  if (img.format() != QImage::Format_RGBA8888 &&
+      img.format() != QImage::Format_RGBA8888_Premultiplied) {
+    img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+  }
 
-    if (img.width() == m_canvasWidth && img.height() == m_canvasHeight) {
-        std::memcpy(layer->buffer->data(), img.constBits(), (size_t)m_canvasWidth * m_canvasHeight * 4);
-        layer->dirty = true;
-    }
+  if (img.width() == m_canvasWidth && img.height() == m_canvasHeight) {
+    std::memcpy(layer->buffer->data(), img.constBits(),
+                (size_t)m_canvasWidth * m_canvasHeight * 4);
+    layer->dirty = true;
+  }
 }
 
 void CanvasItem::cancelBrushEdit() {
@@ -4414,23 +4658,29 @@ void CanvasItem::hoverEnterEvent(QHoverEvent *event) {
   event->accept();
   m_cursorVisible = true;
   m_cursorPos = event->position();
-  
+
   // Decide el cursor solo para el área del Canvas
-  if (m_spacePressed || m_tool == ToolType::Hand) setCursor(Qt::OpenHandCursor);
-  else if (m_tool == ToolType::Transform) setCursor(getModernCursor());
-  else setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
-  
+  if (m_spacePressed || m_tool == ToolType::Hand)
+    setCursor(Qt::OpenHandCursor);
+  else if (m_tool == ToolType::Transform)
+    setCursor(getModernCursor());
+  else
+    setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
+
   update();
 }
 
 void CanvasItem::hoverMoveEvent(QHoverEvent *event) {
-  event->accept(); 
+  event->accept();
   m_cursorPos = event->position();
   m_cursorVisible = true;
 
-  if (m_spacePressed || m_tool == ToolType::Hand) setCursor(Qt::OpenHandCursor);
-  else if (m_tool == ToolType::Transform) setCursor(getModernCursor());
-  else setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
+  if (m_spacePressed || m_tool == ToolType::Hand)
+    setCursor(Qt::OpenHandCursor);
+  else if (m_tool == ToolType::Transform)
+    setCursor(getModernCursor());
+  else
+    setCursor(Qt::BlankCursor); // DIBUJO = INVISIBLE
 
   update();
   emit cursorPosChanged(event->position().x(), event->position().y());
@@ -4439,10 +4689,11 @@ void CanvasItem::hoverMoveEvent(QHoverEvent *event) {
 void CanvasItem::hoverLeaveEvent(QHoverEvent *event) {
   event->accept();
   m_cursorVisible = false;
-  
-  // Soltamos el control del cursor. 
-  // Al hacer esto, QML regresará automáticamente al cursor moderno de la ventana.
-  unsetCursor(); 
+
+  // Soltamos el control del cursor.
+  // Al hacer esto, QML regresará automáticamente al cursor moderno de la
+  // ventana.
+  unsetCursor();
   update();
 }
 
@@ -4486,23 +4737,26 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
   // 🎯 CARGAR TEXTURA REAL DEL PINCEL
   QString fullPath;
   if (QFileInfo(texturePath).isAbsolute() && QFile::exists(texturePath)) {
-      fullPath = texturePath;
+    fullPath = texturePath;
   } else {
-      QStringList searchPaths;
-      searchPaths << "assets/textures"
-                  << "src/assets/textures"
-                  << QCoreApplication::applicationDirPath() + "/assets/textures"
-                  << QCoreApplication::applicationDirPath() + "/../assets/textures"
-                  << QCoreApplication::applicationDirPath() + "/textures"
-                  << QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/imported_brushes";
+    QStringList searchPaths;
+    searchPaths << "assets/textures"
+                << "src/assets/textures"
+                << QCoreApplication::applicationDirPath() + "/assets/textures"
+                << QCoreApplication::applicationDirPath() +
+                       "/../assets/textures"
+                << QCoreApplication::applicationDirPath() + "/textures"
+                << QStandardPaths::writableLocation(
+                       QStandardPaths::AppDataLocation) +
+                       "/imported_brushes";
 
-      for (const QString &base : searchPaths) {
-        QString candidate = base + "/" + texturePath;
-        if (QFile::exists(candidate)) {
-          fullPath = candidate;
-          break;
-        }
+    for (const QString &base : searchPaths) {
+      QString candidate = base + "/" + texturePath;
+      if (QFile::exists(candidate)) {
+        fullPath = candidate;
+        break;
       }
+    }
   }
 
   if (fullPath.isEmpty() || !QFile::exists(fullPath)) {
@@ -4614,156 +4868,169 @@ void CanvasItem::setUseCustomCursor(bool use) {
   invalidateCursorCache();
 }
 
-void CanvasItem::blendWithShader(QPainter *painter, artflow::Layer *layer, const QRectF &rect, artflow::Layer *maskLayer, uint32_t overrideTextureId) {
-    if (!m_compositionShader || !layer) return;
+void CanvasItem::blendWithShader(QPainter *painter, artflow::Layer *layer,
+                                 const QRectF &rect, artflow::Layer *maskLayer,
+                                 uint32_t overrideTextureId) {
+  if (!m_compositionShader || !layer)
+    return;
 
-    QOpenGLContext *ctx = QOpenGLContext::currentContext();
-    if (!ctx) return;
-    QOpenGLFunctions *f = ctx->functions();
+  QOpenGLContext *ctx = QOpenGLContext::currentContext();
+  if (!ctx)
+    return;
+  QOpenGLFunctions *f = ctx->functions();
 
-    // ... (backdrop prep remains same) ...
-    static GLuint backdropTexID = 0;
-    if (backdropTexID == 0) {
-        f->glGenTextures(1, &backdropTexID);
-        f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
-        f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    }
-
-    // Fix High DPI issues: glCopyTexImage2D uses physical pixels
-    qreal dpr = window() ? window()->devicePixelRatio() : 1.0;
-    int w = width() * dpr;
-    int h = height() * dpr;
-    
-    // Ensure we are in Native Painting mode (flushes QPainter commands)
-    painter->beginNativePainting();
-
-    // 1. Capture current framebuffer (Backdrop)
-    f->glActiveTexture(GL_TEXTURE0);
+  // ... (backdrop prep remains same) ...
+  static GLuint backdropTexID = 0;
+  if (backdropTexID == 0) {
+    f->glGenTextures(1, &backdropTexID);
     f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
-    
-    // Check if size changed to reallocate texture storage if needed (though copy does it)
-    // Important: Use Nearest neighbor for 1:1 pixel mapping to avoid blurry backdrops
     f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  }
 
-    // Copy the ENTIRE physical framebuffer to the texture
-    f->glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, w, h, 0);
+  // Fix High DPI issues: glCopyTexImage2D uses physical pixels
+  qreal dpr = window() ? window()->devicePixelRatio() : 1.0;
+  int w = width() * dpr;
+  int h = height() * dpr;
 
-    // 2. Prepare Layer Texture
-    QOpenGLTexture *layerTex = nullptr;
-    if (overrideTextureId == 0) {
-        auto getOrUpdateTexture = [&](artflow::Layer *L) -> QOpenGLTexture* {
-            QOpenGLTexture *tex = m_layerTextures.value(L);
-            if (!tex) {
-                if (!L->buffer) return nullptr;
-                QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
-                           QImage::Format_RGBA8888_Premultiplied);
-                tex = new QOpenGLTexture(img);
-                tex->setMinificationFilter(QOpenGLTexture::Linear);
-                tex->setMagnificationFilter(QOpenGLTexture::Linear);
-                tex->setWrapMode(QOpenGLTexture::ClampToBorder);
-                tex->setBorderColor(QColor(0,0,0,0)); 
-                m_layerTextures.insert(L, tex);
-                L->dirty = false;
-            } else if (L->dirty) {
-                if (!L->buffer) return tex;
-                QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
-                           QImage::Format_RGBA8888_Premultiplied);
-                tex->setData(img);
-                L->dirty = false;
-            }
-            return tex;
-        };
-        layerTex = getOrUpdateTexture(layer);
-    }
-    
-    // 3. Prepare Mask Texture (if applicable)
-    QOpenGLTexture *maskTex = nullptr;
-    if (maskLayer) {
-        // We always need the mask from its persistent buffer (not override)
-        auto getOrUpdateTexture = [&](artflow::Layer *L) -> QOpenGLTexture* {
-            QOpenGLTexture *tex = m_layerTextures.value(L);
-            if (!tex) {
-                if (!L->buffer) return nullptr;
-                QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
-                           QImage::Format_RGBA8888_Premultiplied);
-                tex = new QOpenGLTexture(img);
-                m_layerTextures.insert(L, tex);
-                L->dirty = false;
-            } else if (L->dirty) {
-                if (!L->buffer) return tex;
-                QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
-                           QImage::Format_RGBA8888_Premultiplied);
-                tex->setData(img);
-                L->dirty = false;
-            }
-            return tex;
-        };
-        maskTex = getOrUpdateTexture(maskLayer);
-    }
+  // Ensure we are in Native Painting mode (flushes QPainter commands)
+  painter->beginNativePainting();
 
-    // 4. Bind & Draw
-    m_compositionShader->bind();
+  // 1. Capture current framebuffer (Backdrop)
+  f->glActiveTexture(GL_TEXTURE0);
+  f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
 
-    f->glActiveTexture(GL_TEXTURE0);
-    f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
-    m_compositionShader->setUniformValue("uBackdrop", 0);
-    m_compositionShader->setUniformValue("uIsPreview", overrideTextureId != 0 ? 1.0f : 0.0f);
+  // Check if size changed to reallocate texture storage if needed (though copy
+  // does it) Important: Use Nearest neighbor for 1:1 pixel mapping to avoid
+  // blurry backdrops
+  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    f->glActiveTexture(GL_TEXTURE1);
-    if (overrideTextureId != 0) {
-        f->glBindTexture(GL_TEXTURE_2D, overrideTextureId);
-    } else if (layerTex) {
-        layerTex->bind();
-    }
-    m_compositionShader->setUniformValue("uSource", 1);
-    
-    if (maskTex) {
-        f->glActiveTexture(GL_TEXTURE2);
-        maskTex->bind();
-        m_compositionShader->setUniformValue("uMask", 2);
-        m_compositionShader->setUniformValue("uHasMask", 1);
-    } else {
-        m_compositionShader->setUniformValue("uHasMask", 0);
-    }
+  // Copy the ENTIRE physical framebuffer to the texture
+  f->glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, w, h, 0);
 
-    m_compositionShader->setUniformValue("uOpacity", layer->opacity);
-    m_compositionShader->setUniformValue("uMode", (int)layer->blendMode);
-    
-    m_compositionShader->setUniformValue("uScreenSize", QVector2D(w, h));
-    m_compositionShader->setUniformValue("uLayerSize", QVector2D(layer->buffer->width(), layer->buffer->height()));
-    m_compositionShader->setUniformValue("uViewOffset", QVector2D(m_viewOffset.x(), m_viewOffset.y()));
-    m_compositionShader->setUniformValue("uZoom", m_zoomLevel);
-
-    float vertices[] = {
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-        -1.0f,  1.0f,  0.0f, 1.0f,
-         1.0f,  1.0f,  1.0f, 1.0f,
+  // 2. Prepare Layer Texture
+  QOpenGLTexture *layerTex = nullptr;
+  if (overrideTextureId == 0) {
+    auto getOrUpdateTexture = [&](artflow::Layer *L) -> QOpenGLTexture * {
+      QOpenGLTexture *tex = m_layerTextures.value(L);
+      if (!tex) {
+        if (!L->buffer)
+          return nullptr;
+        QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                   QImage::Format_RGBA8888_Premultiplied);
+        tex = new QOpenGLTexture(img);
+        tex->setMinificationFilter(QOpenGLTexture::Linear);
+        tex->setMagnificationFilter(QOpenGLTexture::Linear);
+        tex->setWrapMode(QOpenGLTexture::ClampToBorder);
+        tex->setBorderColor(QColor(0, 0, 0, 0));
+        m_layerTextures.insert(L, tex);
+        L->dirty = false;
+      } else if (L->dirty) {
+        if (!L->buffer)
+          return tex;
+        QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                   QImage::Format_RGBA8888_Premultiplied);
+        tex->setData(img);
+        L->dirty = false;
+      }
+      return tex;
     };
+    layerTex = getOrUpdateTexture(layer);
+  }
 
-    m_compositionShader->enableAttributeArray(0); 
-    m_compositionShader->enableAttributeArray(1); 
-    m_compositionShader->setAttributeArray(0, GL_FLOAT, vertices, 2, 4 * sizeof(float));
-    m_compositionShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2, 4 * sizeof(float));
+  // 3. Prepare Mask Texture (if applicable)
+  QOpenGLTexture *maskTex = nullptr;
+  if (maskLayer) {
+    // We always need the mask from its persistent buffer (not override)
+    auto getOrUpdateTexture = [&](artflow::Layer *L) -> QOpenGLTexture * {
+      QOpenGLTexture *tex = m_layerTextures.value(L);
+      if (!tex) {
+        if (!L->buffer)
+          return nullptr;
+        QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                   QImage::Format_RGBA8888_Premultiplied);
+        tex = new QOpenGLTexture(img);
+        m_layerTextures.insert(L, tex);
+        L->dirty = false;
+      } else if (L->dirty) {
+        if (!L->buffer)
+          return tex;
+        QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                   QImage::Format_RGBA8888_Premultiplied);
+        tex->setData(img);
+        L->dirty = false;
+      }
+      return tex;
+    };
+    maskTex = getOrUpdateTexture(maskLayer);
+  }
 
-    f->glEnable(GL_BLEND);
-    f->glBlendFunc(GL_ONE, GL_ZERO);
+  // 4. Bind & Draw
+  m_compositionShader->bind();
 
-    f->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  f->glActiveTexture(GL_TEXTURE0);
+  f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
+  m_compositionShader->setUniformValue("uBackdrop", 0);
+  m_compositionShader->setUniformValue("uIsPreview",
+                                       overrideTextureId != 0 ? 1.0f : 0.0f);
 
-    m_compositionShader->disableAttributeArray(0);
-    m_compositionShader->disableAttributeArray(1);
+  f->glActiveTexture(GL_TEXTURE1);
+  if (overrideTextureId != 0) {
+    f->glBindTexture(GL_TEXTURE_2D, overrideTextureId);
+  } else if (layerTex) {
+    layerTex->bind();
+  }
+  m_compositionShader->setUniformValue("uSource", 1);
 
-    m_compositionShader->release();
-    layerTex->release();
-    if (maskTex) maskTex->release();
-    
-    f->glActiveTexture(GL_TEXTURE0);
-    f->glBindTexture(GL_TEXTURE_2D, 0);
+  if (maskTex) {
+    f->glActiveTexture(GL_TEXTURE2);
+    maskTex->bind();
+    m_compositionShader->setUniformValue("uMask", 2);
+    m_compositionShader->setUniformValue("uHasMask", 1);
+  } else {
+    m_compositionShader->setUniformValue("uHasMask", 0);
+  }
 
-    painter->endNativePainting();
+  m_compositionShader->setUniformValue("uOpacity", layer->opacity);
+  m_compositionShader->setUniformValue("uMode", (int)layer->blendMode);
+
+  m_compositionShader->setUniformValue("uScreenSize", QVector2D(w, h));
+  m_compositionShader->setUniformValue(
+      "uLayerSize", QVector2D(layer->buffer->width(), layer->buffer->height()));
+  m_compositionShader->setUniformValue(
+      "uViewOffset", QVector2D(m_viewOffset.x(), m_viewOffset.y()));
+  m_compositionShader->setUniformValue("uZoom", m_zoomLevel);
+
+  float vertices[] = {
+      -1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f,
+      -1.0f, 1.0f,  0.0f, 1.0f, 1.0f, 1.0f,  1.0f, 1.0f,
+  };
+
+  m_compositionShader->enableAttributeArray(0);
+  m_compositionShader->enableAttributeArray(1);
+  m_compositionShader->setAttributeArray(0, GL_FLOAT, vertices, 2,
+                                         4 * sizeof(float));
+  m_compositionShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2,
+                                         4 * sizeof(float));
+
+  f->glEnable(GL_BLEND);
+  f->glBlendFunc(GL_ONE, GL_ZERO);
+
+  f->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+  m_compositionShader->disableAttributeArray(0);
+  m_compositionShader->disableAttributeArray(1);
+
+  m_compositionShader->release();
+  layerTex->release();
+  if (maskTex)
+    maskTex->release();
+
+  f->glActiveTexture(GL_TEXTURE0);
+  f->glBindTexture(GL_TEXTURE_2D, 0);
+
+  painter->endNativePainting();
 }
