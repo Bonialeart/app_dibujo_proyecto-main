@@ -1,5 +1,5 @@
-E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_TestCanvas.cpp: E:/app_dibujo_proyecto-main/src/TestCanvas.h \
-  E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
+C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_TestCanvas.cpp: C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/TestCanvas.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QPointF \

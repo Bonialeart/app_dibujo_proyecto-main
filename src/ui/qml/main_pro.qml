@@ -113,11 +113,6 @@ Window {
     // Zen Mode State
     property bool isZenMode: false
     
-    // Story Mode State
-    property bool showStoryPanel: false
-    property bool isStoryProject: false
-    property string currentStoryPath: ""
-    
     // Canvas Mode: "essential" (Procreate-like) or "studio" (Clip Studio-like)
     property string canvasMode: "essential"
     property bool isStudioMode: canvasMode === "studio"
@@ -1910,7 +1905,6 @@ Window {
                     color: "#1c1c1e"
                     border.color: Qt.rgba(1, 1, 1, 0.05)
                     border.width: 1
-                    opacity: 0.98
                     z: 90
                     
                     Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }

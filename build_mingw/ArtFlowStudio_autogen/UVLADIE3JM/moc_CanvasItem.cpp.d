@@ -1,5 +1,5 @@
-E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_CanvasItem.cpp: E:/app_dibujo_proyecto-main/src/CanvasItem.h \
-  E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
+C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_CanvasItem.cpp: C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/CanvasItem.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QJsonArray \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QJsonObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
@@ -484,12 +484,12 @@ E:/app_dibujo_proyecto-main/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_Can
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/time.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/vadefs.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_engine.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/brush_preset.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/common_types.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/image_buffer.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/layer_manager.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_renderer.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/stroke_undo_command.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/undo_command.h \
-  E:/app_dibujo_proyecto-main/src/core/cpp/include/undo_manager.h
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/brush_engine.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/brush_preset.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/common_types.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/image_buffer.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/layer_manager.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/stroke_renderer.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/stroke_undo_command.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/undo_command.h \
+  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/undo_manager.h
