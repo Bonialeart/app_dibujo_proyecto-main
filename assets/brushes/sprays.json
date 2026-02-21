@@ -1,0 +1,374 @@
+{
+  "name": "Sprays",
+  "icon": "SP",
+  "brushes": [
+    {
+      "meta": {
+        "uuid": "7dd6cc26-d950-4f95-a071-919b996403d8",
+        "name": "Fat Cap",
+        "category": "Sprays",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "fat_cap.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "hardness": 0.2,
+        "scatter": 0.05
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 80.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "679c8ea6-bd4e-4504-a5dc-34810b31b5d1",
+        "name": "Skinny Cap",
+        "category": "Sprays",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "skinny_cap.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "hardness": 0.5,
+        "scatter": 0.02
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 30.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "f6ba4a49-82ce-4133-92f9-dd43d7b5e65e",
+        "name": "Splatter",
+        "category": "Sprays",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "splatter.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 3,
+        "scatter": 0.8
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 90.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "3e7678e6-8667-4631-9348-a1999fc62e60",
+        "name": "Flicks",
+        "category": "Sprays",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "flicks.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "scatter": 0.6
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 60.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "011d58b5-ebd9-465d-b931-0e2853838ee4",
+        "name": "Drips",
+        "category": "Sprays",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "drips.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "follow_stroke": true
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 50.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "cdb64138-5c41-4049-a17f-e4a9e42cf5e9",
+        "name": "Stencil Spray",
+        "category": "Sprays",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "stencil_spray.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0,
+        "texture": "stencil_mesh.png"
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 75.0,
+        "default_opacity": 1.0
+      }
+    }
+  ]
+}

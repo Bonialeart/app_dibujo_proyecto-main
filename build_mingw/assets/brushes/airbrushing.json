@@ -1,0 +1,371 @@
+{
+  "name": "Airbrushing",
+  "icon": "AB",
+  "brushes": [
+    {
+      "meta": {
+        "uuid": "743d6523-a8f0-457e-ba1b-80f25795ff1f",
+        "name": "Soft Airbrush",
+        "category": "Airbrushing",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "shape_airbrush_soft.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "hardness": 0.0
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 80.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "2f9c4e5f-61ab-4c2b-85ac-4b70ea0e3e9e",
+        "name": "Medium Airbrush",
+        "category": "Airbrushing",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "medium_airbrush.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "hardness": 0.5
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 60.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "3776f8c0-f78c-4ac1-a9d1-32d8f0d4fb33",
+        "name": "Hard Airbrush",
+        "category": "Airbrushing",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "hard_airbrush.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "hardness": 1.0
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 40.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "0a67364d-5dd2-444f-a1e3-e7fa8c1c817d",
+        "name": "Noise Airbrush",
+        "category": "Airbrushing",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "noise_airbrush.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0,
+        "texture": "noise.png"
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 70.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "7ad0d2f6-c397-4e98-891b-f3418991faf3",
+        "name": "Soft Blend",
+        "category": "Airbrushing",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "soft_blend.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0,
+        "smudge": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 90.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "21bc1f29-6e70-4b89-a3d0-be1aba4b7777",
+        "name": "Digital Shader",
+        "category": "Airbrushing",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "digital_shader.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 55.0,
+        "default_opacity": 1.0
+      }
+    }
+  ]
+}

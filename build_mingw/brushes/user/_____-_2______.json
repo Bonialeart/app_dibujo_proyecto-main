@@ -1,0 +1,241 @@
+{
+    "backrun": {
+        "enabled": false,
+        "intensity": 0,
+        "probability": 0
+    },
+    "bloom": {
+        "enabled": false,
+        "intensity": 0,
+        "radius": 0,
+        "random_variation": 0,
+        "threshold": 0
+    },
+    "bristles": {
+        "clumping": 0,
+        "count": 1,
+        "dry_brush_effect": false,
+        "enabled": false,
+        "fan_spread": 0,
+        "individual_variation": 0,
+        "point_taper": 0,
+        "softness": 0,
+        "stiffness": 0.5
+    },
+    "canvas_interaction": {
+        "absorption": 0,
+        "catch_peaks": 0,
+        "skip_valleys": false,
+        "texture_reveal": 0
+    },
+    "color_dynamics": {
+        "brightness_jitter": 0,
+        "broken_color": 0,
+        "hue_jitter": 0,
+        "pressure_dark_jitter": 0,
+        "pressure_hue_jitter": 0,
+        "pressure_light_jitter": 0,
+        "pressure_sat_jitter": 0,
+        "saturation_jitter": 0,
+        "stamp_dark_jitter": 0,
+        "stamp_hue_jitter": 0,
+        "stamp_light_jitter": 0,
+        "stamp_sat_jitter": 0,
+        "stroke_dark_jitter": 0,
+        "stroke_hue_jitter": 0,
+        "stroke_light_jitter": 0,
+        "stroke_sat_jitter": 0,
+        "temperature_shift": 0,
+        "tilt_dark_jitter": 0,
+        "tilt_hue_jitter": 0,
+        "tilt_light_jitter": 0,
+        "tilt_sat_jitter": 0,
+        "use_secondary_color": false
+    },
+    "customize": {
+        "default_flow": 1,
+        "default_hardness": 1,
+        "default_opacity": 1,
+        "default_size": 100,
+        "max_opacity": 1,
+        "max_size": 500,
+        "min_opacity": 0,
+        "min_size": 1
+    },
+    "dynamics": {
+        "flow": {
+            "base_value": 1,
+            "jitter": 0,
+            "min_limit": 0,
+            "pressure_curve": [
+                0,
+                0,
+                1,
+                1
+            ],
+            "tilt_influence": 0,
+            "velocity_influence": 0
+        },
+        "hardness": {
+            "base_value": 1,
+            "jitter": 0,
+            "min_limit": 0,
+            "pressure_curve": [
+                0,
+                0,
+                1,
+                1
+            ],
+            "tilt_influence": 0,
+            "velocity_influence": 0
+        },
+        "opacity": {
+            "base_value": 1,
+            "jitter": 0,
+            "min_limit": 0,
+            "pressure_curve": [
+                0,
+                0,
+                1,
+                1
+            ],
+            "tilt_influence": 0,
+            "velocity_influence": 0
+        },
+        "size": {
+            "base_value": 1,
+            "jitter": 0,
+            "min_limit": 0,
+            "pressure_curve": [
+                0,
+                0,
+                1,
+                1
+            ],
+            "tilt_influence": 0,
+            "velocity_influence": 0
+        }
+    },
+    "edge_darkening": {
+        "enabled": false,
+        "intensity": 0,
+        "width": 0
+    },
+    "grain": {
+        "blend_mode": "normal",
+        "blur": 0,
+        "brightness": 0,
+        "contrast": 1,
+        "intensity": 0.5,
+        "invert": false,
+        "motion_blur": 0,
+        "motion_blur_angle": 0,
+        "overlap": 0,
+        "random_offset": false,
+        "rolling": true,
+        "rotation": 0,
+        "scale": 1
+    },
+    "impasto": {
+        "depth": 0,
+        "directional_ridges": false,
+        "edge_buildup": 0,
+        "enabled": false,
+        "preserve_existing": false,
+        "shine": 0,
+        "smoothing": 0,
+        "texture_strength": 0
+    },
+    "meta": {
+        "author": "ABR Import (wlop_brush)",
+        "category": "wlop_brush",
+        "date_created": "",
+        "name": "透明水色 - 2(正片叠底)",
+        "notes": "",
+        "uuid": "34130b81-06a4-4ef4-8fcc-ba9db4d7b833",
+        "version": 1
+    },
+    "pigment": {
+        "flow": 1,
+        "granulation": 0,
+        "separation": 0,
+        "staining": 0
+    },
+    "randomize": {
+        "opacity_jitter": 0,
+        "pos_jitter_x": 0,
+        "pos_jitter_y": 0,
+        "rotation_jitter": 0,
+        "roundness_jitter": 0,
+        "size_jitter": 0
+    },
+    "rendering": {
+        "anti_aliasing": true,
+        "blend_mode": "normal"
+    },
+    "shape": {
+        "blur": 0,
+        "calligraphic": 0,
+        "contrast": 1,
+        "count": 1,
+        "count_jitter": 0,
+        "flip_x": false,
+        "flip_y": false,
+        "follow_stroke": true,
+        "invert": false,
+        "randomize": false,
+        "rotation": -90,
+        "roundness": 1,
+        "scatter": 0,
+        "tip_texture": "C:/Users/bonil/AppData/Roaming/ArtFlowStudio/ArtFlow Pro/imported_brushes/abr_a20f5e58-866f-4775-9bb6-edab650cdb83.png"
+    },
+    "smudge": {
+        "blend_mode": "normal",
+        "gaussian_blur": 0,
+        "length": 0,
+        "pressure_influence": 0,
+        "smear": false,
+        "strength": 0
+    },
+    "stroke": {
+        "anti_concussion": false,
+        "distance": 1,
+        "fall_off": 0,
+        "jitter_lateral": 0,
+        "jitter_linear": 0,
+        "spacing": 0.25,
+        "stabilization": 0,
+        "streamline": 0,
+        "taper_end": 0,
+        "taper_size": 0,
+        "taper_start": 0
+    },
+    "texture_reveal": {
+        "enabled": false,
+        "intensity": 0,
+        "pressure_influence": 0
+    },
+    "wet_mix": {
+        "absorption_rate": 0,
+        "bleed": 0,
+        "blend_only": false,
+        "blur": 0,
+        "charge": 1,
+        "color_pickup": 0,
+        "depletion_rate": 0,
+        "dilution": 0,
+        "dirty_mixing": false,
+        "drying_time": 0,
+        "loading": 1,
+        "mixing": 0.5,
+        "pigment": 1,
+        "pressure_pigment": 0,
+        "pull": 0,
+        "pull_pressure": 0,
+        "scrape_through": false,
+        "wet_jitter": 0,
+        "wet_mix": 0,
+        "wet_on_wet_multiplier": 1,
+        "wetness": 0
+    }
+}

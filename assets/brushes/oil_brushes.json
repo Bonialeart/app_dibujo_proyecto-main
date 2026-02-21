@@ -1,0 +1,523 @@
+{
+    "name": "Oil Painting",
+    "icon": "OL",
+    "brushes": [
+        {
+            "meta": {
+                "uuid": "ol-flat-001",
+                "name": "Óleo Classic Flat",
+                "category": "Oil Painting",
+                "description": "Traditional flat brush with visible bristle marks"
+            },
+            "shape": {
+                "tip_texture": "oil_flat_pro.png",
+                "hardness": 0.9,
+                "angle": 0.0,
+                "angle_jitter": 0.05,
+                "scatter": 0.02
+            },
+            "stroke": {
+                "spacing": 0.03,
+                "streamline": 0.2,
+                "rotation": "follow_path",
+                "rotation_jitter": 0.1
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.2,
+                    "pressure_curve": "linear",
+                    "velocity_influence": 0.15,
+                    "jitter": 0.03
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.85,
+                    "pressure_influence": 0.15
+                },
+                "rotation": {
+                    "base_angle": 0.0,
+                    "tilt_influence": 0.8,
+                    "jitter": 0.1
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.65,
+                "pull": 0.15,
+                "mixing": 0.5,
+                "loading": 0.7,
+                "depletion_rate": 0.3,
+                "dirty_mixing": true
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 0.6,
+                "depth_curve": "pressure",
+                "shine": 0.3,
+                "texture_strength": 0.5
+            },
+            "bristles": {
+                "enabled": true,
+                "count": 35,
+                "stiffness": 0.7,
+                "clumping": 0.3,
+                "fan_spread": 0.2
+            },
+            "smudge": {
+                "strength": 0.25,
+                "blend_mode": "realistic",
+                "pressure_influence": 0.4
+            },
+            "color_dynamics": {
+                "hue_jitter": 0.01,
+                "saturation_change": -0.05,
+                "lightness_jitter": 0.03
+            },
+            "customize": {
+                "default_size": 60,
+                "default_opacity": 1.0,
+                "default_hardness": 0.9,
+                "default_flow": 0.4
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-bristle-001",
+                "name": "Óleo Round Bristle",
+                "category": "Oil Painting",
+                "description": "Versatile round brush with natural bristle behavior"
+            },
+            "shape": {
+                "tip_texture": "oil_filbert_pro.png",
+                "hardness": 0.75,
+                "roundness": 0.85,
+                "scatter": 0.04
+            },
+            "stroke": {
+                "spacing": 0.04,
+                "streamline": 0.25,
+                "rotation": "follow_path",
+                "rotation_jitter": 0.15
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.15,
+                    "pressure_curve": "soft",
+                    "velocity_influence": 0.2,
+                    "jitter": 0.05
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.7,
+                    "pressure_curve": "ease_in",
+                    "pressure_influence": 0.3
+                },
+                "rotation": {
+                    "base_angle": 0.0,
+                    "tilt_influence": 0.6,
+                    "random_jitter": 0.2
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.8,
+                "pull": 0.25,
+                "mixing": 0.65,
+                "loading": 0.75,
+                "depletion_rate": 0.25,
+                "dirty_mixing": true,
+                "color_pickup": 0.4
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 0.7,
+                "depth_curve": "pressure_squared",
+                "shine": 0.4,
+                "texture_strength": 0.6,
+                "edge_buildup": 0.3
+            },
+            "bristles": {
+                "enabled": true,
+                "count": 50,
+                "stiffness": 0.6,
+                "clumping": 0.4,
+                "fan_spread": 0.15,
+                "individual_variation": 0.3
+            },
+            "smudge": {
+                "strength": 0.35,
+                "blend_mode": "realistic",
+                "pressure_influence": 0.5,
+                "length": 0.3
+            },
+            "color_dynamics": {
+                "hue_jitter": 0.02,
+                "saturation_change": -0.03,
+                "lightness_jitter": 0.05,
+                "temperature_shift": 0.02
+            },
+            "canvas_interaction": {
+                "texture_reveal": 0.4,
+                "absorption": 0.3
+            },
+            "customize": {
+                "default_size": 45,
+                "default_opacity": 0.95,
+                "default_hardness": 0.75,
+                "default_flow": 0.45
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-knife-001",
+                "name": "Óleo Impasto Knife",
+                "category": "Oil Painting",
+                "description": "Palette knife for thick impasto effects"
+            },
+            "shape": {
+                "tip_texture": "oil_knife_pro.png",
+                "hardness": 1.0,
+                "angle": 45.0,
+                "angle_jitter": 0.08
+            },
+            "stroke": {
+                "spacing": 0.015,
+                "streamline": 0.15,
+                "rotation": "follow_path",
+                "rotation_offset": 90.0
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.95,
+                    "velocity_influence": 0.1
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 1.0
+                },
+                "rotation": {
+                    "base_angle": 0.0,
+                    "tilt_influence": 1.0,
+                    "azimuth_influence": 0.8
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.1,
+                "pull": 0.85,
+                "mixing": 0.3,
+                "loading": 0.95,
+                "depletion_rate": 0.15,
+                "dirty_mixing": false,
+                "scraping": true
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 1.0,
+                "depth_curve": "linear",
+                "shine": 0.6,
+                "texture_strength": 0.8,
+                "edge_buildup": 0.7,
+                "directional_ridges": true
+            },
+            "smudge": {
+                "strength": 0.6,
+                "blend_mode": "realistic",
+                "pressure_influence": 0.3,
+                "smear": true
+            },
+            "color_dynamics": {
+                "hue_jitter": 0.0,
+                "saturation_change": 0.0,
+                "lightness_jitter": 0.02
+            },
+            "knife_specific": {
+                "scrape_through": true,
+                "paint_buildup_on_edge": 0.8,
+                "thickness_variation": 0.4
+            },
+            "customize": {
+                "default_size": 80,
+                "default_opacity": 1.0,
+                "default_hardness": 1.0,
+                "default_flow": 0.85
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-scumble-001",
+                "name": "Óleo Dry Scumble",
+                "category": "Oil Painting",
+                "description": "Dry brush for broken color and scumbling"
+            },
+            "shape": {
+                "tip_texture": "oil_flat_pro.png",
+                "hardness": 0.6,
+                "scatter": 0.12
+            },
+            "stroke": {
+                "spacing": 0.06,
+                "streamline": 0.2,
+                "rotation_jitter": 0.25
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.9,
+                    "velocity_influence": 0.2,
+                    "jitter": 0.08
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.2,
+                    "pressure_curve": "linear",
+                    "pressure_influence": 0.8,
+                    "jitter": 0.15
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.05,
+                "pull": 0.12,
+                "mixing": 0.2,
+                "loading": 0.3,
+                "depletion_rate": 0.7,
+                "dirty_mixing": true
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 0.3,
+                "depth_curve": "pressure",
+                "shine": 0.1,
+                "texture_strength": 0.8
+            },
+            "bristles": {
+                "enabled": true,
+                "count": 40,
+                "stiffness": 0.8,
+                "clumping": 0.5,
+                "fan_spread": 0.3,
+                "dry_brush_effect": true
+            },
+            "smudge": {
+                "strength": 0.15,
+                "blend_mode": "realistic",
+                "pressure_influence": 0.6
+            },
+            "color_dynamics": {
+                "hue_jitter": 0.03,
+                "saturation_change": -0.1,
+                "lightness_jitter": 0.1,
+                "broken_color": 0.6
+            },
+            "canvas_interaction": {
+                "texture_reveal": 0.8,
+                "skip_valleys": true,
+                "catch_peaks": 0.7
+            },
+            "customize": {
+                "default_size": 70,
+                "default_opacity": 0.75,
+                "default_hardness": 0.6,
+                "default_flow": 0.18
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-wetblend-001",
+                "name": "Óleo Wet Blender",
+                "category": "Oil Painting",
+                "description": "Soft blending brush for smooth transitions"
+            },
+            "shape": {
+                "tip_texture": "oil_filbert_pro.png",
+                "hardness": 0.2,
+                "roundness": 0.95
+            },
+            "stroke": {
+                "spacing": 0.03,
+                "streamline": 0.4
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.1,
+                    "pressure_curve": "soft",
+                    "velocity_influence": 0.1
+                },
+                "opacity": {
+                    "base_value": 0.0,
+                    "min_limit": 0.0
+                }
+            },
+            "wet_mix": {
+                "wetness": 1.0,
+                "pull": 0.95,
+                "mixing": 0.9,
+                "loading": 0.0,
+                "depletion_rate": 0.0,
+                "color_pickup": 0.8,
+                "blend_only": true
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 0.0,
+                "smoothing": 0.6,
+                "preserve_existing": true
+            },
+            "bristles": {
+                "enabled": true,
+                "count": 60,
+                "stiffness": 0.3,
+                "softness": 0.9
+            },
+            "smudge": {
+                "strength": 0.85,
+                "blend_mode": "smooth",
+                "pressure_influence": 0.6,
+                "length": 0.5,
+                "gaussian_blur": 0.3
+            },
+            "customize": {
+                "default_size": 90,
+                "default_opacity": 0.0,
+                "default_hardness": 0.2,
+                "default_flow": 0.55
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-detail-001",
+                "name": "Óleo Detail Rigger",
+                "category": "Oil Painting",
+                "description": "Fine detail brush for precise work"
+            },
+            "shape": {
+                "tip_texture": "oil_round_fine.png",
+                "hardness": 0.85,
+                "roundness": 1.0,
+                "minimum_diameter": 0.05
+            },
+            "stroke": {
+                "spacing": 0.02,
+                "streamline": 0.5
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.05,
+                    "pressure_curve": "sharp",
+                    "velocity_influence": 0.1
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.8,
+                    "pressure_influence": 0.2
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.5,
+                "pull": 0.1,
+                "mixing": 0.4,
+                "loading": 0.8,
+                "depletion_rate": 0.2
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 0.4,
+                "depth_curve": "pressure",
+                "shine": 0.3,
+                "texture_strength": 0.4
+            },
+            "bristles": {
+                "enabled": true,
+                "count": 15,
+                "stiffness": 0.8,
+                "point_taper": 0.9
+            },
+            "smudge": {
+                "strength": 0.15,
+                "blend_mode": "realistic"
+            },
+            "customize": {
+                "default_size": 15,
+                "default_opacity": 1.0,
+                "default_hardness": 0.85,
+                "default_flow": 0.5
+            }
+        },
+        {
+            "meta": {
+                "uuid": "ol-filbert-001",
+                "name": "Óleo Filbert Maestro",
+                "category": "Oil Painting",
+                "description": "Professional filbert for expressive strokes"
+            },
+            "shape": {
+                "tip_texture": "oil_filbert_pro.png",
+                "hardness": 0.8,
+                "roundness": 0.7,
+                "flatten": 0.5
+            },
+            "stroke": {
+                "spacing": 0.04,
+                "streamline": 0.3,
+                "rotation": "follow_path"
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.2,
+                    "pressure_curve": "soft",
+                    "velocity_influence": 0.25,
+                    "tilt_influence": 0.4
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.75,
+                    "pressure_influence": 0.25
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.7,
+                "pull": 0.2,
+                "mixing": 0.6,
+                "loading": 0.8,
+                "depletion_rate": 0.28,
+                "dirty_mixing": true,
+                "color_pickup": 0.45
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 0.75,
+                "depth_curve": "pressure_squared",
+                "shine": 0.45,
+                "texture_strength": 0.65,
+                "edge_buildup": 0.4
+            },
+            "bristles": {
+                "enabled": true,
+                "count": 45,
+                "stiffness": 0.65,
+                "clumping": 0.35,
+                "fan_spread": 0.18,
+                "individual_variation": 0.35
+            },
+            "smudge": {
+                "strength": 0.3,
+                "blend_mode": "realistic",
+                "pressure_influence": 0.5
+            },
+            "color_dynamics": {
+                "hue_jitter": 0.015,
+                "saturation_change": -0.04,
+                "lightness_jitter": 0.04
+            },
+            "customize": {
+                "default_size": 55,
+                "default_opacity": 1.0,
+                "default_hardness": 0.8,
+                "default_flow": 0.5
+            }
+        }
+    ]
+}

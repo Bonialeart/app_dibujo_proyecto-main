@@ -1,0 +1,308 @@
+{
+    "name": "Oil Pro",
+    "icon": "PRO",
+    "brushes": [
+        {
+            "meta": {
+                "uuid": "oil-sketch-pro",
+                "name": "Oil Sketch",
+                "category": "Oil Painting",
+                "author": "Antigravity",
+                "version": 1
+            },
+            "rendering": {
+                "blend_mode": "normal",
+                "anti_aliasing": true
+            },
+            "shape": {
+                "tip_texture": "oil_sketch.png",
+                "roundness": 0.8,
+                "contrast": 1.2,
+                "count": 1,
+                "rotation": 90.0,
+                "follow_stroke": true
+            },
+            "stroke": {
+                "spacing": 0.08,
+                "streamline": 0.1
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0,
+                    "pressure_curve": "linear"
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0,
+                    "pressure_curve": "linear"
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.3,
+                "mixing": 0.4,
+                "loading": 0.9,
+                "depletion_rate": 0.1,
+                "dirty_mixing": true
+            },
+            "customize": {
+                "default_size": 20.0,
+                "default_opacity": 0.9
+            }
+        },
+        {
+            "meta": {
+                "uuid": "oil-thick-pro",
+                "name": "Thick Oil Paint",
+                "category": "Oil Painting",
+                "author": "Antigravity",
+                "version": 1
+            },
+            "shape": {
+                "tip_texture": "oil_thick.png",
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 0.05,
+                "streamline": 0.2
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.05,
+                    "pressure_curve": "linear"
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0,
+                    "pressure_curve": "linear"
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.1,
+                "mixing": 0.6,
+                "loading": 1.0,
+                "depletion_rate": 0.05
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 1.0,
+                "shine": 0.5,
+                "texture_strength": 0.5
+            },
+            "customize": {
+                "default_size": 60.0,
+                "default_opacity": 1.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "oil-dry-pro",
+                "name": "Dry Oil Paint",
+                "category": "Oil Painting",
+                "author": "Antigravity",
+                "version": 1
+            },
+            "shape": {
+                "tip_texture": "oil_dry.png",
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 0.08,
+                "streamline": 0.1
+            },
+            "grain": {
+                "texture": "grain_canvas_weave.png",
+                "scale": 1.5,
+                "intensity": 0.8
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.2
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.05,
+                "mixing": 0.3,
+                "loading": 0.4,
+                "depletion_rate": 0.6,
+                "dirty_mixing": true
+            },
+            "impasto": {
+                "enabled": true,
+                "depth": 0.4,
+                "texture_strength": 0.8
+            },
+            "customize": {
+                "default_size": 50.0,
+                "default_opacity": 0.85
+            }
+        },
+        {
+            "meta": {
+                "uuid": "oil-super-dry-pro",
+                "name": "Super Dry Oil",
+                "category": "Oil Painting",
+                "author": "Antigravity",
+                "version": 1
+            },
+            "shape": {
+                "tip_texture": "oil_rake.png",
+                "count": 1,
+                "rotation": 90.0,
+                "follow_stroke": true
+            },
+            "stroke": {
+                "spacing": 0.06,
+                "streamline": 0.0,
+                "opacity": 0.6
+            },
+            "dynamics": {
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.0,
+                "mixing": 0.1,
+                "loading": 0.2,
+                "depletion_rate": 0.8
+            },
+            "customize": {
+                "default_size": 55.0,
+                "default_opacity": 0.8
+            }
+        },
+        {
+            "meta": {
+                "uuid": "smudge-textured-pro",
+                "name": "Textured Smudge",
+                "category": "Oil Painting",
+                "author": "Antigravity",
+                "version": 1
+            },
+            "shape": {
+                "tip_texture": "smudge_textured.png",
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 0.1,
+                "streamline": 0.3
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.4
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0
+                }
+            },
+            "wet_mix": {
+                "wetness": 0.8,
+                "mixing": 0.9,
+                "blend_only": true,
+                "color_pickup": 0.7
+            },
+            "smudge": {
+                "strength": 0.7,
+                "length": 0.6,
+                "pressure_influence": 0.5
+            },
+            "customize": {
+                "default_size": 70.0,
+                "default_opacity": 1.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "smudge-finger-pro",
+                "name": "Fingertip Smudge",
+                "category": "Oil Painting",
+                "author": "Antigravity",
+                "version": 1
+            },
+            "shape": {
+                "tip_texture": "tip_soft_round.png",
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 0.05,
+                "streamline": 0.4
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.5
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0
+                }
+            },
+            "wet_mix": {
+                "wetness": 1.0,
+                "mixing": 1.0,
+                "blend_only": true
+            },
+            "smudge": {
+                "strength": 0.9,
+                "length": 0.8,
+                "gaussian_blur": 0.5
+            },
+            "customize": {
+                "default_size": 60.0,
+                "default_opacity": 1.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "toothbrush-pro",
+                "name": "Toothbrush Splatter",
+                "category": "Oil Painting",
+                "author": "Antigravity",
+                "version": 1
+            },
+            "shape": {
+                "tip_texture": "toothbrush_spray.png",
+                "count": 1,
+                "scatter": 0.8,
+                "randomize": true
+            },
+            "stroke": {
+                "spacing": 0.5
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "jitter": 0.5,
+                    "min_limit": 0.1
+                },
+                "opacity": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0
+                }
+            },
+            "randomize": {
+                "pos_jitter_x": 0.5,
+                "pos_jitter_y": 0.5,
+                "rotation_jitter": 1.0
+            },
+            "wet_mix": {
+                "wetness": 0.1,
+                "mixing": 0.1
+            },
+            "customize": {
+                "default_size": 90.0,
+                "default_opacity": 1.0
+            }
+        }
+    ]
+}

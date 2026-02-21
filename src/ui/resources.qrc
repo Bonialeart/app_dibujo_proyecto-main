@@ -1,0 +1,51 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource prefix="/">
+    <file>qml/main_pro.qml</file>
+    <file>qml/Translations.js</file>
+    <file>qml/components/AppButton.qml</file>
+    <file>qml/components/DashboardView.qml</file>
+    <file>qml/components/GalleryView.qml</file>
+    <file>qml/components/StackFolder.qml</file>
+    <file>qml/components/PreferencesDialog.qml</file>
+    <file>qml/components/ProjectNavigator.qml</file>
+    <file>qml/components/SidebarButton.qml</file>
+    <file>qml/components/ToastManager.qml</file>
+    <file>qml/components/ProSlider.qml</file>
+    <file>qml/components/ProSliderHorizontal.qml</file>
+    <file>qml/components/SmartCursor.qml</file>
+    <file>qml/components/LayerDelegate.qml</file>
+    <file>qml/components/ColorDropOrb.qml</file>
+    <file>qml/components/BrushLibrary.qml</file>
+    <file>qml/components/CustomColorSlider.qml</file>
+    <file>qml/components/HeroTransition.qml</file>
+    <file>qml/components/NewSketchbookDialog.qml</file>
+    <file>qml/components/PopOverPanel.qml</file>
+    <file>qml/components/ProjectGroupView.qml</file>
+    <file>qml/components/ProjectStackCover.qml</file>
+    <file>qml/components/SketchbookCover.qml</file>
+    <file>qml/components/VideoExportDialog.qml</file>
+    <file>qml/components/PressureSettingsDialog.qml</file>
+
+    <file>qml/components/PremiumSlider.qml</file>
+    <file>qml/components/ImprovedColorSlider.qml</file>
+    <file>qml/components/BrushStudioDialog.qml</file>
+    <file>qml/components/ColorStudioDialog.qml</file>
+    <file>qml/components/StudioCanvasLayout.qml</file>
+    <file>qml/components/DockArea.qml</file>
+    <file>qml/components/DockablePanel.qml</file>
+    <file>qml/components/ImpastoControls.qml</file>
+    <file>qml/components/StudioPanelManager.qml</file>
+    <file>qml/components/SideIconBar.qml</file>
+    <file>qml/components/DockContainer.qml</file>
+    <file>qml/components/ColorPanel.qml</file>
+    <file>qml/components/LayerPanel.qml</file>
+    <file>qml/components/NavigatorPanel.qml</file>
+    <file>qml/components/BrushLibraryPanel.qml</file>
+    <file>qml/components/StudioSlider.qml</file>
+    <file>qml/components/FloatingPanel.qml</file>
+    <file>qml/components/BrushSettingsPanel.qml</file>
+    <file>qml/components/PremiumPanel.qml</file>
+    <file>qml/components/SettingsMenu.qml</file>
+    <file>qml/views/CanvasPage.qml</file>
+</qresource>
+</RCC>

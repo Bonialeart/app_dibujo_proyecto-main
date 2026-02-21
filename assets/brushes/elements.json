@@ -1,0 +1,561 @@
+{
+  "name": "Elements",
+  "icon": "EL",
+  "brushes": [
+    {
+      "meta": {
+        "uuid": "8667b383-ffc6-4197-abca-f8befbdafdda",
+        "name": "Clouds",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "screen",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "clouds.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "scatter": 0.2
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 150.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "ab0d6fdf-e2af-4472-89ea-7da775063c30",
+        "name": "Smoke",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "smoke.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "scatter": 0.1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 120.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "1e43f525-4217-419b-9638-850b0322cf9b",
+        "name": "Fire",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "add",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "fire.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {
+        "hue_jitter": 0.05,
+        "brightness_jitter": 0.2
+      },
+      "randomize": {},
+      "customize": {
+        "default_size": 100.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "25d24fb4-5f48-4f60-aa47-1c44469d48a2",
+        "name": "Water Ocean",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "water_ocean.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0,
+        "texture": "ocean_waves.png"
+      },
+      "wet_mix": {
+        "wet_mix": 0.6,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 110.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "41fb6b36-3a55-4a8f-a6c4-c814394dae4e",
+        "name": "Rain",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "rain.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "scatter": 0.3
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 80.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "d1c0b387-cdf5-44c1-a097-4d598f188723",
+        "name": "Snow",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "snow.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 2,
+        "scatter": 0.6
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 60.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "b624ddfc-0cc6-4c33-95ec-4dc6bdd6c132",
+        "name": "Grass",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "grass.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "scatter": 0.4,
+        "follow_stroke": true
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {
+        "hue_jitter": 0.08
+      },
+      "randomize": {},
+      "customize": {
+        "default_size": 50.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "dacd039a-311d-4759-9d50-4dbea11c706d",
+        "name": "Leaves",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "leaves.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "scatter": 0.5,
+        "rotation_jitter": 0.5
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 55.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "bc86cc91-7a40-4a83-a485-3901062f28f9",
+        "name": "Fur",
+        "category": "Elements",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "fur.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 5,
+        "spacing": 0.05
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 45.0,
+        "default_opacity": 1.0
+      }
+    }
+  ]
+}

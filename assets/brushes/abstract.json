@@ -1,0 +1,493 @@
+{
+  "name": "Abstract",
+  "icon": "ABS",
+  "brushes": [
+    {
+      "meta": {
+        "uuid": "c0659870-7f15-4331-bc7d-cbc2f879aa67",
+        "name": "Polygons",
+        "category": "Abstract",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "abstract_polygons.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "scatter": 0.5
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 80.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "a38a5190-06eb-4713-b838-9eb29ba7e677",
+        "name": "Daisy",
+        "category": "Abstract",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "abstract_daisy.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "rotation_mode": "follow_stroke"
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 70.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "b3e9a7d6-6bcc-419f-a63d-f3d931150d9e",
+        "name": "Glitch",
+        "category": "Abstract",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "abstract_glitch.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0,
+        "texture": "glitch.png"
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 60.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "cfaecedd-c752-4e8d-91f1-9b509bfcf09c",
+        "name": "Kaleidoscope",
+        "category": "Abstract",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "abstract_kaleidoscope.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 6,
+        "rotation": 60.0
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 90.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "c91f3bf8-f598-4080-9258-9f1abebc8d7b",
+        "name": "Fractal",
+        "category": "Abstract",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "abstract_fractal.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0,
+        "texture": "fractal.png"
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 100.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "335c1ca2-f03d-4e6b-aaac-ba30cdba4ec5",
+        "name": "3D Mesh",
+        "category": "Abstract",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "abstract_3d_mesh.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 85.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "14fa1c1e-074f-4301-97b8-fc4b3b25be3c",
+        "name": "Pointillism",
+        "category": "Abstract",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "abstract_pointillism.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 10,
+        "scatter": 0.8
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 40.0,
+        "default_opacity": 1.0
+      }
+    },
+    {
+      "meta": {
+        "uuid": "a7db1d53-c69c-4b05-8750-c96f3ea49fd0",
+        "name": "Loop",
+        "category": "Abstract",
+        "author": "ArtFlow Studio",
+        "version": 1
+      },
+      "rendering": {
+        "blend_mode": "normal",
+        "anti_aliasing": true
+      },
+      "shape": {
+        "tip_texture": "abstract_loop.png",
+        "roundness": 1.0,
+        "contrast": 1.0,
+        "count": 1,
+        "follow_stroke": true
+      },
+      "stroke": {
+        "spacing": 0.1,
+        "streamline": 0.0
+      },
+      "dynamics": {
+        "size": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "opacity": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "flow": {
+          "base_value": 1.0,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        },
+        "hardness": {
+          "base_value": 0.8,
+          "min_limit": 0.0,
+          "pressure_curve": "linear"
+        }
+      },
+      "grain": {
+        "scale": 1.0,
+        "intensity": 0.5,
+        "contrast": 1.0
+      },
+      "wet_mix": {
+        "wet_mix": 0.0,
+        "pigment": 1.0
+      },
+      "color_dynamics": {},
+      "randomize": {},
+      "customize": {
+        "default_size": 55.0,
+        "default_opacity": 1.0
+      }
+    }
+  ]
+}

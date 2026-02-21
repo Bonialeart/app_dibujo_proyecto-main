@@ -1,0 +1,228 @@
+{
+    "name": "Manga",
+    "icon": "MA",
+    "brushes": [
+        {
+            "meta": {
+                "uuid": "e1f1aedb-1b2c-4a3d-8e4f-a0b1c2d3e4f5",
+                "name": "Maru Pen (Direct)",
+                "category": "Manga",
+                "author": "ArtFlow Studio",
+                "version": 1
+            },
+            "rendering": {
+                "blend_mode": "normal",
+                "anti_aliasing": true
+            },
+            "shape": {
+                "tip_texture": "ink_maru_pen.png",
+                "roundness": 1.0,
+                "contrast": 1.0,
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 0.04,
+                "streamline": 0.95,
+                "taper_start": 40.0
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0,
+                    "pressure_curve": [
+                        0.4,
+                        0.0,
+                        0.6,
+                        1.0
+                    ],
+                    "velocity_influence": 0.3
+                }
+            },
+            "customize": {
+                "default_size": 15.0,
+                "default_opacity": 1.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "e2f2bedb-2c3d-5b4e-9f5a-b1c2d3e4f5a6",
+                "name": "G-Pen Pro",
+                "category": "Manga",
+                "author": "ArtFlow Studio",
+                "version": 1
+            },
+            "rendering": {
+                "blend_mode": "normal",
+                "anti_aliasing": true
+            },
+            "shape": {
+                "tip_texture": "ink_g_pen.png",
+                "roundness": 1.0,
+                "contrast": 1.0,
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 0.08,
+                "streamline": 0.6,
+                "taper_end": 20.0
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.0,
+                    "pressure_curve": "linear"
+                }
+            },
+            "customize": {
+                "default_size": 12.0,
+                "default_opacity": 1.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "e3f3cedb-3d4e-6c5f-a06b-c2d3e4f5a6b7",
+                "name": "Saji Pen Stiff",
+                "category": "Manga",
+                "author": "ArtFlow Studio",
+                "version": 1
+            },
+            "rendering": {
+                "blend_mode": "normal",
+                "anti_aliasing": true
+            },
+            "shape": {
+                "tip_texture": "ink_saji_pen.png",
+                "roundness": 0.85,
+                "contrast": 1.0,
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 0.1,
+                "streamline": 0.4
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.4,
+                    "pressure_curve": "linear"
+                }
+            },
+            "customize": {
+                "default_size": 10.0,
+                "default_opacity": 1.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "e4f4dedb-4e5f-7d6a-b17c-d3e4f5a6b7c8",
+                "name": "Fude Brush",
+                "category": "Manga",
+                "author": "ArtFlow Studio",
+                "version": 1
+            },
+            "rendering": {
+                "blend_mode": "normal",
+                "anti_aliasing": true
+            },
+            "shape": {
+                "tip_texture": "ink_fude_pen.png",
+                "roundness": 1.0,
+                "contrast": 1.0,
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 0.04,
+                "streamline": 0.6
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.1,
+                    "pressure_curve": "ease_in"
+                }
+            },
+            "wet_mix": {
+                "wet_mix": 0.1,
+                "pigment": 1.0
+            },
+            "customize": {
+                "default_size": 35.0,
+                "default_opacity": 1.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "e5f5eedb-5e6f-8d7a-c28d-e4f5a6b7c8d9",
+                "name": "Manga Halftone 40L",
+                "category": "Manga",
+                "author": "ArtFlow Studio",
+                "version": 1
+            },
+            "rendering": {
+                "blend_mode": "multiply",
+                "anti_aliasing": true
+            },
+            "shape": {
+                "tip_texture": "manga_halftone.png",
+                "roundness": 1.0,
+                "contrast": 1.0,
+                "count": 1
+            },
+            "stroke": {
+                "spacing": 1.5,
+                "streamline": 0.0
+            },
+            "grain": {
+                "scale": 0.2,
+                "intensity": 1.0,
+                "texture": "manga_halftone.png"
+            },
+            "dynamics": {
+                "opacity": {
+                    "base_value": 0.5,
+                    "min_limit": 0.1,
+                    "pressure_curve": "linear"
+                }
+            },
+            "customize": {
+                "default_size": 100.0,
+                "default_opacity": 0.5
+            }
+        },
+        {
+            "meta": {
+                "uuid": "e6f6fedb-6f7a-9d8b-d39e-f5a6b7c8d9e0",
+                "name": "Speed Lines",
+                "category": "Manga",
+                "author": "ArtFlow Studio",
+                "version": 1
+            },
+            "rendering": {
+                "blend_mode": "normal",
+                "anti_aliasing": true
+            },
+            "shape": {
+                "tip_texture": "manga_speed_lines.png",
+                "roundness": 1.0,
+                "contrast": 1.0,
+                "count": 1,
+                "rotation": 0.0
+            },
+            "stroke": {
+                "spacing": 0.2,
+                "streamline": 0.0
+            },
+            "dynamics": {
+                "size": {
+                    "base_value": 1.0,
+                    "min_limit": 0.5,
+                    "pressure_curve": "linear"
+                }
+            },
+            "customize": {
+                "default_size": 150.0,
+                "default_opacity": 1.0
+            }
+        }
+    ]
+}
