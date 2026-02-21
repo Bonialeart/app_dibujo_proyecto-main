@@ -15,15 +15,26 @@ Item {
     // Data models
     property var panelItems: []    // [{id, x, y, w, h, rotation}]
     property var bubbleItems: []   // [{id, x, y, w, h, type, text, tailAngle}]
+    property var shapeItems: []    // [{id, x, y, w, h, type, strokeColor, strokeWidth, fillColor, rotation}]
     property int nextId: 1
     
     // Selection state
     property int selectedPanelId: -1
     property int selectedBubbleId: -1
-    property bool hasSelection: selectedPanelId >= 0 || selectedBubbleId >= 0
+    property int selectedShapeId: -1
+    property bool hasSelection: selectedPanelId >= 0 || selectedBubbleId >= 0 || selectedShapeId >= 0
+    
+    // Shape drawing mode
+    property bool shapeDrawingActive: false
+    property string shapeDrawingType: ""  // "rect", "ellipse", "line"
+    property color shapeStrokeColor: "#000000"
+    property real shapeStrokeWidth: 4
+    property color shapeFillColor: "transparent"
     
     signal panelsChanged()
     signal bubblesChanged()
+    signal shapesChanged()
+    signal shapeDrawingFinished()
     
     // ── Public API ──
     
@@ -140,18 +151,49 @@ Item {
         bubblesChanged()
     }
     
+    function addShape(type, canvasX, canvasY, canvasW, canvasH) {
+        shapeItems.push({
+            id: nextId++,
+            x: canvasX, y: canvasY,
+            w: canvasW, h: canvasH,
+            type: type,
+            strokeColor: shapeStrokeColor.toString(),
+            strokeWidth: shapeStrokeWidth,
+            fillColor: shapeFillColor.toString(),
+            rotation: 0
+        })
+        shapeItems = shapeItems.slice()
+        shapesChanged()
+    }
+    
+    function startShapeDrawing(type) {
+        shapeDrawingActive = true
+        shapeDrawingType = type
+        deselectAll()
+        console.log("[ComicOverlay] Shape drawing started: " + type)
+    }
+    
+    function stopShapeDrawing() {
+        shapeDrawingActive = false
+        shapeDrawingType = ""
+    }
+    
     function clearAll() {
         panelItems = []
         bubbleItems = []
+        shapeItems = []
         selectedPanelId = -1
         selectedBubbleId = -1
+        selectedShapeId = -1
         panelsChanged()
         bubblesChanged()
+        shapesChanged()
     }
     
     function deselectAll() {
         selectedPanelId = -1
         selectedBubbleId = -1
+        selectedShapeId = -1
     }
     
     function deleteSelected() {
@@ -165,16 +207,20 @@ Item {
             selectedBubbleId = -1
             bubblesChanged()
         }
+        if (selectedShapeId >= 0) {
+            shapeItems = shapeItems.filter(function(s) { return s.id !== selectedShapeId })
+            selectedShapeId = -1
+            shapesChanged()
+        }
     }
     
     function flattenToLayer() {
         if (!targetCanvas) return
-        if (panelItems.length === 0 && bubbleItems.length === 0) return
+        if (panelItems.length === 0 && bubbleItems.length === 0 && shapeItems.length === 0) return
         
         // Flatten panels using the C++ backend
         if (panelItems.length > 0) {
             targetCanvas.drawPanelLayout("custom_overlay", 0, 6, 0)
-            // Future: pass actual panel rects to C++ for accurate rendering
         }
         
         clearAll()
@@ -183,9 +229,191 @@ Item {
     // ── Click-away deselect ──
     MouseArea {
         anchors.fill: parent
-        enabled: root.hasSelection
+        enabled: root.hasSelection && !root.shapeDrawingActive
         z: -1
         onClicked: root.deselectAll()
+    }
+    
+    // ═══════════════ SHAPE DRAWING OVERLAY ═══════════════
+    // When shapeDrawingActive, intercept mouse to draw shapes
+    MouseArea {
+        id: shapeDrawArea
+        anchors.fill: parent
+        enabled: root.shapeDrawingActive
+        z: 500
+        cursorShape: Qt.CrossCursor
+        hoverEnabled: true
+        
+        property real startX: 0
+        property real startY: 0
+        property bool drawing: false
+        
+        onPressed: function(mouse) {
+            var zoom = targetCanvas ? targetCanvas.zoomLevel : 1.0
+            var offX = targetCanvas ? targetCanvas.viewOffset.x * zoom : 0
+            var offY = targetCanvas ? targetCanvas.viewOffset.y * zoom : 0
+            startX = (mouse.x - offX) / zoom
+            startY = (mouse.y - offY) / zoom
+            drawing = true
+            drawPreview.requestPaint()
+        }
+        
+        onPositionChanged: function(mouse) {
+            if (drawing) {
+                drawPreview.requestPaint()
+            }
+        }
+        
+        onReleased: function(mouse) {
+            if (!drawing) return
+            drawing = false
+            
+            var zoom = targetCanvas ? targetCanvas.zoomLevel : 1.0
+            var offX = targetCanvas ? targetCanvas.viewOffset.x * zoom : 0
+            var offY = targetCanvas ? targetCanvas.viewOffset.y * zoom : 0
+            var endX = (mouse.x - offX) / zoom
+            var endY = (mouse.y - offY) / zoom
+            
+            // Calculate normalized rect
+            var sx = Math.min(startX, endX)
+            var sy = Math.min(startY, endY)
+            var sw = Math.abs(endX - startX)
+            var sh = Math.abs(endY - startY)
+            
+            // Minimum size check
+            if (sw < 5 && sh < 5) {
+                // Too small: use a default 100x100 shape
+                sw = 100; sh = 100
+                sx = startX - 50; sy = startY - 50
+            }
+            
+            // For lines, store start/end as x,y,w,h (w=endX-startX, h=endY-startY)
+            if (root.shapeDrawingType === "line") {
+                root.addShape("line", startX, startY, endX - startX, endY - startY)
+            } else {
+                root.addShape(root.shapeDrawingType, sx, sy, sw, sh)
+            }
+            
+            drawPreview.requestPaint()
+            console.log("[ComicOverlay] Shape created: " + root.shapeDrawingType + " at " + sx + "," + sy + " size " + sw + "x" + sh)
+        }
+        
+        // Live preview while drawing
+        Canvas {
+            id: drawPreview
+            anchors.fill: parent
+            visible: shapeDrawArea.drawing
+            z: 501
+            
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                if (!shapeDrawArea.drawing) return
+                
+                var zoom = targetCanvas ? targetCanvas.zoomLevel : 1.0
+                var offX = targetCanvas ? targetCanvas.viewOffset.x * zoom : 0
+                var offY = targetCanvas ? targetCanvas.viewOffset.y * zoom : 0
+                
+                var sx = shapeDrawArea.startX * zoom + offX
+                var sy = shapeDrawArea.startY * zoom + offY
+                var mx = shapeDrawArea.mouseX
+                var my = shapeDrawArea.mouseY
+                
+                ctx.strokeStyle = root.shapeStrokeColor.toString()
+                ctx.lineWidth = root.shapeStrokeWidth * zoom
+                ctx.setLineDash([6, 4])
+                
+                if (root.shapeFillColor.toString() !== "transparent" && root.shapeFillColor.a > 0) {
+                    ctx.fillStyle = Qt.rgba(root.shapeFillColor.r, root.shapeFillColor.g, root.shapeFillColor.b, 0.3).toString()
+                } else {
+                    ctx.fillStyle = "transparent"
+                }
+                
+                if (root.shapeDrawingType === "rect") {
+                    var rx = Math.min(sx, mx), ry = Math.min(sy, my)
+                    var rw = Math.abs(mx - sx), rh = Math.abs(my - sy)
+                    if (ctx.fillStyle !== "transparent") ctx.fillRect(rx, ry, rw, rh)
+                    ctx.strokeRect(rx, ry, rw, rh)
+                } else if (root.shapeDrawingType === "ellipse") {
+                    var ex = Math.min(sx, mx), ey = Math.min(sy, my)
+                    var ew = Math.abs(mx - sx), eh = Math.abs(my - sy)
+                    ctx.beginPath()
+                    ctx.ellipse(ex, ey, ew, eh)
+                    if (ctx.fillStyle !== "transparent") ctx.fill()
+                    ctx.stroke()
+                } else if (root.shapeDrawingType === "line") {
+                    ctx.beginPath()
+                    ctx.moveTo(sx, sy)
+                    ctx.lineTo(mx, my)
+                    ctx.stroke()
+                }
+                
+                ctx.setLineDash([])
+            }
+        }
+    }
+    
+    // ── Shape drawing mode indicator ──
+    Rectangle {
+        visible: root.shapeDrawingActive
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 20
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: shapeIndicatorRow.width + 30
+        height: 40
+        radius: 20
+        color: "#ee1a1a22"
+        border.color: accentColor
+        border.width: 1.5
+        z: 600
+        
+        Row {
+            id: shapeIndicatorRow
+            anchors.centerIn: parent
+            spacing: 10
+            
+            Text {
+                text: root.shapeDrawingType === "rect" ? "✦ Draw Rectangle" :
+                      root.shapeDrawingType === "ellipse" ? "✦ Draw Ellipse" : "✦ Draw Line"
+                color: "white"
+                font.pixelSize: 13
+                font.weight: Font.Medium
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            Text {
+                text: "— click & drag on canvas"
+                color: "#888"
+                font.pixelSize: 11
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            Rectangle {
+                width: 1; height: 20; color: "#333"
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            Rectangle {
+                width: 24; height: 24; radius: 12
+                color: cancelDrawMa.containsMouse ? "#3a1515" : "transparent"
+                anchors.verticalCenter: parent.verticalCenter
+                
+                Text {
+                    text: "✕"
+                    color: cancelDrawMa.containsMouse ? "#ff4444" : "#aaa"
+                    font.pixelSize: 12
+                    anchors.centerIn: parent
+                }
+                
+                MouseArea {
+                    id: cancelDrawMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.stopShapeDrawing()
+                }
+            }
+        }
     }
     
     // ═══════════════ PANEL REPEATER ═══════════════
@@ -767,6 +995,315 @@ Item {
                             id: delBubbleMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: root.deleteSelected()
                         }
+                    }
+                }
+            }
+        }
+    }
+    
+    // ═══════════════ SHAPE REPEATER ═══════════════
+    Repeater {
+        model: root.shapeItems.length
+        
+        delegate: Item {
+            id: shapeDelegate
+            
+            property var shapeData: root.shapeItems[index] || {}
+            property bool isSelected: shapeData.id === root.selectedShapeId
+            property string shapeType: shapeData.type || "rect"
+            property real zoom: targetCanvas ? targetCanvas.zoomLevel : 1.0
+            property real offX: targetCanvas ? targetCanvas.viewOffset.x * zoom : 0
+            property real offY: targetCanvas ? targetCanvas.viewOffset.y * zoom : 0
+            
+            // For line shapes, x/y/w/h store start and delta
+            x: shapeType === "line" ? offX + Math.min(shapeData.x, shapeData.x + shapeData.w) * zoom - 5
+                                    : offX + shapeData.x * zoom
+            y: shapeType === "line" ? offY + Math.min(shapeData.y, shapeData.y + shapeData.h) * zoom - 5
+                                    : offY + shapeData.y * zoom
+            width: shapeType === "line" ? Math.abs(shapeData.w) * zoom + 10
+                                       : shapeData.w * zoom
+            height: shapeType === "line" ? Math.abs(shapeData.h) * zoom + 10
+                                        : shapeData.h * zoom
+            z: isSelected ? 55 : 15
+            
+            // Shape rendering
+            Canvas {
+                id: shapeCanvas
+                anchors.fill: parent
+                
+                property bool sel: isSelected
+                onSelChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                
+                onPaint: {
+                    var ctx = getContext("2d")
+                    var w = width, h = height
+                    ctx.clearRect(0, 0, w, h)
+                    
+                    var sd = shapeData
+                    ctx.strokeStyle = isSelected ? accentColor.toString() : (sd.strokeColor || "#000000")
+                    ctx.lineWidth = (sd.strokeWidth || 4) * zoom
+                    ctx.lineJoin = "round"
+                    ctx.lineCap = "round"
+                    
+                    var fc = sd.fillColor || "transparent"
+                    if (fc !== "transparent") {
+                        ctx.fillStyle = fc
+                    }
+                    
+                    if (shapeType === "rect") {
+                        var lw = ctx.lineWidth / 2
+                        if (fc !== "transparent") ctx.fillRect(lw, lw, w - ctx.lineWidth, h - ctx.lineWidth)
+                        ctx.strokeRect(lw, lw, w - ctx.lineWidth, h - ctx.lineWidth)
+                    } else if (shapeType === "ellipse") {
+                        var lw2 = ctx.lineWidth / 2
+                        ctx.beginPath()
+                        ctx.ellipse(lw2, lw2, w - ctx.lineWidth, h - ctx.lineWidth)
+                        if (fc !== "transparent") ctx.fill()
+                        ctx.stroke()
+                    } else if (shapeType === "line") {
+                        // Map line endpoints into local coords
+                        var x1 = (sd.x - Math.min(sd.x, sd.x + sd.w)) * zoom + 5
+                        var y1 = (sd.y - Math.min(sd.y, sd.y + sd.h)) * zoom + 5
+                        var x2 = (sd.x + sd.w - Math.min(sd.x, sd.x + sd.w)) * zoom + 5
+                        var y2 = (sd.y + sd.h - Math.min(sd.y, sd.y + sd.h)) * zoom + 5
+                        ctx.beginPath()
+                        ctx.moveTo(x1, y1)
+                        ctx.lineTo(x2, y2)
+                        ctx.stroke()
+                    }
+                    
+                    // Selection box
+                    if (isSelected) {
+                        ctx.strokeStyle = accentColor.toString()
+                        ctx.lineWidth = 1.5
+                        ctx.setLineDash([4, 3])
+                        ctx.strokeRect(0, 0, w, h)
+                        ctx.setLineDash([])
+                    }
+                }
+            }
+            
+            // Click to select
+            MouseArea {
+                anchors.fill: parent
+                enabled: !root.shapeDrawingActive
+                onClicked: {
+                    root.selectedPanelId = -1
+                    root.selectedBubbleId = -1
+                    root.selectedShapeId = shapeData.id
+                }
+            }
+            
+            // Drag (when selected)
+            MouseArea {
+                id: shapeDragArea
+                anchors.fill: parent
+                enabled: isSelected && !root.shapeDrawingActive
+                cursorShape: isSelected ? Qt.SizeAllCursor : Qt.ArrowCursor
+                z: -1
+                
+                property real startMx: 0
+                property real startMy: 0
+                property real origX: 0
+                property real origY: 0
+                
+                onPressed: {
+                    startMx = mouseX; startMy = mouseY
+                    origX = shapeData.x; origY = shapeData.y
+                }
+                onPositionChanged: {
+                    if (pressed) {
+                        var dx = (mouseX - startMx) / zoom
+                        var dy = (mouseY - startMy) / zoom
+                        shapeData.x = origX + dx
+                        shapeData.y = origY + dy
+                        root.shapeItems = root.shapeItems.slice()
+                    }
+                }
+            }
+            
+            // Resize handles
+            Repeater {
+                model: isSelected && shapeType !== "line" ? [
+                    {hx: 0, hy: 0, cursor: Qt.SizeFDiagCursor, edge: "tl"},
+                    {hx: 1, hy: 0, cursor: Qt.SizeBDiagCursor, edge: "tr"},
+                    {hx: 0, hy: 1, cursor: Qt.SizeBDiagCursor, edge: "bl"},
+                    {hx: 1, hy: 1, cursor: Qt.SizeFDiagCursor, edge: "br"},
+                    {hx: 0.5, hy: 0, cursor: Qt.SizeVerCursor, edge: "t"},
+                    {hx: 0.5, hy: 1, cursor: Qt.SizeVerCursor, edge: "b"},
+                    {hx: 0, hy: 0.5, cursor: Qt.SizeHorCursor, edge: "l"},
+                    {hx: 1, hy: 0.5, cursor: Qt.SizeHorCursor, edge: "r"}
+                ] : []
+                
+                delegate: Rectangle {
+                    width: 12; height: 12; radius: 3
+                    x: modelData.hx * shapeDelegate.width - 6
+                    y: modelData.hy * shapeDelegate.height - 6
+                    color: "white"
+                    border.color: accentColor; border.width: 2
+                    z: 100
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: modelData.cursor
+                        
+                        property real sx: 0
+                        property real sy: 0
+                        property real oX: 0
+                        property real oY: 0
+                        property real oW: 0
+                        property real oH: 0
+                        
+                        onPressed: {
+                            sx = mouse.x + parent.x; sy = mouse.y + parent.y
+                            oX = shapeData.x; oY = shapeData.y
+                            oW = shapeData.w; oH = shapeData.h
+                        }
+                        onPositionChanged: {
+                            if (!pressed) return
+                            var dx = (mouse.x + parent.x - sx) / zoom
+                            var dy = (mouse.y + parent.y - sy) / zoom
+                            var e = modelData.edge
+                            var ms = 10
+                            
+                            if (e === "tl" || e === "l" || e === "bl") {
+                                if (oW - dx > ms) { shapeData.x = oX + dx; shapeData.w = oW - dx }
+                            }
+                            if (e === "tr" || e === "r" || e === "br") {
+                                if (oW + dx > ms) shapeData.w = oW + dx
+                            }
+                            if (e === "tl" || e === "t" || e === "tr") {
+                                if (oH - dy > ms) { shapeData.y = oY + dy; shapeData.h = oH - dy }
+                            }
+                            if (e === "bl" || e === "b" || e === "br") {
+                                if (oH + dy > ms) shapeData.h = oH + dy
+                            }
+                            root.shapeItems = root.shapeItems.slice()
+                            shapeCanvas.requestPaint()
+                        }
+                    }
+                }
+            }
+            
+            // Line endpoints (for line type)
+            Repeater {
+                model: isSelected && shapeType === "line" ? [
+                    {ex: 0, ey: 0, label: "start"},
+                    {ex: 1, ey: 1, label: "end"}
+                ] : []
+                
+                delegate: Rectangle {
+                    width: 14; height: 14; radius: 7
+                    color: "white"
+                    border.color: accentColor; border.width: 2
+                    z: 100
+                    
+                    // Map to local coords of the delegate
+                    property real localX: modelData.label === "start" 
+                        ? (shapeData.x - Math.min(shapeData.x, shapeData.x + shapeData.w)) * zoom + 5
+                        : (shapeData.x + shapeData.w - Math.min(shapeData.x, shapeData.x + shapeData.w)) * zoom + 5
+                    property real localY: modelData.label === "start"
+                        ? (shapeData.y - Math.min(shapeData.y, shapeData.y + shapeData.h)) * zoom + 5
+                        : (shapeData.y + shapeData.h - Math.min(shapeData.y, shapeData.y + shapeData.h)) * zoom + 5
+                    
+                    x: localX - 7
+                    y: localY - 7
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.CrossCursor
+                        
+                        property real sx: 0
+                        property real sy: 0
+                        property real origVal1: 0
+                        property real origVal2: 0
+                        
+                        onPressed: {
+                            sx = mouse.x + parent.x
+                            sy = mouse.y + parent.y
+                            if (modelData.label === "start") {
+                                origVal1 = shapeData.x
+                                origVal2 = shapeData.y
+                            } else {
+                                origVal1 = shapeData.w
+                                origVal2 = shapeData.h
+                            }
+                        }
+                        onPositionChanged: {
+                            if (!pressed) return
+                            var dx = (mouse.x + parent.x - sx) / zoom
+                            var dy = (mouse.y + parent.y - sy) / zoom
+                            
+                            if (modelData.label === "start") {
+                                shapeData.x = origVal1 + dx
+                                shapeData.y = origVal2 + dy
+                                shapeData.w -= dx
+                                shapeData.h -= dy
+                            } else {
+                                shapeData.w = origVal1 + dx
+                                shapeData.h = origVal2 + dy
+                            }
+                            root.shapeItems = root.shapeItems.slice()
+                            shapeCanvas.requestPaint()
+                        }
+                    }
+                }
+            }
+            
+            // Actions bar when selected
+            Rectangle {
+                visible: isSelected
+                anchors.top: parent.bottom
+                anchors.topMargin: 8
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: shapeActRow.width + 20
+                height: 36; radius: 18
+                color: "#1a1a1e"
+                border.color: "#333"; border.width: 1
+                z: 200
+                
+                Row {
+                    id: shapeActRow
+                    anchors.centerIn: parent
+                    spacing: 8
+                    
+                    // Duplicate
+                    Rectangle {
+                        width: 28; height: 28; radius: 14
+                        color: dupShpMa.containsMouse ? "#333" : "transparent"
+                        Text { text: "⧉"; color: "#aaa"; font.pixelSize: 14; anchors.centerIn: parent }
+                        MouseArea {
+                            id: dupShpMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.shapeItems.push({
+                                    id: root.nextId++,
+                                    x: shapeData.x + 20, y: shapeData.y + 20,
+                                    w: shapeData.w, h: shapeData.h,
+                                    type: shapeData.type,
+                                    strokeColor: shapeData.strokeColor,
+                                    strokeWidth: shapeData.strokeWidth,
+                                    fillColor: shapeData.fillColor,
+                                    rotation: 0
+                                })
+                                root.shapeItems = root.shapeItems.slice()
+                                root.shapesChanged()
+                            }
+                        }
+                        ToolTip.visible: dupShpMa.containsMouse; ToolTip.text: "Duplicate"; ToolTip.delay: 400
+                    }
+                    
+                    // Delete
+                    Rectangle {
+                        width: 28; height: 28; radius: 14
+                        color: delShpMa.containsMouse ? "#3a1515" : "transparent"
+                        Text { text: "✕"; color: delShpMa.containsMouse ? "#ff4444" : "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+                        MouseArea {
+                            id: delShpMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onClicked: root.deleteSelected()
+                        }
+                        ToolTip.visible: delShpMa.containsMouse; ToolTip.text: "Delete"; ToolTip.delay: 400
                     }
                 }
             }

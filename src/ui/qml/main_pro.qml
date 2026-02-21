@@ -103,6 +103,7 @@ Window {
     property bool showColor: false
     property bool showBrush: false
     property bool showBrushSettings: false
+    property bool showShapes: false
     property bool showStoryPanel: false
     property bool isStoryProject: false
     property string currentStoryPath: ""
@@ -1412,9 +1413,15 @@ Window {
                                         interval: 500
                                         onTriggered: {
                                             canvasPage.activeToolIdx = index
-                                            canvasPage.showSubTools = true
-                                            // Position subtool bar next to this button
-                                            subToolBar.yLevel = parent.mapToItem(canvasPage, 0, 0).y
+                                            if (model.name === "shapes") {
+                                                // Shapes: open Shape Library instead of sub-tool bar
+                                                mainWindow.showShapes = true
+                                                mainWindow.showBrush = false
+                                            } else {
+                                                canvasPage.showSubTools = true
+                                                // Position subtool bar next to this button
+                                                subToolBar.yLevel = parent.mapToItem(canvasPage, 0, 0).y
+                                            }
                                         }
                                     }
 
@@ -1427,11 +1434,12 @@ Window {
                                             mainWindow.showColor = false
                                             mainWindow.showLayers = false
                                             mainWindow.showBrush = false
+                                            mainWindow.showShapes = false
                                             
                                             // Handle as Click
                                             if (canvasPage.activeToolIdx === index) {
                                                 // Toggle Logic based on tool type
-                                                if (index >= 4 && index <= 8) {
+                                                if (index >= 5 && index <= 9) {
                                                     // Brushes/Eraser -> Open Brush Library (Gallery) instead of Settings
                                                     mainWindow.showBrush = !mainWindow.showBrush
                                                     if (mainWindow.showBrush) {
@@ -1439,6 +1447,13 @@ Window {
                                                     }
                                                     canvasPage.showToolSettings = false 
                                                     mainWindow.showBrushSettings = false // Close Studio if open
+                                                    mainWindow.showShapes = false
+                                                } else if (model.name === "shapes") {
+                                                    // Shapes -> Open Shape Library
+                                                    mainWindow.showShapes = !mainWindow.showShapes
+                                                    mainWindow.showBrush = false
+                                                    mainWindow.showBrushSettings = false
+                                                    canvasPage.showToolSettings = false
                                                 } else {
                                                     // Other tools -> Toggle their specific settings
                                                     canvasPage.showToolSettings = !canvasPage.showToolSettings
@@ -1453,6 +1468,7 @@ Window {
                                                 // If switching tools, close library (User Request: don't auto-open)
                                                 mainWindow.showBrush = false
                                                 mainWindow.showBrushSettings = false
+                                                mainWindow.showShapes = false
                                                 
                                                 // Backend Mapping
                                                 // Backend Mapping - Pass EXACT names to Python for Filter Logic
@@ -1469,6 +1485,10 @@ Window {
                                                  else if (toolName === "lasso") mainCanvas.currentTool = "lasso"
                                                  else if (toolName === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
                                                  else if (toolName === "move") mainCanvas.currentTool = "move"
+                                                 else if (toolName === "shapes") {
+                                                     mainCanvas.currentTool = "shape"
+                                                     mainWindow.showShapes = true
+                                                 }
                                                  else mainCanvas.currentTool = "hand"
                                             }
                                         }
@@ -3459,6 +3479,75 @@ Window {
                         onEditBrushRequested: function(brushName) {
                             mainWindow.showBrush = false
                             brushStudioDialog.open()
+                        }
+                    }
+                }
+
+                // 1.5 PANEL DE FORMAS (Shape Library - Premium Draggable/Resizable)
+                PremiumPanel {
+                    id: shapeLibraryPanel
+                    panelVisible: mainWindow.showShapes && !isStudioMode
+                    panelTitle: "Shape Library"
+                    panelIcon: "shapes.svg"
+                    accentColor: colorAccent
+                    initialX: canvasPage.width - 400
+                    initialY: 80
+                    defaultWidth: 340
+                    defaultHeight: 520
+                    minWidth: 260
+                    maxWidth: 500
+                    minHeight: 300
+                    maxHeight: 750
+                    z: 1950
+                    
+                    onCloseRequested: mainWindow.showShapes = false
+                    onPanelClicked: z = 2100
+                    
+                    ShapeLibrary {
+                        id: shapeLibrary
+                        anchors.fill: parent
+                        targetCanvas: mainCanvas
+                        comicOverlay: comicOverlay
+                        accentColor: colorAccent
+                        
+                        onCloseRequested: mainWindow.showShapes = false
+                        
+                        onShapeSelected: function(shapeName) {
+                            console.log("[main] onShapeSelected fired: " + shapeName)
+                            try {
+                                comicOverlay.startShapeDrawing(shapeName)
+                            } catch(e) {
+                                console.log("[main] Shape error: " + e)
+                                toastManager.show("Error starting shape tool: " + e, "error")
+                            }
+                            mainWindow.showShapes = false
+                        }
+                        
+                        onPanelLayoutRequested: function(layoutType) {
+                            console.log("[main] onPanelLayoutRequested fired: " + layoutType)
+                            try {
+                                comicOverlay.addPanelLayout(layoutType, 12, 6, 30)
+                                toastManager.show("Panel layout created — drag to move, handles to resize", "success")
+                            } catch(e) {
+                                console.log("[main] Panel error: " + e)
+                                toastManager.show("Error: " + e, "error")
+                            }
+                            mainWindow.showShapes = false
+                        }
+                        
+                        onBubbleRequested: function(bubbleType) {
+                            console.log("[main] onBubbleRequested fired: " + bubbleType)
+                            try {
+                                var cx = mainCanvas.canvasWidth / 2
+                                var cy = mainCanvas.canvasHeight / 2
+                                comicOverlay.addBubble(bubbleType, cx, cy)
+                                var name = bubbleType.charAt(0).toUpperCase() + bubbleType.slice(1)
+                                toastManager.show(name + " bubble added — click to select and edit", "success")
+                            } catch(e) {
+                                console.log("[main] Bubble error: " + e)
+                                toastManager.show("Error: " + e, "error")
+                            }
+                            mainWindow.showShapes = false
                         }
                     }
                 }
