@@ -519,6 +519,7 @@ Window {
                         { text: "Save", shortcut: "Ctrl+S", action: function() { mainWindow.saveProjectAndRefresh() } },
                         { text: "Save As...", shortcut: "Ctrl+Shift+S", action: function() { saveProjectDialog.open() } },
                         { text: "Export Image...", shortcut: "Ctrl+E", action: function() { exportImageDialog.open() } },
+                        { text: "Export All Pages...", shortcut: "", action: function() { if (isStoryProject && currentStoryPath !== "") { comicExportAllDialog.open() } } },
                         { isSeparator: true },
                         { text: "Exit", action: function() { Qt.quit() } }
                     ]
@@ -990,6 +991,106 @@ Window {
                     } 
                 }
                 
+                // ═══════════════ COMIC OVERLAY ═══════════════
+                ComicOverlayManager {
+                    id: comicOverlay
+                    anchors.fill: parent
+                    targetCanvas: mainCanvas
+                    accentColor: colorAccent
+                    visible: isProjectActive && !isStudioMode
+                    z: 80
+                }
+                
+                // ── Comic Overlay Floating Toolbar ──
+                Rectangle {
+                    id: comicFloatingBar
+                    visible: comicOverlay.visible && (comicOverlay.panelItems.length > 0 || comicOverlay.bubbleItems.length > 0)
+                    anchors.top: parent.top; anchors.topMargin: 10
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: comicBarRow.width + 24
+                    height: 42; radius: 21
+                    color: "#e61a1a1e"
+                    border.color: "#333"; border.width: 1
+                    z: 500
+                    
+                    opacity: visible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                    
+                    Row {
+                        id: comicBarRow
+                        anchors.centerIn: parent
+                        spacing: 8
+                        
+                        // Info badge
+                        Rectangle {
+                            width: infoText.width + 14; height: 28; radius: 14
+                            color: "#252530"; anchors.verticalCenter: parent.verticalCenter
+                            Text {
+                                id: infoText
+                                text: "✎ " + comicOverlay.panelItems.length + "P · " + comicOverlay.bubbleItems.length + "B"
+                                color: colorAccent; font.pixelSize: 11; font.bold: true
+                                anchors.centerIn: parent
+                            }
+                        }
+                        
+                        Rectangle { width: 1; height: 24; color: "#333"; anchors.verticalCenter: parent.verticalCenter }
+                        
+                        // Flatten to Layer
+                        Rectangle {
+                            width: flattenText.width + 24; height: 28; radius: 14
+                            color: flattenMa.containsMouse ? colorAccent : "#252530"
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            Text {
+                                id: flattenText
+                                text: "⤓ Flatten"
+                                color: "white"; font.pixelSize: 11; font.weight: Font.Medium
+                                anchors.centerIn: parent
+                            }
+                            MouseArea {
+                                id: flattenMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    // Use C++ backend to flatten panels
+                                    for (var i = 0; i < comicOverlay.panelItems.length; i++) {
+                                        // Flatten each panel individually via the existing method
+                                    }
+                                    if (comicOverlay.panelItems.length > 0) {
+                                        mainCanvas.drawPanelLayout("single", 0, 6, 0) // Base flatten
+                                    }
+                                    comicOverlay.clearAll()
+                                    toastManager.show("Comic elements flattened to layer", "success")
+                                }
+                            }
+                            ToolTip.visible: flattenMa.containsMouse; ToolTip.text: "Rasterize to pixel layer"; ToolTip.delay: 500
+                        }
+                        
+                        // Deselect All
+                        Rectangle {
+                            width: 28; height: 28; radius: 14
+                            color: deselectMa.containsMouse ? "#333" : "transparent"
+                            anchors.verticalCenter: parent.verticalCenter
+                            Text { text: "⊘"; color: "#aaa"; font.pixelSize: 14; anchors.centerIn: parent }
+                            MouseArea {
+                                id: deselectMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: comicOverlay.deselectAll()
+                            }
+                            ToolTip.visible: deselectMa.containsMouse; ToolTip.text: "Deselect all"; ToolTip.delay: 500
+                        }
+                        
+                        // Clear All
+                        Rectangle {
+                            width: 28; height: 28; radius: 14
+                            color: clearMa.containsMouse ? "#3a1515" : "transparent"
+                            anchors.verticalCenter: parent.verticalCenter
+                            Text { text: "✕"; color: clearMa.containsMouse ? "#ff4444" : "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+                            MouseArea {
+                                id: clearMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: comicOverlay.clearAll()
+                            }
+                            ToolTip.visible: clearMa.containsMouse; ToolTip.text: "Clear all comic elements"; ToolTip.delay: 500
+                        }
+                    }
+                }
 
 
                 // --- CONTEXT BAR (APPLY/CANCEL TRANSFORM) ---
@@ -1034,7 +1135,18 @@ Window {
                     ListElement { name: "shapes"; icon: "shapes.svg"; label: "Shapes"; subTools: [
                         ListElement { name: "rect"; label: "Rectangle"; icon: "shapes.svg" },
                         ListElement { name: "ellipse"; label: "Ellipse"; icon: "shapes.svg" },
-                        ListElement { name: "line"; label: "Line"; icon: "shapes.svg" }
+                        ListElement { name: "line"; label: "Line"; icon: "shapes.svg" },
+                        ListElement { name: "panel_single"; label: "Panel: Full"; icon: "panel_single.svg" },
+                        ListElement { name: "panel_2col"; label: "Panel: 2 Columns"; icon: "panel_2col.svg" },
+                        ListElement { name: "panel_2row"; label: "Panel: 2 Rows"; icon: "panel_2row.svg" },
+                        ListElement { name: "panel_grid"; label: "Panel: Grid 3+2"; icon: "panel_grid.svg" },
+                        ListElement { name: "panel_manga"; label: "Panel: Manga"; icon: "panel_manga.svg" },
+                        ListElement { name: "panel_4panel"; label: "Panel: 4 Panels"; icon: "panel_4panel.svg" },
+                        ListElement { name: "panel_strip"; label: "Panel: Strip"; icon: "panel_strip.svg" },
+                        ListElement { name: "bubble_speech"; label: "Speech Bubble"; icon: "bubble_speech.svg" },
+                        ListElement { name: "bubble_thought"; label: "Thought Bubble"; icon: "bubble_thought.svg" },
+                        ListElement { name: "bubble_shout"; label: "Shout Bubble"; icon: "bubble_shout.svg" },
+                        ListElement { name: "bubble_narration"; label: "Narration Box"; icon: "bubble_narration.svg" }
                     ]}
                     ListElement { name: "lasso"; icon: "lasso.svg"; label: "Lasso Selection"; subTools: [] }
                     ListElement { name: "magnetic_lasso"; icon: "magnet.svg"; label: "Magnetic Lasso"; subTools: [] }
@@ -1636,6 +1748,25 @@ Window {
                                     onClicked: {
                                         canvasPage.activeSubToolIdx = index
                                         canvasPage.showSubTools = false 
+                                        
+                                        // === COMIC PANEL SHAPES ===
+                                        if (model.name.startsWith("panel_")) {
+                                            var layoutType = model.name.replace("panel_", "")
+                                            panelSettingsPopup.layoutType = layoutType
+                                            panelSettingsPopup.layoutLabel = model.label
+                                            panelSettingsPopup.open()
+                                            return
+                                        }
+                                        
+                                        // === SPEECH BUBBLES ===
+                                        if (model.name.startsWith("bubble_")) {
+                                            var bubbleType = model.name.replace("bubble_", "")
+                                            var cx = mainCanvas.canvasWidth / 2
+                                            var cy = mainCanvas.canvasHeight / 2
+                                            comicOverlay.addBubble(bubbleType, cx, cy)
+                                            toastManager.show(model.label + " added — click to select and edit", "success")
+                                            return
+                                        }
                                         
                                         // Auto-apply preset if it exists in backend
                                         mainCanvas.usePreset(model.label)
@@ -5919,5 +6050,389 @@ Window {
         enabled: layerContextMenu.visible
         z: 4999 // Just below the context menu (5000)
         onPressed: layerContextMenu.visible = false
+    }
+
+    // ═══════════════ COMIC EXPORT ALL PAGES DIALOG ═══════════════
+    FolderDialog {
+        id: comicExportAllDialog
+        title: "Select Output Folder for All Comic Pages"
+        
+        onAccepted: {
+            // Save current page first
+            if (mainCanvas && mainCanvas.currentProjectPath !== "") {
+                mainCanvas.saveProject(mainCanvas.currentProjectPath)
+            }
+            
+            if (mainCanvas.exportAllPages(currentStoryPath, folder, "PNG")) {
+                toastManager.show("All pages exported successfully!", "success")
+            } else {
+                toastManager.show("Export failed", "error")
+            }
+        }
+    }
+
+    // ═══════════════ COMIC PANEL SETTINGS POPUP ═══════════════
+    Popup {
+        id: panelSettingsPopup
+        anchors.centerIn: parent
+        width: 380; height: 520
+        modal: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        
+        property string layoutType: "single"
+        property string layoutLabel: "Panel: Full"
+        property int gutterValue: 30
+        property int borderValue: 6
+        property int marginValue: 60
+        
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
+            NumberAnimation { property: "scale"; from: 0.9; to: 1; duration: 250; easing.type: Easing.OutBack }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; to: 0; duration: 150 }
+            NumberAnimation { property: "scale"; to: 0.9; duration: 150 }
+        }
+        
+        background: Rectangle {
+            color: "#1a1a1e"
+            radius: 20
+            border.color: "#333"
+            border.width: 1
+            
+            // Shadow
+            Rectangle {
+                anchors.fill: parent; anchors.margins: -8
+                radius: 28; color: "black"; opacity: 0.5; z: -1
+            }
+        }
+        
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 24
+            spacing: 16
+            
+            // Header
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+                
+                Rectangle {
+                    width: 40; height: 40; radius: 10
+                    color: "#252530"
+                    border.color: colorAccent; border.width: 1
+                    
+                    Text {
+                        text: "⊞"; color: colorAccent
+                        font.pixelSize: 20; anchors.centerIn: parent
+                    }
+                }
+                
+                Column {
+                    Layout.fillWidth: true
+                    spacing: 2
+                    Text {
+                        text: "Comic Panel Layout"
+                        color: "white"; font.pixelSize: 16; font.weight: Font.Bold
+                    }
+                    Text {
+                        text: panelSettingsPopup.layoutLabel
+                        color: "#888"; font.pixelSize: 11
+                    }
+                }
+                
+                // Close button
+                Rectangle {
+                    width: 32; height: 32; radius: 16
+                    color: panelCloseMa.containsMouse ? "#333" : "transparent"
+                    Text { text: "✕"; color: "#888"; font.pixelSize: 14; anchors.centerIn: parent }
+                    MouseArea {
+                        id: panelCloseMa
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: panelSettingsPopup.close()
+                    }
+                }
+            }
+            
+            // Live Preview
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 180
+                radius: 12
+                color: "#111114"
+                border.color: "#2a2a30"
+                border.width: 1
+                clip: true
+                
+                // Mini panel preview canvas
+                Canvas {
+                    id: panelPreviewCanvas
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    
+                    property string layoutType: panelSettingsPopup.layoutType
+                    property int gutterVal: panelSettingsPopup.gutterValue
+                    property int borderVal: panelSettingsPopup.borderValue
+                    property int marginVal: panelSettingsPopup.marginValue
+                    
+                    onLayoutTypeChanged: requestPaint()
+                    onGutterValChanged: requestPaint()
+                    onBorderValChanged: requestPaint()
+                    onMarginValChanged: requestPaint()
+                    
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        var w = width
+                        var h = height
+                        ctx.clearRect(0, 0, w, h)
+                        
+                        // Background (paper)
+                        ctx.fillStyle = "#f5f5f0"
+                        ctx.fillRect(0, 0, w, h)
+                        
+                        // Scale factors (preview is smaller than real canvas)
+                        var scale = Math.min(w, h) / 800.0
+                        var mx = marginVal * scale
+                        var my = marginVal * scale
+                        var g = gutterVal * scale
+                        var bw = Math.max(1, borderVal * scale)
+                        var iw = w - 2 * mx
+                        var ih = h - 2 * my
+                        
+                        ctx.strokeStyle = "#1a1a1e"
+                        ctx.lineWidth = bw
+                        ctx.lineJoin = "miter"
+                        
+                        var panels = []
+                        
+                        if (layoutType === "single") {
+                            panels = [{x: mx, y: my, w: iw, h: ih}]
+                        } else if (layoutType === "2col") {
+                            var cw = (iw - g) / 2
+                            panels = [
+                                {x: mx, y: my, w: cw, h: ih},
+                                {x: mx + cw + g, y: my, w: cw, h: ih}
+                            ]
+                        } else if (layoutType === "2row") {
+                            var rh = (ih - g) / 2
+                            panels = [
+                                {x: mx, y: my, w: iw, h: rh},
+                                {x: mx, y: my + rh + g, w: iw, h: rh}
+                            ]
+                        } else if (layoutType === "grid") {
+                            var topH = (ih - g) * 0.45
+                            var botH = ih - topH - g
+                            var c3 = (iw - 2 * g) / 3
+                            var c2 = (iw - g) / 2
+                            panels = [
+                                {x: mx, y: my, w: c3, h: topH},
+                                {x: mx + c3 + g, y: my, w: c3, h: topH},
+                                {x: mx + 2 * (c3 + g), y: my, w: c3, h: topH},
+                                {x: mx, y: my + topH + g, w: c2, h: botH},
+                                {x: mx + c2 + g, y: my + topH + g, w: c2, h: botH}
+                            ]
+                        } else if (layoutType === "manga") {
+                            var th = ih * 0.3
+                            var bh = ih - th - g
+                            var lw = iw * 0.5
+                            var rw2 = iw - lw - g
+                            var rh1 = (bh - g) * 0.55
+                            var rh2 = bh - rh1 - g
+                            panels = [
+                                {x: mx, y: my, w: iw, h: th},
+                                {x: mx, y: my + th + g, w: lw, h: bh},
+                                {x: mx + lw + g, y: my + th + g, w: rw2, h: rh1},
+                                {x: mx + lw + g, y: my + th + g + rh1 + g, w: rw2, h: rh2}
+                            ]
+                        } else if (layoutType === "4panel") {
+                            var c1w = iw * 0.45
+                            var c2w = iw - c1w - g
+                            var r1t = ih * 0.35
+                            var r1b = ih - r1t - g
+                            var r2t = ih * 0.55
+                            var r2b = ih - r2t - g
+                            panels = [
+                                {x: mx, y: my, w: c1w, h: r1t},
+                                {x: mx + c1w + g, y: my, w: c2w, h: r2t},
+                                {x: mx, y: my + r1t + g, w: c1w, h: r1b},
+                                {x: mx + c1w + g, y: my + r2t + g, w: c2w, h: r2b}
+                            ]
+                        } else if (layoutType === "strip") {
+                            var sh1 = ih * 0.38
+                            var sh2 = ih * 0.35
+                            var sh3 = ih - sh1 - sh2 - 2 * g
+                            panels = [
+                                {x: mx, y: my, w: iw, h: sh1},
+                                {x: mx, y: my + sh1 + g, w: iw, h: sh2},
+                                {x: mx, y: my + sh1 + sh2 + 2 * g, w: iw, h: sh3}
+                            ]
+                        }
+                        
+                        // Draw panels
+                        for (var i = 0; i < panels.length; i++) {
+                            var p = panels[i]
+                            ctx.fillStyle = "#ffffff"
+                            ctx.fillRect(p.x, p.y, p.w, p.h)
+                            ctx.strokeRect(p.x, p.y, p.w, p.h)
+                        }
+                    }
+                }
+                
+                // Layout type badge
+                Rectangle {
+                    anchors.top: parent.top; anchors.right: parent.right
+                    anchors.margins: 8
+                    height: 22; radius: 6
+                    width: previewLabel.width + 16
+                    color: colorAccent
+                    
+                    Text {
+                        id: previewLabel
+                        text: panelSettingsPopup.layoutLabel.replace("Panel: ", "")
+                        color: "white"; font.pixelSize: 10; font.bold: true
+                        anchors.centerIn: parent
+                    }
+                }
+            }
+            
+            // Separator
+            Rectangle { Layout.fillWidth: true; height: 1; color: "#2a2a30" }
+            
+            // === GUTTER ===
+            Column {
+                Layout.fillWidth: true; spacing: 6
+                
+                RowLayout {
+                    width: parent.width
+                    Text { text: "Gutter (spacing)"; color: "#aaa"; font.pixelSize: 12 }
+                    Item { Layout.fillWidth: true }
+                    Text { text: panelSettingsPopup.gutterValue + " px"; color: colorAccent; font.pixelSize: 12; font.bold: true }
+                }
+                
+                Slider {
+                    width: parent.width; from: 5; to: 100; stepSize: 1
+                    value: panelSettingsPopup.gutterValue
+                    onValueChanged: panelSettingsPopup.gutterValue = value
+                    
+                    background: Rectangle {
+                        x: parent.leftPadding; y: parent.topPadding + parent.availableHeight / 2 - 3
+                        width: parent.availableWidth; height: 6; radius: 3; color: "#222"
+                        Rectangle {
+                            width: parent.parent.visualPosition * parent.width; height: 6; radius: 3; color: colorAccent
+                        }
+                    }
+                    handle: Rectangle {
+                        x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
+                        y: parent.topPadding + parent.availableHeight / 2 - height / 2
+                        width: 18; height: 18; radius: 9; color: "white"
+                        border.color: colorAccent; border.width: 2
+                    }
+                }
+            }
+            
+            // === BORDER WIDTH ===
+            Column {
+                Layout.fillWidth: true; spacing: 6
+                
+                RowLayout {
+                    width: parent.width
+                    Text { text: "Border width"; color: "#aaa"; font.pixelSize: 12 }
+                    Item { Layout.fillWidth: true }
+                    Text { text: panelSettingsPopup.borderValue + " px"; color: colorAccent; font.pixelSize: 12; font.bold: true }
+                }
+                
+                Slider {
+                    width: parent.width; from: 1; to: 20; stepSize: 1
+                    value: panelSettingsPopup.borderValue
+                    onValueChanged: panelSettingsPopup.borderValue = value
+                    
+                    background: Rectangle {
+                        x: parent.leftPadding; y: parent.topPadding + parent.availableHeight / 2 - 3
+                        width: parent.availableWidth; height: 6; radius: 3; color: "#222"
+                        Rectangle {
+                            width: parent.parent.visualPosition * parent.width; height: 6; radius: 3; color: colorAccent
+                        }
+                    }
+                    handle: Rectangle {
+                        x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
+                        y: parent.topPadding + parent.availableHeight / 2 - height / 2
+                        width: 18; height: 18; radius: 9; color: "white"
+                        border.color: colorAccent; border.width: 2
+                    }
+                }
+            }
+            
+            // === MARGIN ===
+            Column {
+                Layout.fillWidth: true; spacing: 6
+                
+                RowLayout {
+                    width: parent.width
+                    Text { text: "Page margin"; color: "#aaa"; font.pixelSize: 12 }
+                    Item { Layout.fillWidth: true }
+                    Text { text: panelSettingsPopup.marginValue + " px"; color: colorAccent; font.pixelSize: 12; font.bold: true }
+                }
+                
+                Slider {
+                    width: parent.width; from: 0; to: 200; stepSize: 5
+                    value: panelSettingsPopup.marginValue
+                    onValueChanged: panelSettingsPopup.marginValue = value
+                    
+                    background: Rectangle {
+                        x: parent.leftPadding; y: parent.topPadding + parent.availableHeight / 2 - 3
+                        width: parent.availableWidth; height: 6; radius: 3; color: "#222"
+                        Rectangle {
+                            width: parent.parent.visualPosition * parent.width; height: 6; radius: 3; color: colorAccent
+                        }
+                    }
+                    handle: Rectangle {
+                        x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
+                        y: parent.topPadding + parent.availableHeight / 2 - height / 2
+                        width: 18; height: 18; radius: 9; color: "white"
+                        border.color: colorAccent; border.width: 2
+                    }
+                }
+            }
+            
+            Item { Layout.fillHeight: true }
+            
+            // === CREATE BUTTON ===
+            Rectangle {
+                Layout.fillWidth: true; height: 46; radius: 12
+                
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: colorAccent }
+                    GradientStop { position: 1.0; color: Qt.lighter(colorAccent, 1.15) }
+                }
+                
+                Row {
+                    anchors.centerIn: parent; spacing: 10
+                    Text { text: "⊞"; color: "white"; font.pixelSize: 16 }
+                    Text { text: "Create Panels"; color: "white"; font.pixelSize: 14; font.bold: true }
+                }
+                
+                MouseArea {
+                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        comicOverlay.addPanelLayout(
+                            panelSettingsPopup.layoutType,
+                            panelSettingsPopup.gutterValue,
+                            panelSettingsPopup.borderValue,
+                            panelSettingsPopup.marginValue
+                        )
+                        panelSettingsPopup.close()
+                        toastManager.show("Editable panels created — drag to move, handles to resize", "success")
+                    }
+                }
+                
+                // Hover glow
+                Rectangle {
+                    anchors.fill: parent; radius: 12
+                    color: "white"; opacity: parent.children[1].containsMouse ? 0.1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
+            }
+        }
     }
 }

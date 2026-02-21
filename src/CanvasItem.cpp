@@ -3032,6 +3032,251 @@ QVariantList CanvasItem::get_sketchbook_pages(const QString &folderPath) {
   return results;
 }
 
+QString CanvasItem::create_new_sketchbook(const QString &name,
+                                          const QString &coverColor) {
+  QString baseDirStr =
+      QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
+      "/ArtFlowProjects";
+  QDir baseDir(baseDirStr);
+  if (!baseDir.exists())
+    baseDir.mkpath(".");
+
+  QString folderPath = baseDirStr + "/" + name;
+  QDir dir(folderPath);
+  if (!dir.exists()) {
+    dir.mkpath(".");
+  }
+
+  // Create a manifest.json for metadata
+  QJsonObject manifest;
+  manifest["name"] = name;
+  manifest["type"] = "story";
+  manifest["coverColor"] = coverColor;
+  manifest["created"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+
+  QFile f(folderPath + "/manifest.json");
+  if (f.open(QIODevice::WriteOnly)) {
+    QJsonDocument doc(manifest);
+    f.write(doc.toJson(QJsonDocument::Compact));
+    f.close();
+  }
+
+  qDebug() << "[Comic] Created sketchbook at:" << folderPath;
+  emit projectListChanged();
+  return folderPath;
+}
+
+QString CanvasItem::create_new_page(const QString &folderPath,
+                                    const QString &pageName) {
+  if (folderPath.isEmpty())
+    return "";
+
+  QDir dir(folderPath);
+  if (!dir.exists())
+    return "";
+
+  // Determine page number
+  QFileInfoList existing =
+      dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Name);
+  int pageNum = existing.size() + 1;
+
+  QString safeName = pageName;
+  if (safeName.isEmpty())
+    safeName = "Page";
+
+  // Zero-pad for sorting: Page_001.stxf
+  QString fileName =
+      QString("%1_%2.stxf").arg(safeName).arg(pageNum, 3, 10, QChar('0'));
+  QString filePath = dir.absoluteFilePath(fileName);
+
+  // Create a minimal .stxf project file with the current canvas dimensions
+  int w = m_canvasWidth > 0 ? m_canvasWidth : 1920;
+  int h = m_canvasHeight > 0 ? m_canvasHeight : 1080;
+
+  QJsonObject obj;
+  obj["title"] = pageName + " " + QString::number(pageNum);
+  obj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+  obj["width"] = w;
+  obj["height"] = h;
+  obj["version"] = 2;
+
+  // Create a blank white background layer
+  QImage bgImg(w, h, QImage::Format_RGBA8888_Premultiplied);
+  if (m_backgroundColor.isValid() && m_backgroundColor.alpha() > 0) {
+    bgImg.fill(m_backgroundColor);
+  } else {
+    bgImg.fill(Qt::white);
+  }
+
+  QBuffer bgBuf;
+  bgBuf.open(QIODevice::WriteOnly);
+  bgImg.save(&bgBuf, "PNG");
+  QString bgB64 = QString::fromLatin1(bgBuf.data().toBase64());
+
+  QJsonObject bgLayer;
+  bgLayer["name"] = "Background";
+  bgLayer["opacity"] = 1.0;
+  bgLayer["visible"] = true;
+  bgLayer["locked"] = false;
+  bgLayer["alphaLock"] = false;
+  bgLayer["blendMode"] = 0;
+  bgLayer["type"] = 1; // Background type
+  bgLayer["data"] = bgB64;
+
+  // Create an empty drawing layer
+  QImage drawImg(w, h, QImage::Format_RGBA8888_Premultiplied);
+  drawImg.fill(Qt::transparent);
+
+  QBuffer drawBuf;
+  drawBuf.open(QIODevice::WriteOnly);
+  drawImg.save(&drawBuf, "PNG");
+  QString drawB64 = QString::fromLatin1(drawBuf.data().toBase64());
+
+  QJsonObject drawLayer;
+  drawLayer["name"] = "Layer 1";
+  drawLayer["opacity"] = 1.0;
+  drawLayer["visible"] = true;
+  drawLayer["locked"] = false;
+  drawLayer["alphaLock"] = false;
+  drawLayer["blendMode"] = 0;
+  drawLayer["type"] = 0;
+  drawLayer["data"] = drawB64;
+
+  QJsonArray layers;
+  layers.append(bgLayer);
+  layers.append(drawLayer);
+  obj["layers"] = layers;
+
+  // Generate a simple thumbnail (white/bg colored canvas)
+  QImage thumbImg = bgImg.scaled(QSize(300, 300), Qt::KeepAspectRatio,
+                                 Qt::SmoothTransformation);
+  QBuffer thumbBuf;
+  thumbBuf.open(QIODevice::WriteOnly);
+  thumbImg.save(&thumbBuf, "PNG");
+  QString thumbB64 = QString::fromLatin1(thumbBuf.data().toBase64());
+  obj["thumbnail"] = thumbB64;
+
+  // Write the file
+  QFile file(filePath);
+  if (file.open(QIODevice::WriteOnly)) {
+    QJsonDocument doc(obj);
+    file.write(doc.toJson(QJsonDocument::Compact));
+    file.close();
+    qDebug() << "[Comic] Created page:" << filePath;
+    return filePath;
+  }
+
+  return "";
+}
+
+bool CanvasItem::exportPageImage(const QString &projectPath,
+                                 const QString &outputPath,
+                                 const QString &format) {
+  QString localPath = projectPath;
+  if (localPath.startsWith("file:///"))
+    localPath = QUrl(projectPath).toLocalFile();
+
+  QString localOutput = outputPath;
+  if (localOutput.startsWith("file:///"))
+    localOutput = QUrl(outputPath).toLocalFile();
+
+  QFile file(localPath);
+  if (!file.open(QIODevice::ReadOnly))
+    return false;
+
+  QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+  file.close();
+  QJsonObject obj = doc.object();
+
+  int w = obj["width"].toInt(1920);
+  int h = obj["height"].toInt(1080);
+
+  if (w <= 0 || h <= 0)
+    return false;
+
+  // Reconstruct composite image from layers
+  QImage composite(w, h, QImage::Format_RGBA8888_Premultiplied);
+  composite.fill(Qt::transparent);
+
+  QPainter painter(&composite);
+  painter.setRenderHint(QPainter::SmoothPixmapTransform);
+
+  QJsonArray layersArr = obj["layers"].toArray();
+  for (const QJsonValue &val : layersArr) {
+    QJsonObject layerObj = val.toObject();
+    if (!layerObj["visible"].toBool(true))
+      continue;
+
+    float opacity = (float)layerObj["opacity"].toDouble(1.0);
+    QString b64Data = layerObj["data"].toString();
+    if (b64Data.isEmpty())
+      continue;
+
+    QByteArray data = QByteArray::fromBase64(b64Data.toLatin1());
+    QImage layerImg;
+    if (layerImg.loadFromData(data, "PNG")) {
+      if (layerImg.width() != w || layerImg.height() != h) {
+        layerImg = layerImg.scaled(w, h, Qt::IgnoreAspectRatio,
+                                   Qt::SmoothTransformation);
+      }
+      painter.setOpacity(opacity);
+      painter.drawImage(0, 0, layerImg);
+    }
+  }
+  painter.end();
+
+  bool success =
+      composite.save(localOutput, format.toUpper().toStdString().c_str());
+  if (success) {
+    qDebug() << "[Comic Export] Exported page to:" << localOutput;
+  } else {
+    qWarning() << "[Comic Export] Failed to export page to:" << localOutput;
+  }
+  return success;
+}
+
+bool CanvasItem::exportAllPages(const QString &folderPath,
+                                const QString &outputDir,
+                                const QString &format) {
+  QString localFolder = folderPath;
+  if (localFolder.startsWith("file:///"))
+    localFolder = QUrl(folderPath).toLocalFile();
+
+  QString localOutput = outputDir;
+  if (localOutput.startsWith("file:///"))
+    localOutput = QUrl(outputDir).toLocalFile();
+
+  QDir dir(localFolder);
+  if (!dir.exists())
+    return false;
+
+  QDir outDir(localOutput);
+  if (!outDir.exists())
+    outDir.mkpath(".");
+
+  QFileInfoList entries =
+      dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Name);
+
+  int exportCount = 0;
+  QString ext = format.toLower();
+  if (ext != "png" && ext != "jpg" && ext != "jpeg")
+    ext = "png";
+
+  for (const QFileInfo &info : entries) {
+    QString outPath =
+        outDir.absoluteFilePath(info.completeBaseName() + "." + ext);
+    if (exportPageImage(info.absoluteFilePath(), outPath, format)) {
+      exportCount++;
+    }
+  }
+
+  qDebug() << "[Comic Export] Exported" << exportCount << "pages to"
+           << localOutput;
+  emit notificationRequested(QString("Exported %1 pages").arg(exportCount),
+                             "success");
+  return exportCount > 0;
+}
+
 bool CanvasItem::deleteProject(const QString &path) {
   if (path.isEmpty())
     return false;
@@ -3382,6 +3627,161 @@ void CanvasItem::resizeCanvas(int w, int h) {
 }
 
 void CanvasItem::setProjectDpi(int dpi) { qDebug() << "DPI set to" << dpi; }
+
+void CanvasItem::drawPanelLayout(const QString &layoutType, int gutterPx,
+                                 int borderPx, int marginPx) {
+  if (!m_layerManager)
+    return;
+
+  // Create a new layer for panels
+  int panelLayerIdx = m_layerManager->addLayer("Panels");
+  Layer *panelLayer = m_layerManager->getLayer(panelLayerIdx);
+  if (!panelLayer || !panelLayer->buffer)
+    return;
+
+  m_activeLayerIndex = panelLayerIdx;
+  m_layerManager->setActiveLayer(panelLayerIdx);
+
+  int w = m_canvasWidth;
+  int h = m_canvasHeight;
+
+  QImage img(panelLayer->buffer->data(), w, h,
+             QImage::Format_RGBA8888_Premultiplied);
+  QPainter painter(&img);
+  painter.setRenderHint(QPainter::Antialiasing);
+
+  // Panel border pen (black, professional manga line)
+  QPen borderPen(Qt::black, borderPx, Qt::SolidLine, Qt::SquareCap,
+                 Qt::MiterJoin);
+  painter.setPen(borderPen);
+  painter.setBrush(Qt::NoBrush);
+
+  // Inner area after margins
+  int mx = marginPx;
+  int my = marginPx;
+  int innerW = w - 2 * mx;
+  int innerH = h - 2 * my;
+  int g = gutterPx; // gutter between panels
+
+  // Define panel rectangles based on layout type
+  struct PanelRect {
+    float x, y, w, h;
+  };
+  std::vector<PanelRect> panels;
+
+  if (layoutType == "single") {
+    // Single full-page panel
+    panels.push_back({(float)mx, (float)my, (float)innerW, (float)innerH});
+
+  } else if (layoutType == "2col") {
+    // Two columns
+    float colW = (innerW - g) / 2.0f;
+    panels.push_back({(float)mx, (float)my, colW, (float)innerH});
+    panels.push_back({mx + colW + g, (float)my, colW, (float)innerH});
+
+  } else if (layoutType == "2row") {
+    // Two rows
+    float rowH = (innerH - g) / 2.0f;
+    panels.push_back({(float)mx, (float)my, (float)innerW, rowH});
+    panels.push_back({(float)mx, my + rowH + g, (float)innerW, rowH});
+
+  } else if (layoutType == "grid") {
+    // 3-top, 2-bottom (manga standard grid)
+    float topH = (innerH - g) * 0.45f;
+    float botH = innerH - topH - g;
+    float col3W = (innerW - 2 * g) / 3.0f;
+    float col2W = (innerW - g) / 2.0f;
+
+    // Top row: 3 panels
+    panels.push_back({(float)mx, (float)my, col3W, topH});
+    panels.push_back({mx + col3W + g, (float)my, col3W, topH});
+    panels.push_back({mx + 2 * (col3W + g), (float)my, col3W, topH});
+
+    // Bottom row: 2 panels
+    panels.push_back({(float)mx, my + topH + g, col2W, botH});
+    panels.push_back({mx + col2W + g, my + topH + g, col2W, botH});
+
+  } else if (layoutType == "manga") {
+    // Manga L-shape: top banner + left tall + two right stacked
+    float topH = innerH * 0.3f;
+    float botH = innerH - topH - g;
+    float leftW = innerW * 0.5f;
+    float rightW = innerW - leftW - g;
+    float rightH1 = (botH - g) * 0.55f;
+    float rightH2 = botH - rightH1 - g;
+
+    // Top banner
+    panels.push_back({(float)mx, (float)my, (float)innerW, topH});
+    // Left tall panel
+    panels.push_back({(float)mx, my + topH + g, leftW, botH});
+    // Right top
+    panels.push_back({mx + leftW + g, my + topH + g, rightW, rightH1});
+    // Right bottom
+    panels.push_back(
+        {mx + leftW + g, my + topH + g + rightH1 + g, rightW, rightH2});
+
+  } else if (layoutType == "4panel") {
+    // 4 panels - staggered (classic comic)
+    float col1W = innerW * 0.45f;
+    float col2W = innerW - col1W - g;
+    float row1TopH = innerH * 0.35f;
+    float row1BotH = innerH - row1TopH - g;
+    float row2TopH = innerH * 0.55f;
+    float row2BotH = innerH - row2TopH - g;
+
+    // Top-left (shorter)
+    panels.push_back({(float)mx, (float)my, col1W, row1TopH});
+    // Top-right (taller)
+    panels.push_back({mx + col1W + g, (float)my, col2W, row2TopH});
+    // Bottom-left (taller)
+    panels.push_back({(float)mx, my + row1TopH + g, col1W, row1BotH});
+    // Bottom-right (shorter)
+    panels.push_back({mx + col1W + g, my + row2TopH + g, col2W, row2BotH});
+
+  } else if (layoutType == "strip") {
+    // 3 horizontal strips (webtoon-style)
+    float rowH1 = innerH * 0.38f;
+    float rowH2 = innerH * 0.35f;
+    float rowH3 = innerH - rowH1 - rowH2 - 2 * g;
+
+    panels.push_back({(float)mx, (float)my, (float)innerW, rowH1});
+    panels.push_back({(float)mx, my + rowH1 + g, (float)innerW, rowH2});
+    panels.push_back(
+        {(float)mx, my + rowH1 + rowH2 + 2 * g, (float)innerW, rowH3});
+
+  } else {
+    // Default: single panel
+    panels.push_back({(float)mx, (float)my, (float)innerW, (float)innerH});
+  }
+
+  // Draw all panels
+  for (const auto &p : panels) {
+    QRectF rect(p.x, p.y, p.w, p.h);
+    painter.drawRect(rect);
+  }
+
+  painter.end();
+
+  // Sync to GPU if FBOs are active
+  if (m_pingFBO && panelLayer->buffer) {
+    QImage gpuImg(panelLayer->buffer->data(), w, h, QImage::Format_RGBA8888);
+    m_pingFBO->bind();
+    QOpenGLPaintDevice device(w, h);
+    QPainter fboPainter(&device);
+    fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+    fboPainter.drawImage(0, 0, gpuImg);
+    fboPainter.end();
+    m_pingFBO->release();
+    QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+  }
+
+  panelLayer->dirty = true;
+  updateLayersList();
+  update();
+
+  emit notificationRequested(
+      "Panel layout '" + layoutType + "' created on new layer", "success");
+}
 
 QString CanvasItem::sampleColor(int x, int y, int mode) {
   if (!m_layerManager)

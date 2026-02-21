@@ -47,6 +47,7 @@
     <file>qml/components/PremiumPanel.qml</file>
     <file>qml/components/SettingsMenu.qml</file>
     <file>qml/components/StoryPanel.qml</file>
+    <file>qml/components/ComicOverlayManager.qml</file>
     <file>qml/components/SelectionToolbar.qml</file>
     <file>qml/views/CanvasPage.qml</file>
 </qresource>

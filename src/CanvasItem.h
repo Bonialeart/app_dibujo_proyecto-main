@@ -258,6 +258,9 @@ public:
 
   Q_INVOKABLE void resizeCanvas(int w, int h);
   Q_INVOKABLE void setProjectDpi(int dpi);
+  // Comic Panel Layout Drawing
+  Q_INVOKABLE void drawPanelLayout(const QString &layoutType, int gutterPx,
+                                   int borderPx, int marginPx);
   Q_INVOKABLE QString sampleColor(int x, int y, int mode = 0);
   Q_INVOKABLE void adjustBrushSize(float deltaPercent);
   Q_INVOKABLE void adjustBrushOpacity(float deltaPercent);
@@ -308,6 +311,16 @@ public:
   QRectF transformBox() const { return m_transformBox; }
   Q_INVOKABLE QVariantList get_project_list(); // RE-ADDED
   Q_INVOKABLE QVariantList get_sketchbook_pages(const QString &folderPath);
+  Q_INVOKABLE QString create_new_sketchbook(const QString &name,
+                                            const QString &coverColor);
+  Q_INVOKABLE QString create_new_page(const QString &folderPath,
+                                      const QString &pageName);
+  Q_INVOKABLE bool exportPageImage(const QString &projectPath,
+                                   const QString &outputPath,
+                                   const QString &format);
+  Q_INVOKABLE bool exportAllPages(const QString &folderPath,
+                                  const QString &outputDir,
+                                  const QString &format);
   Q_INVOKABLE void load_file_path(const QString &path);
   Q_INVOKABLE bool deleteProject(const QString &path);
   Q_INVOKABLE bool deleteFolder(const QString &path);
