@@ -122,7 +122,8 @@ Item {
                 x: p.x, y: p.y,
                 w: p.w, h: p.h,
                 rotation: 0,
-                borderWidth: borderPx || 6
+                borderWidth: borderPx || 6,
+                pts: [{x:0,y:0}, {x:p.w,y:0}, {x:p.w,y:p.h}, {x:0,y:p.h}]
             })
         }
         
@@ -436,22 +437,49 @@ Item {
             rotation: panelData.rotation || 0
             z: isSelected ? 50 : 10
             
-            // Panel border rect
-            Rectangle {
-                id: panelRect
+            // Panel border drawn by polygon
+            Canvas {
+                id: panelCanvas
                 anchors.fill: parent
-                color: "transparent"
-                border.color: isSelected ? accentColor : "#000000"
-                border.width: (panelData.borderWidth || 6) * zoom
-                radius: 0
+                // Exceed bounds slightly to draw thick borders correctly if nodes are moved outward
+                anchors.margins: -40 * zoom
                 
-                // Inner highlight when selected
-                Rectangle {
-                    visible: isSelected
-                    anchors.fill: parent
-                    color: Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.06)
-                    border.color: accentColor
-                    border.width: 2
+                property var pts: panelData.pts || [{x:0,y:0}, {x:panelData.w,y:0}, {x:panelData.w,y:panelData.h}, {x:0,y:panelData.h}]
+                property bool sel: isSelected
+                property real bw: (panelData.borderWidth || 6) * zoom
+                
+                onPtsChanged: requestPaint()
+                onSelChanged: requestPaint()
+                onWidthChanged: requestPaint()
+                onHeightChanged: requestPaint()
+                
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.clearRect(0,0,width,height)
+                    ctx.strokeStyle = sel ? accentColor.toString() : "#000000"
+                    ctx.lineWidth = bw
+                    ctx.lineJoin = "miter"
+                    
+                    var off = 40 * zoom // Because of anchors.margins
+                    
+                    ctx.beginPath()
+                    var p = pts
+                    if (p && p.length === 4) {
+                        ctx.moveTo(p[0].x * zoom + off, p[0].y * zoom + off)
+                        ctx.lineTo(p[1].x * zoom + off, p[1].y * zoom + off)
+                        ctx.lineTo(p[2].x * zoom + off, p[2].y * zoom + off)
+                        ctx.lineTo(p[3].x * zoom + off, p[3].y * zoom + off)
+                        ctx.closePath()
+                    } else {
+                        var inset = bw/2 + off
+                        ctx.rect(inset, inset, panelData.w*zoom - bw, panelData.h*zoom - bw)
+                    }
+                    
+                    if (sel) {
+                        ctx.fillStyle = Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.06).toString()
+                        ctx.fill()
+                    }
+                    ctx.stroke()
                 }
             }
             
@@ -491,74 +519,58 @@ Item {
                 }
             }
             
-            // ── RESIZE HANDLES (visible when selected) ──
+            // ── CORNER EDIT HANDLES (visible when selected) ──
             Repeater {
-                model: isSelected ? [
-                    {hx: 0, hy: 0, cursor: Qt.SizeFDiagCursor, edge: "tl"},
-                    {hx: 1, hy: 0, cursor: Qt.SizeBDiagCursor, edge: "tr"},
-                    {hx: 0, hy: 1, cursor: Qt.SizeBDiagCursor, edge: "bl"},
-                    {hx: 1, hy: 1, cursor: Qt.SizeFDiagCursor, edge: "br"},
-                    {hx: 0.5, hy: 0, cursor: Qt.SizeVerCursor, edge: "t"},
-                    {hx: 0.5, hy: 1, cursor: Qt.SizeVerCursor, edge: "b"},
-                    {hx: 0, hy: 0.5, cursor: Qt.SizeHorCursor, edge: "l"},
-                    {hx: 1, hy: 0.5, cursor: Qt.SizeHorCursor, edge: "r"}
-                ] : []
+                model: isSelected ? [0, 1, 2, 3] : []
                 
                 delegate: Rectangle {
-                    width: 14; height: 14; radius: 3
-                    x: modelData.hx * panelDelegate.width - 7
-                    y: modelData.hy * panelDelegate.height - 7
+                    width: 16; height: 16; radius: 8
+                    
+                    property var pData: panelData.pts && panelData.pts.length === 4 ? panelData.pts : [{x:0,y:0}, {x:panelData.w,y:0}, {x:panelData.w,y:panelData.h}, {x:0,y:panelData.h}]
+                    property real pX: pData[modelData].x * zoom
+                    property real pY: pData[modelData].y * zoom
+                    
+                    x: pX - 8
+                    y: pY - 8
                     color: "white"
                     border.color: accentColor; border.width: 2
                     z: 100
                     
                     MouseArea {
                         anchors.fill: parent
-                        cursorShape: modelData.cursor
+                        cursorShape: Qt.CrossCursor
                         
                         property real startMx: 0
                         property real startMy: 0
                         property real origX: 0
                         property real origY: 0
-                        property real origW: 0
-                        property real origH: 0
                         
                         onPressed: {
-                            startMx = mouse.x + parent.x
-                            startMy = mouse.y + parent.y
-                            origX = panelData.x
-                            origY = panelData.y
-                            origW = panelData.w
-                            origH = panelData.h
+                            var p = panelDelegate.mapFromItem(this, mouse.x, mouse.y)
+                            startMx = p.x
+                            startMy = p.y
+                            origX = pData[modelData].x
+                            origY = pData[modelData].y
                         }
                         
                         onPositionChanged: {
                             if (!pressed) return
-                            var dx = (mouse.x + parent.x - startMx) / zoom
-                            var dy = (mouse.y + parent.y - startMy) / zoom
-                            var e = modelData.edge
-                            var minS = 40
+                            var p = panelDelegate.mapFromItem(this, mouse.x, mouse.y)
+                            var dx = (p.x - startMx) / zoom
+                            var dy = (p.y - startMy) / zoom
                             
-                            if (e === "tl" || e === "l" || e === "bl") {
-                                var newX = origX + dx
-                                var newW = origW - dx
-                                if (newW > minS) { panelData.x = newX; panelData.w = newW }
+                            // Edit the specific point
+                            var newPts = []
+                            for(var i=0; i<4; i++) {
+                                if (i === modelData) {
+                                    newPts.push({x: origX + dx, y: origY + dy})
+                                } else {
+                                    newPts.push({x: pData[i].x, y: pData[i].y})
+                                }
                             }
-                            if (e === "tr" || e === "r" || e === "br") {
-                                var nw = origW + dx
-                                if (nw > minS) panelData.w = nw
-                            }
-                            if (e === "tl" || e === "t" || e === "tr") {
-                                var newY = origY + dy
-                                var newH = origH - dy
-                                if (newH > minS) { panelData.y = newY; panelData.h = newH }
-                            }
-                            if (e === "bl" || e === "b" || e === "br") {
-                                var nh = origH + dy
-                                if (nh > minS) panelData.h = nh
-                            }
-                            
+                            panelData.pts = newPts
                             root.panelItems = root.panelItems.slice()
+                            panelCanvas.requestPaint()
                         }
                     }
                 }
@@ -568,7 +580,7 @@ Item {
             Rectangle {
                 visible: isSelected
                 anchors.top: parent.bottom
-                anchors.topMargin: 8
+                anchors.topMargin: 40
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: panelActionsRow.width + 20
                 height: 36; radius: 18

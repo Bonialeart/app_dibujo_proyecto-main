@@ -760,9 +760,9 @@ Window {
                         // The Manipulator Item (The selection bounding box)
                         Rectangle {
                             id: manipulator
-                            // Initial pos 0,0 relative to container (Whole Canvas)
-                            width: parent.width
-                            height: parent.height
+                            // Set size and position dynamically when shown
+                            width: mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.width : parent.width
+                            height: mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.height : parent.height
                             color: "transparent"
                             border.color: colorAccent
                             border.width: 2 / mainCanvas.zoomLevel
@@ -771,36 +771,126 @@ Window {
                             // Reset state when shown
                             onVisibleChanged: {
                                 if (visible) {
-                                    x = 0; y = 0
+                                    if (mainCanvas.transformBox.width > 0) {
+                                        x = mainCanvas.transformBox.x
+                                        y = mainCanvas.transformBox.y
+                                        width = mainCanvas.transformBox.width
+                                        height = mainCanvas.transformBox.height
+                                    } else {
+                                        x = 0; y = 0
+                                        width = parent.width
+                                        height = parent.height
+                                    }
                                     scale = 1; rotation = 0
                                     mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
                                 }
                             }
                             
                             PinchHandler { target: manipulator }
-                            DragHandler { target: manipulator }
+                            
+                            // Center drag handle
+                            DragHandler { target: manipulator; xAxis.enabled: true; yAxis.enabled: true }
                             
                             onXChanged: if (visible) updateTransform()
                             onYChanged: if (visible) updateTransform()
                             onScaleChanged: if (visible) updateTransform()
                             onRotationChanged: if (visible) updateTransform()
+                            onWidthChanged: if (visible) updateTransform()
+                            onHeightChanged: if (visible) updateTransform()
                             
                             function updateTransform() {
                                 mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
                             }
                             
-                            // Visual Handles (Corners) - Just for show in Essential version
-                            // Could implement interactive resize logic later
+                            // ── ROTATION HANDLE ──
+                            Rectangle {
+                                width: 24 / mainCanvas.zoomLevel; height: 24 / mainCanvas.zoomLevel
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.top: parent.top
+                                anchors.topMargin: -40 / mainCanvas.zoomLevel
+                                color: "#1a1a1e"; border.color: colorAccent
+                                radius: width/2
+                                
+                                Text { text: "⟳"; color: "white"; anchors.centerIn: parent; font.pixelSize: 14/mainCanvas.zoomLevel }
+                                
+                                Rectangle {
+                                    width: 2 / mainCanvas.zoomLevel; height: 16 / mainCanvas.zoomLevel
+                                    color: colorAccent
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.top: parent.bottom
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    property real startRot: 0
+                                    property real startAngle: 0
+                                    
+                                    onPressed: {
+                                        var p = manipulator.parent.mapFromItem(this, mouse.x, mouse.y)
+                                        var cx = manipulator.x + manipulator.width/2
+                                        var cy = manipulator.y + manipulator.height/2
+                                        startAngle = Math.atan2(p.y - cy, p.x - cx) * 180 / Math.PI
+                                        startRot = manipulator.rotation
+                                    }
+                                    onPositionChanged: {
+                                        if (pressed) {
+                                            var p = manipulator.parent.mapFromItem(this, mouse.x, mouse.y)
+                                            var cx = manipulator.x + manipulator.width/2
+                                            var cy = manipulator.y + manipulator.height/2
+                                            var angle = Math.atan2(p.y - cy, p.x - cx) * 180 / Math.PI
+                                            manipulator.rotation = startRot + (angle - startAngle)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // ── RESIZE HANDLES (Corners) ──
                             Repeater {
                                 model: [
-                                    {x: 0, y: 0}, {x: manipulator.width, y: 0},
-                                    {x: 0, y: manipulator.height}, {x: manipulator.width, y: manipulator.height}
+                                    {hx: 0, hy: 0, cursor: Qt.SizeFDiagCursor},
+                                    {hx: 1, hy: 0, cursor: Qt.SizeBDiagCursor},
+                                    {hx: 0, hy: 1, cursor: Qt.SizeBDiagCursor},
+                                    {hx: 1, hy: 1, cursor: Qt.SizeFDiagCursor}
                                 ]
                                 delegate: Rectangle {
-                                    width: 12 / mainCanvas.zoomLevel; height: 12 / mainCanvas.zoomLevel
-                                    x: modelData.x - width/2; y: modelData.y - height/2
-                                    color: "white"; border.color: colorAccent
-                                    radius: width/2
+                                    width: 16 / mainCanvas.zoomLevel; height: 16 / mainCanvas.zoomLevel
+                                    x: modelData.hx * manipulator.width - width/2
+                                    y: modelData.hy * manipulator.height - height/2
+                                    color: "white"; border.color: colorAccent; border.width: 2/mainCanvas.zoomLevel
+                                    radius: 2/mainCanvas.zoomLevel
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: modelData.cursor
+                                        
+                                        property real startScale: 1
+                                        property real startMix: 0
+                                        property real startMiy: 0
+                                        
+                                        onPressed: {
+                                            startScale = manipulator.scale
+                                            // Map coordinate to parent of manipulator
+                                            var p = manipulator.parent.mapFromItem(this, mouse.x, mouse.y)
+                                            startMix = p.x
+                                            startMiy = p.y
+                                        }
+                                        onPositionChanged: {
+                                            if (pressed) {
+                                                var p = manipulator.parent.mapFromItem(this, mouse.x, mouse.y)
+                                                var cx = manipulator.x + manipulator.width/2
+                                                var cy = manipulator.y + manipulator.height/2
+                                                
+                                                var newDist = Math.sqrt(Math.pow(p.x - cx, 2) + Math.pow(p.y - cy, 2))
+                                                var oldDist = Math.sqrt(Math.pow(startMix - cx, 2) + Math.pow(startMiy - cy, 2))
+                                                
+                                                if (oldDist > 0) {
+                                                    var newScale = startScale * (newDist / oldDist)
+                                                    if (newScale > 0.05) manipulator.scale = newScale
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
