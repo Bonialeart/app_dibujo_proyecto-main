@@ -7,9 +7,9 @@
 
 #include "common_types.h"
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <vector>
-#include <QRect>
 
 namespace artflow {
 
@@ -19,15 +19,16 @@ namespace artflow {
 class ImageBuffer {
 public:
   ImageBuffer(int width, int height);
+  ImageBuffer(const ImageBuffer &other); // Deep copy for tiles
   ~ImageBuffer();
 
   // Dimensions
   int width() const { return m_width; }
   int height() const { return m_height; }
 
-  // Pixel access
-  uint8_t *data() { return m_data.data(); }
-  const uint8_t *data() const { return m_data.data(); }
+  // Tile bounds calculation
+  int tilesX() const { return (m_width + TILE_SIZE - 1) / TILE_SIZE; }
+  int tilesY() const { return (m_height + TILE_SIZE - 1) / TILE_SIZE; }
 
   // Get pixel at position (returns nullptr if out of bounds)
   uint8_t *pixelAt(int x, int y);
@@ -38,13 +39,13 @@ public:
 
   void fill(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255);
   void clear();
-  
-  // Get the bounding box of non-transparent pixels
-  QRect getContentBounds() const;
 
-  // Flood fill at point (x, y) with target color. 
-  void floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a, float threshold = 0.1f, const ImageBuffer* mask = nullptr);
+  // Get the content bounding box (returns false if empty)
+  bool getContentBounds(int &x, int &y, int &w, int &h) const;
 
+  // Flood fill at point (x, y) with target color.
+  void floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a,
+                 float threshold = 0.1f, const ImageBuffer *mask = nullptr);
 
   // Blend a color onto pixel with alpha blending. Optional alphaLock restricts
   // painting to areas that already have some alpha.
@@ -80,13 +81,71 @@ public:
   static std::unique_ptr<ImageBuffer>
   fromBytes(const std::vector<uint8_t> &bytes, int width, int height);
 
+  // DEPRECATED: Standard contiguous data access (compatibility layer)
+  // WARNING: This reconstructs the entire buffer into a cache. Use with
+  // caution.
+  uint8_t *data();
+  const uint8_t *data() const;
+
+  // Efficiently load from a contiguous buffer
+  void loadRawData(const uint8_t *rawData);
+
+  // Tile dimensions
+  static constexpr int TILE_SIZE = 256;
+  static constexpr int TILE_PIXELS = TILE_SIZE * TILE_SIZE;
+  static constexpr int TILE_BYTES = TILE_PIXELS * 4;
+
+  struct Tile {
+    int startX, startY;
+    std::unique_ptr<uint8_t[]> data;
+    bool dirty = false; // Flag to easily sync to GPU/Compositor
+
+    Tile(int sx, int sy)
+        : startX(sx), startY(sy), data(new uint8_t[TILE_BYTES]()) {
+      // Memory is zero-initialized by `new uint8_t[]()`
+    }
+  };
+
+  // Obtain a tile (allocate if necessary)
+  Tile *getTile(int x, int y, bool allocate = true);
+  const Tile *getTile(int x, int y) const;
+
+  // Retrieve underlying tiles (Useful for fast GPU texture uploads)
+  const std::vector<std::unique_ptr<Tile>> &getTiles() const { return m_tiles; }
+
+  bool hasDirtyTiles() const {
+    for (const auto &tile : m_tiles) {
+      if (tile && tile->dirty)
+        return true;
+    }
+    return false;
+  }
+
+  void clearDirtyFlags() {
+    for (auto &tile : m_tiles) {
+      if (tile)
+        tile->dirty = false;
+    }
+  }
+
 private:
   int m_width;
   int m_height;
-  std::vector<uint8_t> m_data; // RGBA format (4 bytes per pixel)
+  int m_gridW;
+  int m_gridH;
 
-  size_t pixelIndex(int x, int y) const {
-    return static_cast<size_t>((y * m_width + x) * 4);
+  // Sparse storage: grid of unique_ptrs. Null means tile not allocated.
+  std::vector<std::unique_ptr<Tile>> m_tiles;
+
+  // Compatibility cache for data()
+  mutable std::vector<uint8_t> m_cachedData;
+  mutable bool m_cacheDirty = true;
+
+  void ensureCacheUpToDate() const;
+
+  // Converts global (x,y) into tile local memory index
+  size_t pixelIndexLocal(int lx, int ly) const {
+    return static_cast<size_t>((ly * TILE_SIZE + lx) * 4);
   }
 
   bool isValidCoord(int x, int y) const {

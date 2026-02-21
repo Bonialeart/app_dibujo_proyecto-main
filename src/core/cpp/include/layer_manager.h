@@ -7,6 +7,7 @@
 
 #include "common_types.h"
 #include "image_buffer.h"
+#include <QRect>
 #include <memory>
 #include <string>
 #include <vector>
@@ -31,11 +32,25 @@ struct Layer {
   bool alphaLock = false;
   bool clipped = false;
   bool dirty = true;
+  QRect dirtyRect; // Region that needs texture re-upload
   bool isPrivate = false;
   Type type = Type::Drawing;
 
   Layer(const std::string &name, int width, int height,
-        Type type = Type::Drawing);
+        Type type = Type::Drawing)
+      : name(name), buffer(std::make_unique<ImageBuffer>(width, height)),
+        wetnessMap(std::make_unique<ImageBuffer>(width, height)),
+        pigmentMap(std::make_unique<ImageBuffer>(width, height)),
+        dirtyRect(0, 0, width, height), type(type) {}
+
+  void markDirty(const QRect &rect = QRect()) {
+    dirty = true;
+    if (rect.isEmpty()) {
+      dirtyRect = QRect(0, 0, buffer->width(), buffer->height());
+    } else {
+      dirtyRect = dirtyRect.united(rect);
+    }
+  }
 };
 
 /**

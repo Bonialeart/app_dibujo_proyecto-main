@@ -115,7 +115,9 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_currentProjectName("Untitled"), m_brushTip("round"),
       m_lastPressure(1.0f), m_isDrawing(false),
       m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()),
-      m_lastActiveLayerIndex(-1) {
+      m_lastActiveLayerIndex(-1), m_updateTransformTextures(false),
+      m_transformShader(nullptr), m_transformStaticTex(nullptr),
+      m_selectionTex(nullptr) {
 
   // ---> AÑADE ESTAS LÍNEAS AQUÍ <---
   // Instalar el vigilante global de cursores
@@ -141,6 +143,25 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_quickShapeTimer->setSingleShot(true);
   connect(m_quickShapeTimer, &QTimer::timeout, this,
           &CanvasItem::detectAndDrawQuickShape);
+
+  // Throttle de redibujado a ~60fps máximo
+  m_updateThrottle = new QTimer(this);
+  m_updateThrottle->setInterval(16); // ~60fps cap
+  m_updateThrottle->setSingleShot(true);
+  connect(m_updateThrottle, &QTimer::timeout, this, [this]() {
+    m_pendingUpdate = false;
+    QQuickPaintedItem::update();
+  });
+
+  // Timer persistente para animación de marching ants
+  m_marchingAntsTimer = new QTimer(this);
+  m_marchingAntsTimer->setInterval(50); // 20fps
+  connect(m_marchingAntsTimer, &QTimer::timeout, this, [this]() {
+    if (!m_selectionPath.isEmpty())
+      update();
+    else
+      m_marchingAntsTimer->stop();
+  });
 
   // Brush engine initialized in initializer list
 
@@ -233,6 +254,187 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   updateTheme();
 }
 
+void CanvasItem::clearRenderCaches() {
+  m_layerRenderCache.clear();
+  m_clippedRenderCache.clear();
+
+  // IMPORTANT: Must clear GPU textures too, or they will stay in memory
+  // and potentially map to deleted layer pointers (stale keys)
+  for (auto *tex : m_layerTextures.values()) {
+    delete tex;
+  }
+  m_layerTextures.clear();
+}
+
+void CanvasItem::ensureCompositionFBOs(int w, int h) {
+  if (w <= 0 || h <= 0)
+    return;
+
+  if (!m_compFBOA || m_compFBOA->width() != w || m_compFBOA->height() != h) {
+    if (m_compFBOA)
+      delete m_compFBOA;
+    if (m_compFBOB)
+      delete m_compFBOB;
+
+    QOpenGLFramebufferObjectFormat format;
+    format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+    format.setInternalTextureFormat(GL_RGBA8);
+
+    m_compFBOA = new QOpenGLFramebufferObject(w, h, format);
+    m_compFBOB = new QOpenGLFramebufferObject(w, h, format);
+  }
+}
+
+void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
+                                      int h) {
+  if (!m_compositionShader || !m_compositionShader->isLinked())
+    return;
+
+  QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+
+  // 1. Ensure internal composition FBOs
+  if (m_canvasWidth <= 0 || m_canvasHeight <= 0)
+    return;
+
+  ensureCompositionFBOs(m_canvasWidth, m_canvasHeight);
+  if (!m_compFBOA || !m_compFBOB)
+    return;
+
+  // 2. Clear initial state (Checkerboard)
+  m_compFBOA->bind();
+  f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
+  f->glClearColor(0, 0, 0, 0); // Transparent base
+  f->glClear(GL_COLOR_BUFFER_BIT);
+  m_compFBOA->release();
+
+  artflow::Layer *clippingBase = nullptr;
+  QOpenGLFramebufferObject *currentBackdrop = m_compFBOA;
+  QOpenGLFramebufferObject *nextBackdrop = m_compFBOB;
+
+  for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+    artflow::Layer *layer = m_layerManager->getLayer(i);
+    if (!layer || !layer->visible)
+      continue;
+
+    artflow::Layer *maskLayer = (layer->clipped) ? clippingBase : nullptr;
+    if (!layer->clipped)
+      clippingBase = layer;
+
+    // Get Source Texture
+    GLuint sourceTexID = 0;
+    if (m_isDrawing && i == m_activeLayerIndex && m_pingFBO) {
+      if (m_hasPrediction && m_predictionFBO) {
+        sourceTexID = m_predictionFBO->texture();
+      } else {
+        sourceTexID = m_pingFBO->texture();
+      }
+    } else {
+      QOpenGLTexture *tex = m_layerTextures.value(layer);
+      bool bufferDirty = layer->buffer->hasDirtyTiles();
+
+      if (!tex || layer->dirty || bufferDirty) {
+        if (!tex) {
+          tex = new QOpenGLTexture(QOpenGLTexture::Target2D);
+          tex->setSize(layer->buffer->width(), layer->buffer->height());
+          tex->setFormat(QOpenGLTexture::RGBA8_UNorm);
+          tex->allocateStorage();
+          tex->setMinificationFilter(QOpenGLTexture::Linear);
+          tex->setMagnificationFilter(QOpenGLTexture::Linear);
+          tex->setWrapMode(QOpenGLTexture::ClampToBorder);
+          tex->setBorderColor(QColor(0, 0, 0, 0));
+          m_layerTextures.insert(layer, tex);
+        }
+
+        // PERFORMANCE: Upload only dirty tiles
+        const auto &tiles = layer->buffer->getTiles();
+        for (const auto &tile : tiles) {
+          if (tile && (tile->dirty || layer->dirty)) {
+            int tx = tile->startX * artflow::ImageBuffer::TILE_SIZE;
+            int ty = tile->startY * artflow::ImageBuffer::TILE_SIZE;
+            int tw = std::min(artflow::ImageBuffer::TILE_SIZE,
+                              layer->buffer->width() - tx);
+            int th = std::min(artflow::ImageBuffer::TILE_SIZE,
+                              layer->buffer->height() - ty);
+
+            f->glPixelStorei(GL_UNPACK_ROW_LENGTH,
+                             artflow::ImageBuffer::TILE_SIZE);
+            tex->setData(tx, ty, 0, tw, th, 1, QOpenGLTexture::RGBA,
+                         QOpenGLTexture::UInt8, tile->data.get());
+            f->glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            tile->dirty = false;
+          }
+        }
+        layer->buffer->clearDirtyFlags();
+        layer->dirty = false;
+        layer->dirtyRect = QRect();
+      }
+      sourceTexID = tex->textureId();
+    }
+
+    // Blend into nextBackdrop
+    nextBackdrop->bind();
+    m_compositionShader->bind();
+
+    f->glActiveTexture(GL_TEXTURE0);
+    f->glBindTexture(GL_TEXTURE_2D, currentBackdrop->texture());
+    m_compositionShader->setUniformValue("uBackdrop", 0);
+
+    f->glActiveTexture(GL_TEXTURE1);
+    f->glBindTexture(GL_TEXTURE_2D, sourceTexID);
+    m_compositionShader->setUniformValue("uSource", 1);
+
+    if (maskLayer) {
+      QOpenGLTexture *mTex = m_layerTextures.value(maskLayer);
+      if (mTex) {
+        f->glActiveTexture(GL_TEXTURE2);
+        mTex->bind();
+        m_compositionShader->setUniformValue("uMask", 2);
+        m_compositionShader->setUniformValue("uHasMask", 1);
+      } else {
+        m_compositionShader->setUniformValue("uHasMask", 0);
+      }
+    } else {
+      m_compositionShader->setUniformValue("uHasMask", 0);
+    }
+
+    m_compositionShader->setUniformValue("uOpacity", layer->opacity);
+    m_compositionShader->setUniformValue("uMode", (int)layer->blendMode);
+
+    // Identity-like transforms for FBO-to-FBO composition
+    m_compositionShader->setUniformValue(
+        "uScreenSize", QVector2D(m_canvasWidth, m_canvasHeight));
+    m_compositionShader->setUniformValue(
+        "uLayerSize", QVector2D(m_canvasWidth, m_canvasHeight));
+    m_compositionShader->setUniformValue("uViewOffset", QVector2D(0, 0));
+    m_compositionShader->setUniformValue("uZoom", 1.0f);
+    m_compositionShader->setUniformValue("uIsPreview", 0.0f);
+
+    GLfloat vertices[] = {-1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1,
+                          -1, 1,  0, 1, 1, -1, 1, 0, 1,  1, 1, 1};
+
+    m_compositionShader->enableAttributeArray(0);
+    m_compositionShader->enableAttributeArray(1);
+    m_compositionShader->setAttributeArray(0, GL_FLOAT, vertices, 2,
+                                           4 * sizeof(GLfloat));
+    m_compositionShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2,
+                                           4 * sizeof(GLfloat));
+
+    f->glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    m_compositionShader->disableAttributeArray(0);
+    m_compositionShader->disableAttributeArray(1);
+    m_compositionShader->release();
+    nextBackdrop->release();
+
+    std::swap(currentBackdrop, nextBackdrop);
+  }
+
+  // Blit result to target FBO if requested
+  if (target) {
+    QOpenGLFramebufferObject::blitFramebuffer(target, currentBackdrop);
+  }
+}
+
 CanvasItem::~CanvasItem() {
   if (m_brushEngine)
     delete m_brushEngine;
@@ -242,8 +444,55 @@ CanvasItem::~CanvasItem() {
     delete m_undoManager;
   if (m_impastoShader)
     delete m_impastoShader;
-  qDeleteAll(m_layerTextures);
+
+  // Cleanup layer textures
+  for (auto *tex : m_layerTextures.values()) {
+    delete tex;
+  }
   m_layerTextures.clear();
+
+  if (m_pingFBO)
+    delete m_pingFBO;
+  if (m_pongFBO)
+    delete m_pongFBO;
+  if (m_compFBOA)
+    delete m_compFBOA;
+  if (m_compFBOB)
+    delete m_compFBOB;
+  if (m_predictionFBO)
+    delete m_predictionFBO;
+  if (m_transformStaticTex)
+    delete m_transformStaticTex;
+  if (m_selectionTex)
+    delete m_selectionTex;
+  if (m_transformShader)
+    delete m_transformShader;
+}
+
+void CanvasItem::requestUpdate() {
+  if (!m_pendingUpdate) {
+    m_pendingUpdate = true;
+    m_updateThrottle->start();
+  }
+}
+
+void CanvasItem::resetTransformState() {
+  m_isTransforming = false;
+  m_selectionBuffer = QImage();
+  m_transformStaticCache = QImage();
+  m_updateTransformTextures = false;
+  m_transformMatrix = QTransform();
+  m_initialMatrix = QTransform();
+  m_transformBox = QRectF();
+  m_selectionPath = QPainterPath();
+  m_hasSelection = false;
+
+  if (m_marchingAntsTimer)
+    m_marchingAntsTimer->stop();
+
+  emit isTransformingChanged();
+  emit hasSelectionChanged();
+  update();
 }
 
 void CanvasItem::paint(QPainter *painter) {
@@ -326,31 +575,37 @@ void CanvasItem::paint(QPainter *painter) {
                    m_canvasHeight * m_zoomLevel);
 
   // DIBUJAR CHECKERBOARD (Patrón de transparencia)
-  // Usamos QImage en lugar de QPixmap para evitar crasheos en hilos de
-  // renderizado (Thread Safety)
-  int checkerSize = 20 * m_zoomLevel;
-  if (checkerSize < 5)
-    checkerSize = 5;
+  // Cache como miembro para no reconstruir en cada frame.
+  // Durante transformación con GPU lista, se omite — el static cache ya lo
+  // incluye.
+  bool skipCheckerForTransform =
+      (m_isTransforming && m_transformStaticTex != nullptr);
+  if (!skipCheckerForTransform) {
+    int checkerSize = std::max(5, (int)(20 * m_zoomLevel));
+    if (m_checkerCache.isNull() || m_checkerCachedSize != checkerSize) {
+      m_checkerCachedSize = checkerSize;
+      m_checkerCache =
+          QImage(checkerSize * 2, checkerSize * 2, QImage::Format_ARGB32);
+      m_checkerCache.fill(Qt::white);
+      QPainter pt(&m_checkerCache);
+      pt.fillRect(0, 0, checkerSize, checkerSize, QColor(220, 220, 220));
+      pt.fillRect(checkerSize, checkerSize, checkerSize, checkerSize,
+                  QColor(220, 220, 220));
+      pt.end();
+    }
 
-  QImage checkerImg(checkerSize * 2, checkerSize * 2, QImage::Format_ARGB32);
-  checkerImg.fill(Qt::white);
-  QPainter pt(&checkerImg);
-  pt.fillRect(0, 0, checkerSize, checkerSize, QColor(220, 220, 220));
-  pt.fillRect(checkerSize, checkerSize, checkerSize, checkerSize,
-              QColor(220, 220, 220));
-  pt.end();
+    painter->save();
+    painter->setBrush(QBrush(m_checkerCache));
+    painter->setBrushOrigin(m_viewOffset.x() * m_zoomLevel,
+                            m_viewOffset.y() * m_zoomLevel);
+    painter->setPen(Qt::NoPen);
+    painter->drawRect(paperRect);
+    painter->restore();
 
-  painter->save();
-  painter->setBrush(QBrush(checkerImg));
-  painter->setBrushOrigin(m_viewOffset.x() * m_zoomLevel,
-                          m_viewOffset.y() * m_zoomLevel);
-  painter->setPen(Qt::NoPen);
-  painter->drawRect(paperRect);
-  painter->restore();
-
-  // Draw Background Color (if not transparent)
-  if (m_backgroundColor.alpha() > 0) {
-    painter->fillRect(paperRect, m_backgroundColor);
+    // Draw Background Color (if not transparent)
+    if (m_backgroundColor.alpha() > 0) {
+      painter->fillRect(paperRect, m_backgroundColor);
+    }
   }
 
   // Draw Drop Shadow (Optional, for better depth)
@@ -359,233 +614,211 @@ void CanvasItem::paint(QPainter *painter) {
   // painter->drawRect(paperRect.translated(5, 5));
 
   if (m_layerManager->getLayerCount() > 0) {
-    Layer *clippingBase = nullptr;
-    for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
-      Layer *layer = m_layerManager->getLayer(i);
+    QOpenGLContext *ctx = QOpenGLContext::currentContext();
+    bool drewNative = false;
+    bool gpuTransformReady =
+        ctx && (m_updateTransformTextures ||
+                (m_transformShader && m_transformStaticTex && m_selectionTex));
 
-      // Track clipping base (bottom-up)
-      Layer *maskLayer = nullptr;
-      if (layer) {
-        if (layer->clipped) {
-          maskLayer = clippingBase;
-        } else {
-          clippingBase = layer;
-        }
-      }
+    if (m_isTransforming && gpuTransformReady) {
+      painter->beginNativePainting();
+      drewNative = true;
 
-      if (!layer || !layer->visible)
-        continue;
-
-      QImage img(layer->buffer->data(), layer->buffer->width(),
-                 layer->buffer->height(),
-                 QImage::Format_RGBA8888_Premultiplied);
-
-      // Rectángulo de destino con Zoom y Pan (Común)
-      QRectF targetRect(
-          m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
-          m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
-
-      bool renderedWithShader = false;
-      // DIBUJAR VISTA PREVIA DE OPENGL (FBO) si estamos dibujando en esta capa
-      if (m_isDrawing && i == m_activeLayerIndex && m_pingFBO) {
-        // PREMIUM: Renderizar directamente desde el FBO usando el shader de
-        // composición. Esto elimina la latencia de copiar texturas de GPU a CPU
-        // y permite ver el clipping mask y blend modes EN TIEMPO REAL mientras
-        // pintas.
-        if (m_compositionShader && m_compositionShader->isLinked()) {
-          blendWithShader(painter, layer, targetRect, maskLayer,
-                          m_pingFBO->texture());
-          renderedWithShader = true;
-        } else {
-          QImage fboImg = m_pingFBO->toImage(true).convertToFormat(
-              QImage::Format_RGBA8888_Premultiplied);
-          painter->save();
-          painter->setOpacity(layer->opacity);
-          painter->drawImage(targetRect, fboImg);
-          painter->restore();
-          renderedWithShader = true;
-        }
-      }
-
-      // Intentar usar shaders (Impasto)
-      bool useImpasto = (m_impastoStrength > 0.01f && m_impastoShader &&
-                         m_impastoShader->isLinked());
-
-      if (useImpasto) {
-        painter->save();
-        painter->setOpacity(layer->opacity);
-        painter->beginNativePainting();
-
-        if (m_impastoShader->bind()) {
-          m_impastoShader->setUniformValue("screenSize",
-                                           QVector2D(width(), height()));
-          m_impastoShader->setUniformValue("reliefStrength",
-                                           m_impastoStrength * 8.0f);
-          m_impastoShader->setUniformValue("impastoShininess",
-                                           m_impastoShininess);
-
-          float radians = m_lightAngle * M_PI / 180.0f;
-          float lx = std::cos(radians);
-          float ly = -std::sin(radians);
-          m_impastoShader->setUniformValue("lightPos",
-                                           QVector3D(lx, ly, m_lightElevation));
-
-          // Textura
-          QOpenGLTexture *tex = m_layerTextures.value(layer);
-          if (!tex) {
-            tex = new QOpenGLTexture(img.flipped(Qt::Vertical));
-            m_layerTextures.insert(layer, tex);
-            layer->dirty = false;
-          } else if (layer->dirty) {
-            tex->setData(img.flipped(Qt::Vertical));
-            layer->dirty = false;
+      if (m_updateTransformTextures) {
+        if (!m_transformShader) {
+          m_transformShader = new QOpenGLShaderProgram();
+          m_transformShader->addShaderFromSourceCode(QOpenGLShader::Vertex,
+                                                     R"(
+                      #version 120
+                      attribute vec2 position;
+                      attribute vec2 texCoord;
+                      uniform mat4 MVP;
+                      varying vec2 vTexCoord;
+                      void main() {
+                          gl_Position = MVP * vec4(position, 0.0, 1.0);
+                          vTexCoord = texCoord;
+                      }
+                  )");
+          m_transformShader->addShaderFromSourceCode(QOpenGLShader::Fragment,
+                                                     R"(
+                      #version 120
+                      varying vec2 vTexCoord;
+                      uniform sampler2D tex;
+                      uniform float opacity;
+                      void main() {
+                          gl_FragColor = texture2D(tex, vTexCoord) * opacity;
+                      }
+                  )");
+          if (!m_transformShader->link()) {
+            qWarning() << "Transform shader link failed:"
+                       << m_transformShader->log();
           }
+        }
+        if (m_transformStaticTex) {
+          delete m_transformStaticTex;
+          m_transformStaticTex = nullptr;
+        }
+        if (!m_transformStaticCache.isNull()) {
+          m_transformStaticTex =
+              new QOpenGLTexture(m_transformStaticCache.flipped(Qt::Vertical));
+          m_transformStaticTex->setMinificationFilter(QOpenGLTexture::Linear);
+          m_transformStaticTex->setMagnificationFilter(QOpenGLTexture::Linear);
+        }
 
-          tex->bind(0);
-          m_impastoShader->setUniformValue("canvasTexture", 0);
+        if (m_selectionTex) {
+          delete m_selectionTex;
+          m_selectionTex = nullptr;
+        }
+        if (!m_selectionBuffer.isNull()) {
+          m_selectionTex =
+              new QOpenGLTexture(m_selectionBuffer.flipped(Qt::Vertical));
+          m_selectionTex->setMinificationFilter(QOpenGLTexture::Linear);
+          m_selectionTex->setMagnificationFilter(QOpenGLTexture::Linear);
+        }
 
-          // Draw Quad
-          float x1 = (targetRect.left() / width()) * 2.0f - 1.0f;
-          float y1 = 1.0f - (targetRect.top() / height()) * 2.0f;
-          float x2 = (targetRect.right() / width()) * 2.0f - 1.0f;
-          float y2 = 1.0f - (targetRect.bottom() / height()) * 2.0f;
+        m_updateTransformTextures = false;
+        m_transformStaticCache = QImage(); // Free CPU memory
+      }
 
+      if (m_transformShader && m_transformStaticTex && m_selectionTex) {
+        QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+        f->glEnable(GL_BLEND);
+        f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        m_transformShader->bind();
+        QMatrix4x4 ortho;
+        ortho.ortho(0, width(), height(), 0, -1, 1);
+        QMatrix4x4 view;
+        view.translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+        view.scale(m_zoomLevel, m_zoomLevel);
+        QMatrix4x4 orthoView = ortho * view;
+
+        // Draw Static Cache (Background)
+        m_transformShader->setUniformValue("MVP", orthoView);
+        m_transformShader->setUniformValue("opacity", 1.0f);
+        m_transformStaticTex->bind(0);
+        m_transformShader->setUniformValue("tex", 0);
+
+        float cw = m_canvasWidth;
+        float ch = m_canvasHeight;
+        GLfloat bgVertices[] = {0, 0,  0, 0, cw, 0, 1, 0, 0,  ch, 0, 1,
+                                0, ch, 0, 1, cw, 0, 1, 0, cw, ch, 1, 1};
+
+        m_transformShader->enableAttributeArray(0);
+        m_transformShader->enableAttributeArray(1);
+        m_transformShader->setAttributeArray(0, GL_FLOAT, bgVertices, 2,
+                                             4 * sizeof(GLfloat));
+        m_transformShader->setAttributeArray(1, GL_FLOAT, bgVertices + 2, 2,
+                                             4 * sizeof(GLfloat));
+        f->glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        // Draw Selection Frame natively with perspective correction
+        QMatrix4x4 qtMat;
+        qtMat.setColumn(0, QVector4D(m_transformMatrix.m11(),
+                                     m_transformMatrix.m12(), 0,
+                                     m_transformMatrix.m13()));
+        qtMat.setColumn(1, QVector4D(m_transformMatrix.m21(),
+                                     m_transformMatrix.m22(), 0,
+                                     m_transformMatrix.m23()));
+        qtMat.setColumn(2, QVector4D(0, 0, 1, 0));
+        qtMat.setColumn(3, QVector4D(m_transformMatrix.m31(),
+                                     m_transformMatrix.m32(), 0,
+                                     m_transformMatrix.m33()));
+
+        m_transformShader->setUniformValue("MVP", orthoView * qtMat);
+        m_selectionTex->bind(0);
+
+        float sw = m_selectionBuffer.width();
+        float sh = m_selectionBuffer.height();
+        GLfloat selVertices[] = {0, 0,  0, 0, sw, 0, 1, 0, 0,  sh, 0, 1,
+                                 0, sh, 0, 1, sw, 0, 1, 0, sw, sh, 1, 1};
+        m_transformShader->setAttributeArray(0, GL_FLOAT, selVertices, 2,
+                                             4 * sizeof(GLfloat));
+        m_transformShader->setAttributeArray(1, GL_FLOAT, selVertices + 2, 2,
+                                             4 * sizeof(GLfloat));
+        f->glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        m_transformShader->disableAttributeArray(0);
+        m_transformShader->disableAttributeArray(1);
+        m_transformShader->release();
+      }
+      painter->endNativePainting();
+    } else {
+      if (m_layerManager && m_layerManager->getLayerCount() > 0) {
+        painter->beginNativePainting();
+        renderGpuComposition(m_compFBOA, m_canvasWidth, m_canvasHeight);
+
+        // --- OPTIMIZED QUAD BLIT TO SCREEN ---
+        if (m_transformShader && m_transformShader->isLinked()) {
+          m_transformShader->bind();
           QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
           f->glEnable(GL_BLEND);
           f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-          GLfloat vertices[] = {x1, y1, 0.0f, 0.0f, x2, y1, 1.0f, 0.0f,
-                                x1, y2, 0.0f, 1.0f, x1, y2, 0.0f, 1.0f,
-                                x2, y1, 1.0f, 0.0f, x2, y2, 1.0f, 1.0f};
+          f->glActiveTexture(GL_TEXTURE0);
+          f->glBindTexture(GL_TEXTURE_2D, m_compFBOA->texture());
+          m_transformShader->setUniformValue("tex", 0);
+          m_transformShader->setUniformValue("opacity", 1.0f);
 
-          m_impastoShader->enableAttributeArray(0);
-          m_impastoShader->enableAttributeArray(1);
-          m_impastoShader->setAttributeArray(0, GL_FLOAT, vertices, 2,
-                                             4 * sizeof(GLfloat));
-          m_impastoShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2,
-                                             4 * sizeof(GLfloat));
+          QMatrix4x4 ortho;
+          ortho.ortho(0, width(), height(), 0, -1, 1);
+          QMatrix4x4 view;
+          view.translate(m_viewOffset.x() * m_zoomLevel,
+                         m_viewOffset.y() * m_zoomLevel);
+          view.scale(m_zoomLevel, m_zoomLevel);
+          QMatrix4x4 orthoView = ortho * view;
+
+          float sw = m_canvasWidth;
+          float sh = m_canvasHeight;
+          GLfloat vertices[] = {0, 0,  0, 0, sw, 0, 1, 0, 0,  sh, 0, 1,
+                                0, sh, 0, 1, sw, 0, 1, 0, sw, sh, 1, 1};
+
+          m_transformShader->setUniformValue("MVP", orthoView);
+          m_transformShader->enableAttributeArray(0);
+          m_transformShader->enableAttributeArray(1);
+          m_transformShader->setAttributeArray(0, GL_FLOAT, vertices, 2,
+                                               4 * sizeof(GLfloat));
+          m_transformShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2,
+                                               4 * sizeof(GLfloat));
 
           f->glDrawArrays(GL_TRIANGLES, 0, 6);
 
-          m_impastoShader->disableAttributeArray(0);
-          m_impastoShader->disableAttributeArray(1);
-
-          m_impastoShader->release();
-          tex->release();
-          renderedWithShader = true;
+          m_transformShader->disableAttributeArray(0);
+          m_transformShader->disableAttributeArray(1);
+          m_transformShader->release();
+        } else {
+          // Fallback if shader is not ready
+          painter->endNativePainting();
+          QRectF targetRect(
+              m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
+              m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
+          painter->drawImage(targetRect, m_compFBOA->toImage());
+          painter->beginNativePainting();
         }
         painter->endNativePainting();
-        painter->restore();
       }
+    }
 
-      if (!renderedWithShader) {
-        // Advanced Blending via Shader (Post-Processing Style)
-        // Only use shader for modes that QPainter DOES NOT support natively
-        // (HSL modes) OR if you really want to force GPU composition for
-        // everything. For robustness with Clipping + Blending, we prefer
-        // QPainter where possible.
-        bool isNativeMode = (layer->blendMode == BlendMode::Multiply ||
-                             layer->blendMode == BlendMode::Screen ||
-                             layer->blendMode == BlendMode::Overlay ||
-                             layer->blendMode == BlendMode::Darken ||
-                             layer->blendMode == BlendMode::Lighten ||
-                             layer->blendMode == BlendMode::ColorDodge ||
-                             layer->blendMode == BlendMode::ColorBurn ||
-                             layer->blendMode == BlendMode::HardLight ||
-                             layer->blendMode == BlendMode::SoftLight ||
-                             layer->blendMode == BlendMode::Difference ||
-                             layer->blendMode == BlendMode::Exclusion ||
-                             layer->blendMode == BlendMode::Normal);
+    // --- FALLBACK DRAWING FOR TRANSFORMATION ---
+    // Si estamos transformando pero la GPU aún no está lista (p. ej. cargando
+    // cache), dibujamos la selección con QPainter para que no "desaparezca".
+    if (m_isTransforming && !gpuTransformReady && !m_selectionBuffer.isNull()) {
+      painter->save();
+      painter->translate(m_viewOffset.x() * m_zoomLevel,
+                         m_viewOffset.y() * m_zoomLevel);
+      painter->scale(m_zoomLevel, m_zoomLevel);
 
-        bool useCompositionShader = (!isNativeMode && m_compositionShader &&
-                                     m_compositionShader->isLinked());
+      painter->setRenderHint(QPainter::SmoothPixmapTransform);
+      painter->setRenderHint(QPainter::Antialiasing);
 
-        // Force shader if specifically requested/configured, but for now
-        // disable for robustness on Clipped Multiply
-        if (layer->clipped && isNativeMode)
-          useCompositionShader = false;
+      // Aplicar la matriz de transformación actual (que mapea de local [0,0] a
+      // canvas final)
+      painter->setTransform(m_transformMatrix * painter->transform());
 
-        if (useCompositionShader) {
-          blendWithShader(painter, layer, targetRect, maskLayer);
-        } else {
-          // Fallback (Software Rendering via QPainter) - NOW WITH CLIPPING
-          // SUPPORT
-          painter->save();
-          painter->setOpacity(layer->opacity);
-
-          // Determine correct blend mode
-          QPainter::CompositionMode compMode =
-              QPainter::CompositionMode_SourceOver;
-          switch (layer->blendMode) {
-          case BlendMode::Multiply:
-            compMode = QPainter::CompositionMode_Multiply;
-            break;
-          case BlendMode::Screen:
-            compMode = QPainter::CompositionMode_Screen;
-            break;
-          case BlendMode::Overlay:
-            compMode = QPainter::CompositionMode_Overlay;
-            break;
-          case BlendMode::Darken:
-            compMode = QPainter::CompositionMode_Darken;
-            break;
-          case BlendMode::Lighten:
-            compMode = QPainter::CompositionMode_Lighten;
-            break;
-          case BlendMode::ColorDodge:
-            compMode = QPainter::CompositionMode_ColorDodge;
-            break;
-          case BlendMode::ColorBurn:
-            compMode = QPainter::CompositionMode_ColorBurn;
-            break;
-          case BlendMode::HardLight:
-            compMode = QPainter::CompositionMode_HardLight;
-            break;
-          case BlendMode::SoftLight:
-            compMode = QPainter::CompositionMode_SoftLight;
-            break;
-          case BlendMode::Difference:
-            compMode = QPainter::CompositionMode_Difference;
-            break;
-          case BlendMode::Exclusion:
-            compMode = QPainter::CompositionMode_Exclusion;
-            break;
-          default:
-            compMode = QPainter::CompositionMode_SourceOver;
-            break;
-          }
-
-          if (layer->clipped && maskLayer) {
-            // Manual Clipping in Software
-            // 1. Create a copy of the layer image to modify
-            QImage maskedImg =
-                img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
-
-            // 2. Get the mask image (Base Layer)
-            QImage baseMask(maskLayer->buffer->data(),
-                            maskLayer->buffer->width(),
-                            maskLayer->buffer->height(),
-                            QImage::Format_RGBA8888_Premultiplied);
-
-            // 3. Apply the mask using DestinationIn (keeps source where dest is
-            // opaque) Result = Source (Layer) * DestAlpha (Mask)
-            QPainter p(&maskedImg);
-            p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-            p.drawImage(0, 0, baseMask);
-            p.end();
-
-            // 4. Draw the MASKED content onto the canvas using the CORRECT
-            // BLEND MODE
-            painter->setCompositionMode(compMode);
-            painter->drawImage(targetRect, maskedImg);
-          } else {
-            // Standard Non-Clipped Drawing
-            painter->setCompositionMode(compMode);
-            painter->drawImage(targetRect, img);
-          }
-          painter->restore();
-        }
-      }
+      // Dibujar en 0,0 porque la matriz ya posiciona el contenido
+      painter->drawImage(0, 0, m_selectionBuffer);
+      painter->restore();
     }
   }
 
@@ -597,15 +830,9 @@ void CanvasItem::paint(QPainter *painter) {
                        m_viewOffset.y() * m_zoomLevel);
     painter->scale(m_zoomLevel, m_zoomLevel);
 
-    // Apply the user's transformation matrix
-    painter->setTransform(m_transformMatrix, true);
-
-    painter->setRenderHint(QPainter::SmoothPixmapTransform);
-    painter->drawImage(0, 0, m_selectionBuffer);
-
     // Draw Bounding Box handles
-    painter->setTransform(
-        QTransform()); // Reset for handles (screen space?) or keep in canvas?
+    painter->setTransform(QTransform()); // Reset for handles (screen
+                                         // space?) or keep in canvas?
     // Better to draw handles in screen space for consistency
     painter->restore();
 
@@ -616,7 +843,26 @@ void CanvasItem::paint(QPainter *painter) {
     painter->restore();
   }
 
-  // 4. Selección (Lasso) Feedback (Professional Marching Ants)
+  // 4. Panel Cut Preview (Cuchilla)
+  if (m_isPanelCutting) {
+    painter->save();
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+
+    QPen cutPen(Qt::red, 2.0f / m_zoomLevel, Qt::DashLine);
+    painter->setPen(cutPen);
+    painter->drawLine(m_panelCutStartPos, m_panelCutEndPos);
+
+    // Draw gutter preview
+    QPen gutterPen(QColor(255, 0, 0, 50), m_panelGutterSize, Qt::SolidLine);
+    painter->setPen(gutterPen);
+    painter->drawLine(m_panelCutStartPos, m_panelCutEndPos);
+
+    painter->restore();
+  }
+
+  // 5. Selección (Lasso) Feedback (Professional Marching Ants)
   if (!m_selectionPath.isEmpty()) {
     painter->save();
     // Transformar de Canvas a Pantalla para el feedback
@@ -648,8 +894,9 @@ void CanvasItem::paint(QPainter *painter) {
 
     painter->restore();
 
-    // Trigger a redraw for animation if selection exists
-    QTimer::singleShot(50, this, [this]() { update(); });
+    // Arrancar el timer persistente si no está corriendo ya
+    if (!m_marchingAntsTimer->isActive())
+      m_marchingAntsTimer->start();
   }
 
   // 4.1 Predictive line for Magnetic/Polygonal Lasso
@@ -745,8 +992,8 @@ void CanvasItem::paint(QPainter *painter) {
   // Cursores para otras herramientas (opcionales)
   else if (m_cursorVisible && !m_spacePressed && m_tool != ToolType::Hand &&
            m_tool != ToolType::Transform) {
-    // 🎯 Professional Precision Cursor (Crosshair with Circle) para eyedropper,
-    // lasso, fill, etc.
+    // 🎯 Professional Precision Cursor (Crosshair with Circle) para
+    // eyedropper, lasso, fill, etc.
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
 
@@ -812,15 +1059,33 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   bool isTransparentColor = (m_brushColor.alpha() < 5);
   if (m_isEraser || isTransparentColor || m_tool == ToolType::Eraser) {
     settings.type = BrushSettings::Type::Eraser;
-    // MÁSCARA DE BORRADO (Negro puro para la máscara de transparencia)
-    settings.color = QColor(0, 0, 0, 255);
-    // LIMPIEZA TOTAL: El borrador no debe tener texturas ni ruido
+    // MÁSCARA DE BORRADO MÁGICA: Usamos Alpha 254 como contraseña
+    // para forzar a StrokeRenderer a saber que esto es un borrador.
+    settings.color = QColor(0, 0, 0, 254);
+    // LIMPIEZA TOTAL: El borrador debe ser una forma pura, sin ruido ni
+    // efectos
     settings.useTexture = false;
     settings.jitter = 0.0f;
+    settings.posJitterX = 0.0f;
+    settings.posJitterY = 0.0f;
+    settings.sizeJitter = 0.0f;
+    settings.opacityJitter = 0.0f;
     settings.grain = 0.0f;
     settings.hardness = 0.95f;
-    // REDUCIR SPACING para evitar "bolitas" y que el borrado sea fluido
-    settings.spacing = std::min(settings.spacing, 0.05f);
+    settings.spacing = std::min(settings.spacing, 0.02f); // Más fluido
+
+    // Resetear efectos avanzados que podrían ensuciar el borrado
+    settings.wetness = 0.0f;
+    settings.dilution = 0.0f;
+    settings.smudge = 0.0f;
+    settings.mixing = 0.0f;
+    settings.impastoEnabled = false;
+    settings.bloomEnabled = false;
+    settings.edgeDarkeningEnabled = false;
+    settings.textureRevealEnabled = false;
+    settings.bristlesEnabled = false;
+    settings.tipTextureName = ""; // Forzar círculo procedural limpio
+    settings.tipTextureID = 0;
   }
 
   float effectivePressure = pressure;
@@ -853,7 +1118,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     float sizeT = activePreset->sizeDynamics.evaluate(rawPressure);
     float sizeMultiplier = sizeT; // 0..1 multiplier for brush size
 
-    // Master Toggle: If sizeByPressure is manually disabled, keep it at 100%
+    // Master Toggle: If sizeByPressure is manually disabled, keep it at
+    // 100%
     if (!m_sizeByPressure)
       sizeMultiplier = 1.0f;
 
@@ -929,6 +1195,15 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   QImage img(layer->buffer->data(), layer->buffer->width(),
              layer->buffer->height(), QImage::Format_RGBA8888_Premultiplied);
 
+  // Calculate bounding box in canvas coords for dirty rect tracking
+  float minX = std::min(lastCanvasPos.x(), canvasPos.x());
+  float minY = std::min(lastCanvasPos.y(), canvasPos.y());
+  float maxX = std::max(lastCanvasPos.x(), canvasPos.x());
+  float maxY = std::max(lastCanvasPos.y(), canvasPos.y());
+  QRectF canvasRect(minX, minY, maxX - minX, maxY - minY);
+  float margin = settings.size + 5.0f;
+  canvasRect.adjust(-margin, -margin, margin, margin);
+
   // MODO PREMIUM (OpenGL / Shaders)
   // Usamos OpenGL para TODO si está disponible, es más preciso y rápido
   bool glReady = (QOpenGLContext::currentContext() != nullptr);
@@ -979,9 +1254,13 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       fboPainter2.setClipPath(m_selectionPath);
     }
 
-    // Dibujar nuevo trazo sobre el fondo ya copiado
-    // Si es borrador, el renderer gestionará el blend mode específico
-    fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    // Configurar blend mode a nivel de QPainter para que fluya
+    // correctamente en la GPU
+    if (settings.type == BrushSettings::Type::Eraser) {
+      fboPainter2.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    } else {
+      fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    }
 
     m_brushEngine->paintStroke(
         &fboPainter2, m_lastPos, canvasPos, effectivePressure, settings, tilt,
@@ -990,8 +1269,67 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     fboPainter2.end();
     m_pongFBO->release();
 
-    layer->dirty = true;
+    layer->markDirty(canvasRect.toAlignedRect());
     std::swap(m_pingFBO, m_pongFBO);
+
+    // --- INPUT PREDICTION ---
+    // Maintain history
+    m_historyPos.push_back(canvasPos);
+    m_historyPressure.push_back(effectivePressure);
+    m_historyTime.push_back(QDateTime::currentMSecsSinceEpoch());
+    if (m_historyPos.size() > 5) {
+      m_historyPos.pop_front();
+      m_historyPressure.pop_front();
+      m_historyTime.pop_front();
+    }
+
+    if (m_historyPos.size() >= 2) {
+      // Linear extrapolation: P_pred = P_curr + (P_curr - P_prev) * factor
+      // We predict about 1.5 frames ahead for responsiveness without too much
+      // jitter
+      QPointF pCurr = m_historyPos.back();
+      QPointF pPrev = m_historyPos[m_historyPos.size() - 2];
+      m_predictedPos = pCurr + (pCurr - pPrev) * 1.5f;
+      m_hasPrediction = true;
+
+      // Ensure Prediction FBO
+      if (!m_predictionFBO || m_predictionFBO->width() != m_canvasWidth ||
+          m_predictionFBO->height() != m_canvasHeight) {
+        if (m_predictionFBO)
+          delete m_predictionFBO;
+        QOpenGLFramebufferObjectFormat format;
+        format.setInternalTextureFormat(GL_RGBA16F);
+        m_predictionFBO =
+            new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
+      }
+
+      // Render Predicted Segment to Prediction FBO
+      QOpenGLFramebufferObject::blitFramebuffer(m_predictionFBO, m_pingFBO);
+      m_predictionFBO->bind();
+      QOpenGLPaintDevice predDevice(m_canvasWidth, m_canvasHeight);
+      QPainter predPainter(&predDevice);
+
+      if (!m_selectionPath.isEmpty())
+        predPainter.setClipPath(m_selectionPath);
+
+      if (settings.type == BrushSettings::Type::Eraser) {
+        predPainter.setCompositionMode(
+            QPainter::CompositionMode_DestinationOut);
+      } else {
+        predPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+      }
+
+      // Draw predicted dab with lower opacity to show it's provisional
+      BrushSettings predSettings = settings;
+      predSettings.opacity *= 0.6f;
+
+      m_brushEngine->paintStroke(
+          &predPainter, canvasPos, m_predictedPos, effectivePressure,
+          predSettings, tilt, velocityFactor, m_predictionFBO->texture(),
+          settings.wetness, settings.dilution, settings.smudge);
+      predPainter.end();
+      m_predictionFBO->release();
+    }
   } else {
     // MODO ESTÁNDAR (Raster / Legacy)
     QPainter painter(&img);
@@ -1010,23 +1348,13 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
                                effectivePressure, settings, tilt,
                                velocityFactor);
     painter.end();
-    layer->dirty = true;
+    layer->markDirty(canvasRect.toAlignedRect());
   }
 
   // Calculate dirty rect for update (Screen coordinates)
   // We need to determine the bounding box in canvas coords, then map to
   // screen. Use lastCanvasPos (captured at start) to ensure we cover the
   // whole segment
-  float minX = std::min(lastCanvasPos.x(), canvasPos.x());
-  float minY = std::min(lastCanvasPos.y(), canvasPos.y());
-  float maxX = std::max(lastCanvasPos.x(), canvasPos.x());
-  float maxY = std::max(lastCanvasPos.y(), canvasPos.y());
-
-  QRectF canvasRect(minX, minY, maxX - minX, maxY - minY);
-  // Add margin based on brush size
-  float margin = settings.size + 5.0f;
-  canvasRect.adjust(-margin, -margin, margin, margin);
-
   // Transform back to screen for update()
   QRectF screenRect(
       canvasRect.x() * m_zoomLevel + m_viewOffset.x() * m_zoomLevel,
@@ -1100,7 +1428,8 @@ void CanvasItem::detectAndDrawQuickShape() {
       variance += (r - avgDist) * (r - avgDist);
     variance = std::sqrt(variance / radii.size());
 
-    // Lenient circularity check (45% variance allowed for hand-drawn circles)
+    // Lenient circularity check (45% variance allowed for hand-drawn
+    // circles)
     if (variance < avgDist * 0.45f) {
       if (layer && layer->buffer && m_strokeBeforeBuffer) {
         layer->buffer->copyFrom(*m_strokeBeforeBuffer);
@@ -1179,6 +1508,16 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     QString color = sampleColor(static_cast<int>(event->position().x()),
                                 static_cast<int>(event->position().y()));
     setBrushColor(QColor(color));
+    return;
+  }
+
+  if (m_tool == ToolType::PanelCut) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    m_panelCutStartPos = canvasPos;
+    m_panelCutEndPos = canvasPos;
+    m_isPanelCutting = true;
+    update();
     return;
   }
 
@@ -1327,6 +1666,15 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     m_isDrawing = true;
     m_lastPos = canvasPos;
 
+    // Reset history for prediction
+    m_historyPos.clear();
+    m_historyPressure.clear();
+    m_historyTime.clear();
+    m_historyPos.push_back(canvasPos);
+    m_historyPressure.push_back(0.5f); // Mouse has no pressure
+    m_historyTime.push_back(QDateTime::currentMSecsSinceEpoch());
+    m_hasPrediction = false;
+
     // ... rest of stroke start logic ...
     Layer *layer = m_layerManager->getActiveLayer();
     if (layer && layer->locked) {
@@ -1377,7 +1725,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   // --- Mantenemos tu código original para actualizar el trazo ---
   m_cursorPos = event->position();
   m_cursorVisible = true;
-  update();
+  requestUpdate();
 
   emit cursorPosChanged(event->position().x(), event->position().y());
 
@@ -1387,6 +1735,14 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     m_viewOffset += delta;
     m_lastMousePos = event->position();
     emit viewOffsetChanged();
+    requestUpdate();
+    return;
+  }
+
+  if (m_tool == ToolType::PanelCut && m_isPanelCutting) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    m_panelCutEndPos = canvasPos;
     update();
     return;
   }
@@ -1404,7 +1760,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     QPointF delta = canvasPos - m_transformStartPos;
     m_transformMatrix = m_initialMatrix;
     m_transformMatrix.translate(delta.x(), delta.y());
-    update();
+    requestUpdate();
     return;
   }
 
@@ -1424,9 +1780,9 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
       m_selectionPath.lineTo(canvasPos);
       m_isLassoDragging = true;
     } else if (m_tool == ToolType::RectSelect) {
-      // Temporary feedback: we'll clear and add rect on release or maintain a
-      // temp path For simplicity in this turn, many apps show a "tentative"
-      // shape
+      // Temporary feedback: we'll clear and add rect on release or maintain
+      // a temp path For simplicity in this turn, many apps show a
+      // "tentative" shape
     }
 
     update();
@@ -1468,6 +1824,21 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
       setCursor(Qt::OpenHandCursor);
     }
   }
+  if (m_tool == ToolType::PanelCut && m_isPanelCutting) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    m_panelCutEndPos = canvasPos;
+    m_isPanelCutting = false;
+
+    // Only cut if the line has some length
+    if (QLineF(m_panelCutStartPos, m_panelCutEndPos).length() > 5.0) {
+      executePanelCut(m_panelCutStartPos, m_panelCutEndPos);
+    }
+
+    update();
+    return;
+  }
+
   if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
       m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
     QPointF canvasPos =
@@ -1515,9 +1886,10 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
     } else if (m_tool == ToolType::Lasso) {
       if (m_isLassoDragging) {
         m_selectionPath.closeSubpath();
-        // If it was a subtraction, we need specialized logic for the last part
-        // But QPainterPath handles multiple contours. For true subtraction,
-        // common practice is united/subtracted on the resulting closed shape.
+        // If it was a subtraction, we need specialized logic for the last
+        // part But QPainterPath handles multiple contours. For true
+        // subtraction, common practice is united/subtracted on the
+        // resulting closed shape.
         m_hasSelection = true;
       }
     }
@@ -1544,21 +1916,19 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
       bool wasHolding = m_isHoldingForShape;
       m_isDrawing = false;
       m_isHoldingForShape = false;
+      m_hasPrediction = false;
 
       if (m_pingFBO) {
         if (!wasHolding) {
           // Correctly convert FBO data to layer buffer without
           // double-premultiplying
-          QImage result =
-              m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888);
-          result.reinterpretAsFormat(QImage::Format_RGBA8888_Premultiplied);
+          QImage result = m_pingFBO->toImage(true).convertToFormat(
+              QImage::Format_RGBA8888_Premultiplied);
 
           Layer *layer = m_layerManager->getActiveLayer();
           if (layer && layer->buffer) {
-            std::memcpy(layer->buffer->data(), result.bits(),
-                        std::min((size_t)layer->buffer->width() *
-                                     layer->buffer->height() * 4,
-                                 (size_t)result.sizeInBytes()));
+            layer->buffer->loadRawData(result.bits());
+            layer->markDirty();
           }
         }
         delete m_pingFBO;
@@ -1623,6 +1993,17 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     QPointF canvasPos = (p - m_viewOffset * m_zoomLevel) / m_zoomLevel;
     m_lastPos = canvasPos;
 
+    // Reset history for prediction
+    m_historyPos.clear();
+    m_historyPressure.clear();
+    m_historyTime.clear();
+    m_historyPos.push_back(canvasPos);
+    m_historyPressure.push_back(pressure);
+    m_historyTime.push_back(QDateTime::currentMSecsSinceEpoch());
+    m_hasPrediction = false;
+
+    m_hasPrediction = false;
+
     // Undo Snapshot
     Layer *layer = m_layerManager->getActiveLayer();
     if (layer && layer->locked) {
@@ -1663,8 +2044,9 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     }
 
     m_cursorPos = event->position();
-    // Only draw if there's actual pressure or we are using a tool that doesn't
-    // strictly require it, otherwise we leave "stamp" markers at the end
+    // Only draw if there's actual pressure or we are using a tool that
+    // doesn't strictly require it, otherwise we leave "stamp" markers at
+    // the end
     if (pressure > 0.001f || m_tool == ToolType::Eraser) {
       handleDraw(event->position(), pressure, tiltFactor);
     }
@@ -1684,10 +2066,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
             m_pingFBO->toImage(true).convertToFormat(QImage::Format_ARGB32);
         Layer *layer = m_layerManager->getActiveLayer();
         if (layer && layer->buffer) {
-          std::memcpy(layer->buffer->data(), result.bits(),
-                      std::min((size_t)layer->buffer->width() *
-                                   layer->buffer->height() * 4,
-                               (size_t)result.sizeInBytes()));
+          layer->buffer->loadRawData(result.bits());
         }
       }
       delete m_pingFBO;
@@ -1897,8 +2276,9 @@ void CanvasItem::invertSelection() {
 
 void CanvasItem::apply_color_drop(int x, int y, const QColor &color) {
   // 1. Transform Visual/Screen coordinates to Logical Canvas coordinates
-  // Qt's coordinate system mapping (including flipped Scale transform in QML)
-  // already handles the flip for us in the event position and mapToItem.
+  // Qt's coordinate system mapping (including flipped Scale transform in
+  // QML) already handles the flip for us in the event position and
+  // mapToItem.
   float lx =
       (static_cast<float>(x) - m_viewOffset.x() * m_zoomLevel) / m_zoomLevel;
   float ly =
@@ -1956,9 +2336,9 @@ void CanvasItem::featherSelection(float radius) {
     return;
 
   // This is complex for a vector path, usually done by converting to bitmap
-  // mask, blurring, and using that alpha. For now, we'll keep the vector path
-  // and just store the feather value if we had a multi-mode selection buffer.
-  // Simplifying: Just notification of feathering applied.
+  // mask, blurring, and using that alpha. For now, we'll keep the vector
+  // path and just store the feather value if we had a multi-mode selection
+  // buffer. Simplifying: Just notification of feathering applied.
   emit notificationRequested("Feathering applied: " + QString::number(radius),
                              "info");
 }
@@ -1994,7 +2374,7 @@ void CanvasItem::duplicateSelection() {
   addLayer();
   Layer *newLayer = m_layerManager->getActiveLayer();
   if (newLayer && newLayer->buffer) {
-    std::memcpy(newLayer->buffer->data(), result.bits(), result.sizeInBytes());
+    newLayer->buffer->loadRawData(result.bits());
     newLayer->dirty = true;
   }
   update();
@@ -2207,6 +2587,9 @@ void CanvasItem::setCurrentTool(const QString &tool) {
   } else if (tool == "fill" || tool == "BUCKET") {
     m_tool = ToolType::Fill;
     setCursor(QCursor(Qt::BlankCursor));
+  } else if (tool == "panel_cut") {
+    m_tool = ToolType::PanelCut;
+    setCursor(QCursor(Qt::BlankCursor));
   }
 
   invalidateCursorCache();
@@ -2244,16 +2627,27 @@ void CanvasItem::beginTransform() {
   m_transformBeforeBuffer =
       std::make_unique<artflow::ImageBuffer>(*layer->buffer);
 
-  // 1. Extract content
+  // 1. Extract content safely in cropped box
   if (m_hasSelection && !m_selectionPath.isEmpty()) {
-    m_transformBox = m_selectionPath.boundingRect();
-    m_selectionBuffer = QImage(m_canvasWidth, m_canvasHeight,
+    QRectF boundOriginal = m_selectionPath.boundingRect();
+    m_transformBox =
+        boundOriginal.intersected(QRectF(0, 0, m_canvasWidth, m_canvasHeight));
+    QRect bbox = m_transformBox.toRect();
+    m_transformBox = bbox;
+
+    if (bbox.isEmpty() || bbox.width() <= 0 || bbox.height() <= 0) {
+      resetTransformState();
+      return;
+    }
+
+    m_selectionBuffer = QImage(bbox.width(), bbox.height(),
                                QImage::Format_ARGB32_Premultiplied);
     m_selectionBuffer.fill(Qt::transparent);
 
     QImage srcImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
                   QImage::Format_RGBA8888_Premultiplied);
     QPainter p(&m_selectionBuffer);
+    p.translate(-bbox.x(), -bbox.y());
     p.setClipPath(m_selectionPath);
     p.drawImage(0, 0, srcImg);
     p.end();
@@ -2262,102 +2656,352 @@ void CanvasItem::beginTransform() {
     QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
                     QImage::Format_RGBA8888_Premultiplied);
     QPainter p2(&layerImg);
-    p2.setClipPath(m_selectionPath);
     p2.setCompositionMode(QPainter::CompositionMode_Clear);
-    p2.fillRect(layerImg.rect(), Qt::transparent);
+    p2.setClipPath(m_selectionPath);
+    p2.fillRect(bbox, Qt::transparent);
     p2.end();
   } else {
     // Use the content bounds instead of full canvas
-    QRect bounds = layer->buffer->getContentBounds();
-    if (bounds.isEmpty()) {
+    int bx, by, bw, bh;
+    if (!layer->buffer->getContentBounds(bx, by, bw, bh)) {
       m_transformBox = QRectF(0, 0, m_canvasWidth, m_canvasHeight);
     } else {
-      m_transformBox = bounds;
+      QRect bounds(bx, by, bw, bh);
+      m_transformBox =
+          bounds.intersected(QRect(0, 0, m_canvasWidth, m_canvasHeight));
     }
 
-    m_selectionBuffer =
-        QImage(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-               QImage::Format_RGBA8888_Premultiplied)
-            .copy();
+    QRect bbox = m_transformBox.toRect();
+    if (bbox.isEmpty() || bbox.width() <= 0 || bbox.height() <= 0) {
+      resetTransformState();
+      return;
+    }
 
-    // Clear whole layer
-    layer->buffer->fill(0, 0, 0, 0);
+    QImage fullImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                   QImage::Format_RGBA8888_Premultiplied);
+    m_selectionBuffer = fullImg.copy(bbox);
+
+    // Clear area in original layer
+    QPainter p2(&fullImg);
+    p2.setCompositionMode(QPainter::CompositionMode_Clear);
+    p2.fillRect(bbox, Qt::transparent);
+    p2.end();
   }
 
+  m_initialMatrix = QTransform();
   m_transformMatrix = QTransform();
   m_isTransforming = true;
   layer->dirty = true;
 
+  // PRECOMPUTE en hilo secundario — no bloquear la UI
+  // Mostramos la transformación en cuanto tengamos el cache listo
+  m_updateTransformTextures = false; // aún no está listo
   emit isTransformingChanged();
+  update(); // primer frame: mostrará el canvas sin el static cache
+            // (acceptable)
+
+  // Capturar lo que necesita el hilo secundario antes de lanzarlo
+  int cw = m_canvasWidth;
+  int ch = m_canvasHeight;
+
+  QFuture<QImage> future = QtConcurrent::run([this, cw, ch]() -> QImage {
+    artflow::ImageBuffer tempBuffer(cw, ch);
+    m_layerManager->compositeAll(tempBuffer, false);
+    return QImage(tempBuffer.data(), cw, ch,
+                  QImage::Format_RGBA8888_Premultiplied)
+        .copy();
+  });
+
+  // Watcher para cuando termine — volver al hilo principal
+  auto *watcher = new QFutureWatcher<QImage>(this);
+  connect(watcher, &QFutureWatcher<QImage>::finished, this, [this, watcher]() {
+    m_transformStaticCache = watcher->result();
+    m_updateTransformTextures = true;
+    watcher->deleteLater();
+    update(); // ahora sí redibujar con el static cache en GPU
+  });
+  watcher->setFuture(future);
+
   emit notificationRequested("Transform Mode: " + (m_hasSelection
                                                        ? QString("Selection")
                                                        : QString("Layer")),
                              "info");
   emit transformBoxChanged();
+  return;
+}
+
+void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
+  Layer *activeLayer = m_layerManager->getActiveLayer();
+  if (!activeLayer || !activeLayer->buffer)
+    return;
+
+  // Si la capa actual está en blanco, inicializamos un Panel Maestro primero
+  bool isBlank = true;
+  const uint8_t *ptr = activeLayer->buffer->data();
+  size_t bytes = m_canvasWidth * m_canvasHeight * 4;
+  for (size_t i = 3; i < bytes; i += 4) {
+    if (ptr[i] > 0) {
+      isBlank = false;
+      break;
+    }
+  }
+
+  QImage baseImg(m_canvasWidth, m_canvasHeight,
+                 QImage::Format_RGBA8888_Premultiplied);
+  if (isBlank) {
+    baseImg.fill(Qt::transparent);
+    QPainter p(&baseImg);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.fillRect(50, 50, m_canvasWidth - 100, m_canvasHeight - 100, Qt::white);
+    p.setPen(QPen(Qt::black, 4));
+    p.drawRect(50, 50, m_canvasWidth - 100, m_canvasHeight - 100);
+    p.end();
+  } else {
+    baseImg = QImage(activeLayer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                     QImage::Format_RGBA8888_Premultiplied)
+                  .copy();
+  }
+
+  // Geometría del corte
+  QLineF cutLine(p1, p2);
+  float dx = p2.x() - p1.x();
+  float dy = p2.y() - p1.y();
+  float len = std::hypot(dx, dy);
+  if (len == 0)
+    return;
+  float nx = -dy / len;
+  float ny = dx / len;
+
+  QPointF shiftA(nx * m_panelGutterSize / 2.0f, ny * m_panelGutterSize / 2.0f);
+  QLineF lineA(cutLine.pointAt(-100.0) + shiftA,
+               cutLine.pointAt(100.0) + shiftA);
+
+  QPointF shiftB(-nx * m_panelGutterSize / 2.0f,
+                 -ny * m_panelGutterSize / 2.0f);
+  QLineF lineB(cutLine.pointAt(-100.0) + shiftB,
+               cutLine.pointAt(100.0) + shiftB);
+
+  QPolygonF polyB; // Lado B de lineA (para borrar de A)
+  polyB << lineA.p1() << (lineA.p1() - shiftA * 10000)
+        << (lineA.p2() - shiftA * 10000) << lineA.p2();
+
+  QPolygonF polyA; // Lado A de lineB (para borrar de B)
+  polyA << lineB.p1() << (lineB.p1() + shiftA * 10000)
+        << (lineB.p2() + shiftA * 10000) << lineB.p2();
+
+  QImage copyA = baseImg.copy();
+  QImage copyB = baseImg.copy();
+  QPen borderPen(Qt::black, 4.0f, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
+
+  // Generar Panel A
+  QPainter pa(&copyA);
+  pa.setRenderHint(QPainter::Antialiasing);
+  pa.setCompositionMode(QPainter::CompositionMode_Clear);
+  QPainterPath pPathB;
+  pPathB.addPolygon(polyB);
+  pa.fillPath(pPathB, Qt::transparent);
+  pa.setCompositionMode(QPainter::CompositionMode_SourceOver);
+  pa.setPen(borderPen);
+  pa.drawLine(lineA);
+  pa.end();
+
+  // Generar Panel B
+  QPainter pb(&copyB);
+  pb.setRenderHint(QPainter::Antialiasing);
+  pb.setCompositionMode(QPainter::CompositionMode_Clear);
+  QPainterPath pPathA;
+  pPathA.addPolygon(polyA);
+  pb.fillPath(pPathA, Qt::transparent);
+  pb.setCompositionMode(QPainter::CompositionMode_SourceOver);
+  pb.setPen(borderPen);
+  pb.drawLine(lineB);
+  pb.end();
+
+  // 1. Actualizar Capa Activa -> Panel 1
+  activeLayer->buffer->loadRawData(copyA.constBits());
+  activeLayer->name = "Panel 1";
+  activeLayer->dirty = true;
+  int activeIdx = m_layerManager->getActiveLayerIndex();
+
+  // 2. Crear Art 1 (Clipped a Panel 1)
+  m_layerManager->addLayer("Art 1");
+  int art1Idx = m_layerManager->getLayerCount() - 1;
+  m_layerManager->moveLayer(art1Idx, activeIdx + 1);
+  m_layerManager->getLayer(activeIdx + 1)->clipped = true;
+
+  // 3. Crear Panel 2
+  m_layerManager->addLayer("Panel 2");
+  int p2Idx = m_layerManager->getLayerCount() - 1;
+  m_layerManager->moveLayer(p2Idx, activeIdx + 2);
+  Layer *panel2 = m_layerManager->getLayer(activeIdx + 2);
+  panel2->buffer->loadRawData(copyB.constBits());
+  panel2->dirty = true;
+
+  // 4. Crear Art 2 (Clipped a Panel 2)
+  m_layerManager->addLayer("Art 2");
+  int art2Idx = m_layerManager->getLayerCount() - 1;
+  m_layerManager->moveLayer(art2Idx, activeIdx + 3);
+  Layer *art2 = m_layerManager->getLayer(activeIdx + 3);
+  art2->clipped = true;
+
+  // Focus the first Art layer to let user start drawing immediately
+  m_activeLayerIndex = activeIdx + 1;
+  m_layerManager->setActiveLayer(m_activeLayerIndex);
+
+  updateLayersList();
   update();
+}
+
+void CanvasItem::updateTransformCorners(const QVariantList &corners) {
+  if (!m_isTransforming || corners.size() < 4)
+    return;
+
+  // m_selectionBuffer goes from (0,0) to (W,H). Map its local corners to
+  // the global dst corners.
+  QPolygonF src;
+  src << QPointF(0, 0) << QPointF(m_transformBox.width(), 0)
+      << QPointF(m_transformBox.width(), m_transformBox.height())
+      << QPointF(0, m_transformBox.height());
+
+  QPolygonF dst;
+  for (int i = 0; i < 4; ++i) {
+    QVariantMap p = corners[i].toMap();
+    dst << QPointF(p["x"].toDouble(), p["y"].toDouble());
+  }
+
+  // Calculate perspective/mesh quad transform
+  QTransform transform;
+  if (QTransform::quadToQuad(src, dst, transform)) {
+    m_transformMatrix = transform;
+    requestUpdate(); // throttled — no update() directo aquí
+  }
 }
 
 void CanvasItem::applyTransform() {
-  if (!m_isTransforming || m_selectionBuffer.isNull())
+  if (!m_isTransforming)
     return;
+
+  if (m_selectionBuffer.isNull()) {
+    resetTransformState();
+    return;
+  }
 
   Layer *layer = m_layerManager->getActiveLayer();
   if (layer && layer->buffer) {
-    // Snapshot before for undo (we actually need the state BEFORE
-    // beginTransform for a clean undo, but here we are committing the change
-    // after beginTransform already cleared the area). Ideally, beginTransform
-    // should have saved the 'before' state.
+    QOpenGLContext *ctx = QOpenGLContext::currentContext();
 
-    auto before =
-        std::make_unique<artflow::ImageBuffer>(m_canvasWidth, m_canvasHeight);
-    // This is tricky because the layer is already cleared.
-    // We will assume the undo system handles the whole process if we were more
-    // careful. For now, let's just commit.
+    if (ctx && m_transformShader && m_selectionTex) {
+      // --- CAMINO RÁPIDO: blit final por GPU usando el shader que ya existe
+      // --- Renderizamos a un FBO del tamaño del canvas y leemos el resultado
+      QOpenGLFramebufferObjectFormat fmt;
+      fmt.setInternalTextureFormat(GL_RGBA8);
+      QOpenGLFramebufferObject fbo(m_canvasWidth, m_canvasHeight, fmt);
+      fbo.bind();
 
-    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-               QImage::Format_RGBA8888_Premultiplied);
-    QPainter p(&img);
-    p.setRenderHint(QPainter::SmoothPixmapTransform);
-    p.setTransform(m_transformMatrix);
-    p.drawImage(0, 0, m_selectionBuffer);
-    p.end();
+      QOpenGLFunctions *f = ctx->functions();
+      f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
+      f->glClearColor(0, 0, 0, 0);
+      f->glClear(GL_COLOR_BUFFER_BIT);
+      f->glEnable(GL_BLEND);
+      f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+      m_transformShader->bind();
+
+      // Proyección ortográfica del tamaño del canvas (sin pan/zoom)
+      QMatrix4x4 ortho;
+      ortho.ortho(0, m_canvasWidth, m_canvasHeight, 0, -1, 1);
+
+      // Construir MVP = ortho * perspectiveMatrix * localOffset
+      QMatrix4x4 qtMat;
+      qtMat.setColumn(0, QVector4D(m_transformMatrix.m11(),
+                                   m_transformMatrix.m12(), 0,
+                                   m_transformMatrix.m13()));
+      qtMat.setColumn(1, QVector4D(m_transformMatrix.m21(),
+                                   m_transformMatrix.m22(), 0,
+                                   m_transformMatrix.m23()));
+      qtMat.setColumn(2, QVector4D(0, 0, 1, 0));
+      qtMat.setColumn(3, QVector4D(m_transformMatrix.m31(),
+                                   m_transformMatrix.m32(), 0,
+                                   m_transformMatrix.m33()));
+      m_transformShader->setUniformValue("MVP", ortho * qtMat);
+      m_transformShader->setUniformValue("opacity", 1.0f);
+      m_selectionTex->bind(0);
+      m_transformShader->setUniformValue("tex", 0);
+
+      float sw = m_selectionBuffer.width();
+      float sh = m_selectionBuffer.height();
+      GLfloat verts[] = {0, 0,  0, 0, sw, 0, 1, 0, 0,  sh, 0, 1,
+                         0, sh, 0, 1, sw, 0, 1, 0, sw, sh, 1, 1};
+      m_transformShader->enableAttributeArray(0);
+      m_transformShader->enableAttributeArray(1);
+      m_transformShader->setAttributeArray(0, GL_FLOAT, verts, 2,
+                                           4 * sizeof(float));
+      m_transformShader->setAttributeArray(1, GL_FLOAT, verts + 2, 2,
+                                           4 * sizeof(float));
+      f->glDrawArrays(GL_TRIANGLES, 0, 6);
+      m_transformShader->disableAttributeArray(0);
+      m_transformShader->disableAttributeArray(1);
+      m_transformShader->release();
+      fbo.release();
+
+      // Leer resultado del FBO (GPU→CPU, una sola vez al confirmar)
+      QImage result =
+          fbo.toImage().convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+
+      // Combinar con el buffer de la capa (que ya tiene el fondo sin la
+      // selección)
+      QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                      QImage::Format_RGBA8888_Premultiplied);
+      QPainter p(&layerImg);
+      p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+      p.drawImage(0, 0, result);
+      p.end();
+
+    } else {
+      // --- FALLBACK CPU (sin contexto GL disponible en este momento) ---
+      QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                 QImage::Format_RGBA8888_Premultiplied);
+      QPainter p(&img);
+      p.setRenderHint(QPainter::SmoothPixmapTransform);
+      p.setRenderHint(QPainter::Antialiasing);
+      p.setTransform(m_transformMatrix);
+      p.drawImage(0, 0, m_selectionBuffer);
+      p.end();
+    }
+
     layer->dirty = true;
+
+    // 3. PUSH UNDO
+    auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+    m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
+        m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
+        std::move(after)));
   }
 
-  m_isTransforming = false;
-  m_selectionBuffer = QImage();
-
-  // 3. PUSH UNDO
-  auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
-  m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
-      m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
-      std::move(after)));
-
-  m_selectionPath = QPainterPath();
-  m_hasSelection = false;
-  emit isTransformingChanged();
-  emit hasSelectionChanged();
-  update();
+  resetTransformState();
 }
 
 void CanvasItem::cancelTransform() {
-  if (!m_isTransforming || m_selectionBuffer.isNull())
+  if (!m_isTransforming)
     return;
+
+  if (m_selectionBuffer.isNull()) {
+    resetTransformState();
+    return;
+  }
 
   Layer *layer = m_layerManager->getActiveLayer();
   if (layer && layer->buffer) {
     QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
                QImage::Format_RGBA8888_Premultiplied);
     QPainter p(&img);
-    p.drawImage(0, 0, m_selectionBuffer); // Draw back original
+    p.drawImage(m_transformBox.topLeft(),
+                m_selectionBuffer); // Draw back original at its position
     p.end();
     layer->dirty = true;
   }
 
-  m_isTransforming = false;
-  m_selectionBuffer = QImage();
-  update();
-  emit isTransformingChanged();
+  resetTransformState();
 }
 
 void CanvasItem::commitTransform() { applyTransform(); }
@@ -2433,8 +3077,8 @@ bool CanvasItem::create_folder_from_merge(const QString &sourcePath,
     }
     return success;
   } else if (srcInfo.isDir()) {
-    // Source is a folder, move target inside (just in case they dragged folder
-    // onto a drawing somehow)
+    // Source is a folder, move target inside (just in case they dragged
+    // folder onto a drawing somehow)
     QString newPath = srcInfo.absoluteFilePath() + "/" + tgtInfo.fileName();
     bool success = QFile::rename(targetPath, newPath);
     if (success) {
@@ -2584,6 +3228,7 @@ void CanvasItem::removeLayer(int index) {
     return;
   }
   m_layerManager->removeLayer(index);
+  clearRenderCaches();
   m_activeLayerIndex = qMax(0, (int)m_layerManager->getLayerCount() - 1);
   emit activeLayerChanged();
   updateLayersList();
@@ -2608,8 +3253,8 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
 
   m_layerManager->moveLayer(fromIndex, toIndex);
 
-  // Auto-clipping logic: If dropped into the middle of a clipping group, join
-  // it.
+  // Auto-clipping logic: If dropped into the middle of a clipping group,
+  // join it.
   int count = m_layerManager->getLayerCount();
   Layer *moved = m_layerManager->getLayer(toIndex);
   Layer *above =
@@ -2739,9 +3384,9 @@ bool CanvasItem::loadProject(const QString &path) {
       QJsonObject layerObj = val.toObject();
       QString name = layerObj["name"].toString();
 
-      // Backwards compatibility: check for old 'file' property to warn user or
-      // handle legacy? For now, we assume new format. If "data" is missing,
-      // layer will be empty.
+      // Backwards compatibility: check for old 'file' property to warn user
+      // or handle legacy? For now, we assume new format. If "data" is
+      // missing, layer will be empty.
 
       int newIdx = m_layerManager->addLayer(name.toStdString());
       Layer *newLayer = m_layerManager->getLayer(newIdx);
@@ -2762,15 +3407,13 @@ bool CanvasItem::loadProject(const QString &path) {
           if (img.loadFromData(data, "PNG")) {
             img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
             if (img.width() == w && img.height() == h) {
-              std::memcpy(newLayer->buffer->data(), img.constBits(),
-                          (size_t)w * h * 4);
+              newLayer->buffer->loadRawData(img.constBits());
             } else {
               QImage scaled = img.scaled(w, h, Qt::IgnoreAspectRatio,
                                          Qt::SmoothTransformation);
               scaled =
                   scaled.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
-              std::memcpy(newLayer->buffer->data(), scaled.constBits(),
-                          (size_t)w * h * 4);
+              newLayer->buffer->loadRawData(scaled.constBits());
             }
           }
         }
@@ -2927,7 +3570,8 @@ bool CanvasItem::saveProject(const QString &pathText) {
 
 QVariantList CanvasItem::_scanSync() {
   QVariantList results;
-  // Always scan the main project directory for the root lists (Home/Gallery)
+  // Always scan the main project directory for the root lists
+  // (Home/Gallery)
   QString path =
       QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
       "/ArtFlowProjects";
@@ -3009,7 +3653,7 @@ QVariantList CanvasItem::get_sketchbook_pages(const QString &folderPath) {
     return results;
 
   QFileInfoList entries =
-      dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Time);
+      dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Name);
   for (const QFileInfo &info : entries) {
     QVariantMap item;
     item["name"] = info.completeBaseName();
@@ -3388,9 +4032,9 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
   ImageBuffer composite(m_canvasWidth, m_canvasHeight);
   m_layerManager->compositeAll(composite);
 
-  // Use ARGB32_Premultiplied which is standard for QImage unless you're sure
-  // about RGBA8888 byte order Create a deep copy to ensure the image owns its
-  // data
+  // Use ARGB32_Premultiplied which is standard for QImage unless you're
+  // sure about RGBA8888 byte order Create a deep copy to ensure the image
+  // owns its data
   QImage img = QImage(composite.data(), m_canvasWidth, m_canvasHeight,
                       QImage::Format_RGBA8888_Premultiplied)
                    .copy();
@@ -3474,21 +4118,9 @@ void CanvasItem::updateTransformProperties(float x, float y, float scale,
   if (!m_isTransforming)
     return;
 
-  // Create transform matrix from QML properties
-  // 'x' and 'y' are the top-left corner of the manipulator in canvas space.
-  // 'width' and 'height' are the current dimensions (if resized).
-  // 'scale' and 'rotation' are applied around the center.
-
   m_transformMatrix = QTransform();
 
-  // Original center
-  float cx = m_transformBox.x() + m_transformBox.width() / 2.0f;
-  float cy = m_transformBox.y() + m_transformBox.height() / 2.0f;
-
-  // Current center (based on manipulator position)
-  // Note: we use the unscaled width/height from QML properties for the center
-  // calculation, because scaling is handled by the matrix scale() operation
-  // usually.
+  // Current center (based on manipulator position on Canvas)
   float newCx = x + w / 2.0f;
   float newCy = y + h / 2.0f;
 
@@ -3499,8 +4131,14 @@ void CanvasItem::updateTransformProperties(float x, float y, float scale,
   m_transformMatrix.rotate(rotation);
   m_transformMatrix.scale(scale, scale);
 
-  // 3. Move back relative to ORIGINAL center (to map original pixels)
-  m_transformMatrix.translate(-cx, -cy);
+  // Apply differential scaling based on free-transform handle manipulation
+  float scaleX = w / std::max(1.0f, (float)m_transformBox.width());
+  float scaleY = h / std::max(1.0f, (float)m_transformBox.height());
+  m_transformMatrix.scale(scaleX, scaleY);
+
+  // 3. Move back relative to local image origin so (0,0) maps correctly
+  m_transformMatrix.translate(-m_transformBox.width() / 2.0f,
+                              -m_transformBox.height() / 2.0f);
 
   update();
 }
@@ -3609,10 +4247,14 @@ void CanvasItem::updateLayersList() {
 }
 
 void CanvasItem::resizeCanvas(int w, int h) {
+  resetTransformState();
+  setCurrentTool("brush");
+
   m_canvasWidth = w;
   m_canvasHeight = h;
 
   delete m_layerManager;
+  clearRenderCaches();
   m_layerManager = new LayerManager(w, h);
 
   m_layerManager->addLayer("Layer 1");
@@ -3755,32 +4397,130 @@ void CanvasItem::drawPanelLayout(const QString &layoutType, int gutterPx,
   }
 
   // Draw all panels
-  for (const auto &p : panels) {
+  for (int i = 0; i < panels.size(); ++i) {
+    const auto &p = panels[i];
     QRectF rect(p.x, p.y, p.w, p.h);
-    painter.drawRect(rect);
+
+    // 1. Create Panel Base Layer
+    QString pName = QString("Panel %1").arg(i + 1);
+    int pLayerIdx = m_layerManager->addLayer(pName.toStdString());
+    Layer *pLayer = m_layerManager->getLayer(pLayerIdx);
+
+    // Draw white fill and black border
+    QImage pImg(w, h, QImage::Format_RGBA8888_Premultiplied);
+    pImg.fill(Qt::transparent);
+    QPainter pPainter(&pImg);
+    pPainter.setRenderHint(QPainter::Antialiasing);
+
+    // 1. Fill solid white (CompositionMode_Source ensures Alpha 255)
+    pPainter.setCompositionMode(QPainter::CompositionMode_Source);
+    pPainter.fillRect(rect, Qt::white);
+
+    // 2. Draw black border (Alpha 255)
+    pPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    pPainter.setPen(borderPen);
+    pPainter.drawRect(rect);
+    pPainter.end();
+
+    pLayer->buffer->loadRawData(pImg.constBits());
+    pLayer->dirty = true;
+
+    // 2. Create Art Clipped Layer
+    QString aName = QString("Art %1").arg(i + 1);
+    int aLayerIdx = m_layerManager->addLayer(aName.toStdString());
+    Layer *aLayer = m_layerManager->getLayer(aLayerIdx);
+    aLayer->clipped = true;
+    aLayer->dirty = true;
   }
 
-  painter.end();
+  // Remove the initial "Panels" layer we created at the start of the function
+  m_layerManager->removeLayer(panelLayerIdx);
+  clearRenderCaches();
+  m_activeLayerIndex = m_layerManager->getLayerCount() - 1;
+  m_layerManager->setActiveLayer(m_activeLayerIndex);
 
-  // Sync to GPU if FBOs are active
-  if (m_pingFBO && panelLayer->buffer) {
-    QImage gpuImg(panelLayer->buffer->data(), w, h, QImage::Format_RGBA8888);
-    m_pingFBO->bind();
-    QOpenGLPaintDevice device(w, h);
-    QPainter fboPainter(&device);
-    fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
-    fboPainter.drawImage(0, 0, gpuImg);
-    fboPainter.end();
-    m_pingFBO->release();
-    QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
-  }
-
-  panelLayer->dirty = true;
   updateLayersList();
   update();
 
-  emit notificationRequested(
-      "Panel layout '" + layoutType + "' created on new layer", "success");
+  emit notificationRequested("Panel layout '" + layoutType +
+                                 "' generated with individual masking",
+                             "success");
+}
+
+void CanvasItem::flattenComicPanels(const QVariantList &panelsList) {
+  if (!m_layerManager || panelsList.isEmpty())
+    return;
+
+  int w = m_canvasWidth;
+  int h = m_canvasHeight;
+
+  for (int i = 0; i < panelsList.size(); ++i) {
+    QVariantMap panelMap = panelsList[i].toMap();
+    float px = panelMap["x"].toFloat();
+    float py = panelMap["y"].toFloat();
+    float pw = panelMap["w"].toFloat();
+    float ph = panelMap["h"].toFloat();
+    float bw = panelMap.contains("borderWidth")
+                   ? panelMap["borderWidth"].toFloat()
+                   : 6.0f;
+
+    QPainterPath path;
+    if (panelMap.contains("pts")) {
+      QVariantList ptsList = panelMap["pts"].toList();
+      if (ptsList.size() >= 3) {
+        QPolygonF poly;
+        for (const QVariant &ptVar : ptsList) {
+          QVariantMap ptMap = ptVar.toMap();
+          poly << QPointF(px + ptMap["x"].toFloat(), py + ptMap["y"].toFloat());
+        }
+        path.addPolygon(poly);
+        path.closeSubpath();
+      } else {
+        path.addRect(px, py, pw, ph);
+      }
+    } else {
+      path.addRect(px, py, pw, ph);
+    }
+
+    // 1. Create Panel Base Layer
+    QString pName = QString("Panel %1").arg(i + 1);
+    int pLayerIdx = m_layerManager->addLayer(pName.toStdString());
+    Layer *pLayer = m_layerManager->getLayer(pLayerIdx);
+
+    QImage pImg(w, h, QImage::Format_RGBA8888_Premultiplied);
+    pImg.fill(Qt::transparent);
+    QPainter painter(&pImg);
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    // Fill with Solid White (CompositionMode_Source ensures Alpha 255)
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.fillPath(path, Qt::white);
+
+    // Draw Border
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    QPen pen(Qt::black, bw, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
+    painter.setPen(pen);
+    painter.drawPath(path);
+    painter.end();
+
+    pLayer->buffer->loadRawData(pImg.constBits());
+    pLayer->dirty = true;
+
+    // 2. Create Art Clipped Layer
+    QString aName = QString("Art %1").arg(i + 1);
+    int aLayerIdx = m_layerManager->addLayer(aName.toStdString());
+    Layer *aLayer = m_layerManager->getLayer(aLayerIdx);
+    aLayer->clipped = true;
+    aLayer->dirty = true;
+  }
+
+  m_activeLayerIndex = m_layerManager->getLayerCount() - 1;
+  m_layerManager->setActiveLayer(m_activeLayerIndex);
+
+  updateLayersList();
+  update();
+  emit notificationRequested("Panels flattened to layers with clipping masks",
+                             "success");
 }
 
 QString CanvasItem::sampleColor(int x, int y, int mode) {
@@ -4097,8 +4837,7 @@ void CanvasItem::syncGpuToCpu() {
   }
 
   if (img.width() == m_canvasWidth && img.height() == m_canvasHeight) {
-    std::memcpy(layer->buffer->data(), img.constBits(),
-                (size_t)m_canvasWidth * m_canvasHeight * 4);
+    layer->buffer->loadRawData(img.constBits());
     layer->dirty = true;
   }
 }
@@ -4660,12 +5399,12 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
       // However, this is getBrushCategoryProperties, not applyToLegacy.
       // Assuming the user wants to add the logging to the applyToLegacy
       // function which is not provided in the context, but the logging line
-      // itself is requested. Since I cannot add to a non-existent function in
-      // this file, I will add the logging line as a comment here to indicate
-      // where it would go if applyToLegacy were present and being modified.
-      // For getBrushCategoryProperties, we just return the value. qDebug() <<
-      // "BrushPreset::applyToLegacy: Setting tipTextureName to" <<
-      // m_editingPreset.shape.tipTexture;
+      // itself is requested. Since I cannot add to a non-existent function
+      // in this file, I will add the logging line as a comment here to
+      // indicate where it would go if applyToLegacy were present and being
+      // modified. For getBrushCategoryProperties, we just return the value.
+      // qDebug() << "BrushPreset::applyToLegacy: Setting tipTextureName to"
+      // << m_editingPreset.shape.tipTexture;
     }
     map["tip_texture"] = m_editingPreset.shape.tipTexture;
   } else if (category == "grain") {
@@ -5450,14 +6189,16 @@ void CanvasItem::blendWithShader(QPainter *painter, artflow::Layer *layer,
   f->glActiveTexture(GL_TEXTURE0);
   f->glBindTexture(GL_TEXTURE_2D, backdropTexID);
 
-  // Check if size changed to reallocate texture storage if needed (though copy
-  // does it) Important: Use Nearest neighbor for 1:1 pixel mapping to avoid
-  // blurry backdrops
+  // Check if size changed to reallocate texture storage if needed (though
+  // copy does it) Important: Use Nearest neighbor for 1:1 pixel mapping to
+  // avoid blurry backdrops
   f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   f->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  // Copy the ENTIRE physical framebuffer to the texture
-  f->glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, w, h, 0);
+  if (!m_isTransforming) {
+    // Sólo capturamos el backdrop cuando realmente pintamos (blend modes)
+    f->glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, w, h, 0);
+  }
 
   // 2. Prepare Layer Texture
   QOpenGLTexture *layerTex = nullptr;

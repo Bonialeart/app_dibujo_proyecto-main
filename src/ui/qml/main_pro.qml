@@ -757,36 +757,65 @@ Window {
                         transformOrigin: Item.TopLeft
                         z: 100
                         
-                        // The Manipulator Item (The selection bounding box)
-                        Rectangle {
-                            id: manipulator
-                            // Set size and position dynamically when shown
-                            width: mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.width : parent.width
-                            height: mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.height : parent.height
-                            color: "transparent"
-                            border.color: colorAccent
-                            border.width: 2 / mainCanvas.zoomLevel
-                            transformOrigin: Item.Center
+                            // The Manipulator Item (The selection bounding box)
+                            Rectangle {
+                                id: manipulator
+                                // Set size and position dynamically when shown
+                                width: mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.width : parent.width
+                                height: mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.height : parent.height
+                                color: "transparent"
+                                border.color: mainCanvas.transformMode === 1 ? "transparent" : colorAccent
+                                border.width: 2 / mainCanvas.zoomLevel
+                                transformOrigin: Item.Center
                             
-                            // Reset state when shown
-                            onVisibleChanged: {
-                                if (visible) {
-                                    if (mainCanvas.transformBox.width > 0) {
-                                        x = mainCanvas.transformBox.x
-                                        y = mainCanvas.transformBox.y
-                                        width = mainCanvas.transformBox.width
-                                        height = mainCanvas.transformBox.height
-                                    } else {
-                                        x = 0; y = 0
-                                        width = parent.width
-                                        height = parent.height
+                            // Perspective points state
+                            property var perspPoints: null
+                            
+                                // Reset state when shown
+                                onVisibleChanged: {
+                                    if (visible) {
+                                        perspPoints = null // Reset perspective
+                                        if (mainCanvas.transformBox.width > 0) {
+                                            x = mainCanvas.transformBox.x
+                                            y = mainCanvas.transformBox.y
+                                            width = mainCanvas.transformBox.width
+                                            height = mainCanvas.transformBox.height
+                                        } else {
+                                            x = 0; y = 0
+                                            width = parent.width
+                                            height = parent.height
+                                        }
+                                        scale = 1; rotation = 0
+                                        mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
+                                        if (typeof canvasOutline !== "undefined") canvasOutline.requestPaint()
                                     }
-                                    scale = 1; rotation = 0
-                                    mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
                                 }
-                            }
-                            
-                            PinchHandler { target: manipulator }
+                                
+                                Canvas {
+                                    id: canvasOutline
+                                    anchors.fill: parent
+                                    anchors.margins: -4000 // Bleed area for extreme perspective warping
+                                    visible: mainCanvas.transformMode === 1
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        ctx.reset()
+                                        if (!manipulator.perspPoints) return
+                                        
+                                        ctx.strokeStyle = colorAccent
+                                        ctx.lineWidth = 2 / mainCanvas.zoomLevel
+                                        ctx.beginPath()
+                                        
+                                        var offset = 4000 // Match the margins
+                                        ctx.moveTo(manipulator.perspPoints[0].x + offset, manipulator.perspPoints[0].y + offset)
+                                        ctx.lineTo(manipulator.perspPoints[1].x + offset, manipulator.perspPoints[1].y + offset)
+                                        ctx.lineTo(manipulator.perspPoints[2].x + offset, manipulator.perspPoints[2].y + offset)
+                                        ctx.lineTo(manipulator.perspPoints[3].x + offset, manipulator.perspPoints[3].y + offset)
+                                        ctx.closePath()
+                                        ctx.stroke()
+                                    }
+                                }
+                                
+                                PinchHandler { target: manipulator }
                             
                             // Center drag handle
                             DragHandler { target: manipulator; xAxis.enabled: true; yAxis.enabled: true }
@@ -799,7 +828,17 @@ Window {
                             onHeightChanged: if (visible) updateTransform()
                             
                             function updateTransform() {
-                                mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
+                                if (mainCanvas.transformMode === 1 && manipulator.perspPoints) {
+                                    var canvasPts = []
+                                    for(var i=0; i<4; i++) {
+                                        var cp = manipulator.parent.mapFromItem(manipulator, manipulator.perspPoints[i].x, manipulator.perspPoints[i].y)
+                                        canvasPts.push({x: cp.x, y: cp.y})
+                                    }
+                                    mainCanvas.updateTransformCorners(canvasPts)
+                                    if (typeof canvasOutline !== "undefined") canvasOutline.requestPaint()
+                                } else {
+                                    mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
+                                }
                             }
                             
                             // ── ROTATION HANDLE ──
@@ -848,17 +887,26 @@ Window {
                             // ── RESIZE HANDLES (Corners) ──
                             Repeater {
                                 model: [
-                                    {hx: 0, hy: 0, cursor: Qt.SizeFDiagCursor},
-                                    {hx: 1, hy: 0, cursor: Qt.SizeBDiagCursor},
-                                    {hx: 0, hy: 1, cursor: Qt.SizeBDiagCursor},
-                                    {hx: 1, hy: 1, cursor: Qt.SizeFDiagCursor}
+                                    {hx: 0, hy: 0, cursor: Qt.SizeFDiagCursor, idx: 0},
+                                    {hx: 1, hy: 0, cursor: Qt.SizeBDiagCursor, idx: 1},
+                                    {hx: 0, hy: 1, cursor: Qt.SizeBDiagCursor, idx: 3},
+                                    {hx: 1, hy: 1, cursor: Qt.SizeFDiagCursor, idx: 2}
                                 ]
                                 delegate: Rectangle {
-                                    width: 16 / mainCanvas.zoomLevel; height: 16 / mainCanvas.zoomLevel
-                                    x: modelData.hx * manipulator.width - width/2
-                                    y: modelData.hy * manipulator.height - height/2
-                                    color: "white"; border.color: colorAccent; border.width: 2/mainCanvas.zoomLevel
-                                    radius: 2/mainCanvas.zoomLevel
+                                    width: 24 / mainCanvas.zoomLevel; height: 24 / mainCanvas.zoomLevel
+                                    
+                                    // Switch between calculated position or perspective point
+                                    x: (mainCanvas.transformMode === 1 && manipulator.perspPoints) 
+                                       ? manipulator.perspPoints[modelData.idx].x - width/2
+                                       : modelData.hx * manipulator.width - width/2
+                                    y: (mainCanvas.transformMode === 1 && manipulator.perspPoints)
+                                       ? manipulator.perspPoints[modelData.idx].y - height/2
+                                       : modelData.hy * manipulator.height - height/2
+                                       
+                                    color: mainCanvas.transformMode === 1 ? colorAccent : "white"
+                                    border.color: colorAccent; border.width: 2/mainCanvas.zoomLevel
+                                    radius: mainCanvas.transformMode === 1 ? width/2 : 2/mainCanvas.zoomLevel
+                                    z: 100
                                     
                                     MouseArea {
                                         anchors.fill: parent
@@ -867,6 +915,8 @@ Window {
                                         property real startScale: 1
                                         property real startMix: 0
                                         property real startMiy: 0
+                                        property real startPx: 0
+                                        property real startPy: 0
                                         
                                         onPressed: {
                                             startScale = manipulator.scale
@@ -874,19 +924,58 @@ Window {
                                             var p = manipulator.parent.mapFromItem(this, mouse.x, mouse.y)
                                             startMix = p.x
                                             startMiy = p.y
+                                            
+                                            if (!manipulator.perspPoints) {
+                                                manipulator.perspPoints = [
+                                                    {x: 0, y: 0}, {x: manipulator.width, y: 0},
+                                                    {x: manipulator.width, y: manipulator.height}, {x: 0, y: manipulator.height}
+                                                ]
+                                            }
+                                            startPx = manipulator.perspPoints[modelData.idx].x
+                                            startPy = manipulator.perspPoints[modelData.idx].y
                                         }
                                         onPositionChanged: {
                                             if (pressed) {
                                                 var p = manipulator.parent.mapFromItem(this, mouse.x, mouse.y)
-                                                var cx = manipulator.x + manipulator.width/2
-                                                var cy = manipulator.y + manipulator.height/2
                                                 
-                                                var newDist = Math.sqrt(Math.pow(p.x - cx, 2) + Math.pow(p.y - cy, 2))
-                                                var oldDist = Math.sqrt(Math.pow(startMix - cx, 2) + Math.pow(startMiy - cy, 2))
-                                                
-                                                if (oldDist > 0) {
-                                                    var newScale = startScale * (newDist / oldDist)
-                                                    if (newScale > 0.05) manipulator.scale = newScale
+                                                if (mainCanvas.transformMode === 1) { // Perspective
+                                                    // In perspective mode, we move individual corners
+                                                    var dx = (p.x - startMix) / manipulator.scale
+                                                    var dy = (p.y - startMiy) / manipulator.scale
+                                                    
+                                                    var newPts = []
+                                                    for(var i=0; i<4; i++) {
+                                                        if (i === modelData.idx) {
+                                                            newPts.push({
+                                                                x: startPx + dx,
+                                                                y: startPy + dy
+                                                            })
+                                                        } else {
+                                                            newPts.push(manipulator.perspPoints[i])
+                                                        }
+                                                    }
+                                                    manipulator.perspPoints = newPts
+                                                    canvasOutline.requestPaint()
+                                                    
+                                                    // Map local points to canvas space for C++
+                                                    var canvasPts = []
+                                                    for(var i=0; i<4; i++) {
+                                                        var cp = manipulator.parent.mapFromItem(manipulator, manipulator.perspPoints[i].x, manipulator.perspPoints[i].y)
+                                                        canvasPts.push({x: cp.x, y: cp.y})
+                                                    }
+                                                    mainCanvas.updateTransformCorners(canvasPts)
+                                                    
+                                                } else { // Free Transform
+                                                    var cx = manipulator.x + manipulator.width/2
+                                                    var cy = manipulator.y + manipulator.height/2
+                                                    
+                                                    var newDist = Math.sqrt(Math.pow(p.x - cx, 2) + Math.pow(p.y - cy, 2))
+                                                    var oldDist = Math.sqrt(Math.pow(startMix - cx, 2) + Math.pow(startMiy - cy, 2))
+                                                    
+                                                    if (oldDist > 0) {
+                                                        var newScale = startScale * (newDist / oldDist)
+                                                        if (newScale > 0.05) manipulator.scale = newScale
+                                                    }
                                                 }
                                             }
                                         }
@@ -1141,15 +1230,12 @@ Window {
                             MouseArea {
                                 id: flattenMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    // Use C++ backend to flatten panels
-                                    for (var i = 0; i < comicOverlay.panelItems.length; i++) {
-                                        // Flatten each panel individually via the existing method
-                                    }
+                                    // Professional flattening to individual masked layers (C++ backend)
                                     if (comicOverlay.panelItems.length > 0) {
-                                        mainCanvas.drawPanelLayout("single", 0, 6, 0) // Base flatten
+                                        mainCanvas.flattenComicPanels(comicOverlay.panelItems)
                                     }
                                     comicOverlay.clearAll()
-                                    toastManager.show("Comic elements flattened to layer", "success")
+                                    toastManager.show("Comic elements flattened to professional layer structure", "success")
                                 }
                             }
                             ToolTip.visible: flattenMa.containsMouse; ToolTip.text: "Rasterize to pixel layer"; ToolTip.delay: 500
@@ -1227,6 +1313,7 @@ Window {
                         ListElement { name: "rect"; label: "Rectangle"; icon: "shapes.svg" },
                         ListElement { name: "ellipse"; label: "Ellipse"; icon: "shapes.svg" },
                         ListElement { name: "line"; label: "Line"; icon: "shapes.svg" },
+                        ListElement { name: "panel_cut"; label: "Cuchilla Escisión"; icon: "panel_single.svg" },
                         ListElement { name: "panel_single"; label: "Panel: Full"; icon: "panel_single.svg" },
                         ListElement { name: "panel_2col"; label: "Panel: 2 Columns"; icon: "panel_2col.svg" },
                         ListElement { name: "panel_2row"; label: "Panel: 2 Rows"; icon: "panel_2row.svg" },
@@ -2262,42 +2349,72 @@ Window {
                 // === TRANSFORM CONTROLS (Floating Bar) ===
                 Rectangle {
                     id: transformBar
-                    width: 220; height: 56
+                    width: 520; height: 64
                     anchors.bottom: parent.bottom; anchors.bottomMargin: 80
                     anchors.horizontalCenter: parent.horizontalCenter
                     color: "#f21c1c1e"
-                    radius: 28
+                    radius: 32
                     border.color: colorAccent
                     border.width: 1
                     visible: mainCanvas.isTransforming
-                    z: 500 // Above canvas, below toolbars if needed, or above everything? 
+                    z: 500
                     
-                    // Shadow
-                    Rectangle { anchors.fill: parent; anchors.margins: -10; z: -1; radius: 38; color: "black"; opacity: 0.5 }
+                    Rectangle { anchors.fill: parent; anchors.margins: -10; z: -1; radius: 42; color: "black"; opacity: 0.5 }
 
                     Row {
                         anchors.centerIn: parent
-                        spacing: 25
+                        spacing: 20
                         
-                        // Cancel
-                        Rectangle {
-                            width: 44; height: 44; radius: 22; color: "#1affffff"
-                            Text { text: "✕"; color: "white"; anchors.centerIn: parent; font.pixelSize: 20 }
-                            MouseArea { anchors.fill: parent; onClicked: mainCanvas.commit_transformation() }
+                        // Modes
+                        Row {
+                            spacing: 8
+                            TransformModeBtn { label: "Scale"; mode: 0 }
+                            TransformModeBtn { label: "Persp"; mode: 1 }
+                            TransformModeBtn { label: "Warp"; mode: 2 }
+                            TransformModeBtn { label: "Mesh"; mode: 3 }
                         }
-                        
-                        // Divider
-                        Rectangle { width: 1; height: 30; color: "#33ffffff"; anchors.verticalCenter: parent.verticalCenter }
 
-                        // Confirm
-                        Rectangle {
-                            width: 44; height: 44; radius: 22; color: colorAccent
-                            Text { text: "✓"; color: "white"; anchors.centerIn: parent; font.pixelSize: 20; font.bold: true }
-                            MouseArea { anchors.fill: parent; onClicked: mainCanvas.commit_transformation() }
+                        Rectangle { width: 1; height: 30; color: "#33ffffff" }
+
+                        // Actions
+                        Row {
+                            spacing: 15
+                            // Cancel
+                            Rectangle {
+                                width: 44; height: 44; radius: 22; color: "#1affffff"
+                                Text { text: "✕"; color: "white"; anchors.centerIn: parent; font.pixelSize: 20 }
+                                MouseArea { anchors.fill: parent; onClicked: mainCanvas.cancelTransform() }
+                            }
+                            
+                            // Confirm
+                            Rectangle {
+                                width: 44; height: 44; radius: 22; color: colorAccent
+                                Text { text: "✓"; color: "white"; anchors.centerIn: parent; font.pixelSize: 20; font.bold: true }
+                                MouseArea { anchors.fill: parent; onClicked: mainCanvas.applyTransform() }
+                            }
+                        }
+                    }
+
+                    component TransformModeBtn : Rectangle {
+                        property string label: ""
+                        property int mode: 0
+                        width: 70; height: 36; radius: 18
+                        color: mainCanvas.transformMode === mode ? colorAccent : "#1affffff"
+                        border.color: mainCanvas.transformMode === mode ? "white" : "transparent"
+                        border.width: 1
+                        Text {
+                            text: label
+                            color: "white"
+                            anchors.centerIn: parent
+                            font.pixelSize: 12
+                            font.bold: mainCanvas.transformMode === mode
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: mainCanvas.transformMode = mode
                         }
                     }
                     
-                    // Simple Entrance Animation
                     opacity: visible ? 1.0 : 0.0
                     scale: visible ? 1.0 : 0.8
                     Behavior on opacity { NumberAnimation { duration: 200 } }
@@ -3616,8 +3733,9 @@ Window {
                         onPanelLayoutRequested: function(layoutType) {
                             console.log("[main] onPanelLayoutRequested fired: " + layoutType)
                             try {
-                                comicOverlay.addPanelLayout(layoutType, 12, 6, 30)
-                                toastManager.show("Panel layout created — drag to move, handles to resize", "success")
+                                // Generación automática de capas y máscaras (Lógica Clip Studio)
+                                mainCanvas.drawPanelLayout(layoutType, 12, 6, 30)
+                                toastManager.show("¡Layout generado con máscaras automáticas!", "success")
                             } catch(e) {
                                 console.log("[main] Panel error: " + e)
                                 toastManager.show("Error: " + e, "error")

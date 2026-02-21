@@ -329,6 +329,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     float scaleFactor =
         std::sqrt(xform.m11() * xform.m11() + xform.m12() * xform.m12());
 
+    std::vector<StrokeRenderer::DabInstance> instancedDabs;
+
     while (distanceToDab <= dist) {
       float t = (dist > 0.0001f) ? (distanceToDab / dist) : 0.0f;
       QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
@@ -405,13 +407,6 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           finalColor.setHslF(h, s, l, a);
         }
 
-        // The variables p2, size, pressure, tipRotation are not defined in this
-        // scope. Assuming the intent was to use devPt.x() + jX, devPt.y() + jY,
-        // devSizeBase * jSize, effectivePressure, and settings.tipRotation +
-        // jRot based on the original code and the context.
-
-        // Safety: Skip dabs that are too small or have near-zero pressure
-        // This prevents the "brush shape staying at the end" (stray marks)
         if (devSizeBase < 1.0f || effectivePressure < 0.001f ||
             opacityBase < 0.001f)
           continue;
@@ -422,61 +417,55 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           currentTipRot += strokeAngle;
         }
 
-        m_renderer->renderStroke(
-            devPt.x() + jX, devPt.y() + jY, devSizeBase * jSize,
-            effectivePressure, settings.hardness, finalColor,
-            static_cast<int>(settings.type), m_renderer->viewportWidth(),
-            m_renderer->viewportHeight(),
-            // Grain
-            grainTexID, (grainTexID != 0 && settings.useTexture),
-            settings.textureScale * scaleFactor, settings.textureIntensity,
-            // Tip
-            tipTexID, (tipTexID != 0), currentTipRot + jRot,
-            // Dynamics
-            tilt, velocity, settings.flow,
-            // Wet Mix
-            canvasTexId, wetness, dilution, smudge,
-            // Watercolor params
-            settings.bleed, settings.absorptionRate, settings.dryingTime,
-            settings.wetOnWetMultiplier, settings.granulation,
-            settings.pigmentFlow, settings.staining, settings.separation,
-            settings.bloomEnabled, settings.bloomIntensity,
-            settings.bloomRadius, settings.bloomThreshold,
-            settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
-            settings.edgeDarkeningWidth, settings.textureRevealEnabled,
-            settings.textureRevealIntensity,
-            settings.textureRevealPressureInfluence,
-            // Oil Params
-            settings.mixing, settings.loading, settings.depletionRate,
-            settings.dirtyMixing, settings.colorPickup, settings.blendOnly,
-            settings.scrapeThrough,
-            // Impasto
-            settings.impastoEnabled, settings.impastoDepth,
-            settings.impastoShine, settings.impastoTextureStrength,
-            settings.impastoEdgeBuildup, settings.impastoDirectionalRidges,
-            settings.impastoSmoothing, settings.impastoPreserveExisting,
-            // Bristles
-            settings.bristlesEnabled, settings.bristleCount,
-            settings.bristleStiffness, settings.bristleClumping,
-            settings.bristleFanSpread, settings.bristleIndividualVariation,
-            settings.bristleDryBrushEffect, settings.bristleSoftness,
-            settings.bristlePointTaper,
-            // Smudge
-            settings.smudgeStrength, settings.smudgePressureInfluence,
-            settings.smudgeLength, settings.smudgeGaussianBlur,
-            settings.smudgeSmear,
-            // Canvas Interaction
-            settings.canvasAbsorption, settings.canvasSkipValleys,
-            settings.canvasCatchPeaks,
-            // Color Dynamics Oil
-            settings.temperatureShift, settings.brokenColor,
-            // Mode
-            settings.type == BrushSettings::Type::Eraser);
+        StrokeRenderer::DabInstance dab;
+        dab.x = devPt.x() + jX;
+        dab.y = devPt.y() + jY;
+        dab.size = devSizeBase * jSize;
+        dab.rotation = currentTipRot + jRot;
+        dab.colorR = finalColor.redF();
+        dab.colorG = finalColor.greenF();
+        dab.colorB = finalColor.blueF();
+        dab.colorA = finalColor.alphaF();
+        instancedDabs.push_back(dab);
       }
 
       distanceToDab += stepSize;
     }
 
+    if (!instancedDabs.empty()) {
+      m_renderer->renderStrokeInstanced(
+          instancedDabs, effectivePressure, settings.hardness,
+          static_cast<int>(settings.type), m_renderer->viewportWidth(),
+          m_renderer->viewportHeight(), grainTexID,
+          (grainTexID != 0 && settings.useTexture),
+          settings.textureScale * scaleFactor, settings.textureIntensity,
+          tipTexID, (tipTexID != 0), tilt, velocity, settings.flow, canvasTexId,
+          wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
+          settings.dryingTime, settings.wetOnWetMultiplier,
+          settings.granulation, settings.pigmentFlow, settings.staining,
+          settings.separation, settings.bloomEnabled, settings.bloomIntensity,
+          settings.bloomRadius, settings.bloomThreshold,
+          settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
+          settings.edgeDarkeningWidth, settings.textureRevealEnabled,
+          settings.textureRevealIntensity,
+          settings.textureRevealPressureInfluence, settings.mixing,
+          settings.loading, settings.depletionRate, settings.dirtyMixing,
+          settings.colorPickup, settings.blendOnly, settings.scrapeThrough,
+          settings.impastoEnabled, settings.impastoDepth, settings.impastoShine,
+          settings.impastoTextureStrength, settings.impastoEdgeBuildup,
+          settings.impastoDirectionalRidges, settings.impastoSmoothing,
+          settings.impastoPreserveExisting, settings.bristlesEnabled,
+          settings.bristleCount, settings.bristleStiffness,
+          settings.bristleClumping, settings.bristleFanSpread,
+          settings.bristleIndividualVariation, settings.bristleDryBrushEffect,
+          settings.bristleSoftness, settings.bristlePointTaper,
+          settings.smudgeStrength, settings.smudgePressureInfluence,
+          settings.smudgeLength, settings.smudgeGaussianBlur,
+          settings.smudgeSmear, settings.canvasAbsorption,
+          settings.canvasSkipValleys, settings.canvasCatchPeaks,
+          settings.temperatureShift, settings.brokenColor,
+          settings.type == BrushSettings::Type::Eraser);
+    }
     // Update state
     m_accumulatedDistance += dist;
     m_remainder = dist - (distanceToDab - stepSize);
@@ -491,7 +480,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   // --- LEGACY PATH (QPAINTER) ---
 
   if (settings.type == BrushSettings::Type::Eraser) {
-    painter->setCompositionMode(QPainter::CompositionMode_Source);
+    painter->setCompositionMode(QPainter::CompositionMode_DestinationOut);
   } else {
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
   }
@@ -698,6 +687,8 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
 
   bool isEraser = (m_currentSettings.type == BrushSettings::Type::Eraser);
 
+  std::vector<StrokeRenderer::DabInstance> instancedDabs;
+
   // Render Loop
   while (coveredDist <= dist) {
     float t = (dist > 0.0001f) ? (coveredDist / dist) : 0.0f;
@@ -767,72 +758,80 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         currentTipRot += strokeAngle;
       }
 
-      m_renderer->renderStroke(
-          pt.x() + jX, pt.y() + jY, devSizeBase * jSize, point.pressure,
-          m_currentSettings.hardness, finalColor, (int)m_currentSettings.type,
-          w, h,
-          // Grain
-          grainTexId, hasGrain, m_currentSettings.textureScale,
-          m_currentSettings.textureIntensity,
-          // Tip
-          tipTexId, hasTip, currentTipRot + jRot,
-          // Dynamics
-          0.0f, 0.0f, m_currentSettings.flow,
-          // Wet Mix
-          0, m_currentSettings.wetness, m_currentSettings.dilution,
-          m_currentSettings.smudge,
-          // New Watercolor Params
-          m_currentSettings.bleed, m_currentSettings.absorptionRate,
-          m_currentSettings.dryingTime, m_currentSettings.wetOnWetMultiplier,
-          m_currentSettings.granulation, m_currentSettings.pigmentFlow,
-          m_currentSettings.staining, m_currentSettings.separation,
-          m_currentSettings.bloomEnabled, m_currentSettings.bloomIntensity,
-          m_currentSettings.bloomRadius, m_currentSettings.bloomThreshold,
-          m_currentSettings.edgeDarkeningEnabled,
-          m_currentSettings.edgeDarkeningIntensity,
-          m_currentSettings.edgeDarkeningWidth,
-          m_currentSettings.textureRevealEnabled,
-          m_currentSettings.textureRevealIntensity,
-          m_currentSettings.textureRevealPressureInfluence,
-          // Oil Params
-          m_currentSettings.mixing, m_currentSettings.loading,
-          m_currentSettings.depletionRate, m_currentSettings.dirtyMixing,
-          m_currentSettings.colorPickup, m_currentSettings.blendOnly,
-          m_currentSettings.scrapeThrough,
-          // Impasto
-          m_currentSettings.impastoEnabled, m_currentSettings.impastoDepth,
-          m_currentSettings.impastoShine,
-          m_currentSettings.impastoTextureStrength,
-          m_currentSettings.impastoEdgeBuildup,
-          m_currentSettings.impastoDirectionalRidges,
-          m_currentSettings.impastoSmoothing,
-          m_currentSettings.impastoPreserveExisting,
-          // Bristles
-          m_currentSettings.bristlesEnabled, m_currentSettings.bristleCount,
-          m_currentSettings.bristleStiffness, m_currentSettings.bristleClumping,
-          m_currentSettings.bristleFanSpread,
-          m_currentSettings.bristleIndividualVariation,
-          m_currentSettings.bristleDryBrushEffect,
-          m_currentSettings.bristleSoftness,
-          m_currentSettings.bristlePointTaper,
-          // Smudge
-          m_currentSettings.smudgeStrength,
-          m_currentSettings.smudgePressureInfluence,
-          m_currentSettings.smudgeLength, m_currentSettings.smudgeGaussianBlur,
-          m_currentSettings.smudgeSmear,
-          // Canvas Interaction
-          m_currentSettings.canvasAbsorption,
-          m_currentSettings.canvasSkipValleys,
-          m_currentSettings.canvasCatchPeaks,
-          // Color Dynamics Oil
-          m_currentSettings.temperatureShift, m_currentSettings.brokenColor,
-          // Mode
-          isEraser);
+      StrokeRenderer::DabInstance dab;
+      dab.x = pt.x() + jX;
+      dab.y = pt.y() + jY;
+      dab.size = devSizeBase * jSize;
+      dab.rotation = currentTipRot + jRot;
+      dab.colorR = finalColor.redF();
+      dab.colorG = finalColor.greenF();
+      dab.colorB = finalColor.blueF();
+      dab.colorA = finalColor.alphaF();
+      instancedDabs.push_back(dab);
     }
-
     coveredDist += spacing;
   }
 
+  if (!instancedDabs.empty()) {
+    m_renderer->renderStrokeInstanced(
+        instancedDabs, point.pressure, m_currentSettings.hardness,
+        (int)m_currentSettings.type, w, h,
+        // Grain
+        grainTexId, hasGrain, m_currentSettings.textureScale,
+        m_currentSettings.textureIntensity,
+        // Tip
+        tipTexId, hasTip,
+        // Dynamics
+        0.0f, 0.0f, m_currentSettings.flow,
+        // Wet Mix
+        0, m_currentSettings.wetness, m_currentSettings.dilution,
+        m_currentSettings.smudge,
+        // New Watercolor Params
+        m_currentSettings.bleed, m_currentSettings.absorptionRate,
+        m_currentSettings.dryingTime, m_currentSettings.wetOnWetMultiplier,
+        m_currentSettings.granulation, m_currentSettings.pigmentFlow,
+        m_currentSettings.staining, m_currentSettings.separation,
+        m_currentSettings.bloomEnabled, m_currentSettings.bloomIntensity,
+        m_currentSettings.bloomRadius, m_currentSettings.bloomThreshold,
+        m_currentSettings.edgeDarkeningEnabled,
+        m_currentSettings.edgeDarkeningIntensity,
+        m_currentSettings.edgeDarkeningWidth,
+        m_currentSettings.textureRevealEnabled,
+        m_currentSettings.textureRevealIntensity,
+        m_currentSettings.textureRevealPressureInfluence,
+        // Oil Params
+        m_currentSettings.mixing, m_currentSettings.loading,
+        m_currentSettings.depletionRate, m_currentSettings.dirtyMixing,
+        m_currentSettings.colorPickup, m_currentSettings.blendOnly,
+        m_currentSettings.scrapeThrough,
+        // Impasto
+        m_currentSettings.impastoEnabled, m_currentSettings.impastoDepth,
+        m_currentSettings.impastoShine,
+        m_currentSettings.impastoTextureStrength,
+        m_currentSettings.impastoEdgeBuildup,
+        m_currentSettings.impastoDirectionalRidges,
+        m_currentSettings.impastoSmoothing,
+        m_currentSettings.impastoPreserveExisting,
+        // Bristles
+        m_currentSettings.bristlesEnabled, m_currentSettings.bristleCount,
+        m_currentSettings.bristleStiffness, m_currentSettings.bristleClumping,
+        m_currentSettings.bristleFanSpread,
+        m_currentSettings.bristleIndividualVariation,
+        m_currentSettings.bristleDryBrushEffect,
+        m_currentSettings.bristleSoftness, m_currentSettings.bristlePointTaper,
+        // Smudge
+        m_currentSettings.smudgeStrength,
+        m_currentSettings.smudgePressureInfluence,
+        m_currentSettings.smudgeLength, m_currentSettings.smudgeGaussianBlur,
+        m_currentSettings.smudgeSmear,
+        // Canvas Interaction
+        m_currentSettings.canvasAbsorption, m_currentSettings.canvasSkipValleys,
+        m_currentSettings.canvasCatchPeaks,
+        // Color Dynamics Oil
+        m_currentSettings.temperatureShift, m_currentSettings.brokenColor,
+        // Mode
+        isEraser);
+  }
   // Update State
   m_accumulatedDistance += dist;
 
@@ -877,17 +876,35 @@ void BrushEngine::paintSoftStamp(QPainter *painter, const QPointF &point,
   painter->setOpacity(opacity);
 
   QRadialGradient gradient(point, size / 2.0);
-  QColor centerColor = color;
-  gradient.setColorAt(0.0, centerColor);
-  gradient.setColorAt(hardness, centerColor);
+  QColor c = color;
 
-  QColor outerColor = color;
-  outerColor.setAlpha(0);
-  gradient.setColorAt(1.0, outerColor);
+  if (hardness >= 0.99f) {
+    gradient.setColorAt(0.0, c);
+    gradient.setColorAt(0.95, c);
+    c.setAlpha(0);
+    gradient.setColorAt(1.0, c);
+  } else {
+    // Generate a smooth cosine-like gradient with 10 stops to match the GPU
+    // shader
+    gradient.setColorAt(0.0, c);
+    if (hardness > 0.0f) {
+      gradient.setColorAt(hardness, c);
+    }
 
-  QBrush brush(gradient);
-  painter->setBrush(brush);
+    int steps = 10;
+    for (int i = 1; i <= steps; ++i) {
+      float t = static_cast<float>(i) / steps; // 0 to 1
+      float stop = std::min(1.0f, hardness + t * (1.0f - hardness));
 
+      // Cosine curve: 0.5 * (1.0 + cos(t * pi))
+      float alphaMult = 0.5f * (1.0f + std::cos(t * 3.14159265f));
+      QColor stepColor = c;
+      stepColor.setAlphaF(c.alphaF() * alphaMult);
+      gradient.setColorAt(stop, stepColor);
+    }
+  }
+
+  painter->setBrush(QBrush(gradient));
   painter->drawEllipse(point, size / 2.0, size / 2.0);
 }
 

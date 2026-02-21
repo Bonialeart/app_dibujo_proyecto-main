@@ -174,7 +174,7 @@ C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_au
   C:/Qt/6.10.2/mingw_64/include/QtCore/qyieldcpu.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
-  C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLFunctions \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLExtraFunctions \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QPainterPath \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QPen \
@@ -204,6 +204,7 @@ C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_au
   C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglcontext.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglcontext_platform.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglext.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglextrafunctions.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qopenglfunctions.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qpaintdevice.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qpainter.h \

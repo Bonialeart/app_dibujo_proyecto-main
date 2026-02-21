@@ -38,7 +38,8 @@ public:
     Eyedropper,
     Hand,
     Fill,
-    Shape
+    Shape,
+    PanelCut
   };
   Q_ENUM(ToolType)
 
@@ -247,6 +248,7 @@ public:
   void setIsEraser(bool eraser);
   Q_INVOKABLE void setBackgroundColor(const QString &color);
   Q_INVOKABLE void setUseCustomCursor(bool use);
+  Q_INVOKABLE void flattenComicPanels(const QVariantList &panels);
   Q_INVOKABLE void usePreset(const QString &name);
   Q_INVOKABLE bool loadProject(const QString &path);
   Q_INVOKABLE bool saveProject(const QString &path);
@@ -255,6 +257,7 @@ public:
   Q_INVOKABLE bool importABR(const QString &path);
   Q_INVOKABLE void updateTransformProperties(float x, float y, float scale,
                                              float rotation, float w, float h);
+  Q_INVOKABLE void updateTransformCorners(const QVariantList &corners);
 
   Q_INVOKABLE void resizeCanvas(int w, int h);
   Q_INVOKABLE void setProjectDpi(int dpi);
@@ -535,6 +538,11 @@ private:
   // Premium Rendering (Ping-Pong FBOs)
   QOpenGLFramebufferObject *m_pingFBO = nullptr;
   QOpenGLFramebufferObject *m_pongFBO = nullptr;
+  QOpenGLFramebufferObject *m_compFBOA = nullptr;
+  QOpenGLFramebufferObject *m_compFBOB = nullptr;
+  QOpenGLFramebufferObject *m_predictionFBO = nullptr;
+  void ensureCompositionFBOs(int w, int h);
+  void renderGpuComposition(QOpenGLFramebufferObject *target, int w, int h);
   uint32_t m_currentCanvasTexID = 0;
   QOpenGLShaderProgram *m_impastoShader = nullptr;
   float m_impastoShininess = 64.0f;
@@ -560,7 +568,11 @@ private:
   QTransform m_transformMatrix;
   QRectF m_transformBox;
   bool m_isTransforming = false;
-
+  QImage m_transformStaticCache;
+  bool m_updateTransformTextures = false;
+  QOpenGLShaderProgram *m_transformShader = nullptr;
+  QOpenGLTexture *m_transformStaticTex = nullptr;
+  QOpenGLTexture *m_selectionTex = nullptr;
   int m_selectionAddMode = 0; // 0=New, 1=Add, 2=Subtract
   float m_selectionThreshold = 0.5f;
   bool m_isSelectionModeActive = false;
@@ -577,13 +589,30 @@ private:
   bool m_isLassoDragging = false;
   bool m_isMagneticLassoActive = false;
 
+  // Panel Cut State
+  QPointF m_panelCutStartPos;
+  QPointF m_panelCutEndPos;
+  bool m_isPanelCutting = false;
+  float m_panelGutterSize = 25.0f; // Tamaño del gutter (espacio entre paneles)
+  void executePanelCut(const QPointF &p1, const QPointF &p2);
+
   enum class TransformMode { None, Move, Scale, Rotate };
   TransformMode m_transformMode = TransformMode::None;
   TransformSubMode m_transformSubMode = Free;
   QPointF m_transformStartPos;
   QTransform m_initialMatrix;
 
-  // Krita-style Brush Cursor
+  // Input Prediction History
+  std::deque<QPointF> m_historyPos;
+  std::deque<float> m_historyPressure;
+  std::deque<qint64> m_historyTime;
+  QPointF m_predictedPos;
+  bool m_hasPrediction = false;
+
+  // Professional Rendering Cache
+  QMap<void *, QImage> m_layerRenderCache;
+  QMap<void *, QImage> m_clippedRenderCache;
+  void clearRenderCaches();
   QPointF m_cursorPos;
   bool m_cursorVisible = false;
   bool m_spacePressed = false;
@@ -609,6 +638,19 @@ private:
   void capture_timelapse_frame();
   void syncGpuToCpu();
   int m_lastActiveLayerIndex = -1;
+
+  // --- Throttle de redibujado ---
+  bool m_pendingUpdate = false;
+  QTimer *m_updateThrottle = nullptr;
+  void requestUpdate();
+  void resetTransformState();
+
+  // Timer persistente para animación de marching ants
+  QTimer *m_marchingAntsTimer = nullptr;
+
+  // Checkerboard Cache
+  QImage m_checkerCache;
+  int m_checkerCachedSize = -1;
 };
 
 #endif // CANVASITEM_H

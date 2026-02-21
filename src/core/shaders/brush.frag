@@ -10,6 +10,12 @@ uniform float hardness;
 uniform float flow;
 uniform int brushType;
 
+uniform int instanced;
+in vec4 vColor;
+in vec2 vPos;
+in float vSize;
+in float vRot;
+
 // === Brush Tip (Shape Texture) — Local UV Mapping ===
 uniform sampler2D tipTexture;
 uniform int uHasTip;           // 1 = custom tip, 0 = procedural round
@@ -120,6 +126,11 @@ vec3 mixColorsKM(vec3 c1, vec3 c2, float t) {
 }
 
 void main() {
+    vec4 effColor = (instanced == 1) ? vColor : color;
+    vec2 effDabPos = (instanced == 1) ? vPos : uDabPos;
+    float effDabSize = (instanced == 1) ? max(vSize, 1.0) : max(uDabSize, 1.0);
+    float effRot = (instanced == 1) ? vRot : tipRotation;
+
     // === 1. SHAPE & OPACITY (Brush Tip) ===
     float shapeAlpha = 1.0;
     float dist = distance(TexCoords, vec2(0.5));
@@ -128,11 +139,11 @@ void main() {
         // CUSTOM BRUSH TIP — sample the tip texture in local UV space
         // Do NOT clip to circle — the texture itself defines the shape
         vec2 uv = TexCoords;
-        if (abs(tipRotation) > 0.001) {
+        if (abs(effRot) > 0.001) {
             vec2 center = vec2(0.5);
             vec2 d = uv - center;
-            float cs = cos(tipRotation);
-            float sn = sin(tipRotation);
+            float cs = cos(effRot);
+            float sn = sin(effRot);
             uv = center + vec2(d.x * cs - d.y * sn, d.x * sn + d.y * cs);
         }
 
@@ -146,11 +157,29 @@ void main() {
             shapeAlpha *= tipSample.a;
         }
     } else {
-        // PROCEDURAL ROUND TIP — smooth circle with hardness falloff
-        // Discard outside circle only for procedural tips
-        if (dist > 0.5) discard;
-        float feather = (1.0 - hardness) * 0.45 + 0.01;
-        shapeAlpha = 1.0 - smoothstep(0.5 - feather, 0.5, dist);
+        // PROCEDURAL ROUND TIP — smooth circle with hardness and antialiasing
+        float d = dist * 2.0; // 0.0 at center, 1.0 at edge
+        float aaPixel = 2.0 / effDabSize; // Size of 1 pixel in normalized space
+        
+        if (hardness >= 0.99) {
+            // Hard brush: just smooth the edge by 1 pixel for perfect antialiasing
+            shapeAlpha = 1.0 - smoothstep(1.0 - aaPixel, 1.0, d);
+        } else {
+            // Soft brush (e.g., Airbrush)
+            float core = hardness; // Solid inner core
+            
+            if (d <= core) {
+                shapeAlpha = 1.0;
+            } else {
+                // Smooth transition from core to edge
+                // Using a Cosine curve for a premium, extremely smooth gradient
+                float t = clamp((d - core) / (1.0 - core), 0.0, 1.0);
+                shapeAlpha = 0.5 * (1.0 + cos(t * 3.14159265));
+                
+                // Extra sub-pixel smoothing at the absolute tail to completely prevent edge banding/aliasing
+                shapeAlpha *= (1.0 - smoothstep(1.0 - aaPixel, 1.0, d));
+            }
+        }
     }
 
     // Early discard for fully transparent fragments
@@ -161,7 +190,7 @@ void main() {
 
     if (uHasGrain == 1 && grainIntensity > 0.001) {
         // GLOBAL CANVAS MAPPING — grain stays fixed to the paper position
-        vec2 globalCoord = ((TexCoords - 0.5) * uDabSize + uDabPos) / (5.0 * grainScale);
+        vec2 globalCoord = ((TexCoords - 0.5) * effDabSize + effDabPos) / (5.0 * grainScale);
         vec4 grainSample = texture(grainTexture, globalCoord);
 
         // Extract grain value (handles both grayscale and color textures)
@@ -173,7 +202,7 @@ void main() {
 
     // === 3. FLOW & PRESSURE COMBINATION ===
     float effectiveFlow = flow; // Pressure is now handled by C++ engine for more control
-    float baseAlpha = color.a * shapeAlpha * grainFactor * effectiveFlow;
+    float baseAlpha = effColor.a * shapeAlpha * grainFactor * effectiveFlow;
 
     // --- PIGMENT MIGRATION (Watercolor Diffusion) ---
     // Pigment flows from center to edges when wet
@@ -244,9 +273,9 @@ void main() {
         baseAlpha *= loading;
     }
     
-    // === 6. EDGE DARKENING (Water Fringe) ===
-    // If enabled, we darken the pigment at the edges of the stroke
-    if (edgeDarkeningEnabled == 1 && edgeDarkeningIntensity > 0.01) {
+    // === 6. EDGE DARKENING (Water Fringe) (Skip for Eraser) ===
+    vec3 resultColor = effColor.rgb;
+    if (brushType != 7 && edgeDarkeningEnabled == 1 && edgeDarkeningIntensity > 0.01) {
         float edgeness = smoothstep(0.5 - edgeDarkeningWidth, 0.5, dist);
         
         // Darken RGB by increasing apparent density
@@ -254,8 +283,12 @@ void main() {
         baseAlpha = clamp(baseAlpha * darkFactor, 0.0, 1.0);
         
         // Physically-inspired color deepening
-        color.rgb *= mix(1.0, 0.85, edgeDarkeningIntensity * edgeness);
+        resultColor *= mix(1.0, 0.85, edgeDarkeningIntensity * edgeness);
     }
+    
+    // Update local color for final output
+    // ... we already have finalRGB below, let's use a local resultColor consistently
+
     
     // === 7. BLOOM / GRANULATION ===
     if (granulation > 0.01 && uHasGrain == 1) {
@@ -266,15 +299,16 @@ void main() {
         baseAlpha = clamp(baseAlpha * (1.0 + settling), 0.0, 1.0);
     }
 
-    // === 8. WET MIX ENGINE & OIL MIXING ===
-    vec3 finalRGB = color.rgb;
-    
-    float effectiveWetness = max(wetness, mixing); 
-    float effectiveSmudge = max(smudge, smudgeStrength);
+    // === FINAL COLOR SELECTION ===
+    vec3 finalRGB = resultColor;
 
-    if ((effectiveWetness > 0.01 || effectiveSmudge > 0.01 || bloomEnabled == 1 || blendOnly == 1) && canvasSize.x > 1.0) {
+    // === 8. WET MIX ENGINE & OIL MIXING (Skip for Eraser) ===
+    if (brushType != 7 && (max(wetness, mixing) > 0.01 || max(smudge, smudgeStrength) > 0.01 || bloomEnabled == 1 || blendOnly == 1) && canvasSize.x > 1.0) {
+        float effectiveWetness = max(wetness, mixing); 
+        float effectiveSmudge = max(smudge, smudgeStrength);
+
         // Sample canvas
-        vec2 screenPos = ((TexCoords - 0.5) * uDabSize + uDabPos) / canvasSize;
+        vec2 screenPos = ((TexCoords - 0.5) * effDabSize + effDabPos) / canvasSize;
         screenPos.y = 1.0 - screenPos.y; 
         vec4 canvasColor = texture(canvasTexture, screenPos);
         vec3 canvasRGB = canvasColor.a > 0.001 ? canvasColor.rgb / canvasColor.a : vec3(1.0);
@@ -306,33 +340,17 @@ void main() {
                  finalRGB.b -= temperatureShift * 0.1;
              }
         }
-        
-        if (wetness > 0.01 || mixing > 0.01) { 
-            float edgeDist = abs(shapeAlpha - 0.5) * 2.0;
-            float pooling = effectiveWetness * 0.15 * edgeDist;
-            finalRGB *= (1.0 - pooling);
-        }
-        
-        // BLOOM & Wet-on-Wet Expansion
-        if (canvasA > 0.1) {
-             float expansion = bleed * 0.2 * canvasA;
-             baseAlpha = clamp(baseAlpha * (1.0 + expansion), 0.0, 1.0);
-             
-             if (bloomEnabled == 1) {
-                 float noise = fract(sin(dot(TexCoords.xy ,vec2(12.9898,78.233))) * 43758.5453);
-                 if (noise < bloomIntensity) {
-                     baseAlpha *= (1.0 - bloomIntensity * 0.3);
-                 }
-             }
-        }
     }
 
     // === FINAL OUTPUT (Premultiplied Alpha) ===
     float finalAlpha = clamp(baseAlpha, 0.0, 1.0);
+    
+    // For erasers, force black output to ensure blend mode (Dest * (1-Alpha)) works perfectly
+    if (brushType == 7) finalRGB = vec3(0.0);
 
     // Impasto Volume Accumulation
     float heightAlpha = finalAlpha;
-    if (impastoEnabled == 1) {
+    if (impastoEnabled == 1 && brushType != 7) {
         heightAlpha *= impastoDepth * 0.5;
     }
 

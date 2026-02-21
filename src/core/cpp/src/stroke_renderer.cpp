@@ -185,6 +185,32 @@ void StrokeRenderer::initialize() {
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
                         (void *)(2 * sizeof(float)));
 
+  // Instance VBO setup
+  m_instanceVbo.create();
+  m_instanceVbo.setUsagePattern(QOpenGLBuffer::DynamicDraw);
+  m_instanceVbo.bind();
+
+  glEnableVertexAttribArray(2); // Inst Pos
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                        (void *)(0));
+  glVertexAttribDivisor(2, 1);
+
+  glEnableVertexAttribArray(3); // Inst Size
+  glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                        (void *)(2 * sizeof(float)));
+  glVertexAttribDivisor(3, 1);
+
+  glEnableVertexAttribArray(4); // Inst Rotation
+  glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                        (void *)(3 * sizeof(float)));
+  glVertexAttribDivisor(4, 1);
+
+  glEnableVertexAttribArray(5); // Inst Color
+  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+                        (void *)(4 * sizeof(float)));
+  glVertexAttribDivisor(5, 1);
+  m_instanceVbo.release();
+
   m_vao.release();
   m_vbo.release();
 }
@@ -238,9 +264,13 @@ void StrokeRenderer::renderStroke(
   m_program->bind();
   m_vao.bind();
 
-  // Force isEraser if type is 7 (Safety)
-  if (type == 7)
+  // Detectar borrador si el tipo es 7 o si recibe la contraseña mágica (Alpha
+  // 254)
+  int alphaInt = std::round(color.alphaF() * 255.0f);
+  if (type == 7 || alphaInt == 254) {
     isEraser = true;
+    type = 7; // Forzar tipo 7 para que el shader lo reconozca
+  }
 
   // --- POSITIONING MATRICES ---
   QMatrix4x4 projection;
@@ -377,27 +407,25 @@ void StrokeRenderer::renderStroke(
   // --- BLEND MODE ---
   glEnable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
-  glEnable(GL_BLEND);
   glBlendEquation(GL_FUNC_ADD);
 
-  // --- STENCIL CLIPPING ---
-  if (m_clippingEnabled) {
-    glEnable(GL_STENCIL_TEST);
-    glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-  } else {
-    glDisable(GL_STENCIL_TEST);
-  }
-
   if (isEraser) {
-    // ERASER MODE: Dest = Dest * (1 - SourceAlpha)
-    this->glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
-                              GL_ONE_MINUS_SRC_ALPHA);
+    // MODO BORRADOR REAL:
+    // Forzamos un alpha puro (1.0) al shader para que la resta matemática sea
+    // perfecta.
     m_program->setUniformValue("color", QColor(0, 0, 0, 255));
+    m_program->setUniformValue("brushType", 7);
+    m_program->setUniformValue("impastoEnabled",
+                               0); // ¡IMPORTANTE! No generar altura
+
+    // Dest = Dest * (1 - SrcAlpha) -> Limpia tanto RGB como canal de altura
+    // (Alpha)
+    glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
+                        GL_ONE_MINUS_SRC_ALPHA);
   } else {
-    // NORMAL PAINT MODE — PREMULTIPLIED ALPHA with ADDITIVE HEIGHT
-    this->glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+    // PINTURA NORMAL
     m_program->setUniformValue("color", color);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   }
 
   // Draw the pre-loaded quad
@@ -405,6 +433,207 @@ void StrokeRenderer::renderStroke(
   glDrawArrays(GL_TRIANGLES, 0, 6);
   m_vao.release();
 
+  m_program->release();
+}
+
+void StrokeRenderer::renderStrokeInstanced(
+    const std::vector<DabInstance> &dabs, float pressure, float hardness,
+    int type, int width, int height,
+    // Grain texture
+    uint32_t grainTexId, bool hasGrain, float grainScale, float grainIntensity,
+    // Tip texture
+    uint32_t tipTexId, bool hasTip,
+    // Dynamics
+    float tilt, float velocity, float flow,
+    // Wet Mix Engine
+    uint32_t canvasTexId, float wetness, float dilution, float smudge,
+    // New Watercolor params
+    float bleed, float absorptionRate, float dryingTime,
+    float wetOnWetMultiplier, float granulation, float pigmentFlow,
+    float staining, float separation, bool bloomEnabled, float bloomIntensity,
+    float bloomRadius, float bloomThreshold, bool edgeDarkeningEnabled,
+    float edgeDarkeningIntensity, float edgeDarkeningWidth,
+    bool textureRevealEnabled, float textureRevealIntensity,
+    float textureRevealPressureInfluence,
+    // Oil Paint Parameters
+    float mixing, float loading, float depletionRate, bool dirtyMixing,
+    float colorPickup, bool blendOnly, bool scrapeThrough,
+    // Impasto
+    bool impastoEnabled, float impastoDepth, float impastoShine,
+    float impastoTextureStrength, float impastoEdgeBuildup,
+    bool impastoDirectionalRidges, float impastoSmoothing,
+    bool impastoPreserveExisting,
+    // Bristles
+    bool bristlesEnabled, int bristleCount, float bristleStiffness,
+    float bristleClumping, float bristleFanSpread,
+    float bristleIndividualVariation, bool bristleDryBrushEffect,
+    float bristleSoftness, float bristlePointTaper,
+    // Smudge (Advanced)
+    float smudgeStrength, float smudgePressureInfluence, float smudgeLength,
+    float smudgeGaussianBlur, bool smudgeSmear,
+    // Canvas Interaction
+    float canvasAbsorption, bool canvasSkipValleys, float canvasCatchPeaks,
+    // Oil Color Dynamics
+    float temperatureShift, float brokenColor,
+    // Mode
+    bool isEraser) {
+
+  if (!m_program || dabs.empty())
+    return;
+
+  m_program->bind();
+  m_vao.bind();
+
+  // Upload instance data
+  m_instanceVbo.bind();
+  m_instanceVbo.allocate(dabs.data(), dabs.size() * sizeof(DabInstance));
+  m_instanceVbo.release();
+
+  if (type == 7) {
+    isEraser = true;
+  }
+
+  // --- POSITIONING MATRICES ---
+  QMatrix4x4 projection;
+  projection.ortho(0, width, height, 0, -1, 1);
+
+  m_program->setUniformValue("projectionMatrix", projection);
+  m_program->setUniformValue("pressure", pressure);
+  m_program->setUniformValue("hardness", hardness);
+  m_program->setUniformValue("flow", flow);
+  m_program->setUniformValue("brushType", type);
+
+  // === TEXTURE UNIT ALLOCATION ===
+  if (hasTip && tipTexId != 0) {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tipTexId);
+    m_program->setUniformValue("tipTexture", 0);
+    m_program->setUniformValue("uHasTip", 1);
+  } else {
+    m_program->setUniformValue("uHasTip", 0);
+  }
+
+  // --- GRAIN TEXTURE (Paper) ---
+  if (hasGrain && grainTexId != 0) {
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, grainTexId);
+    m_program->setUniformValue("grainTexture", 1);
+    m_program->setUniformValue("uHasGrain", 1);
+    m_program->setUniformValue("grainScale", grainScale);
+    m_program->setUniformValue("grainIntensity", grainIntensity);
+  } else {
+    m_program->setUniformValue("uHasGrain", 0);
+    m_program->setUniformValue("grainScale", 1.0f);
+    m_program->setUniformValue("grainIntensity", 0.0f);
+  }
+
+  // --- WET MIX ENGINE & WATERCOLOR UNIFORMS ---
+  m_program->setUniformValue("wetness", wetness);
+  m_program->setUniformValue("dilution", dilution);
+  m_program->setUniformValue("smudge", smudge);
+  m_program->setUniformValue("canvasSize", QVector2D(width, height));
+
+  m_program->setUniformValue("bleed", bleed);
+  m_program->setUniformValue("granulation", granulation);
+
+  m_program->setUniformValue("bloomEnabled", bloomEnabled ? 1 : 0);
+  m_program->setUniformValue("bloomIntensity", bloomIntensity);
+  m_program->setUniformValue("bloomRadius", bloomRadius);
+  m_program->setUniformValue("bloomThreshold", bloomThreshold);
+
+  m_program->setUniformValue("edgeDarkeningEnabled",
+                             edgeDarkeningEnabled ? 1 : 0);
+  m_program->setUniformValue("edgeDarkeningIntensity", edgeDarkeningIntensity);
+  m_program->setUniformValue("edgeDarkeningWidth", edgeDarkeningWidth);
+
+  m_program->setUniformValue("textureRevealEnabled",
+                             textureRevealEnabled ? 1 : 0);
+  m_program->setUniformValue("textureRevealIntensity", textureRevealIntensity);
+  m_program->setUniformValue("textureRevealPressureInfluence",
+                             textureRevealPressureInfluence);
+
+  // === OIL PAINT UNIFORMS ===
+  m_program->setUniformValue("mixing", mixing);
+  m_program->setUniformValue("loading", loading);
+  m_program->setUniformValue("depletionRate", depletionRate);
+  m_program->setUniformValue("dirtyMixing", dirtyMixing ? 1 : 0);
+  m_program->setUniformValue("colorPickup", colorPickup);
+  m_program->setUniformValue("blendOnly", blendOnly ? 1 : 0);
+  m_program->setUniformValue("scrapeThrough", scrapeThrough ? 1 : 0);
+
+  // Impasto
+  m_program->setUniformValue("impastoEnabled", impastoEnabled ? 1 : 0);
+  m_program->setUniformValue("impastoDepth", impastoDepth);
+  m_program->setUniformValue("impastoShine", impastoShine);
+  m_program->setUniformValue("impastoTextureStrength", impastoTextureStrength);
+  m_program->setUniformValue("impastoEdgeBuildup", impastoEdgeBuildup);
+  m_program->setUniformValue("impastoDirectionalRidges",
+                             impastoDirectionalRidges ? 1 : 0);
+  m_program->setUniformValue("impastoSmoothing", impastoSmoothing);
+  m_program->setUniformValue("impastoPreserveExisting",
+                             impastoPreserveExisting ? 1 : 0);
+
+  // Bristles
+  m_program->setUniformValue("bristlesEnabled", bristlesEnabled ? 1 : 0);
+  m_program->setUniformValue("bristleCount", bristleCount);
+  m_program->setUniformValue("bristleStiffness", bristleStiffness);
+  m_program->setUniformValue("bristleClumping", bristleClumping);
+  m_program->setUniformValue("bristleFanSpread", bristleFanSpread);
+  m_program->setUniformValue("bristleIndividualVariation",
+                             bristleIndividualVariation);
+  m_program->setUniformValue("bristleDryBrushEffect",
+                             bristleDryBrushEffect ? 1 : 0);
+  m_program->setUniformValue("bristleSoftness", bristleSoftness);
+  m_program->setUniformValue("bristlePointTaper", bristlePointTaper);
+
+  // Smudge
+  m_program->setUniformValue("smudgeStrength", smudgeStrength);
+  m_program->setUniformValue("smudgePressureInfluence",
+                             smudgePressureInfluence);
+  m_program->setUniformValue("smudgeLength", smudgeLength);
+  m_program->setUniformValue("smudgeGaussianBlur", smudgeGaussianBlur);
+  m_program->setUniformValue("smudgeSmear", smudgeSmear ? 1 : 0);
+
+  // Canvas Interaction
+  m_program->setUniformValue("canvasAbsorption", canvasAbsorption);
+  m_program->setUniformValue("canvasSkipValleys", canvasSkipValleys ? 1 : 0);
+  m_program->setUniformValue("canvasCatchPeaks", canvasCatchPeaks);
+
+  // Color Dynamics Oil
+  m_program->setUniformValue("temperatureShift", temperatureShift);
+  m_program->setUniformValue("brokenColor", brokenColor);
+
+  if ((wetness > 0.01f || smudge > 0.01f || bloomEnabled || mixing > 0.01f ||
+       impastoEnabled) &&
+      canvasTexId != 0) {
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, canvasTexId);
+    m_program->setUniformValue("canvasTexture", 2);
+  }
+
+  // --- BLEND MODE ---
+  glEnable(GL_BLEND);
+  glDisable(GL_DEPTH_TEST);
+  glBlendEquation(GL_FUNC_ADD);
+
+  if (isEraser) {
+    // Eraser mode
+    m_program->setUniformValue("brushType", 7);
+    m_program->setUniformValue("impastoEnabled", 0);
+    glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
+                        GL_ONE_MINUS_SRC_ALPHA);
+  } else {
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  }
+
+  m_program->setUniformValue("instanced", 1);
+
+  // Draw instanced
+  m_vao.bind();
+  glDrawArraysInstanced(GL_TRIANGLES, 0, 6, dabs.size());
+  m_vao.release();
+
+  m_program->setUniformValue("instanced", 0);
   m_program->release();
 }
 

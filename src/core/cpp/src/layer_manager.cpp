@@ -16,11 +16,6 @@ template <typename T> T clampVal(T val, T minVal, T maxVal) {
   return val;
 }
 
-Layer::Layer(const std::string &name, int width, int height, Type type)
-    : name(name), buffer(std::make_unique<ImageBuffer>(width, height)),
-      wetnessMap(std::make_unique<ImageBuffer>(width, height)),
-      pigmentMap(std::make_unique<ImageBuffer>(width, height)), type(type) {}
-
 LayerManager::LayerManager(int width, int height)
     : m_width(width), m_height(height) {
   // Create default background layer

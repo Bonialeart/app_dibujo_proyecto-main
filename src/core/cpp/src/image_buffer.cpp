@@ -1,13 +1,7 @@
-/**
- * ArtFlow Studio - Image Buffer Implementation
- */
-
 #include "../include/image_buffer.h"
 #include <algorithm>
 #include <cmath>
-#include <cmath>
 #include <cstring>
-#include <QRect>
 
 namespace artflow {
 
@@ -22,78 +16,183 @@ template <typename T> T clampVal(T val, T minVal, T maxVal) {
 
 ImageBuffer::ImageBuffer(int width, int height)
     : m_width(width), m_height(height) {
-  m_data.resize(static_cast<size_t>(width * height * 4), 0);
+  m_gridW = tilesX();
+  m_gridH = tilesY();
+  m_tiles.resize(static_cast<size_t>(m_gridW * m_gridH));
+}
+
+ImageBuffer::ImageBuffer(const ImageBuffer &other)
+    : m_width(other.m_width), m_height(other.m_height), m_gridW(other.m_gridW),
+      m_gridH(other.m_gridH) {
+  m_tiles.resize(other.m_tiles.size());
+  for (size_t i = 0; i < other.m_tiles.size(); ++i) {
+    if (other.m_tiles[i]) {
+      m_tiles[i] = std::unique_ptr<Tile>(
+          new Tile(other.m_tiles[i]->startX, other.m_tiles[i]->startY));
+      std::memcpy(m_tiles[i]->data.get(), other.m_tiles[i]->data.get(),
+                  TILE_BYTES);
+      m_tiles[i]->dirty = true;
+    }
+  }
 }
 
 ImageBuffer::~ImageBuffer() = default;
 
-uint8_t *ImageBuffer::pixelAt(int x, int y) {
+ImageBuffer::Tile *ImageBuffer::getTile(int x, int y, bool allocate) {
   if (!isValidCoord(x, y))
     return nullptr;
-  return &m_data[pixelIndex(x, y)];
+
+  int tx = x / TILE_SIZE;
+  int ty = y / TILE_SIZE;
+  size_t idx = static_cast<size_t>(ty * m_gridW + tx);
+
+  if (!m_tiles[idx] && allocate) {
+    m_tiles[idx] = std::unique_ptr<Tile>(new Tile(tx, ty));
+  }
+
+  return m_tiles[idx].get();
+}
+
+const ImageBuffer::Tile *ImageBuffer::getTile(int x, int y) const {
+  if (!isValidCoord(x, y))
+    return nullptr;
+
+  int tx = x / TILE_SIZE;
+  int ty = y / TILE_SIZE;
+  size_t idx = static_cast<size_t>(ty * m_gridW + tx);
+
+  return m_tiles[idx].get();
+}
+
+uint8_t *ImageBuffer::pixelAt(int x, int y) {
+  Tile *tile = getTile(x, y, true);
+  if (!tile)
+    return nullptr;
+  int lx = x % TILE_SIZE;
+  int ly = y % TILE_SIZE;
+  return &tile->data[pixelIndexLocal(lx, ly)];
 }
 
 const uint8_t *ImageBuffer::pixelAt(int x, int y) const {
-  if (!isValidCoord(x, y))
-    return nullptr;
-  return &m_data[pixelIndex(x, y)];
+  const Tile *tile = getTile(x, y);
+  if (!tile)
+    return nullptr; // Sparsely unallocated means transparent
+  int lx = x % TILE_SIZE;
+  int ly = y % TILE_SIZE;
+  return &tile->data[pixelIndexLocal(lx, ly)];
 }
 
 void ImageBuffer::setPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b,
                            uint8_t a) {
-  if (!isValidCoord(x, y))
+  Tile *tile = getTile(x, y, true);
+  if (!tile)
     return;
-  size_t idx = pixelIndex(x, y);
-  m_data[idx + 0] = r;
-  m_data[idx + 1] = g;
-  m_data[idx + 2] = b;
-  m_data[idx + 3] = a;
+  int lx = x % TILE_SIZE;
+  int ly = y % TILE_SIZE;
+  size_t idx = pixelIndexLocal(lx, ly);
+  tile->data[idx + 0] = r;
+  tile->data[idx + 1] = g;
+  tile->data[idx + 2] = b;
+  tile->data[idx + 3] = a;
+  tile->dirty = true;
+  m_cacheDirty = true;
 }
 
 void ImageBuffer::fill(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-  for (int y = 0; y < m_height; ++y) {
-    for (int x = 0; x < m_width; ++x) {
-      setPixel(x, y, r, g, b, a);
+  // Fill MUST allocate all tiles if we want a solid color background
+  for (int ty = 0; ty < m_gridH; ++ty) {
+    for (int tx = 0; tx < m_gridW; ++tx) {
+      size_t idx = static_cast<size_t>(ty * m_gridW + tx);
+      if (!m_tiles[idx]) {
+        m_tiles[idx] = std::unique_ptr<Tile>(new Tile(tx, ty));
+      }
+      auto &tile = m_tiles[idx];
+      uint32_t val;
+      if (a == 255) {
+        // Optimization for opaque fill
+        val = (uint32_t)r | ((uint32_t)g << 8) | ((uint32_t)b << 16) |
+              ((uint32_t)a << 24);
+      } else {
+        // Premultiply
+        uint8_t pr = (r * a) / 255;
+        uint8_t pg = (g * a) / 255;
+        uint8_t pb = (b * a) / 255;
+        val = (uint32_t)pr | ((uint32_t)pg << 8) | ((uint32_t)pb << 16) |
+              ((uint32_t)a << 24);
+      }
+
+      uint32_t *dataPtr = reinterpret_cast<uint32_t *>(tile->data.get());
+      std::fill(dataPtr, dataPtr + TILE_PIXELS, val);
+      tile->dirty = true;
     }
   }
+  m_cacheDirty = true;
 }
 
-void ImageBuffer::clear() { std::memset(m_data.data(), 0, m_data.size()); }
+void ImageBuffer::clear() {
+  m_tiles.clear(); // Free memory
+  m_tiles.resize(static_cast<size_t>(m_gridW * m_gridH));
+  m_cacheDirty = true;
+}
 
-QRect ImageBuffer::getContentBounds() const {
+bool ImageBuffer::getContentBounds(int &minX_out, int &minY_out, int &maxX_out,
+                                   int &maxY_out) const {
   int minX = m_width;
   int minY = m_height;
   int maxX = 0;
   int maxY = 0;
-
   bool found = false;
 
-  for (int y = 0; y < m_height; ++y) {
-    for (int x = 0; x < m_width; ++x) {
-      if (pixelAt(x, y)[3] > 0) { // Check Alpha
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-        found = true;
+  for (const auto &tile : m_tiles) {
+    if (!tile)
+      continue;
+    int tileStartX = tile->startX * TILE_SIZE;
+    int tileStartY = tile->startY * TILE_SIZE;
+
+    for (int ty = 0; ty < TILE_SIZE; ++ty) {
+      if (tileStartY + ty >= m_height)
+        break;
+      for (int tx = 0; tx < TILE_SIZE; ++tx) {
+        if (tileStartX + tx >= m_width)
+          break;
+
+        if (tile->data[pixelIndexLocal(tx, ty) + 3] > 0) {
+          int gx = tileStartX + tx;
+          int gy = tileStartY + ty;
+          if (gx < minX)
+            minX = gx;
+          if (gy < minY)
+            minY = gy;
+          if (gx > maxX)
+            maxX = gx;
+          if (gy > maxY)
+            maxY = gy;
+          found = true;
+        }
       }
     }
   }
 
-  if (!found) {
-     return QRect(0, 0, 0, 0);
+  if (found) {
+    minX_out = minX;
+    minY_out = minY;
+    maxX_out = maxX - minX + 1;
+    maxY_out = maxY - minY + 1;
   }
-  
-  return QRect(minX, minY, maxX - minX + 1, maxY - minY + 1);
+  return found;
 }
 
-void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a, float threshold, const ImageBuffer* mask) {
-  if (!isValidCoord(x, y)) return;
+void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b,
+                            uint8_t a, float threshold,
+                            const ImageBuffer *mask) {
+  if (!isValidCoord(x, y))
+    return;
 
   // If mask is provided, check if the start point is within the mask
   if (mask) {
     const uint8_t *mP = mask->pixelAt(x, y);
-    if (!mP || mP[3] == 0) return; // Clicked outside the selection
+    if (!mP || mP[3] == 0)
+      return; // Clicked outside the selection
   }
 
   uint8_t *startPixel = pixelAt(x, y);
@@ -103,10 +202,12 @@ void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8
   uint8_t startA = startPixel[3];
 
   // If already the same color, skip to avoid infinite loop
-  if (startR == r && startG == g && startB == b && startA == a) return;
+  if (startR == r && startG == g && startB == b && startA == a)
+    return;
 
-  uint32_t thresholdSq = static_cast<uint32_t>(threshold * 255 * threshold * 255 * 3);
-  
+  uint32_t thresholdSq =
+      static_cast<uint32_t>(threshold * 255 * threshold * 255 * 3);
+
   std::vector<bool> visited(m_width * m_height, false);
   std::vector<std::pair<int, int>> queue;
   queue.reserve(m_width * m_height / 4);
@@ -138,8 +239,9 @@ void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8
         if (mask) {
           const uint8_t *mP = mask->pixelAt(nx, ny);
           if (!mP || mP[3] == 0) {
-              visited[ny * m_width + nx] = true; // Mark as visited to avoid re-checking
-              continue;
+            visited[ny * m_width + nx] =
+                true; // Mark as visited to avoid re-checking
+            continue;
           }
         }
 
@@ -148,8 +250,8 @@ void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8
         uint32_t dg = static_cast<uint32_t>(p[1]) - startG;
         uint32_t db = static_cast<uint32_t>(p[2]) - startB;
         uint32_t da = static_cast<uint32_t>(p[3]) - startA;
-        
-        uint32_t diffSq = dr*dr + dg*dg + db*db + da*da;
+
+        uint32_t diffSq = dr * dr + dg * dg + db * db + da * da;
 
         if (diffSq <= thresholdSq || threshold >= 0.99f) {
           visited[ny * m_width + nx] = true;
@@ -162,11 +264,15 @@ void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8
 
 void ImageBuffer::blendPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b,
                              uint8_t a, bool alphaLock, bool isEraser) {
-  if (!isValidCoord(x, y))
+  Tile *tile = getTile(x, y, true);
+  if (!tile)
     return;
 
-  size_t idx = pixelIndex(x, y);
-  uint8_t dstA = m_data[idx + 3];
+  int lx = x % TILE_SIZE;
+  int ly = y % TILE_SIZE;
+  size_t idx = pixelIndexLocal(lx, ly);
+
+  uint8_t dstA = tile->data[idx + 3];
 
   if (alphaLock && dstA == 0)
     return;
@@ -175,10 +281,11 @@ void ImageBuffer::blendPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b,
     // Out_A = Dst_A * (1 - Src_A)
     // Out_RGB = Dst_RGB * (1 - Src_A)
     uint32_t invAlpha = 255 - a;
-    m_data[idx + 0] = (m_data[idx + 0] * invAlpha) / 255;
-    m_data[idx + 1] = (m_data[idx + 1] * invAlpha) / 255;
-    m_data[idx + 2] = (m_data[idx + 2] * invAlpha) / 255;
-    m_data[idx + 3] = (m_data[idx + 3] * invAlpha) / 255;
+    tile->data[idx + 0] = (tile->data[idx + 0] * invAlpha) / 255;
+    tile->data[idx + 1] = (tile->data[idx + 1] * invAlpha) / 255;
+    tile->data[idx + 2] = (tile->data[idx + 2] * invAlpha) / 255;
+    tile->data[idx + 3] = (tile->data[idx + 3] * invAlpha) / 255;
+    tile->dirty = true;
     return;
   }
 
@@ -197,22 +304,23 @@ void ImageBuffer::blendPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b,
 
   if (alphaLock) {
     // Treat as Source-In practically: only affects RGB, keeps A
-    m_data[idx + 0] = clampVal<int>(
-        (srcR * dstA / 255) + (m_data[idx + 0] * invSrcA / 255), 0, 255);
-    m_data[idx + 1] = clampVal<int>(
-        (srcG * dstA / 255) + (m_data[idx + 1] * invSrcA / 255), 0, 255);
-    m_data[idx + 2] = clampVal<int>(
-        (srcB * dstA / 255) + (m_data[idx + 2] * invSrcA / 255), 0, 255);
+    tile->data[idx + 0] = clampVal<int>(
+        (srcR * dstA / 255) + (tile->data[idx + 0] * invSrcA / 255), 0, 255);
+    tile->data[idx + 1] = clampVal<int>(
+        (srcG * dstA / 255) + (tile->data[idx + 1] * invSrcA / 255), 0, 255);
+    tile->data[idx + 2] = clampVal<int>(
+        (srcB * dstA / 255) + (tile->data[idx + 2] * invSrcA / 255), 0, 255);
   } else {
-    m_data[idx + 0] =
-        clampVal<int>(srcR + (m_data[idx + 0] * invSrcA) / 255, 0, 255);
-    m_data[idx + 1] =
-        clampVal<int>(srcG + (m_data[idx + 1] * invSrcA) / 255, 0, 255);
-    m_data[idx + 2] =
-        clampVal<int>(srcB + (m_data[idx + 2] * invSrcA) / 255, 0, 255);
-    m_data[idx + 3] =
-        clampVal<int>(srcA + (m_data[idx + 3] * invSrcA) / 255, 0, 255);
+    tile->data[idx + 0] =
+        clampVal<int>(srcR + (tile->data[idx + 0] * invSrcA) / 255, 0, 255);
+    tile->data[idx + 1] =
+        clampVal<int>(srcG + (tile->data[idx + 1] * invSrcA) / 255, 0, 255);
+    tile->data[idx + 2] =
+        clampVal<int>(srcB + (tile->data[idx + 2] * invSrcA) / 255, 0, 255);
+    tile->data[idx + 3] =
+        clampVal<int>(srcA + (tile->data[idx + 3] * invSrcA) / 255, 0, 255);
   }
+  tile->dirty = true;
 }
 
 void ImageBuffer::drawCircle(int cx, int cy, float radius, uint8_t r, uint8_t g,
@@ -341,7 +449,20 @@ void ImageBuffer::drawCircle(int cx, int cy, float radius, uint8_t r, uint8_t g,
 void ImageBuffer::copyFrom(const ImageBuffer &other) {
   if (m_width != other.m_width || m_height != other.m_height)
     return;
-  std::memcpy(m_data.data(), other.m_data.data(), m_data.size());
+
+  m_tiles.clear();
+  m_tiles.resize(other.m_tiles.size());
+  for (size_t i = 0; i < other.m_tiles.size(); ++i) {
+    if (other.m_tiles[i]) {
+      const auto &otherTile = other.m_tiles[i];
+      auto newTile =
+          std::unique_ptr<Tile>(new Tile(otherTile->startX, otherTile->startY));
+      std::memcpy(newTile->data.get(), otherTile->data.get(), TILE_BYTES);
+      newTile->dirty = true;
+      m_tiles[i] = std::move(newTile);
+    }
+  }
+  m_cacheDirty = true;
 }
 
 void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
@@ -358,22 +479,18 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
 
   for (int sy = startY; sy < endY; ++sy) {
     int dy = sy + offsetY;
-    uint8_t *dstRow = &m_data[pixelIndex(offsetX + startX, dy)];
-    const uint8_t *srcRow = other.pixelAt(startX, sy);
-
     for (int sx = startX; sx < endX; ++sx) {
-      if (srcRow[3] == 0) {
-        dstRow += 4;
-        srcRow += 4;
+      int dx = sx + offsetX;
+      const uint8_t *srcPixel = other.pixelAt(sx, sy);
+      if (!srcPixel || srcPixel[3] == 0)
         continue;
-      }
 
       // 1. Calculate Source Alpha (Total including layer opacity)
-      float sA_f = (srcRow[3] / 255.0f) * opacity;
+      float sA_f = (srcPixel[3] / 255.0f) * opacity;
 
       // Apply Clipping Mask if present
       if (mask) {
-        const uint8_t *mP = mask->pixelAt(sx + offsetX, dy);
+        const uint8_t *mP = mask->pixelAt(dx, dy);
         if (mP) {
           sA_f *= (mP[3] / 255.0f);
         } else {
@@ -381,26 +498,27 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
         }
       }
 
-      if (sA_f <= 0.001f) {
-        dstRow += 4;
-        srcRow += 4;
+      if (sA_f <= 0.001f)
+        continue;
+
+      uint8_t *dstPixel = this->pixelAt(dx, dy);
+      if (!dstPixel) {
+        // PixelAt allocates tile if it doesn't exist, so this shouldn't happen
+        // usually but if it does (out of bounds), just skip.
         continue;
       }
 
       // 2. Un-premultiply Source and Destination for correct blend math
-      float sR_U = 0, sG_U = 0, sB_U = 0;
-      if (srcRow[3] > 0) {
-          sR_U = (float)srcRow[0] / srcRow[3];
-          sG_U = (float)srcRow[1] / srcRow[3];
-          sB_U = (float)srcRow[2] / srcRow[3];
-      }
-      
-      float dA_f = dstRow[3] / 255.0f;
+      float sR_U = (float)srcPixel[0] / srcPixel[3];
+      float sG_U = (float)srcPixel[1] / srcPixel[3];
+      float sB_U = (float)srcPixel[2] / srcPixel[3];
+
+      float dA_f = dstPixel[3] / 255.0f;
       float dR_U = 0, dG_U = 0, dB_U = 0;
-      if (dstRow[3] > 0) {
-          dR_U = (float)dstRow[0] / dstRow[3];
-          dG_U = (float)dstRow[1] / dstRow[3];
-          dB_U = (float)dstRow[2] / dstRow[3];
+      if (dstPixel[3] > 0) {
+        dR_U = (float)dstPixel[0] / dstPixel[3];
+        dG_U = (float)dstPixel[1] / dstPixel[3];
+        dB_U = (float)dstPixel[2] / dstPixel[3];
       }
 
       // 3. Apply Blend Mode (W3C Standard Formulas)
@@ -408,15 +526,17 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
       // Cb = Backdrop/Dest Color (dR_U, dG_U, dB_U)
       // B(Cb, Cs) = Blend Result
       // Final Color Co = (1 - da) * Cs + (1 - sa) * Cb + sa * da * B(Cb, Cs)
-      // Note: This is equivalent to standard Source-Over compositing where the 'source' input to the atomic composite operation
-      // is actually the result of the blend function if both pixels are opaque, but handles transparency correctly.
+      // Note: This is equivalent to standard Source-Over compositing where the
+      // 'source' input to the atomic composite operation is actually the result
+      // of the blend function if both pixels are opaque, but handles
+      // transparency correctly.
 
-      // We calculate the 'Mixed' component (sa * da * B(Cb, Cs)) first, let's call it BlendedPart.
-      // But actually, a simpler way for implementations often is:
-      // Co = sa * (1 - da) * Cs + da * (1 - sa) * Cb + sa * da * B(Cb, Cs) ... wait, standard src-over is s + d(1-sa).
-      // Let's stick to the official spec:
-      // fa = 1; fb = 1 - sa;
-      // co = as * Cs * fa + ab * Cb * fb;  <-- This is standard SrcOver.
+      // We calculate the 'Mixed' component (sa * da * B(Cb, Cs)) first, let's
+      // call it BlendedPart. But actually, a simpler way for implementations
+      // often is: Co = sa * (1 - da) * Cs + da * (1 - sa) * Cb + sa * da *
+      // B(Cb, Cs) ... wait, standard src-over is s + d(1-sa). Let's stick to
+      // the official spec: fa = 1; fb = 1 - sa; co = as * Cs * fa + ab * Cb *
+      // fb;  <-- This is standard SrcOver.
       //
       // For BLENDING:
       // The generalized formula is:
@@ -426,137 +546,181 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
       float r_blend = 0, g_blend = 0, b_blend = 0;
 
       if (mode == BlendMode::Normal) {
-          r_blend = sR_U; g_blend = sG_U; b_blend = sB_U;
+        r_blend = sR_U;
+        g_blend = sG_U;
+        b_blend = sB_U;
       } else if (mode == BlendMode::Multiply) {
-          r_blend = dR_U * sR_U;
-          g_blend = dG_U * sG_U;
-          b_blend = dB_U * sB_U;
+        r_blend = dR_U * sR_U;
+        g_blend = dG_U * sG_U;
+        b_blend = dB_U * sB_U;
       } else if (mode == BlendMode::Screen) {
-          r_blend = dR_U + sR_U - dR_U * sR_U;
-          g_blend = dG_U + sG_U - dG_U * sG_U;
-          b_blend = dB_U + sB_U - dB_U * sB_U;
+        r_blend = dR_U + sR_U - dR_U * sR_U;
+        g_blend = dG_U + sG_U - dG_U * sG_U;
+        b_blend = dB_U + sB_U - dB_U * sB_U;
       } else if (mode == BlendMode::Overlay) {
-          auto overlay = [](float b, float s) {
-              return (b < 0.5f) ? (2.0f * b * s) : (1.0f - 2.0f * (1.0f - b) * (1.0f - s));
-          };
-          r_blend = overlay(dR_U, sR_U);
-          g_blend = overlay(dG_U, sG_U);
-          b_blend = overlay(dB_U, sB_U);
+        auto overlay = [](float b, float s) {
+          return (b < 0.5f) ? (2.0f * b * s)
+                            : (1.0f - 2.0f * (1.0f - b) * (1.0f - s));
+        };
+        r_blend = overlay(dR_U, sR_U);
+        g_blend = overlay(dG_U, sG_U);
+        b_blend = overlay(dB_U, sB_U);
       } else if (mode == BlendMode::Darken) {
-          r_blend = std::min(dR_U, sR_U);
-          g_blend = std::min(dG_U, sG_U);
-          b_blend = std::min(dB_U, sB_U);
+        r_blend = std::min(dR_U, sR_U);
+        g_blend = std::min(dG_U, sG_U);
+        b_blend = std::min(dB_U, sB_U);
       } else if (mode == BlendMode::Lighten) {
-          r_blend = std::max(dR_U, sR_U);
-          g_blend = std::max(dG_U, sG_U);
-          b_blend = std::max(dB_U, sB_U);
+        r_blend = std::max(dR_U, sR_U);
+        g_blend = std::max(dG_U, sG_U);
+        b_blend = std::max(dB_U, sB_U);
       } else if (mode == BlendMode::ColorDodge) {
-          auto dodge = [](float b, float s) {
-              if (b == 0.0f) return 0.0f;
-              if (s == 1.0f) return 1.0f;
-              return std::min(1.0f, b / (1.0f - s));
-          };
-          r_blend = dodge(dR_U, sR_U);
-          g_blend = dodge(dG_U, sG_U);
-          b_blend = dodge(dB_U, sB_U);
+        auto dodge = [](float b, float s) {
+          if (b == 0.0f)
+            return 0.0f;
+          if (s == 1.0f)
+            return 1.0f;
+          return std::min(1.0f, b / (1.0f - s));
+        };
+        r_blend = dodge(dR_U, sR_U);
+        g_blend = dodge(dG_U, sG_U);
+        b_blend = dodge(dB_U, sB_U);
       } else if (mode == BlendMode::ColorBurn) {
-          auto burn = [](float b, float s) {
-              if (b == 1.0f) return 1.0f;
-              if (s == 0.0f) return 0.0f;
-              return 1.0f - std::min(1.0f, (1.0f - b) / s);
-          };
-          r_blend = burn(dR_U, sR_U);
-          g_blend = burn(dG_U, sG_U);
-          b_blend = burn(dB_U, sB_U);
+        auto burn = [](float b, float s) {
+          if (b == 1.0f)
+            return 1.0f;
+          if (s == 0.0f)
+            return 0.0f;
+          return 1.0f - std::min(1.0f, (1.0f - b) / s);
+        };
+        r_blend = burn(dR_U, sR_U);
+        g_blend = burn(dG_U, sG_U);
+        b_blend = burn(dB_U, sB_U);
       } else if (mode == BlendMode::HardLight) {
-          auto hardlight = [](float b, float s) {
-              return (s < 0.5f) ? (2.0f * b * s) : (1.0f - 2.0f * (1.0f - b) * (1.0f - s));
-          };
-          r_blend = hardlight(dR_U, sR_U);
-          g_blend = hardlight(dG_U, sG_U);
-          b_blend = hardlight(dB_U, sB_U);
+        auto hardlight = [](float b, float s) {
+          return (s < 0.5f) ? (2.0f * b * s)
+                            : (1.0f - 2.0f * (1.0f - b) * (1.0f - s));
+        };
+        r_blend = hardlight(dR_U, sR_U);
+        g_blend = hardlight(dG_U, sG_U);
+        b_blend = hardlight(dB_U, sB_U);
       } else if (mode == BlendMode::SoftLight) {
-          auto softlight = [](float b, float s) {
-              if (s <= 0.5f) return b - (1.0f - 2.0f * s) * b * (1.0f - b);
-              float d = (b <= 0.25f) ? (((16.0f * b - 12.0f) * b + 4.0f) * b) : std::sqrt(b);
-              return b + (2.0f * s - 1.0f) * (d - b);
-          };
-          r_blend = softlight(dR_U, sR_U);
-          g_blend = softlight(dG_U, sG_U);
-          b_blend = softlight(dB_U, sB_U);
+        auto softlight = [](float b, float s) {
+          if (s <= 0.5f)
+            return b - (1.0f - 2.0f * s) * b * (1.0f - b);
+          float d = (b <= 0.25f) ? (((16.0f * b - 12.0f) * b + 4.0f) * b)
+                                 : std::sqrt(b);
+          return b + (2.0f * s - 1.0f) * (d - b);
+        };
+        r_blend = softlight(dR_U, sR_U);
+        g_blend = softlight(dG_U, sG_U);
+        b_blend = softlight(dB_U, sB_U);
       } else if (mode == BlendMode::Difference) {
-          r_blend = std::abs(dR_U - sR_U);
-          g_blend = std::abs(dG_U - sG_U);
-          b_blend = std::abs(dB_U - sB_U);
+        r_blend = std::abs(dR_U - sR_U);
+        g_blend = std::abs(dG_U - sG_U);
+        b_blend = std::abs(dB_U - sB_U);
       } else if (mode == BlendMode::Exclusion) {
-          r_blend = dR_U + sR_U - 2.0f * dR_U * sR_U;
-          g_blend = dG_U + sG_U - 2.0f * dG_U * sG_U;
-          b_blend = dB_U + sB_U - 2.0f * dB_U * sB_U;
-      } 
+        r_blend = dR_U + sR_U - 2.0f * dR_U * sR_U;
+        g_blend = dG_U + sG_U - 2.0f * dG_U * sG_U;
+        b_blend = dB_U + sB_U - 2.0f * dB_U * sB_U;
+      }
       // HSL Modes
-      else if (mode == BlendMode::Hue || mode == BlendMode::Saturation || mode == BlendMode::Color || mode == BlendMode::Luminosity) {
-          // Re-use previous helpers, but applied to blend logic
-           auto getLum = [](float r, float g, float b) { return 0.3f*r + 0.59f*g + 0.11f*b; };
-          auto getSat = [](float r, float g, float b) { return std::max({r,g,b}) - std::min({r,g,b}); };
-          auto setSat = [&](float& r, float& g, float& b, float s) {
-                float *min_c = &r, *mid_c = &g, *max_c = &b;
-                if (*mid_c < *min_c) std::swap(mid_c, min_c);
-                if (*max_c < *mid_c) std::swap(max_c, mid_c);
-                if (*mid_c < *min_c) std::swap(mid_c, min_c);
-                float den = *max_c - *min_c;
-                if (den > 1e-6f) { *mid_c = ((*mid_c - *min_c) * s) / den; *max_c = s; }
-                else { *mid_c = *max_c = 0; }
-                *min_c = 0;
-          };
-          auto setLum = [&](float& r, float& g, float& b, float l) {
-              float d = l - getLum(r, g, b);
-              r += d; g += d; b += d;
-              float l_new = getLum(r, g, b);
-              float n = std::min({r, g, b}), x = std::max({r, g, b});
-              if (n < 0.0f) { float f = l_new / (l_new - n + 1e-6f); r = l_new + (r-l_new)*f; g = l_new + (g-l_new)*f; b = l_new + (b-l_new)*f; }
-              if (x > 1.0f) { float f = (1.0f-l_new) / (x - l_new + 1e-6f); r = l_new + (r-l_new)*f; g = l_new + (g-l_new)*f; b = l_new + (b-l_new)*f; }
-          };
-
-          r_blend = dR_U; g_blend = dG_U; b_blend = dB_U; // Default to backdrop
-          if (mode == BlendMode::Hue) {
-              float sR_tmp = sR_U, sG_tmp = sG_U, sB_tmp = sB_U; // Use Source Hue
-              setSat(sR_tmp, sG_tmp, sB_tmp, getSat(dR_U, dG_U, dB_U)); // Dest Sat
-              setLum(sR_tmp, sG_tmp, sB_tmp, getLum(dR_U, dG_U, dB_U)); // Dest Lum
-              r_blend = sR_tmp; g_blend = sG_tmp; b_blend = sB_tmp;
-          } else if (mode == BlendMode::Saturation) {
-               setSat(r_blend, g_blend, b_blend, getSat(sR_U, sG_U, sB_U)); // Source Sat
-          } else if (mode == BlendMode::Color) {
-               r_blend = sR_U; g_blend = sG_U; b_blend = sB_U; // Source Hue+Sat
-               setLum(r_blend, g_blend, b_blend, getLum(dR_U, dG_U, dB_U)); // Dest Lum
-          } else if (mode == BlendMode::Luminosity) {
-               setLum(r_blend, g_blend, b_blend, getLum(sR_U, sG_U, sB_U)); // Source Lum
+      else if (mode == BlendMode::Hue || mode == BlendMode::Saturation ||
+               mode == BlendMode::Color || mode == BlendMode::Luminosity) {
+        // Re-use previous helpers, but applied to blend logic
+        auto getLum = [](float r, float g, float b) {
+          return 0.3f * r + 0.59f * g + 0.11f * b;
+        };
+        auto getSat = [](float r, float g, float b) {
+          return std::max({r, g, b}) - std::min({r, g, b});
+        };
+        auto setSat = [&](float &r, float &g, float &b, float s) {
+          float *min_c = &r, *mid_c = &g, *max_c = &b;
+          if (*mid_c < *min_c)
+            std::swap(mid_c, min_c);
+          if (*max_c < *mid_c)
+            std::swap(max_c, mid_c);
+          if (*mid_c < *min_c)
+            std::swap(mid_c, min_c);
+          float den = *max_c - *min_c;
+          if (den > 1e-6f) {
+            *mid_c = ((*mid_c - *min_c) * s) / den;
+            *max_c = s;
+          } else {
+            *mid_c = *max_c = 0;
           }
+          *min_c = 0;
+        };
+        auto setLum = [&](float &r, float &g, float &b, float l) {
+          float d = l - getLum(r, g, b);
+          r += d;
+          g += d;
+          b += d;
+          float l_new = getLum(r, g, b);
+          float n = std::min({r, g, b}), x = std::max({r, g, b});
+          if (n < 0.0f) {
+            float f = l_new / (l_new - n + 1e-6f);
+            r = l_new + (r - l_new) * f;
+            g = l_new + (g - l_new) * f;
+            b = l_new + (b - l_new) * f;
+          }
+          if (x > 1.0f) {
+            float f = (1.0f - l_new) / (x - l_new + 1e-6f);
+            r = l_new + (r - l_new) * f;
+            g = l_new + (g - l_new) * f;
+            b = l_new + (b - l_new) * f;
+          }
+        };
+
+        r_blend = dR_U;
+        g_blend = dG_U;
+        b_blend = dB_U; // Default to backdrop
+        if (mode == BlendMode::Hue) {
+          float sR_tmp = sR_U, sG_tmp = sG_U, sB_tmp = sB_U; // Use Source Hue
+          setSat(sR_tmp, sG_tmp, sB_tmp, getSat(dR_U, dG_U, dB_U)); // Dest Sat
+          setLum(sR_tmp, sG_tmp, sB_tmp, getLum(dR_U, dG_U, dB_U)); // Dest Lum
+          r_blend = sR_tmp;
+          g_blend = sG_tmp;
+          b_blend = sB_tmp;
+        } else if (mode == BlendMode::Saturation) {
+          setSat(r_blend, g_blend, b_blend,
+                 getSat(sR_U, sG_U, sB_U)); // Source Sat
+        } else if (mode == BlendMode::Color) {
+          r_blend = sR_U;
+          g_blend = sG_U;
+          b_blend = sB_U; // Source Hue+Sat
+          setLum(r_blend, g_blend, b_blend,
+                 getLum(dR_U, dG_U, dB_U)); // Dest Lum
+        } else if (mode == BlendMode::Luminosity) {
+          setLum(r_blend, g_blend, b_blend,
+                 getLum(sR_U, sG_U, sB_U)); // Source Lum
+        }
       }
 
-      // 4. Compositing Formula: Cr = (1 - ab) * as * Cs + (1 - as) * ab * Cb + as * ab * B(Cb, Cs)
-      // Variables: as = sA_f, ab = dA_f, Cs = (sR_U, sG_U, sB_U), Cb = (dR_U, dG_U, dB_U), B = (r_blend...)
-      
-      float finalR = (1.0f - dA_f) * sA_f * sR_U + (1.0f - sA_f) * dA_f * dR_U + sA_f * dA_f * r_blend;
-      float finalG = (1.0f - dA_f) * sA_f * sG_U + (1.0f - sA_f) * dA_f * dG_U + sA_f * dA_f * g_blend;
-      float finalB = (1.0f - dA_f) * sA_f * sB_U + (1.0f - sA_f) * dA_f * dR_U + sA_f * dA_f * b_blend; // TYPO CHECK: dR_U -> dB_U
-      
+      // 4. Compositing Formula: Cr = (1 - ab) * as * Cs + (1 - as) * ab * Cb +
+      // as * ab * B(Cb, Cs) Variables: as = sA_f, ab = dA_f, Cs = (sR_U, sG_U,
+      // sB_U), Cb = (dR_U, dG_U, dB_U), B = (r_blend...)
+
+      float finalR = (1.0f - dA_f) * sA_f * sR_U + (1.0f - sA_f) * dA_f * dR_U +
+                     sA_f * dA_f * r_blend;
+      float finalG = (1.0f - dA_f) * sA_f * sG_U + (1.0f - sA_f) * dA_f * dG_U +
+                     sA_f * dA_f * g_blend;
+      float finalB = (1.0f - dA_f) * sA_f * sB_U + (1.0f - sA_f) * dA_f * dR_U +
+                     sA_f * dA_f * b_blend; // TYPO CHECK: dR_U -> dB_U
+
       // Fix typo in blue channel above:
-      finalB = (1.0f - dA_f) * sA_f * sB_U + (1.0f - sA_f) * dA_f * dB_U + sA_f * dA_f * b_blend;
+      finalB = (1.0f - dA_f) * sA_f * sB_U + (1.0f - sA_f) * dA_f * dB_U +
+               sA_f * dA_f * b_blend;
 
       float outA = sA_f + dA_f - sA_f * dA_f;
 
       if (outA > 1e-6f) {
-           dstRow[0] = std::clamp<int>(finalR * 255.0f, 0, 255); // Output is premultiplied directly!
-           dstRow[1] = std::clamp<int>(finalG * 255.0f, 0, 255); // The formula produced PREMULTIPLIED color.
-           dstRow[2] = std::clamp<int>(finalB * 255.0f, 0, 255); // Wait, spec says Cr is premultiplied?
-           // "The result color Cr is premultiplied." Yes.
-           dstRow[3] = std::clamp<int>(outA * 255.0f, 0, 255);
+        dstPixel[0] = clampVal<int>(finalR * 255.0f, 0, 255);
+        dstPixel[1] = clampVal<int>(finalG * 255.0f, 0, 255);
+        dstPixel[2] = clampVal<int>(finalB * 255.0f, 0, 255);
+        dstPixel[3] = clampVal<int>(outA * 255.0f, 0, 255);
       } else {
-           dstRow[0] = dstRow[1] = dstRow[2] = dstRow[3] = 0;
+        dstPixel[0] = dstPixel[1] = dstPixel[2] = dstPixel[3] = 0;
       }
-      
-      dstRow += 4;
-      srcRow += 4;
     }
   }
 }
@@ -636,9 +800,14 @@ void ImageBuffer::drawStrokeTextured(float x1, float y1, float x2, float y2,
         }
 
         // 4. Blend
-        // Simple alpha blend for now (replace reading destination for speed if
-        // needed, but read is required for mix)
-        uint8_t *dPixel = this->pixelAt(destX, destY);
+        // Simple alpha blend for now
+        Tile *destTile = getTile(destX, destY, true);
+        if (!destTile)
+          continue;
+
+        int lx = destX % TILE_SIZE;
+        int ly = destY % TILE_SIZE;
+        uint8_t *dPixel = &destTile->data[pixelIndexLocal(lx, ly)];
 
         // Source Alpha with modifications
         float finalAlpha = (sA / 255.0f) * opacity * paperMod;
@@ -646,30 +815,140 @@ void ImageBuffer::drawStrokeTextured(float x1, float y1, float x2, float y2,
           finalAlpha = 1.0f;
 
         // Standard Source-Over Blending
-        // out = src * alpha + dst * (1 - alpha)
         float a = finalAlpha;
         float invA = 1.0f - a;
 
         dPixel[0] = static_cast<uint8_t>(sPixel[0] * a + dPixel[0] * invA);
         dPixel[1] = static_cast<uint8_t>(sPixel[1] * a + dPixel[1] * invA);
         dPixel[2] = static_cast<uint8_t>(sPixel[2] * a + dPixel[2] * invA);
-        dPixel[3] = static_cast<uint8_t>(
-            255 * a + dPixel[3] * invA); // Simplified alpha addition
+        dPixel[3] = static_cast<uint8_t>(255 * a + dPixel[3] * invA);
+        destTile->dirty = true;
       }
     }
   }
 }
 
-std::vector<uint8_t> ImageBuffer::getBytes() const { return m_data; }
+std::vector<uint8_t> ImageBuffer::getBytes() const {
+  std::vector<uint8_t> bytes(static_cast<size_t>(m_width * m_height * 4), 0);
+  for (const auto &tile : m_tiles) {
+    if (!tile)
+      continue;
+    int startX = tile->startX * TILE_SIZE;
+    int startY = tile->startY * TILE_SIZE;
+    for (int ty = 0; ty < TILE_SIZE; ++ty) {
+      if (startY + ty >= m_height)
+        break;
+      int tw = std::min(TILE_SIZE, m_width - startX);
+      if (tw <= 0)
+        continue;
+      size_t dstIdx =
+          static_cast<size_t>(((startY + ty) * m_width + startX) * 4);
+      size_t srcIdx = pixelIndexLocal(0, ty);
+      std::memcpy(&bytes[dstIdx], &tile->data[srcIdx], (size_t)tw * 4);
+    }
+  }
+  return bytes;
+}
 
 std::unique_ptr<ImageBuffer>
 ImageBuffer::fromBytes(const std::vector<uint8_t> &bytes, int width,
                        int height) {
   auto buffer = std::make_unique<ImageBuffer>(width, height);
-  if (bytes.size() == buffer->m_data.size()) {
-    std::memcpy(buffer->m_data.data(), bytes.data(), bytes.size());
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      size_t idx = static_cast<size_t>((y * width + x) * 4);
+      if (bytes[idx + 3] > 0) {
+        buffer->setPixel(x, y, bytes[idx + 0], bytes[idx + 1], bytes[idx + 2],
+                         bytes[idx + 3]);
+      }
+    }
   }
   return buffer;
+}
+
+uint8_t *ImageBuffer::data() {
+  ensureCacheUpToDate();
+  return m_cachedData.data();
+}
+
+const uint8_t *ImageBuffer::data() const {
+  ensureCacheUpToDate();
+  return m_cachedData.data();
+}
+
+void ImageBuffer::ensureCacheUpToDate() const {
+  size_t requiredSize = (size_t)m_width * m_height * 4;
+  if (!m_cacheDirty && m_cachedData.size() == requiredSize)
+    return;
+
+  if (m_cachedData.size() != requiredSize) {
+    m_cachedData.assign(requiredSize, 0);
+  } else {
+    std::fill(m_cachedData.begin(), m_cachedData.end(), 0);
+  }
+
+  for (const auto &tile : m_tiles) {
+    if (!tile)
+      continue;
+
+    int xStart = tile->startX * TILE_SIZE;
+    int yStart = tile->startY * TILE_SIZE;
+
+    for (int ly = 0; ly < TILE_SIZE; ++ly) {
+      int gy = yStart + ly;
+      if (gy >= m_height)
+        break;
+
+      int gx = xStart;
+      int tw = std::min(TILE_SIZE, m_width - gx);
+      if (tw <= 0)
+        continue;
+
+      size_t destIdx = (size_t)(gy * m_width + gx) * 4;
+      size_t srcIdx = pixelIndexLocal(0, ly);
+
+      std::memcpy(&m_cachedData[destIdx], &tile->data[srcIdx], (size_t)tw * 4);
+    }
+  }
+
+  m_cacheDirty = false;
+}
+
+void ImageBuffer::loadRawData(const uint8_t *rawData) {
+  if (!rawData)
+    return;
+
+  size_t requiredSize = (size_t)m_width * m_height * 4;
+  m_cachedData.assign(rawData, rawData + requiredSize);
+  m_cacheDirty = false;
+
+  for (int ty = 0; ty < m_gridH; ++ty) {
+    for (int tx = 0; tx < m_gridW; ++tx) {
+      size_t idx = static_cast<size_t>(ty * m_gridW + tx);
+      int startX = tx * TILE_SIZE;
+      int startY = ty * TILE_SIZE;
+
+      if (!m_tiles[idx]) {
+        m_tiles[idx] = std::unique_ptr<Tile>(new Tile(tx, ty));
+      }
+
+      auto &tile = m_tiles[idx];
+      for (int ly = 0; ly < TILE_SIZE; ++ly) {
+        int gy = startY + ly;
+        if (gy >= m_height)
+          break;
+        int gx = startX;
+        int tw = std::min(TILE_SIZE, m_width - gx);
+        if (tw <= 0)
+          continue;
+
+        size_t srcIdx = (size_t)(gy * m_width + gx) * 4;
+        size_t dstIdx = pixelIndexLocal(0, ly);
+        std::memcpy(&tile->data[dstIdx], &rawData[srcIdx], (size_t)tw * 4);
+      }
+      tile->dirty = true;
+    }
+  }
 }
 
 } // namespace artflow
