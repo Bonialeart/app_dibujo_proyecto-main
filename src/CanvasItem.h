@@ -602,6 +602,10 @@ private:
   QPointF m_transformStartPos;
   QTransform m_initialMatrix;
 
+  QPointF m_stabilizedPos;
+  std::deque<QPointF> m_stabPosQueue; // Position buffer for lazy stabilizer
+  std::deque<float> m_stabPresQueue;  // Pressure buffer for lazy stabilizer
+
   // Input Prediction History
   std::deque<QPointF> m_historyPos;
   std::deque<float> m_historyPressure;
@@ -651,6 +655,13 @@ private:
   // Checkerboard Cache
   QImage m_checkerCache;
   int m_checkerCachedSize = -1;
+
+  // CPU compositing cache (rebuilt when any layer is dirty)
+  QImage m_cachedCanvasImage;
+
+  // Deferred GL cleanup flag (GL resources must be deleted from render thread)
+  bool m_glResourcesDirty = false;
+  void cleanupGlResources();
 };
 
 #endif // CANVASITEM_H

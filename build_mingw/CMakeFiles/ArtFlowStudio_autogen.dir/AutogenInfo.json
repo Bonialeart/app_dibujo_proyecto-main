@@ -921,18 +921,6 @@
 			null
 		],
 		[
-			"C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/TestCanvas.h",
-			"MU",
-			"UVLADIE3JM/moc_TestCanvas.cpp",
-			null
-		],
-		[
-			"C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/abr_importer.h",
-			"MU",
-			"PRMOGMWJPH/moc_abr_importer.cpp",
-			null
-		],
-		[
 			"C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h",
 			"MU",
 			"H4ZJWAWVOH/moc_ColorPicker.cpp",
@@ -1050,16 +1038,6 @@
 		],
 		[
 			"C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/ProjectModel.cpp",
-			"MU",
-			null
-		],
-		[
-			"C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/TestCanvas.cpp",
-			"MU",
-			null
-		],
-		[
-			"C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/abr_importer.cpp",
 			"MU",
 			null
 		],

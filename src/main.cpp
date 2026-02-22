@@ -3,15 +3,25 @@
 #include "IconProvider.h"
 #include "PreferencesManager.h"
 #include "ProjectModel.h"
-#include "TestCanvas.h"
 #include <QDir>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QStandardPaths>
+#include <fstream>
+#include <iostream>
+
+void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
+                     const QString &msg) {
+  QByteArray localMsg = msg.toLocal8Bit();
+  std::ofstream os("qml_errors.log", std::ios_base::app);
+  os << localMsg.constData() << std::endl;
+}
 
 int main(int argc, char *argv[]) {
+  qInstallMessageHandler(myMessageOutput);
+
   // FORZAR DRIVERS DE TABLETA (Wintab):
   // Activamos esto porque Windows Ink no está enviando eventos correctamente.
   // QCoreApplication::setAttribute(Qt::AA_PluginApplication);
@@ -27,7 +37,6 @@ int main(int argc, char *argv[]) {
 
   // Registro del componente de dibujo nativo
   qmlRegisterType<CanvasItem>("ArtFlow", 1, 0, "QCanvasItem");
-  qmlRegisterType<TestCanvas>("ArtFlow", 1, 0, "TestCanvas");
   qmlRegisterType<ColorPicker>("ArtFlow", 1, 0, "ColorPicker");
 
   QQmlApplicationEngine engine;

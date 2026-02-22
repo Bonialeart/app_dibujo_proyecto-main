@@ -12,6 +12,13 @@ Item {
     property color accentColor: "#6366f1"
     property alias colorAccent: root.accentColor // Added to support main_pro binding
     
+    property bool isShapeTool: {
+        if (!mainCanvas) return false;
+        var tool = mainCanvas.currentTool;
+        console.log("[BrushSettingsPanel] Current tool:", tool);
+        return ["shape", "rect", "ellipse", "line", "panel", "bubble", "shapes"].indexOf(tool) !== -1 || tool.startsWith("panel_") || tool.startsWith("bubble_");
+    }
+    
     Flickable {
         anchors.fill: parent; anchors.margins: 10
         contentHeight: settingsCol.implicitHeight
@@ -21,6 +28,7 @@ Item {
         ColumnLayout {
             id: settingsCol
             width: parent.width; spacing: 14
+            visible: !root.isShapeTool
 
             // Size slider
             StudioSlider {
@@ -110,6 +118,72 @@ Item {
                 decimals: 0
                 accent: "#4a9eff"
                 onMoved: (val) => { if (mainCanvas) mainCanvas.brushSpacing = Math.max(0.01, val) }
+            }
+
+            // Stabilization
+            StudioSlider {
+                Layout.fillWidth: true
+                label: "Stabilization"; unit: "%"
+                value: mainCanvas ? mainCanvas.brushStabilization : 0.0
+                displayValue: mainCanvas ? Math.round(mainCanvas.brushStabilization * 100) : 0
+                decimals: 0
+                accent: "#6366f1"
+                onMoved: (val) => { if (mainCanvas) mainCanvas.brushStabilization = val }
+            }
+        }
+
+        // --- SHAPE / COMIC PANEL SETTINGS ---
+        ColumnLayout {
+            id: shapeSettingsCol
+            width: parent.width; spacing: 14
+            visible: root.isShapeTool
+
+            Text {
+                text: "TOOL PROPERTIES"
+                font.pixelSize: 10; font.weight: Font.Bold
+                color: "#6b7280"; Layout.fillWidth: true
+                font.letterSpacing: 1
+            }
+            
+            // Reusing mainCanvas settings for border size where possible
+            StudioSlider {
+                Layout.fillWidth: true
+                label: "Border Width"; unit: "px"
+                value: mainCanvas ? mainCanvas.brushSize / 200.0 : 0.05
+                displayValue: mainCanvas ? Math.round(mainCanvas.brushSize) : 10
+                decimals: 0
+                accent: accentColor
+                onMoved: (val) => { 
+                    var bWidth = val * 200;
+                    if (mainCanvas) mainCanvas.brushSize = bWidth;
+                    if (typeof mainWindow !== "undefined" && mainWindow.comicOverlayManager) {
+                        mainWindow.comicOverlayManager.setSelectedBorderWidth(bWidth);
+                    }
+                }
+            }
+
+            Rectangle { Layout.fillWidth: true; height: 1; color: "#25252a" }
+
+            Text {
+                text: "SHAPE OPACITY"
+                font.pixelSize: 10; font.weight: Font.Bold
+                color: "#6b7280"; Layout.fillWidth: true
+                font.letterSpacing: 1
+            }
+
+            StudioSlider {
+                Layout.fillWidth: true
+                label: "Opacity"; unit: "%"
+                value: mainCanvas ? mainCanvas.brushOpacity : 1.0
+                displayValue: mainCanvas ? Math.round(mainCanvas.brushOpacity * 100) : 100
+                decimals: 0
+                accent: accentColor
+                onMoved: (val) => { 
+                    if (mainCanvas) mainCanvas.brushOpacity = val;
+                    if (typeof mainWindow !== "undefined" && mainWindow.comicOverlayManager) {
+                        mainWindow.comicOverlayManager.setSelectedOpacity(val);
+                    }
+                }
             }
         }
     }

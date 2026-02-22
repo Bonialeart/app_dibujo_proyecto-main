@@ -2,5 +2,4 @@
 #include "UVLADIE3JM/moc_CanvasItem.cpp"
 #include "UVLADIE3JM/moc_PreferencesManager.cpp"
 #include "UVLADIE3JM/moc_ProjectModel.cpp"
-#include "UVLADIE3JM/moc_TestCanvas.cpp"
 #include "H4ZJWAWVOH/moc_ColorPicker.cpp"

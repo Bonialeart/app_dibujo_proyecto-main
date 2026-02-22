@@ -1,7 +1,6 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import QtQuick.Dialogs 1.3
 
 Item {
     id: root
@@ -10,6 +9,14 @@ Item {
     property var targetCanvas: null // Injected by DockContainer
     property var mainCanvas: targetCanvas // For compatibility with copied code
     property color accentColor: "#6366f1"
+    
+    // Switch panels based on tool
+    property bool isShapeTool: {
+        if (!mainCanvas) return false;
+        var tool = mainCanvas.currentTool;
+        console.log("[BrushLibraryPanel] Current tool:", tool);
+        return ["shape", "rect", "ellipse", "line", "panel", "bubble", "shapes"].indexOf(tool) !== -1 || tool.startsWith("panel_") || tool.startsWith("bubble_");
+    }
     
     property string studioSelectedCategory: "Sketching"
     property var studioBrushList: []
@@ -31,6 +38,7 @@ Item {
     
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 8; spacing: 6
+        visible: !root.isShapeTool
 
         // Category selector (scrollable)
         Flickable {
@@ -150,40 +158,53 @@ Item {
                 }
             }
         }
-
-        // Import Button
-        Rectangle {
-            Layout.fillWidth: true; Layout.preferredHeight: 36
-            color: "#1a1a1e"; radius: 6
-            border.color: hoverImport.containsMouse ? accentColor : "#2a2a2e"
-            border.width: 1
-
-            RowLayout {
-                anchors.centerIn: parent
-                spacing: 8
-                Text { text: "+ Import .abr"; color: hoverImport.containsMouse ? "#fff" : "#ccc"; font.pixelSize: 12; font.weight: Font.Medium }
-            }
-
-            MouseArea {
-                id: hoverImport
-                anchors.fill: parent; hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    importDialog.open()
-                }
-            }
-        }
     }
 
-    FileDialog {
-        id: importDialog
-        title: "Import .abr Brushes"
-        nameFilters: ["Photoshop Brushes (*.abr)"]
-        onAccepted: {
-            if (mainCanvas) {
-                mainCanvas.importABR(importDialog.fileUrl.toString())
-                studioSelectedCategory = "Imported"
-                updateStudioBrushList()
+    // ── Shapes Mode Overlay ──
+    Item {
+        anchors.fill: parent
+        visible: root.isShapeTool
+        
+        ShapeLibrary {
+            anchors.fill: parent
+            targetCanvas: root.mainCanvas
+            accentColor: root.accentColor
+            radius: 8
+            
+            onShapeSelected: function(shapeName) {
+                console.log("[BrushLibraryPanel] Shape selected:", shapeName);
+                if (root.mainCanvas) {
+                    root.mainCanvas.currentTool = shapeName;
+                    // If it's a basic shape (rect/ellipse/line), we might want to tell comicOverlay
+                    if (["rect", "ellipse", "line"].indexOf(shapeName) !== -1) {
+                        if (typeof mainWindow !== "undefined" && mainWindow.comicOverlayManager) {
+                            mainWindow.comicOverlayManager.startShapeDrawing(shapeName);
+                        }
+                    }
+                }
+            }
+            onPanelLayoutRequested: function(layoutType) {
+                console.log("[BrushLibraryPanel] Panel layout requested:", layoutType);
+                if (typeof mainWindow !== "undefined" && typeof mainWindow.openPanelSettings === "function") {
+                    mainWindow.openPanelSettings(layoutType, "Panel: " + layoutType);
+                } else if (typeof mainWindow !== "undefined" && mainWindow.comicOverlayManager) {
+                    var bWidth = root.mainCanvas ? Math.round(root.mainCanvas.brushSize) : 6;
+                    mainWindow.comicOverlayManager.addPanelLayout(layoutType, 10, bWidth, 30);
+                } else {
+                    console.log("[BrushLibraryPanel] Cannot locate comicOverlayManager via mainWindow");
+                }
+            }
+            onBubbleRequested: function(bubbleType) {
+                console.log("[BrushLibraryPanel] Bubble requested:", bubbleType);
+                if (typeof mainWindow !== "undefined" && mainWindow.comicOverlayManager) {
+                    // Add bubble at center of screen
+                    var cx = root.mainCanvas ? root.mainCanvas.canvasWidth / 2 : 500;
+                    var cy = root.mainCanvas ? root.mainCanvas.canvasHeight / 2 : 500;
+                    mainWindow.comicOverlayManager.addBubble(bubbleType, cx, cy);
+                    if (typeof toastManager !== "undefined") {
+                        toastManager.show("Bubble added — click to select and edit", "success");
+                    }
+                }
             }
         }
     }

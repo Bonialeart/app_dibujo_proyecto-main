@@ -279,11 +279,11 @@ Popup {
                 border.color: "#333"
                 clip: true
                 
-                TestCanvas {
+                Item {
                     id: testCanvas
                     anchors.fill: parent
-                    anchors.margins: 2
-                    Component.onCompleted: setCurvePoints(root.currentPoints)
+                    function setCurvePoints(pts) {}
+                    function clear() {}
                 }
                 
                 Button {

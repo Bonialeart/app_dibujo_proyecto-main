@@ -37,15 +37,12 @@ set(CORE_SOURCES
     src/core/cpp/src/ColorPickerImpl.cpp
     src/core/cpp/include/ColorPicker.h
     src/core/cpp/include/ColorPickerImpl.h
-    src/core/abr_importer.cpp
-    src/core/abr_importer.h
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)
 set(UI_SOURCES
     src/main.cpp
     src/CanvasItem.cpp
-    src/TestCanvas.cpp
     src/ProjectModel.cpp
     src/PreferencesManager.cpp
 )

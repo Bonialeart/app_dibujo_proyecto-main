@@ -257,13 +257,11 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 void CanvasItem::clearRenderCaches() {
   m_layerRenderCache.clear();
   m_clippedRenderCache.clear();
+  m_cachedCanvasImage = QImage(); // Invalidate CPU composite cache
 
-  // IMPORTANT: Must clear GPU textures too, or they will stay in memory
-  // and potentially map to deleted layer pointers (stale keys)
-  for (auto *tex : m_layerTextures.values()) {
-    delete tex;
-  }
-  m_layerTextures.clear();
+  // GL resources must NOT be deleted from QML thread.
+  // Set a flag and let paint() clean them up in the render thread.
+  m_glResourcesDirty = true;
 }
 
 void CanvasItem::ensureCompositionFBOs(int w, int h) {
@@ -373,6 +371,7 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
 
     // Blend into nextBackdrop
     nextBackdrop->bind();
+    f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
     m_compositionShader->bind();
 
     f->glActiveTexture(GL_TEXTURE0);
@@ -429,9 +428,20 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
     std::swap(currentBackdrop, nextBackdrop);
   }
 
-  // Blit result to target FBO if requested
-  if (target) {
-    QOpenGLFramebufferObject::blitFramebuffer(target, currentBackdrop);
+  // Store the final composited texture ID for the blit shader
+  m_currentCanvasTexID = currentBackdrop->texture();
+
+  // CRITICAL: Always ensure the final result is in m_compFBOA.
+  // The ping-pong compositing may leave the result in either FBO depending
+  // on the number of visible layers. The display path reads from m_compFBOA.
+  if (currentBackdrop != m_compFBOA) {
+    QOpenGLFramebufferObject::blitFramebuffer(m_compFBOA, currentBackdrop);
+    m_currentCanvasTexID = m_compFBOA->texture();
+  }
+
+  // Blit result to explicit target FBO if requested
+  if (target && target != m_compFBOA) {
+    QOpenGLFramebufferObject::blitFramebuffer(target, m_compFBOA);
   }
 }
 
@@ -469,6 +479,43 @@ CanvasItem::~CanvasItem() {
     delete m_transformShader;
 }
 
+void CanvasItem::cleanupGlResources() {
+  // This must be called from within paint() where we have a valid GL context.
+  if (!m_glResourcesDirty)
+    return;
+  m_glResourcesDirty = false;
+
+  // Delete all layer textures (they point to old/deleted layers)
+  for (auto *tex : m_layerTextures.values()) {
+    delete tex;
+  }
+  m_layerTextures.clear();
+
+  // Delete composition FBOs (canvas size may have changed)
+  if (m_compFBOA) {
+    delete m_compFBOA;
+    m_compFBOA = nullptr;
+  }
+  if (m_compFBOB) {
+    delete m_compFBOB;
+    m_compFBOB = nullptr;
+  }
+
+  // Delete stroke FBOs
+  if (m_pingFBO) {
+    delete m_pingFBO;
+    m_pingFBO = nullptr;
+  }
+  if (m_pongFBO) {
+    delete m_pongFBO;
+    m_pongFBO = nullptr;
+  }
+  if (m_predictionFBO) {
+    delete m_predictionFBO;
+    m_predictionFBO = nullptr;
+  }
+}
+
 void CanvasItem::requestUpdate() {
   if (!m_pendingUpdate) {
     m_pendingUpdate = true;
@@ -499,6 +546,10 @@ void CanvasItem::paint(QPainter *painter) {
   if (!m_layerManager)
     return;
 
+  // Deferred GL resource cleanup (must happen in render thread with valid GL
+  // context)
+  cleanupGlResources();
+
   // --- APLICACIÓN INICIAL DEL CURSOR ---
   static bool windowCursorSet = false;
   if (!windowCursorSet && window()) {
@@ -514,7 +565,9 @@ void CanvasItem::paint(QPainter *painter) {
     m_compositionShader = new QOpenGLShaderProgram();
     QStringList paths;
     paths << QCoreApplication::applicationDirPath() + "/shaders/";
+    paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
     paths << "src/core/shaders/";
+    paths << "../src/core/shaders/";
     QString vertPath, fragPath;
     for (const QString &path : paths) {
       if (QFile::exists(path + "composition.vert") &&
@@ -532,6 +585,36 @@ void CanvasItem::paint(QPainter *painter) {
       m_compositionShader->link();
     } else {
       qWarning() << "Composition shaders not found!";
+    }
+  }
+
+  // 0b. Initialize Blit Shader (used for drawing composition result to screen)
+  if (!m_transformShader) {
+    m_transformShader = new QOpenGLShaderProgram();
+    m_transformShader->addShaderFromSourceCode(QOpenGLShader::Vertex,
+                                               R"(
+        #version 120
+        attribute vec2 position;
+        attribute vec2 texCoord;
+        uniform mat4 MVP;
+        varying vec2 vTexCoord;
+        void main() {
+            gl_Position = MVP * vec4(position, 0.0, 1.0);
+            vTexCoord = texCoord;
+        }
+    )");
+    m_transformShader->addShaderFromSourceCode(QOpenGLShader::Fragment,
+                                               R"(
+        #version 120
+        varying vec2 vTexCoord;
+        uniform sampler2D tex;
+        uniform float opacity;
+        void main() {
+            gl_FragColor = texture2D(tex, vTexCoord) * opacity;
+        }
+    )");
+    if (!m_transformShader->link()) {
+      qWarning() << "Blit shader link failed:" << m_transformShader->log();
     }
   }
 
@@ -746,57 +829,160 @@ void CanvasItem::paint(QPainter *painter) {
       painter->endNativePainting();
     } else {
       if (m_layerManager && m_layerManager->getLayerCount() > 0) {
-        painter->beginNativePainting();
-        renderGpuComposition(m_compFBOA, m_canvasWidth, m_canvasHeight);
+        const int cw = m_canvasWidth;
+        const int ch = m_canvasHeight;
 
-        // --- OPTIMIZED QUAD BLIT TO SCREEN ---
-        if (m_transformShader && m_transformShader->isLinked()) {
-          m_transformShader->bind();
-          QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
-          f->glEnable(GL_BLEND);
-          f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-          f->glActiveTexture(GL_TEXTURE0);
-          f->glBindTexture(GL_TEXTURE_2D, m_compFBOA->texture());
-          m_transformShader->setUniformValue("tex", 0);
-          m_transformShader->setUniformValue("opacity", 1.0f);
-
-          QMatrix4x4 ortho;
-          ortho.ortho(0, width(), height(), 0, -1, 1);
-          QMatrix4x4 view;
-          view.translate(m_viewOffset.x() * m_zoomLevel,
-                         m_viewOffset.y() * m_zoomLevel);
-          view.scale(m_zoomLevel, m_zoomLevel);
-          QMatrix4x4 orthoView = ortho * view;
-
-          float sw = m_canvasWidth;
-          float sh = m_canvasHeight;
-          GLfloat vertices[] = {0, 0,  0, 0, sw, 0, 1, 0, 0,  sh, 0, 1,
-                                0, sh, 0, 1, sw, 0, 1, 0, sw, sh, 1, 1};
-
-          m_transformShader->setUniformValue("MVP", orthoView);
-          m_transformShader->enableAttributeArray(0);
-          m_transformShader->enableAttributeArray(1);
-          m_transformShader->setAttributeArray(0, GL_FLOAT, vertices, 2,
-                                               4 * sizeof(GLfloat));
-          m_transformShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2,
-                                               4 * sizeof(GLfloat));
-
-          f->glDrawArrays(GL_TRIANGLES, 0, 6);
-
-          m_transformShader->disableAttributeArray(0);
-          m_transformShader->disableAttributeArray(1);
-          m_transformShader->release();
-        } else {
-          // Fallback if shader is not ready
-          painter->endNativePainting();
-          QRectF targetRect(
-              m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
-              m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
-          painter->drawImage(targetRect, m_compFBOA->toImage());
-          painter->beginNativePainting();
+        // Initialize full cache if size changed or first run
+        bool needsFullRedraw = m_cachedCanvasImage.isNull() ||
+                               m_cachedCanvasImage.width() != cw ||
+                               m_cachedCanvasImage.height() != ch;
+        if (needsFullRedraw) {
+          m_cachedCanvasImage =
+              QImage(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+          m_cachedCanvasImage.fill(Qt::transparent);
         }
-        painter->endNativePainting();
+
+        // Compute union of all dirty rects across dirty layers
+        QRect dirtyUnion;
+        for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+          Layer *layer = m_layerManager->getLayer(i);
+          if (!layer)
+            continue;
+          if (layer->dirty ||
+              (layer->buffer && layer->buffer->hasDirtyTiles())) {
+            QRect lr = layer->dirtyRect.isValid() ? layer->dirtyRect
+                                                  : QRect(0, 0, cw, ch);
+            dirtyUnion = dirtyUnion.isNull() ? lr : dirtyUnion.united(lr);
+          }
+        }
+        if (needsFullRedraw)
+          dirtyUnion = QRect(0, 0, cw, ch);
+
+        if (!dirtyUnion.isNull()) {
+          // Clip to canvas bounds
+          dirtyUnion = dirtyUnion.intersected(QRect(0, 0, cw, ch));
+
+          QPainter cpuPainter(&m_cachedCanvasImage);
+          cpuPainter.setRenderHint(QPainter::Antialiasing, false);
+          cpuPainter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+
+          // Clear only the dirty region to transparent
+          cpuPainter.setCompositionMode(QPainter::CompositionMode_Source);
+          cpuPainter.fillRect(dirtyUnion, Qt::transparent);
+
+          // Re-composite all visible layers over the dirty region only
+          cpuPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+          for (int i = 0; i < m_layerManager->getLayerCount();) {
+            Layer *baseLayer = m_layerManager->getLayer(i);
+
+            // Advance if base layer is clipped but has no base (invalid state)
+            if (!baseLayer || baseLayer->clipped) {
+              if (baseLayer) {
+                baseLayer->dirty = false;
+                baseLayer->dirtyRect = QRect();
+                if (baseLayer->buffer)
+                  baseLayer->buffer->clearDirtyFlags();
+              }
+              i++;
+              continue;
+            }
+
+            // Normal Base Layer
+            int nextIdx = i + 1;
+            bool hasClippingGroup = false;
+            while (nextIdx < m_layerManager->getLayerCount()) {
+              Layer *cl = m_layerManager->getLayer(nextIdx);
+              if (cl && cl->clipped) {
+                hasClippingGroup = true;
+                nextIdx++;
+              } else {
+                break;
+              }
+            }
+
+            // Draw base layer normally if visible
+            if (baseLayer->visible && baseLayer->buffer &&
+                baseLayer->buffer->data()) {
+              QImage baseImg(baseLayer->buffer->data(), cw, ch,
+                             QImage::Format_RGBA8888_Premultiplied);
+              cpuPainter.setOpacity(baseLayer->opacity);
+              cpuPainter.drawImage(dirtyUnion.topLeft(), baseImg, dirtyUnion);
+            }
+
+            baseLayer->dirty = false;
+            baseLayer->dirtyRect = QRect();
+            if (baseLayer->buffer)
+              baseLayer->buffer->clearDirtyFlags();
+
+            // Process clipping group if exists
+            if (hasClippingGroup) {
+              if (baseLayer->visible && baseLayer->buffer &&
+                  baseLayer->buffer->data()) {
+                QImage baseImg(baseLayer->buffer->data(), cw, ch,
+                               QImage::Format_RGBA8888_Premultiplied);
+
+                QImage groupImg(dirtyUnion.size(),
+                                QImage::Format_RGBA8888_Premultiplied);
+                groupImg.fill(Qt::transparent);
+                QPainter groupPainter(&groupImg);
+                groupPainter.setRenderHint(QPainter::SmoothPixmapTransform,
+                                           false);
+                groupPainter.setRenderHint(QPainter::Antialiasing, false);
+
+                for (int k = i + 1; k < nextIdx; ++k) {
+                  Layer *cLayer = m_layerManager->getLayer(k);
+                  if (cLayer && cLayer->visible && cLayer->buffer &&
+                      cLayer->buffer->data()) {
+                    QImage cImg(cLayer->buffer->data(), cw, ch,
+                                QImage::Format_RGBA8888_Premultiplied);
+                    groupPainter.setOpacity(cLayer->opacity);
+                    groupPainter.drawImage(QPoint(0, 0), cImg, dirtyUnion);
+                  }
+                  if (cLayer) {
+                    cLayer->dirty = false;
+                    cLayer->dirtyRect = QRect();
+                    if (cLayer->buffer)
+                      cLayer->buffer->clearDirtyFlags();
+                  }
+                }
+
+                // Mask the group with the base layer's alpha and opacity
+                groupPainter.setCompositionMode(
+                    QPainter::CompositionMode_DestinationIn);
+                groupPainter.setOpacity(baseLayer->opacity);
+                groupPainter.drawImage(QPoint(0, 0), baseImg, dirtyUnion);
+                groupPainter.end();
+
+                // Draw the clipped group over the canvas
+                cpuPainter.setOpacity(1.0f);
+                cpuPainter.drawImage(dirtyUnion.topLeft(), groupImg);
+              } else {
+                // Base layer invisible, just clear dirty flags for clipped
+                // layers
+                for (int k = i + 1; k < nextIdx; ++k) {
+                  Layer *cLayer = m_layerManager->getLayer(k);
+                  if (cLayer) {
+                    cLayer->dirty = false;
+                    cLayer->dirtyRect = QRect();
+                    if (cLayer->buffer)
+                      cLayer->buffer->clearDirtyFlags();
+                  }
+                }
+              }
+            }
+
+            i = nextIdx;
+          }
+          cpuPainter.end();
+        }
+
+        QRectF targetRect(m_viewOffset.x() * m_zoomLevel,
+                          m_viewOffset.y() * m_zoomLevel, cw * m_zoomLevel,
+                          ch * m_zoomLevel);
+        painter->setRenderHint(QPainter::SmoothPixmapTransform,
+                               m_zoomLevel < 1.0f);
+        painter->drawImage(targetRect, m_cachedCanvasImage);
       }
     }
 
@@ -1027,6 +1213,56 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   if (!layer || !layer->visible || layer->locked)
     return;
 
+  // --- STABILIZATION: Lazy Buffer (Procreate / CSP style) ---
+  // strength 0.0 = off, 1.0 = maximum lag (25 buffered positions)
+  QPointF targetPos = pos;
+  float effectivePressure = pressure;
+
+  if (m_isDrawing) {
+    float strength = std::clamp(m_brushStabilization, 0.0f, 1.0f);
+
+    if (strength > 0.01f) {
+      // ── Step 1: Push new raw position into the queue ──────────────────────
+      m_stabPosQueue.push_back(pos);
+      m_stabPresQueue.push_back(pressure);
+
+      // ── Step 2: Keep queue size proportional to strength ─────────────────
+      // Max queue depth = 30 samples (~500ms at 60fps).
+      // At strength=0.2 we hold ~6 samples; at 1.0 we hold 30.
+      int maxDepth = std::max(1, static_cast<int>(strength * 30.0f));
+
+      // Trim excess from the front
+      while (static_cast<int>(m_stabPosQueue.size()) > maxDepth) {
+        m_stabPosQueue.pop_front();
+        m_stabPresQueue.pop_front();
+      }
+
+      // ── Step 3: Draw position = FRONT of the queue (the oldest point) ─────
+      // This gives a clean lag: the actual stroke trails behind the finger.
+      targetPos = m_stabPosQueue.front();
+      effectivePressure = m_stabPresQueue.front();
+
+      // ── Step 4: Optional micro-smoothing on top (removes high-freq jitter) ─
+      // Average the front third of the queue for a silky finish.
+      int avgCount = std::max(1, static_cast<int>(m_stabPosQueue.size() / 3));
+      QPointF avgPos = targetPos;
+      float avgPres = effectivePressure;
+      for (int i = 1; i < avgCount; ++i) {
+        avgPos += m_stabPosQueue[i];
+        avgPres += m_stabPresQueue[i];
+      }
+      targetPos = avgPos / static_cast<float>(avgCount);
+      effectivePressure = avgPres / static_cast<float>(avgCount);
+
+    } else {
+      // No stabilization: flush the queue and use raw position
+      m_stabPosQueue.clear();
+      m_stabPresQueue.clear();
+      m_stabilizedPos = pos;
+      effectivePressure = pressure;
+    }
+  }
+
   // DETECT LAYER SWITCH
   if (m_lastActiveLayerIndex != m_activeLayerIndex) {
     if (m_pingFBO) {
@@ -1042,7 +1278,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
   // Convertir posición de pantalla a canvas
   // Aplicar transformación inversa: (Screen - Offset*Zoom) / Zoom
-  QPointF canvasPos = (pos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+  QPointF canvasPos = (targetPos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
 
   // FIX: Coordinate synchronization for flipped canvas
   if (m_isFlippedH) {
@@ -1088,7 +1324,6 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     settings.tipTextureID = 0;
   }
 
-  float effectivePressure = pressure;
   float velocityFactor = 0.0f;
 
   // === PER-PRESET DYNAMICS EVALUATION ===
@@ -1112,7 +1347,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   if (activePreset &&
       !(m_isEraser || isTransparentColor || m_tool == ToolType::Eraser)) {
     // Evaluate pressure through the preset's response curve LUT
-    float rawPressure = std::clamp(pressure, 0.0f, 1.0f);
+    float rawPressure = std::clamp(effectivePressure, 0.0f, 1.0f);
 
     // SIZE dynamics: evaluate curve and apply range
     float sizeT = activePreset->sizeDynamics.evaluate(rawPressure);
@@ -1665,6 +1900,8 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
     m_isDrawing = true;
     m_lastPos = canvasPos;
+    m_stabPosQueue.clear(); // Reset stabilizer buffer for new stroke
+    m_stabPresQueue.clear();
 
     // Reset history for prediction
     m_historyPos.clear();
@@ -1989,6 +2226,9 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     }
 
     m_isDrawing = true;
+    m_stabilizedPos = event->position();
+    m_stabPosQueue.clear(); // Reset stabilizer buffer for new stroke
+    m_stabPresQueue.clear();
     QPointF p = event->position();
     QPointF canvasPos = (p - m_viewOffset * m_zoomLevel) / m_zoomLevel;
     m_lastPos = canvasPos;
@@ -2594,7 +2834,7 @@ void CanvasItem::setCurrentTool(const QString &tool) {
 
   invalidateCursorCache();
   emit currentToolChanged();
-  emit notificationRequested("Tool: " + tool, "info");
+  // emit notificationRequested("Tool: " + tool, "info");
   qInfo() << "SetCurrentTool:" << tool
           << "ModeActive:" << m_isSelectionModeActive;
 
@@ -4052,65 +4292,10 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
   return success;
 }
 
-#include "core/abr_importer.h"
-
 bool CanvasItem::importABR(const QString &path) {
-  if (m_isImporting)
-    return false;
-
-  QString localPath = path;
-  if (localPath.startsWith("file://")) {
-    localPath = QUrl(localPath).toLocalFile();
-  }
-
-  qDebug() << "[CanvasItem] Importing ABR (Async):" << localPath;
-
-  // AppData for textures
-  QString texturesDir =
-      QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
-      "/imported_brushes";
-  QDir().mkpath(texturesDir);
-
-  m_isImporting = true;
-  m_importProgress = 0.0f;
-  emit isImportingChanged();
-  emit importProgressChanged();
-
-  auto *watcher = new QFutureWatcher<bool>(this);
-  connect(watcher, &QFutureWatcher<bool>::finished, this, [this, watcher]() {
-    m_isImporting = false;
-    m_importProgress = 1.0f;
-    bool success = watcher->result();
-    emit isImportingChanged();
-    emit importProgressChanged();
-
-    if (success) {
-      emit availableBrushesChanged();
-      emit brushCategoriesChanged();
-      emit notificationRequested("Pinceles importados correctamente",
-                                 "success");
-    } else {
-      emit notificationRequested("Error al importar pinceles ABR", "error");
-    }
-    watcher->deleteLater();
-  });
-
-  QFuture<bool> future = QtConcurrent::run([this, localPath, texturesDir]() {
-    return artflow::AbrImporter::importFile(
-        localPath, texturesDir, [this](int current, int total) {
-          float p = (float)current / (float)total;
-          QMetaObject::invokeMethod(
-              this,
-              [this, p]() {
-                m_importProgress = p;
-                emit importProgressChanged();
-              },
-              Qt::QueuedConnection);
-        });
-  });
-
-  watcher->setFuture(future);
-  return true;
+  emit notificationRequested(
+      "La importación de ABR está deshabilitada temporalmente.", "error");
+  return false;
 }
 
 void CanvasItem::updateTransformProperties(float x, float y, float scale,
@@ -4219,23 +4404,57 @@ void CanvasItem::updateLayersList() {
 
     // Add thumbnail for ALL layers
     if (l->buffer && l->buffer->width() > 0 && l->buffer->height() > 0) {
-      // OPTIMIZATION: Only generate if needed. For now, we only
-      // regenerate the active layer to keep UI responsive.
-      int tw = 60, th = 40;
-      // Use QImage wrapper around existing buffer (no copy yet)
-      QImage full(l->buffer->data(), l->buffer->width(), l->buffer->height(),
-                  QImage::Format_RGBA8888_Premultiplied);
+      QString b64;
+      bool needsUpdate = true;
 
-      // Scale down (Fast for responsiveness)
-      QImage thumb =
-          full.scaled(tw, th, Qt::KeepAspectRatio, Qt::FastTransformation);
+      // OPTIMIZATION: Only regenerate the active layer to keep UI responsive.
+      // We look up the previous thumbnail in m_layerModel using the layer name.
+      if (i != m_activeLayerIndex && !m_layerModel.isEmpty()) {
+        for (const QVariant &v : m_layerModel) {
+          QVariantMap oldLayer = v.toMap();
+          if (oldLayer["name"].toString() == QString::fromStdString(l->name)) {
+            QString oldThumb = oldLayer["thumbnail"].toString();
+            if (oldThumb.startsWith("data:image/png;base64,")) {
+              b64 = oldThumb;
+              needsUpdate = false;
+            }
+            break;
+          }
+        }
+      }
 
-      QByteArray ba;
-      QBuffer buffer(&ba);
-      buffer.open(QIODevice::WriteOnly);
-      thumb.save(&buffer, "PNG");
-      QString b64 = QString::fromLatin1(ba.toBase64());
-      layer["thumbnail"] = "data:image/png;base64," + b64;
+      if (needsUpdate) {
+        int tw = 60, th = 40;
+        if (l->buffer->width() > 0 && l->buffer->height() > 0) {
+          QImage thumb(tw, th, QImage::Format_RGBA8888_Premultiplied);
+          int dx = std::max(1, l->buffer->width() / tw);
+          int dy = std::max(1, l->buffer->height() / th);
+          const uint32_t *src =
+              reinterpret_cast<const uint32_t *>(l->buffer->data());
+          uint32_t *dst = reinterpret_cast<uint32_t *>(thumb.bits());
+
+          for (int y = 0; y < th; ++y) {
+            int sy = dy * y;
+            if (sy >= l->buffer->height())
+              sy = l->buffer->height() - 1;
+            int rowOffset = sy * l->buffer->width();
+            for (int x = 0; x < tw; ++x) {
+              int sx = dx * x;
+              if (sx >= l->buffer->width())
+                sx = l->buffer->width() - 1;
+              dst[y * tw + x] = src[rowOffset + sx];
+            }
+          }
+
+          QByteArray ba;
+          QBuffer buffer(&ba);
+          buffer.open(QIODevice::WriteOnly);
+          thumb.save(&buffer, "PNG");
+          b64 = "data:image/png;base64," + QString::fromLatin1(ba.toBase64());
+        }
+      }
+
+      layer["thumbnail"] = b64;
     } else {
       layer["thumbnail"] = "";
     }
@@ -4497,10 +4716,12 @@ void CanvasItem::flattenComicPanels(const QVariantList &panelsList) {
     painter.fillPath(path, Qt::white);
 
     // Draw Border
-    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-    QPen pen(Qt::black, bw, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
-    painter.setPen(pen);
-    painter.drawPath(path);
+    if (bw > 0.01f) {
+      painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+      QPen pen(Qt::black, bw, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
+      painter.setPen(pen);
+      painter.drawPath(path);
+    }
     painter.end();
 
     pLayer->buffer->loadRawData(pImg.constBits());
@@ -4838,7 +5059,8 @@ void CanvasItem::syncGpuToCpu() {
 
   if (img.width() == m_canvasWidth && img.height() == m_canvasHeight) {
     layer->buffer->loadRawData(img.constBits());
-    layer->dirty = true;
+    // Mark the entire layer dirty so the compositor refreshes it
+    layer->markDirty(QRect(0, 0, m_canvasWidth, m_canvasHeight));
   }
 }
 
@@ -5752,21 +5974,30 @@ void CanvasItem::capture_timelapse_frame() {
   if (!m_layerManager)
     return;
 
-  static int frameCount = 0;
-  QString path =
-      QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) +
-      "/ArtFlow/Timelapse";
-  QDir().mkpath(path);
+  // Temporarily disable as it requires a synchronous
+  // m_layerManager->compositeAll which takes seconds on large inputs, freezing
+  // the application on stroke finish.
+  return;
 
-  QString fileName =
-      QString("%1/frame_%2.jpg").arg(path).arg(frameCount++, 6, 10, QChar('0'));
+  // Realizar la composición en el hilo principal antes de pasarlo a un hilo
+  auto composite = std::make_shared<ImageBuffer>(m_canvasWidth, m_canvasHeight);
+  m_layerManager->compositeAll(*composite, true); // skipPrivate = true
 
-  ImageBuffer composite(m_canvasWidth, m_canvasHeight);
-  m_layerManager->compositeAll(composite, true); // skipPrivate = true
+  // Guardar a disco de forma asíncrona para no congelar la UI
+  QtConcurrent::run([composite, cw = m_canvasWidth, ch = m_canvasHeight]() {
+    static int frameCount = 0;
+    QString path =
+        QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) +
+        "/ArtFlow/Timelapse";
+    QDir().mkpath(path);
 
-  QImage img(composite.data(), m_canvasWidth, m_canvasHeight,
-             QImage::Format_RGBA8888);
-  img.save(fileName, "JPG", 85);
+    QString fileName = QString("%1/frame_%2.jpg")
+                           .arg(path)
+                           .arg(frameCount++, 6, 10, QChar('0'));
+
+    QImage img(composite->data(), cw, ch, QImage::Format_RGBA8888);
+    img.save(fileName, "JPG", 85);
+  });
 }
 
 void CanvasItem::undo() {

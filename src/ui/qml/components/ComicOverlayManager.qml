@@ -12,11 +12,33 @@ Item {
     property var targetCanvas: null
     property color accentColor: "#6366f1"
     
+    // Manga Guidelines
+    property bool showMangaGuides: true
+    property real mangaSafeMargin: 70
+    property real mangaTrimMargin: 35
+    
     // Data models
     property var panelItems: []    // [{id, x, y, w, h, rotation}]
     property var bubbleItems: []   // [{id, x, y, w, h, type, text, tailAngle}]
     property var shapeItems: []    // [{id, x, y, w, h, type, strokeColor, strokeWidth, fillColor, rotation}]
     property int nextId: 1
+    
+    // Throttle timer for zoom/pan redraws
+    property real _zoom: targetCanvas ? targetCanvas.zoomLevel : 1.0
+    property real _offX: targetCanvas ? targetCanvas.viewOffset.x * _zoom : 0
+    property real _offY: targetCanvas ? targetCanvas.viewOffset.y * _zoom : 0
+    
+    // Unified panel redraw request (batched)
+    function requestPanelRedraw() {
+        panelRedrawTimer.restart()
+    }
+    
+    Timer {
+        id: panelRedrawTimer
+        interval: 16  // ~60fps max
+        repeat: false
+        onTriggered: unifiedPanelCanvas.requestPaint()
+    }
     
     // Selection state
     property int selectedPanelId: -1
@@ -215,6 +237,35 @@ Item {
         }
     }
     
+    function setSelectedBorderWidth(val) {
+        if (selectedPanelId >= 0) {
+            for (var i = 0; i < panelItems.length; i++) {
+                if (panelItems[i].id === selectedPanelId) {
+                    panelItems[i].borderWidth = val;
+                    break;
+                }
+            }
+            panelItems = panelItems.slice();
+            panelsChanged();
+        }
+        if (selectedShapeId >= 0) {
+            for (var j = 0; j < shapeItems.length; j++) {
+                if (shapeItems[j].id === selectedShapeId) {
+                    shapeItems[j].strokeWidth = val;
+                    break;
+                }
+            }
+            shapeItems = shapeItems.slice();
+            shapesChanged();
+        }
+    }
+    
+    function setSelectedOpacity(val) {
+        // Opacity can be handled by flattening or individual item property
+        // For now let's just log or set a property if we add it to models
+        console.log("[ComicOverlay] Opacity update requested:", val);
+    }
+    
     function flattenToLayer() {
         if (!targetCanvas) return
         if (panelItems.length === 0 && bubbleItems.length === 0 && shapeItems.length === 0) return
@@ -233,6 +284,109 @@ Item {
         enabled: root.hasSelection && !root.shapeDrawingActive
         z: -1
         onClicked: root.deselectAll()
+    }
+    
+    // ═══════════════ UNIFIED PANEL CANVAS ═══════════════
+    // Single canvas draws ALL panels in one pass — much faster than
+    // N individual Canvas items that each repaint on zoom/pan.
+    Canvas {
+        id: unifiedPanelCanvas
+        anchors.fill: parent
+        z: 10
+        
+        // Repaint when data changes
+        Connections {
+            target: root
+            function onPanelsChanged() { root.requestPanelRedraw() }
+        }
+        // Repaint when zoom/offset changes (throttled)
+        onVisibleChanged: if (visible) requestPaint()
+        
+        // Watch for zoom changes via the root properties
+        property real _z: root._zoom
+        property real _ox: root._offX
+        property real _oy: root._offY
+        on_ZChanged: root.requestPanelRedraw()
+        on_OxChanged: root.requestPanelRedraw()
+        on_OyChanged: root.requestPanelRedraw()
+        
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            var zoom = root._zoom
+            var offX = root._offX
+            var offY = root._offY
+            
+            // Draw Manga Guides (below panels)
+            if (root.showMangaGuides && root.targetCanvas) {
+                var cw = root.targetCanvas.canvasWidth * zoom
+                var ch = root.targetCanvas.canvasHeight * zoom
+                var safeM = root.mangaSafeMargin * zoom
+                var trimM = root.mangaTrimMargin * zoom
+                
+                ctx.lineWidth = 1 * zoom
+                if (ctx.lineWidth < 1) ctx.lineWidth = 1
+                
+                // Safe Area (Inner - Blue)
+                ctx.strokeStyle = "rgba(0, 150, 255, 0.4)"
+                ctx.strokeRect(offX + safeM, offY + safeM, cw - safeM*2, ch - safeM*2)
+                
+                // Trim Area / Crop Marks (Outer - Red)
+                ctx.strokeStyle = "rgba(255, 0, 0, 0.4)"
+                ctx.beginPath()
+                
+                var cmLen = 20 * zoom
+                // Top-left
+                ctx.moveTo(offX + trimM, offY + trimM - cmLen)
+                ctx.lineTo(offX + trimM, offY + trimM)
+                ctx.lineTo(offX + trimM - cmLen, offY + trimM)
+                
+                // Top-right
+                ctx.moveTo(offX + cw - trimM, offY + trimM - cmLen)
+                ctx.lineTo(offX + cw - trimM, offY + trimM)
+                ctx.lineTo(offX + cw - trimM + cmLen, offY + trimM)
+                
+                // Bottom-left
+                ctx.moveTo(offX + trimM, offY + ch - trimM + cmLen)
+                ctx.lineTo(offX + trimM, offY + ch - trimM)
+                ctx.lineTo(offX + trimM - cmLen, offY + ch - trimM)
+                
+                // Bottom-right
+                ctx.moveTo(offX + cw - trimM, offY + ch - trimM + cmLen)
+                ctx.lineTo(offX + cw - trimM, offY + ch - trimM)
+                ctx.lineTo(offX + cw - trimM + cmLen, offY + ch - trimM)
+                
+                ctx.stroke()
+            }
+            
+            var items = root.panelItems
+            for (var i = 0; i < items.length; i++) {
+                var pd = items[i]
+                var sel = (pd.id === root.selectedPanelId)
+                var bw = (pd.borderWidth || 6) * zoom
+                ctx.strokeStyle = sel ? root.accentColor.toString() : "#000000"
+                ctx.lineWidth = bw
+                ctx.lineJoin = "miter"
+                var p = pd.pts
+                if (p && p.length === 4) {
+                    ctx.beginPath()
+                    ctx.moveTo(offX + (pd.x + p[0].x) * zoom, offY + (pd.y + p[0].y) * zoom)
+                    ctx.lineTo(offX + (pd.x + p[1].x) * zoom, offY + (pd.y + p[1].y) * zoom)
+                    ctx.lineTo(offX + (pd.x + p[2].x) * zoom, offY + (pd.y + p[2].y) * zoom)
+                    ctx.lineTo(offX + (pd.x + p[3].x) * zoom, offY + (pd.y + p[3].y) * zoom)
+                    ctx.closePath()
+                } else {
+                    ctx.beginPath()
+                    ctx.rect(offX + pd.x * zoom + bw/2, offY + pd.y * zoom + bw/2,
+                             pd.w * zoom - bw, pd.h * zoom - bw)
+                }
+                if (sel) {
+                    ctx.fillStyle = Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.06).toString()
+                    ctx.fill()
+                }
+                ctx.stroke()
+            }
+        }
     }
     
     // ═══════════════ SHAPE DRAWING OVERLAY ═══════════════
@@ -437,51 +591,9 @@ Item {
             rotation: panelData.rotation || 0
             z: isSelected ? 50 : 10
             
-            // Panel border drawn by polygon
-            Canvas {
-                id: panelCanvas
-                anchors.fill: parent
-                // Exceed bounds slightly to draw thick borders correctly if nodes are moved outward
-                anchors.margins: -40 * zoom
-                
-                property var pts: panelData.pts || [{x:0,y:0}, {x:panelData.w,y:0}, {x:panelData.w,y:panelData.h}, {x:0,y:panelData.h}]
-                property bool sel: isSelected
-                property real bw: (panelData.borderWidth || 6) * zoom
-                
-                onPtsChanged: requestPaint()
-                onSelChanged: requestPaint()
-                onWidthChanged: requestPaint()
-                onHeightChanged: requestPaint()
-                
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.clearRect(0,0,width,height)
-                    ctx.strokeStyle = sel ? accentColor.toString() : "#000000"
-                    ctx.lineWidth = bw
-                    ctx.lineJoin = "miter"
-                    
-                    var off = 40 * zoom // Because of anchors.margins
-                    
-                    ctx.beginPath()
-                    var p = pts
-                    if (p && p.length === 4) {
-                        ctx.moveTo(p[0].x * zoom + off, p[0].y * zoom + off)
-                        ctx.lineTo(p[1].x * zoom + off, p[1].y * zoom + off)
-                        ctx.lineTo(p[2].x * zoom + off, p[2].y * zoom + off)
-                        ctx.lineTo(p[3].x * zoom + off, p[3].y * zoom + off)
-                        ctx.closePath()
-                    } else {
-                        var inset = bw/2 + off
-                        ctx.rect(inset, inset, panelData.w*zoom - bw, panelData.h*zoom - bw)
-                    }
-                    
-                    if (sel) {
-                        ctx.fillStyle = Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.06).toString()
-                        ctx.fill()
-                    }
-                    ctx.stroke()
-                }
-            }
+            // Panel border is now drawn by unifiedPanelCanvas above (single pass, much faster)
+            // Keep an invisible Item for hit-testing the panel area
+
             
             // Click to select
             MouseArea {
@@ -559,18 +671,37 @@ Item {
                             var dx = (p.x - startMx) / zoom
                             var dy = (p.y - startMy) / zoom
                             
-                            // Edit the specific point
+                            var nx = origX + dx
+                            var ny = origY + dy
+
+                            // Edit the points to maintain a rectangle for "scaling"
                             var newPts = []
                             for(var i=0; i<4; i++) {
-                                if (i === modelData) {
-                                    newPts.push({x: origX + dx, y: origY + dy})
-                                } else {
-                                    newPts.push({x: pData[i].x, y: pData[i].y})
-                                }
+                                newPts.push({x: pData[i].x, y: pData[i].y})
                             }
+                            
+                            // Apply movement to the dragged point
+                            newPts[modelData].x = nx
+                            newPts[modelData].y = ny
+                            
+                            // Constraints to keep it rectangular (Standard scaling behavior)
+                            if (modelData === 0) { // TL
+                                newPts[1].y = ny; newPts[3].x = nx
+                            } else if (modelData === 1) { // TR
+                                newPts[0].y = ny; newPts[2].x = nx
+                            } else if (modelData === 2) { // BR
+                                newPts[3].y = ny; newPts[1].x = nx
+                            } else if (modelData === 3) { // BL
+                                newPts[2].y = ny; newPts[0].x = nx
+                            }
+                            
                             panelData.pts = newPts
+                            // Also update W and H for consistency if needed
+                            panelData.w = Math.abs(newPts[1].x - newPts[0].x)
+                            panelData.h = Math.abs(newPts[3].y - newPts[0].y)
+                            
                             root.panelItems = root.panelItems.slice()
-                            panelCanvas.requestPaint()
+                            root.requestPanelRedraw()
                         }
                     }
                 }

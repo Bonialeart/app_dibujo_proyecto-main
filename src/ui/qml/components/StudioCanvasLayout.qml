@@ -11,6 +11,7 @@ Item {
     property var mainCanvas: null
     property var canvasPage: null
     property var toolsModel: null
+    property var subToolBar: null
     property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
     property bool isProjectActive: false
     property bool isZenMode: false
@@ -490,13 +491,47 @@ Item {
                     MouseArea {
                         id: hoverMa
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (canvasPage) {
-                                canvasPage.activeToolIdx = index
-                                canvasPage.activeSubToolIdx = 0
-                                if(mainCanvas) mainCanvas.currentTool = model.name
+                        
+                        Timer {
+                            id: longPressTimer
+                            interval: 500
+                            onTriggered: {
+                                if (canvasPage) {
+                                    canvasPage.activeToolIdx = index
+                                    canvasPage.showSubTools = true
+                                    // Position subtool bar next to this button
+                                    if (typeof subToolBar !== "undefined") {
+                                        subToolBar.yLevel = parent.mapToItem(canvasPage, 0, 0).y
+                                        subToolBar.isFromStudio = true
+                                        subToolBar.studioToolX = toolsToolbar.x
+                                    }
+                                }
                             }
                         }
+
+                        onPressed: longPressTimer.start()
+                        onReleased: {
+                            if (longPressTimer.running) {
+                                longPressTimer.stop()
+                                if (canvasPage) {
+                                    if (canvasPage.activeToolIdx === index) {
+                                        // If already active, toggle subtools or settings
+                                        canvasPage.showSubTools = !canvasPage.showSubTools
+                                        if (canvasPage.showSubTools && typeof subToolBar !== "undefined") {
+                                            subToolBar.yLevel = parent.mapToItem(canvasPage, 0, 0).y
+                                            subToolBar.isFromStudio = true
+                                            subToolBar.studioToolX = toolsToolbar.x
+                                        }
+                                    } else {
+                                        canvasPage.activeToolIdx = index
+                                        canvasPage.activeSubToolIdx = 0
+                                        if(mainCanvas) mainCanvas.currentTool = model.name
+                                        canvasPage.showSubTools = false
+                                    }
+                                }
+                            }
+                        }
+                        onCanceled: longPressTimer.stop()
                     }
                 }
             }

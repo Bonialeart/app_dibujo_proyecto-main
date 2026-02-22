@@ -20,6 +20,13 @@ Window {
     width: 1440; height: 900
     title: "ArtFlow Studio Pro"
     color: "#050507"
+    property alias comicOverlayManager: comicOverlay
+    
+    function openPanelSettings(layoutType, label) {
+        panelSettingsPopup.layoutType = layoutType
+        panelSettingsPopup.layoutLabel = label || ("Panel: " + layoutType)
+        panelSettingsPopup.open()
+    }
     
     // 💾 PERSIST WINDOW STATE
     Settings {
@@ -1176,15 +1183,14 @@ Window {
                     id: comicOverlay
                     anchors.fill: parent
                     targetCanvas: mainCanvas
-                    accentColor: colorAccent
-                    visible: isProjectActive && !isStudioMode
+                    visible: isProjectActive
                     z: 80
                 }
                 
                 // ── Comic Overlay Floating Toolbar ──
                 Rectangle {
                     id: comicFloatingBar
-                    visible: comicOverlay.visible && (comicOverlay.panelItems.length > 0 || comicOverlay.bubbleItems.length > 0)
+                    visible: comicOverlay.visible && (comicOverlay.panelItems.length > 0 || comicOverlay.bubbleItems.length > 0 || mainCanvas.currentTool.startsWith("panel_"))
                     anchors.top: parent.top; anchors.topMargin: 10
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: comicBarRow.width + 24
@@ -1214,6 +1220,25 @@ Window {
                         }
                         
                         Rectangle { width: 1; height: 24; color: "#333"; anchors.verticalCenter: parent.verticalCenter }
+                        
+                        // Manga Guides Toggle
+                        Rectangle {
+                            width: guidesText.width + 24; height: 28; radius: 14
+                            color: guidesMa.containsMouse ? (comicOverlay.showMangaGuides ? colorAccent : "#333") : (comicOverlay.showMangaGuides ? Qt.darker(colorAccent, 1.2) : "transparent")
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            Text {
+                                id: guidesText
+                                text: comicOverlay.showMangaGuides ? "▣ Guides On" : "□ Guides Off"
+                                color: comicOverlay.showMangaGuides ? "white" : "#aaa"; font.pixelSize: 11; font.weight: Font.Medium
+                                anchors.centerIn: parent
+                            }
+                            MouseArea {
+                                id: guidesMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: comicOverlay.showMangaGuides = !comicOverlay.showMangaGuides
+                            }
+                            ToolTip.visible: guidesMa.containsMouse; ToolTip.text: "Toggle Manga Crop Marks & Guidelines"; ToolTip.delay: 500
+                        }
                         
                         // Flatten to Layer
                         Rectangle {
@@ -1887,7 +1912,10 @@ Window {
                 Rectangle {
                     id: subToolBar
                     property real yLevel: 0
-                    x: sideToolbar.x - width - 15
+                    property bool isFromStudio: false
+                    property real studioToolX: 0
+                    
+                    x: isFromStudio ? studioToolX + 50 : (sideToolbar.x - width - 15)
                     y: Math.max(10, Math.min(yLevel - 4, canvasPage.height - height - 10))
                     width: subToolRow.implicitWidth + 24
                     height: 48
@@ -1895,8 +1923,8 @@ Window {
                     color: "#f21c1c1e" // OLED Dark
                     border.color: Qt.rgba(1, 1, 1, 0.15)
                     border.width: 1
-                    visible: isProjectActive && canvasPage.showSubTools && toolsModel.get(canvasPage.activeToolIdx).subTools.count > 0 && !isStudioMode
-                    z: 600
+                    visible: isProjectActive && canvasPage.showSubTools && toolsModel.get(canvasPage.activeToolIdx).subTools.count > 0
+                    z: 6000
                     
                     // Glassmorphism shadow
                     layer.enabled: true
@@ -2013,6 +2041,7 @@ Window {
                     mainCanvas: mainCanvas
                     canvasPage: canvasPage
                     toolsModel: toolsModel
+                    subToolBar: subToolBar
                     accentColor: colorAccent
                     isProjectActive: mainWindow.isProjectActive
                     isZenMode: mainWindow.isZenMode
@@ -6049,6 +6078,8 @@ Window {
         property real value: 0.5
         property string previewType: "size"
         property bool previewOnBottom: true
+        property string valueText: Math.round(hSliderRoot.value * 100) + "%"
+        property bool showValueInLabel: true
         
         // Track Background ("Empty" Capsule)
         Rectangle {
@@ -6137,13 +6168,14 @@ Window {
                 spacing: 8
                 
                 Text {
-                    text: hSliderRoot.label + " " + Math.round(hSliderRoot.value * 100) + "%"
+                    text: hSliderRoot.label + (hSliderRoot.showValueInLabel ? " " + hSliderRoot.valueText : "")
                     color: "white"
                     font.pixelSize: 13; font.weight: Font.DemiBold
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
                 
                 Rectangle {
+                    visible: hSliderRoot.previewType !== "none"
                     width: 100; height: 100; radius: 8; color: "#1a1a1c"; clip: true
                     anchors.horizontalCenter: parent.horizontalCenter
                     
@@ -6379,8 +6411,10 @@ Window {
         property string layoutType: "single"
         property string layoutLabel: "Panel: Full"
         property int gutterValue: 30
+        property bool drawBorder: true
         property int borderValue: 6
         property int marginValue: 60
+        property string borderStyle: "solid"
         
         enter: Transition {
             NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
@@ -6483,18 +6517,41 @@ Window {
                         var h = height
                         ctx.clearRect(0, 0, w, h)
                         
-                        // Background (paper)
-                        ctx.fillStyle = "#f5f5f0"
+                        // Studio desk background
+                        ctx.fillStyle = "#111114"
                         ctx.fillRect(0, 0, w, h)
                         
-                        // Scale factors (preview is smaller than real canvas)
-                        var scale = Math.min(w, h) / 800.0
+                        var cw_real = (typeof mainCanvas !== "undefined" && mainCanvas) ? mainCanvas.canvasWidth : 800
+                        var ch_real = (typeof mainCanvas !== "undefined" && mainCanvas) ? mainCanvas.canvasHeight : 1200
+                        
+                        // Fit paper in preview box (with a little padding)
+                        var scaleX = (w - 20) / cw_real
+                        var scaleY = (h - 20) / ch_real
+                        var scale = Math.min(scaleX, scaleY)
+                        
+                        var paperW = cw_real * scale
+                        var paperH = ch_real * scale
+                        var paperX = (w - paperW) / 2
+                        var paperY = (h - paperH) / 2
+                        
+                        // Draw paper
+                        ctx.fillStyle = "#f5f5f0"
+                        ctx.fillRect(paperX, paperY, paperW, paperH)
+                        
+                        // Outline paper nicely
+                        ctx.strokeStyle = "#444"
+                        ctx.lineWidth = 1
+                        ctx.strokeRect(paperX, paperY, paperW, paperH)
+                        
                         var mx = marginVal * scale
                         var my = marginVal * scale
                         var g = gutterVal * scale
                         var bw = Math.max(1, borderVal * scale)
-                        var iw = w - 2 * mx
-                        var ih = h - 2 * my
+                        var iw = paperW - 2 * mx
+                        var ih = paperH - 2 * my
+                        
+                        var cx = paperX + mx
+                        var cy = paperY + my
                         
                         ctx.strokeStyle = "#1a1a1e"
                         ctx.lineWidth = bw
@@ -6503,65 +6560,65 @@ Window {
                         var panels = []
                         
                         if (layoutType === "single") {
-                            panels = [{x: mx, y: my, w: iw, h: ih}]
+                            panels = [{x: cx, y: cy, w: iw, h: ih}]
                         } else if (layoutType === "2col") {
-                            var cw = (iw - g) / 2
+                            var cw2 = (iw - g) / 2
                             panels = [
-                                {x: mx, y: my, w: cw, h: ih},
-                                {x: mx + cw + g, y: my, w: cw, h: ih}
+                                {x: cx, y: cy, w: cw2, h: ih},
+                                {x: cx + cw2 + g, y: cy, w: cw2, h: ih}
                             ]
                         } else if (layoutType === "2row") {
                             var rh = (ih - g) / 2
                             panels = [
-                                {x: mx, y: my, w: iw, h: rh},
-                                {x: mx, y: my + rh + g, w: iw, h: rh}
+                                {x: cx, y: cy, w: iw, h: rh},
+                                {x: cx, y: cy + rh + g, w: iw, h: rh}
                             ]
                         } else if (layoutType === "grid") {
                             var topH = (ih - g) * 0.45
                             var botH = ih - topH - g
                             var c3 = (iw - 2 * g) / 3
-                            var c2 = (iw - g) / 2
+                            var c2r = (iw - g) / 2
                             panels = [
-                                {x: mx, y: my, w: c3, h: topH},
-                                {x: mx + c3 + g, y: my, w: c3, h: topH},
-                                {x: mx + 2 * (c3 + g), y: my, w: c3, h: topH},
-                                {x: mx, y: my + topH + g, w: c2, h: botH},
-                                {x: mx + c2 + g, y: my + topH + g, w: c2, h: botH}
+                                {x: cx, y: cy, w: c3, h: topH},
+                                {x: cx + c3 + g, y: cy, w: c3, h: topH},
+                                {x: cx + 2 * (c3 + g), y: cy, w: c3, h: topH},
+                                {x: cx, y: cy + topH + g, w: c2r, h: botH},
+                                {x: cx + c2r + g, y: cy + topH + g, w: c2r, h: botH}
                             ]
                         } else if (layoutType === "manga") {
                             var th = ih * 0.3
                             var bh = ih - th - g
                             var lw = iw * 0.5
-                            var rw2 = iw - lw - g
+                            var rw = iw - lw - g
                             var rh1 = (bh - g) * 0.55
                             var rh2 = bh - rh1 - g
                             panels = [
-                                {x: mx, y: my, w: iw, h: th},
-                                {x: mx, y: my + th + g, w: lw, h: bh},
-                                {x: mx + lw + g, y: my + th + g, w: rw2, h: rh1},
-                                {x: mx + lw + g, y: my + th + g + rh1 + g, w: rw2, h: rh2}
+                                {x: cx, y: cy, w: iw, h: th},
+                                {x: cx, y: cy + th + g, w: lw, h: bh},
+                                {x: cx + lw + g, y: cy + th + g, w: rw, h: rh1},
+                                {x: cx + lw + g, y: cy + th + g + rh1 + g, w: rw, h: rh2}
                             ]
                         } else if (layoutType === "4panel") {
                             var c1w = iw * 0.45
-                            var c2w = iw - c1w - g
+                            var c2w2 = iw - c1w - g
                             var r1t = ih * 0.35
                             var r1b = ih - r1t - g
                             var r2t = ih * 0.55
                             var r2b = ih - r2t - g
                             panels = [
-                                {x: mx, y: my, w: c1w, h: r1t},
-                                {x: mx + c1w + g, y: my, w: c2w, h: r2t},
-                                {x: mx, y: my + r1t + g, w: c1w, h: r1b},
-                                {x: mx + c1w + g, y: my + r2t + g, w: c2w, h: r2b}
+                                {x: cx, y: cy, w: c1w, h: r1t},
+                                {x: cx + c1w + g, y: cy, w: c2w2, h: r2t},
+                                {x: cx, y: cy + r1t + g, w: c1w, h: r1b},
+                                {x: cx + c1w + g, y: cy + r2t + g, w: c2w2, h: r2b}
                             ]
                         } else if (layoutType === "strip") {
                             var sh1 = ih * 0.38
-                            var sh2 = ih * 0.35
-                            var sh3 = ih - sh1 - sh2 - 2 * g
+                            var sh2v = ih * 0.35
+                            var sh3 = ih - sh1 - sh2v - 2 * g
                             panels = [
-                                {x: mx, y: my, w: iw, h: sh1},
-                                {x: mx, y: my + sh1 + g, w: iw, h: sh2},
-                                {x: mx, y: my + sh1 + sh2 + 2 * g, w: iw, h: sh3}
+                                {x: cx, y: cy, w: iw, h: sh1},
+                                {x: cx, y: cy + sh1 + g, w: iw, h: sh2v},
+                                {x: cx, y: cy + sh1 + sh2v + 2 * g, w: iw, h: sh3}
                             ]
                         }
                         
@@ -6570,7 +6627,9 @@ Window {
                             var p = panels[i]
                             ctx.fillStyle = "#ffffff"
                             ctx.fillRect(p.x, p.y, p.w, p.h)
-                            ctx.strokeRect(p.x, p.y, p.w, p.h)
+                            if (panelSettingsPopup.drawBorder) {
+                                ctx.strokeRect(p.x, p.y, p.w, p.h)
+                            }
                         }
                     }
                 }
@@ -6597,71 +6656,73 @@ Window {
             
             // === GUTTER ===
             Column {
-                Layout.fillWidth: true; spacing: 6
+                Layout.fillWidth: true; spacing: 8
                 
                 RowLayout {
                     width: parent.width
-                    Text { text: "Gutter (spacing)"; color: "#aaa"; font.pixelSize: 12 }
+                    Text { text: "Gutter spacing"; color: "#aaa"; font.pixelSize: 12 }
                     Item { Layout.fillWidth: true }
                     Text { text: panelSettingsPopup.gutterValue + " px"; color: colorAccent; font.pixelSize: 12; font.bold: true }
                 }
                 
-                Slider {
-                    width: parent.width; from: 5; to: 100; stepSize: 1
-                    value: panelSettingsPopup.gutterValue
-                    onValueChanged: panelSettingsPopup.gutterValue = value
-                    
-                    background: Rectangle {
-                        x: parent.leftPadding; y: parent.topPadding + parent.availableHeight / 2 - 3
-                        width: parent.availableWidth; height: 6; radius: 3; color: "#222"
-                        Rectangle {
-                            width: parent.parent.visualPosition * parent.width; height: 6; radius: 3; color: colorAccent
-                        }
-                    }
-                    handle: Rectangle {
-                        x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
-                        y: parent.topPadding + parent.availableHeight / 2 - height / 2
-                        width: 18; height: 18; radius: 9; color: "white"
-                        border.color: colorAccent; border.width: 2
-                    }
+                ProSliderHorizontal {
+                    id: gutterSlider
+                    width: parent.width
+                    label: ""
+                    value: (panelSettingsPopup.gutterValue - 5) / (100 - 5)
+                    valueText: ""
+                    previewType: "none"
+                    onValueChanged: panelSettingsPopup.gutterValue = 5 + value * (100 - 5)
                 }
             }
             
-            // === BORDER WIDTH ===
+            // === BORDER SETTINGS ===
             Column {
-                Layout.fillWidth: true; spacing: 6
+                Layout.fillWidth: true; spacing: 10
                 
                 RowLayout {
                     width: parent.width
+                    CheckBox {
+                        id: drawBorderCheckbox
+                        text: "Draw border"
+                        checked: panelSettingsPopup.drawBorder
+                        onCheckedChanged: panelSettingsPopup.drawBorder = checked
+                        contentItem: Text {
+                            text: drawBorderCheckbox.text
+                            font.pixelSize: 13; color: "white"
+                            verticalAlignment: Text.AlignVCenter
+                            leftPadding: drawBorderCheckbox.indicator.width + 10
+                        }
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+
+                RowLayout {
+                    width: parent.width
+                    opacity: panelSettingsPopup.drawBorder ? 1.0 : 0.4
                     Text { text: "Border width"; color: "#aaa"; font.pixelSize: 12 }
                     Item { Layout.fillWidth: true }
                     Text { text: panelSettingsPopup.borderValue + " px"; color: colorAccent; font.pixelSize: 12; font.bold: true }
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
                 }
-                
-                Slider {
-                    width: parent.width; from: 1; to: 20; stepSize: 1
-                    value: panelSettingsPopup.borderValue
-                    onValueChanged: panelSettingsPopup.borderValue = value
-                    
-                    background: Rectangle {
-                        x: parent.leftPadding; y: parent.topPadding + parent.availableHeight / 2 - 3
-                        width: parent.availableWidth; height: 6; radius: 3; color: "#222"
-                        Rectangle {
-                            width: parent.parent.visualPosition * parent.width; height: 6; radius: 3; color: colorAccent
-                        }
-                    }
-                    handle: Rectangle {
-                        x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
-                        y: parent.topPadding + parent.availableHeight / 2 - height / 2
-                        width: 18; height: 18; radius: 9; color: "white"
-                        border.color: colorAccent; border.width: 2
-                    }
+
+                ProSliderHorizontal {
+                    id: borderSlider
+                    width: parent.width
+                    label: ""
+                    enabled: panelSettingsPopup.drawBorder
+                    opacity: enabled ? 1.0 : 0.4
+                    value: (panelSettingsPopup.borderValue - 1) / (20 - 1)
+                    valueText: ""
+                    previewType: "none"
+                    onValueChanged: panelSettingsPopup.borderValue = 1 + value * (20 - 1)
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
                 }
             }
             
             // === MARGIN ===
             Column {
-                Layout.fillWidth: true; spacing: 6
+                Layout.fillWidth: true; spacing: 8
                 
                 RowLayout {
                     width: parent.width
@@ -6670,24 +6731,14 @@ Window {
                     Text { text: panelSettingsPopup.marginValue + " px"; color: colorAccent; font.pixelSize: 12; font.bold: true }
                 }
                 
-                Slider {
-                    width: parent.width; from: 0; to: 200; stepSize: 5
-                    value: panelSettingsPopup.marginValue
-                    onValueChanged: panelSettingsPopup.marginValue = value
-                    
-                    background: Rectangle {
-                        x: parent.leftPadding; y: parent.topPadding + parent.availableHeight / 2 - 3
-                        width: parent.availableWidth; height: 6; radius: 3; color: "#222"
-                        Rectangle {
-                            width: parent.parent.visualPosition * parent.width; height: 6; radius: 3; color: colorAccent
-                        }
-                    }
-                    handle: Rectangle {
-                        x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width)
-                        y: parent.topPadding + parent.availableHeight / 2 - height / 2
-                        width: 18; height: 18; radius: 9; color: "white"
-                        border.color: colorAccent; border.width: 2
-                    }
+                ProSliderHorizontal {
+                    id: marginSlider
+                    width: parent.width
+                    label: ""
+                    value: (panelSettingsPopup.marginValue - 0) / (200 - 0)
+                    valueText: ""
+                    previewType: "none"
+                    onValueChanged: panelSettingsPopup.marginValue = 0 + value * (200 - 0)
                 }
             }
             
@@ -6712,10 +6763,11 @@ Window {
                 MouseArea {
                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: {
+                        var finalBorder = panelSettingsPopup.drawBorder ? panelSettingsPopup.borderValue : 0
                         comicOverlay.addPanelLayout(
                             panelSettingsPopup.layoutType,
                             panelSettingsPopup.gutterValue,
-                            panelSettingsPopup.borderValue,
+                            finalBorder,
                             panelSettingsPopup.marginValue
                         )
                         panelSettingsPopup.close()

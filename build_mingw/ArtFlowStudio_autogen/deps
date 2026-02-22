@@ -189,7 +189,6 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Qt/6.10.2/mingw_64/include/QtCore/qyieldcpu.h \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
-	C:/Qt/6.10.2/mingw_64/include/QtGui/QMouseEvent \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLExtraFunctions \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
 	C:/Qt/6.10.2/mingw_64/include/QtGui/QPainterPath \
@@ -1192,10 +1191,6 @@ ArtFlowStudio_autogen/timestamp: \
 	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/PreferencesManager.h \
 	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/ProjectModel.cpp \
 	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/ProjectModel.h \
-	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/TestCanvas.cpp \
-	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/TestCanvas.h \
-	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/abr_importer.cpp \
-	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/abr_importer.h \
 	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h \
 	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/ColorPickerImpl.h \
 	C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/core/cpp/include/brush_engine.h \

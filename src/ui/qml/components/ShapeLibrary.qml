@@ -172,6 +172,7 @@ Rectangle {
 
                                         // Shape preview
                                         Canvas {
+                                            id: shpCvs
                                             anchors.fill: parent
                                             anchors.margins: 8
                                             onPaint: {
@@ -196,7 +197,7 @@ Rectangle {
                                             Component.onCompleted: requestPaint()
                                             Connections {
                                                 target: shpMa
-                                                function onContainsMouseChanged() { parent.requestPaint() }
+                                                function onContainsMouseChanged() { shpCvs.requestPaint() }
                                             }
                                         }
                                     }
@@ -276,6 +277,7 @@ Rectangle {
                                             clip: true
 
                                             Canvas {
+                                                id: pnlCvs
                                                 anchors.fill: parent
                                                 anchors.margins: 6
 
@@ -303,7 +305,7 @@ Rectangle {
                                                 Component.onCompleted: requestPaint()
                                                 Connections {
                                                     target: pnlMa
-                                                    function onContainsMouseChanged() { parent.requestPaint() }
+                                                    function onContainsMouseChanged() { pnlCvs.requestPaint() }
                                                 }
                                             }
                                         }
@@ -373,6 +375,7 @@ Rectangle {
                                             clip: true
 
                                             Canvas {
+                                                id: bubCvs
                                                 anchors.fill: parent
                                                 anchors.margins: 8
 
@@ -444,7 +447,7 @@ Rectangle {
                                                 Component.onCompleted: requestPaint()
                                                 Connections {
                                                     target: bubMa
-                                                    function onContainsMouseChanged() { parent.requestPaint() }
+                                                    function onContainsMouseChanged() { bubCvs.requestPaint() }
                                                 }
                                             }
                                         }

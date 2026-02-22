@@ -327,76 +327,66 @@ void ImageBuffer::drawCircle(int cx, int cy, float radius, uint8_t r, uint8_t g,
                              uint8_t b, uint8_t a, float hardness, float grain,
                              bool alphaLock, bool isEraser,
                              const ImageBuffer *mask) {
-  // Extend bounds by 1 pixel for anti-aliasing
   int minX = std::max(0, static_cast<int>(cx - radius - 2));
   int maxX = std::min(m_width - 1, static_cast<int>(cx + radius + 2));
   int minY = std::max(0, static_cast<int>(cy - radius - 2));
   int maxY = std::min(m_height - 1, static_cast<int>(cy + radius + 2));
 
-  // Use float center for sub-pixel accuracy
   float fcx = static_cast<float>(cx);
   float fcy = static_cast<float>(cy);
-
-  // For very small brushes, ensure minimum radius
   float effectiveRadius = std::max(0.5f, radius);
+  float radiusSq = effectiveRadius * effectiveRadius;
+  float outerSq = (effectiveRadius + 1.0f) * (effectiveRadius + 1.0f);
+  float innerSq = (effectiveRadius - 1.0f) * (effectiveRadius - 1.0f);
+
+  // Pre-compute hardness threshold in squared space (approx)
+  float hardEdgeSq =
+      (hardness < 0.99f && hardness > 0.01f)
+          ? (hardness * effectiveRadius) * (hardness * effectiveRadius)
+          : radiusSq;
 
   for (int py = minY; py <= maxY; ++py) {
-    for (int px = minX; px <= maxX; ++px) {
-      // Calculate distance from center with sub-pixel precision
-      float dx = static_cast<float>(px) - fcx;
-      float dy = static_cast<float>(py) - fcy;
-      float dist = std::sqrt(dx * dx + dy * dy);
+    float dy = static_cast<float>(py) - fcy;
+    float dy2 = dy * dy;
 
-      // Skip if completely outside
-      if (dist > effectiveRadius + 1.0f)
+    for (int px = minX; px <= maxX; ++px) {
+      float dx = static_cast<float>(px) - fcx;
+      float distSq = dx * dx + dy2;
+
+      // Fast rejection: completely outside (+ 1px AA border)
+      if (distSq > outerSq)
         continue;
 
-      // Calculate normalized distance (0 = center, 1 = edge)
+      // Compute actual dist only when needed (edge AA or soft falloff)
+      float dist = std::sqrt(distSq);
       float normalizedDist = dist / effectiveRadius;
 
-      // ============================================================
-      // ANTI-ALIASING: Smooth falloff at the edge
-      // ============================================================
+      // ── Anti-aliasing ──
       float edgeAlpha = 1.0f;
-      if (dist > effectiveRadius - 1.0f) {
-        // Smooth transition in the last pixel
+      if (distSq > innerSq) {
         edgeAlpha = std::max(0.0f, effectiveRadius - dist + 1.0f);
-        edgeAlpha = std::min(1.0f, edgeAlpha);
+        if (edgeAlpha < 0.001f)
+          continue;
       }
 
-      // Skip if completely transparent
-      if (edgeAlpha < 0.001f)
-        continue;
-
-      // ============================================================
-      // HARDNESS FALLOFF
-      // ============================================================
+      // ── Hardness falloff ──
       float falloff = 1.0f;
       if (normalizedDist > 0.0f) {
         if (hardness >= 0.99f) {
-          // Hard brush: solid until edge
           falloff = (normalizedDist <= 1.0f) ? 1.0f : 0.0f;
         } else if (hardness <= 0.01f) {
-          // Very soft brush: linear falloff from center
           falloff = std::max(0.0f, 1.0f - normalizedDist);
-          // Apply smooth curve for even softer feel
           falloff = falloff * falloff * (3.0f - 2.0f * falloff);
         } else {
-          // Normal hardness: falloff starts at hardness threshold
           if (normalizedDist > hardness) {
             float t = (normalizedDist - hardness) / (1.0f - hardness);
-            // Smooth hermite interpolation instead of linear
             falloff = 1.0f - (t * t * (3.0f - 2.0f * t));
           }
         }
       }
-
-      // Clamp falloff
       falloff = std::max(0.0f, std::min(1.0f, falloff));
 
-      // ============================================================
-      // GRAIN (TEXTURE NOISE)
-      // ============================================================
+      // ── Grain ──
       float noise = 1.0f;
       if (grain > 0.001f) {
         auto getHash = [](float x, float y) {
@@ -407,36 +397,23 @@ void ImageBuffer::drawCircle(int cx, int cy, float radius, uint8_t r, uint8_t g,
           h *= 0xc2b2ae35;
           return static_cast<float>(h & 0xFFFF) / 65535.0f;
         };
-
-        // Multi-octave noise for organic texture
         float n1 = getHash(static_cast<float>(px) / 4.0f,
                            static_cast<float>(py) / 4.0f);
         float n2 = getHash(static_cast<float>(px) / 1.5f,
                            static_cast<float>(py) / 1.5f);
         float randVal = n1 * 0.7f + n2 * 0.3f;
-
-        // High-contrast curve for paper "tooth" feeling
-        float grainVal = (randVal - 0.45f) * 3.0f + 0.5f;
-        grainVal = std::max(0.0f, std::min(1.0f, grainVal));
-
+        float grainVal =
+            std::max(0.0f, std::min(1.0f, (randVal - 0.45f) * 3.0f + 0.5f));
         noise = (1.0f - grain) + (grainVal * grain);
       }
 
-      // ============================================================
-      // FINAL ALPHA CALCULATION
-      // ============================================================
       float finalAlpha = static_cast<float>(a) * falloff * noise * edgeAlpha;
       uint8_t pixelA =
           static_cast<uint8_t>(std::max(0.0f, std::min(255.0f, finalAlpha)));
 
-      // Clipping Mask support
       if (mask) {
         const uint8_t *mP = mask->pixelAt(px, py);
-        if (mP) {
-          pixelA = static_cast<uint8_t>(pixelA * (mP[3] / 255.0f));
-        } else {
-          pixelA = 0;
-        }
+        pixelA = mP ? static_cast<uint8_t>(pixelA * (mP[3] / 255.0f)) : 0;
       }
 
       if (pixelA > 0) {
