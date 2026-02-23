@@ -5096,6 +5096,15 @@ void CanvasItem::toggleVisibility(int index) {
   }
 }
 
+void CanvasItem::setLayerVisibility(int index, bool visible) {
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->visible != visible) {
+    l->visible = visible;
+    updateLayersList();
+    update();
+  }
+}
+
 void CanvasItem::toggleLock(int index) {
   Layer *l = m_layerManager->getLayer(index);
   if (l) {

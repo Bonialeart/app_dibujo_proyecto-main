@@ -290,6 +290,7 @@ public:
   Q_INVOKABLE void toggleClipping(int index);
   Q_INVOKABLE void toggleAlphaLock(int index);
   Q_INVOKABLE void toggleVisibility(int index);
+  Q_INVOKABLE void setLayerVisibility(int index, bool visible);
   Q_INVOKABLE void toggleLock(int index);
   Q_INVOKABLE void clearLayer(int index);
   Q_INVOKABLE void setLayerOpacity(int index, float opacity);

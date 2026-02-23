@@ -50,6 +50,13 @@
     <file>qml/components/ComicOverlayManager.qml</file>
     <file>qml/components/ShapeLibrary.qml</file>
     <file>qml/components/SelectionToolbar.qml</file>
+    <file>qml/components/ToolSettingsPanel.qml</file>
+    <file>qml/components/HistoryPanel.qml</file>
+    <file>qml/components/InfoPanel.qml</file>
+    <file>qml/components/ReferencePanel.qml</file>
+    <file>qml/components/TimelinePanel.qml</file>
+    <file>qml/components/SimpleAnimationBar.qml</file>
+    <file>qml/components/AdvancedTimelineBar.qml</file>
     <file>qml/views/CanvasPage.qml</file>
 </qresource>
 </RCC>

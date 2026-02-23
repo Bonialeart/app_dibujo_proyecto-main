@@ -22,6 +22,8 @@ Item {
     property real wsMenuY: 0
 
     signal switchToEssential()
+    
+    function loadWorkspace(name) { panelManager.loadWorkspace(name) }
 
     visible: isProjectActive && !isZenMode
     
@@ -1075,12 +1077,9 @@ Item {
         // --- BOTTOM DOCK ---
         DockContainer {
             id: bottomDock
-            Layout.fillWidth: true
-            Layout.preferredHeight: isCollapsed ? 0 : 250
             dockSide: "bottom"
             manager: panelManager
-            dockModel: panelManager.bottomDockModel
-            isCollapsed: !panelManager.hasVisible(panelManager.bottomDockModel)
+            isCollapsed: panelManager.bottomCollapsed
             mainCanvas: studioLayout.mainCanvas
             accentColor: studioLayout.accentColor
             

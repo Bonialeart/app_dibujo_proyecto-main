@@ -79,26 +79,20 @@ Item {
             
             floatModel.append(pReference);
         } else if (name === "Animación") {
-            // Animation setup
-            pLayers.visible = true;
-            leftModel.append(pLayers);
-            leftModel.append(pHistory);
+            // Animation workspace — organized and clean
+            pBrushes.visible = true;
+            leftModel.append(pBrushes);
+            leftModel.append(pSettings);
             
-            pNavigator.visible = true;
-            rightModel.append(pNavigator);
+            pLayers.visible = true;
+            rightModel.append(pLayers);
+            pColor.visible = true;
             rightModel.append(pColor);
+            rightModel.append(pNavigator);
             rightModel.append(pReference);
             
             pTimeline.visible = true;
             bottomModel.append(pTimeline);
-            
-            pBrushes.visible = true;
-            pBrushes.x = 100; pBrushes.y = 150;
-            floatModel.append(pBrushes);
-            
-            pToolSettings.visible = true;
-            pToolSettings.x = 300; pToolSettings.y = 150;
-            floatModel.append(pToolSettings);
         } else {
             // Default "Ilustración" setup
             leftModel.append(pBrushes);
@@ -301,7 +295,7 @@ Item {
     }
 
     function findPanelModel(panelId) {
-        var docks = [leftModel, leftModel2, rightModel, rightModel2, floatModel];
+        var docks = [leftModel, leftModel2, rightModel, rightModel2, bottomModel, floatModel];
         for (var j=0; j<docks.length; j++) {
             for(var i=0; i<docks[j].count; i++) if (docks[j].get(i).panelId === panelId) return docks[j];
         }

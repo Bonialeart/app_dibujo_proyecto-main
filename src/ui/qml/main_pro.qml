@@ -113,6 +113,8 @@ Window {
     property bool showShapes: false
     property bool showStoryPanel: false
     property bool isStoryProject: false
+    property bool showAnimationBar: false
+    property bool useAdvancedTimeline: false
     onIsStoryProjectChanged: {
         if (typeof comicOverlay !== "undefined" && comicOverlay) {
             comicOverlay.showMangaGuides = isStoryProject
@@ -2064,6 +2066,46 @@ Window {
                 
                 // Studio Mode top bar is now integrated inside StudioCanvasLayout.qml (studioInfoBar)
 
+                // === ADVANCED ANIMATION BAR — Floating overlay (Simple Mode Procreate Dreams timeline) ===
+                AdvancedTimelineBar {
+                    id: advancedAnimationBar
+                    anchors.left:   parent.left
+                    anchors.right:  parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 8
+                    height: 250
+                    z: 800
+
+                    visible:       showAnimationBar && isProjectActive && useAdvancedTimeline
+                    opacity:       (showAnimationBar && useAdvancedTimeline) ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+
+                    targetCanvas:  mainCanvas
+                    accentColor:   colorAccent
+                    projectFPS:    12
+                }
+
+                // === SIMPLE ANIMATION BAR — Floating overlay (Flipbook style) ===
+                SimpleAnimationBar {
+                    id: simpleAnimationBar
+                    anchors.left:   parent.left
+                    anchors.right:  parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 12
+                    height: 120
+                    z: 800
+
+                    visible:       showAnimationBar && isProjectActive && !useAdvancedTimeline
+                    opacity:       (showAnimationBar && !useAdvancedTimeline) ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
+
+                    targetCanvas:  mainCanvas
+                    accentColor:   colorAccent
+                    projectFPS:    12
+                    projectFrames: 48
+                    projectLoop:   true
+                }
+
                 // EMPTY STATE OVERLAY — Premium Design
                 Rectangle {
                     anchors.fill: parent
@@ -2633,6 +2675,34 @@ Window {
                                 color: showLayers ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (layersBtnMouse.containsMouse ? "#22ffffff" : "transparent")
                                 Image { source: iconPath("layers.svg"); width: 14 * uiScale; height: 14 * uiScale; anchors.centerIn: parent; opacity: showLayers ? 1 : 0.6 }
                                 MouseArea { id: layersBtnMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { showLayers = !showLayers; showColor = false; showBrush = false; showBrushSettings = false } }
+                            }
+
+                            // Animation Timeline Toggle
+                            Rectangle {
+                                width: showAnimationBar ? 68 * uiScale : 28 * uiScale
+                                height: 28 * uiScale; radius: 14 * uiScale
+                                color: showAnimationBar ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : (animBtnMouse.containsMouse ? "#22ffffff" : "transparent")
+                                border.color: showAnimationBar ? colorAccent : "#33ffffff"
+                                border.width: showAnimationBar ? 1.5 : 0.5
+                                clip: true
+                                Behavior on width  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                                Behavior on color  { ColorAnimation { duration: 150 } }
+                                Row {
+                                    anchors.centerIn: parent; spacing: 5
+                                    Text { text: "🎞"; font.pixelSize: 13; opacity: 1.0 }
+                                    Text {
+                                        text: "Anim"
+                                        color: showAnimationBar ? colorAccent : "#aaa"
+                                        font.pixelSize: 10; font.weight: Font.DemiBold
+                                        visible: showAnimationBar
+                                        opacity: showAnimationBar ? 1 : 0
+                                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                                    }
+                                }
+                                MouseArea { id: animBtnMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: showAnimationBar = !showAnimationBar }
+                                ToolTip.visible: animBtnMouse.containsMouse
+                                ToolTip.text: showAnimationBar ? "Cerrar Timeline" : "Abrir Timeline de Animación"
+                                ToolTip.delay: 400
                             }
 
                             // Studio Mode Toggle
@@ -4910,13 +4980,20 @@ Window {
             { name: "Illustration", icon: "brush.svg", desc: "Digital art & paintings" },
             { name: "Manga", icon: "book.svg", desc: "B4/A4 Print Manga projects" },
             { name: "Webtoon", icon: "smartphone.svg", desc: "Long strip vertical stories" },
-            { name: "Animation", icon: "video.svg", desc: "Timeline (Coming Soon)" }
+            { name: "Animation", icon: "video.svg", desc: "Frame-by-frame animation" }
         ]
         
         // --- STORY SETTINGS ---
         property bool isMultiPage: (selectedCategoryIndex === 1 || selectedCategoryIndex === 2)
+        property bool isAnimation: selectedCategoryIndex === 3
         property int bleedSize: 3 // mm
         property int pageCount: 1
+        
+        // --- ANIMATION SETTINGS ---
+        property int inputFPS: 12
+        property int inputTotalFrames: 48
+        property bool inputLoopEnabled: true
+        property string inputPlaybackMode: "onion" // "onion" | "lighttable"
         
         // Unit dropdown state
         property bool unitDropdownOpen: false
@@ -4946,7 +5023,12 @@ Window {
             ],
             // Animation
             [
-                { label: "1080p Animation", w: 1920, h: 1080, dpi: 72 }
+                { label: "1080p Animation", w: 1920, h: 1080, dpi: 72 },
+                { label: "720p Animation", w: 1280, h: 720, dpi: 72 },
+                { label: "Square Anim", w: 1080, h: 1080, dpi: 72 },
+                { label: "4K Animation", w: 3840, h: 2160, dpi: 72 },
+                { label: "GIF (Small)", w: 480, h: 480, dpi: 72 },
+                { label: "Storyboard", w: 1920, h: 1080, dpi: 150 }
             ]
         ]
         
@@ -5012,7 +5094,8 @@ Window {
         
         // === MAIN CARD (Redesigned) ===
         Rectangle {
-            width: 980; height: 680
+            width: 980
+            height: Math.min(parent.height - 40, newProjectDialog.isAnimation ? 760 : 680)
             anchors.centerIn: parent
             color: "#0f0f11"
             radius: 24
@@ -5282,23 +5365,32 @@ Window {
                         }
                     }
                     
-                    // === SETTINGS PANEL (RIGHT - Compact & Clean) ===
+                    // === SETTINGS PANEL (RIGHT - Scrollable) ===
                     Rectangle {
                         Layout.fillHeight: true; Layout.preferredWidth: 300
                         color: "#121214"
+                        clip: true
                         
                         Rectangle { width: 1; height: parent.height; color: "#1e1e22"; anchors.left: parent.left }
                         
-                        ColumnLayout {
+                        ScrollView {
+                            id: settingsScroll
                             anchors.fill: parent
-                            anchors.margins: 20
-                            anchors.leftMargin: 24
+                            anchors.margins: 0
+                            clip: true
+                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                        
+                        Column {
+                            width: settingsScroll.width - 8
+                            padding: 20
+                            leftPadding: 24
                             spacing: 14
                             
                             // === LIVE PREVIEW ===
                             Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 120
+                                width: parent.width
+                                height: 120
                                 color: "#0a0a0c"
                                 radius: 12
                                 border.color: "#222"
@@ -5351,14 +5443,14 @@ Window {
                             
                             // === DIMENSION INPUTS ===
                             GridLayout {
-                                Layout.fillWidth: true
+                                width: parent.width
                                 columns: 2
                                 rowSpacing: 12
                                 columnSpacing: 12
                                 
                                 // Width
                                 Column {
-                                    Layout.fillWidth: true; spacing: 8
+                                    width: parent.width / 2 - 6; spacing: 8
                                     Text { text: "Width"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
                                     Rectangle {
                                         width: parent.width; height: 38; radius: 8
@@ -5546,7 +5638,7 @@ Window {
                             
                             // === BACKGROUND ===
                             Column {
-                                Layout.fillWidth: true
+                                width: parent.width
                                 spacing: 8
                                 
                                 Text { text: "Background"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
@@ -5626,7 +5718,7 @@ Window {
                             
                             // === STORY SETTINGS (Visible for Manga/Webtoon) ===
                             Column {
-                                Layout.fillWidth: true
+                                width: parent.width
                                 spacing: 10
                                 visible: newProjectDialog.isMultiPage
                                 
@@ -5667,11 +5759,144 @@ Window {
                                 }
                             }
 
-                            Item { Layout.fillHeight: true }
+                            // === ANIMATION SETTINGS (Visible for Animation category) ===
+                            Column {
+                                width: parent.width
+                                spacing: 14
+                                visible: newProjectDialog.isAnimation
+                                
+                                Rectangle { width: parent.width; height: 1; color: "#1e1e22" }
+                                
+                                // Section header
+                                Row {
+                                    spacing: 8
+                                    Rectangle { width: 3; height: 18; radius: 2; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                    Text { text: "Animation Settings"; color: "#ccc"; font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+                                }
+                                
+                                // FPS Selector
+                                Column {
+                                    width: parent.width; spacing: 8
+                                    Text { text: "Frames per Second (FPS)"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
+                                    
+                                    Row {
+                                        spacing: 6
+                                        Repeater {
+                                            model: [8, 12, 15, 24, 30]
+                                            Rectangle {
+                                                width: 42; height: 34; radius: 8
+                                                property bool isSel: newProjectDialog.inputFPS === modelData
+                                                color: isSel ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2) : (fpsHov.containsMouse ? "#222" : "#1a1a1e")
+                                                border.color: isSel ? colorAccent : "#303035"
+                                                border.width: isSel ? 1.5 : 1
+                                                
+                                                Behavior on color { ColorAnimation { duration: 120 } }
+                                                
+                                                Column {
+                                                    anchors.centerIn: parent; spacing: 0
+                                                    Text { text: modelData; color: parent.parent.isSel ? "white" : "#aaa"; font.pixelSize: 13; font.weight: Font.DemiBold; anchors.horizontalCenter: parent.horizontalCenter }
+                                                    Text { text: "fps"; color: "#555"; font.pixelSize: 8; anchors.horizontalCenter: parent.horizontalCenter }
+                                                }
+                                                MouseArea { id: fpsHov; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: newProjectDialog.inputFPS = modelData }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Total Frames + Duration preview
+                                RowLayout {
+                                    width: parent.width; spacing: 10
+                                    
+                                    Column {
+                                        Layout.fillWidth: true; spacing: 6
+                                        Text { text: "Total Frames"; color: "#888"; font.pixelSize: 11 }
+                                        Rectangle {
+                                            width: parent.width; height: 36; radius: 8
+                                            color: "#1a1a1e"
+                                            border.color: totalFInput.activeFocus ? colorAccent : "#303035"
+                                            border.width: totalFInput.activeFocus ? 1.5 : 1
+                                            RowLayout {
+                                                anchors.fill: parent; anchors.margins: 8
+                                                TextInput {
+                                                    id: totalFInput
+                                                    Layout.fillWidth: true
+                                                    color: "white"; font.pixelSize: 13
+                                                    text: newProjectDialog.inputTotalFrames.toString()
+                                                    verticalAlignment: Text.AlignVCenter
+                                                    selectByMouse: true
+                                                    onEditingFinished: newProjectDialog.inputTotalFrames = parseInt(text) || 24
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Duration display
+                                    Column {
+                                        Layout.preferredWidth: 80; spacing: 6
+                                        Text { text: "Duration"; color: "#888"; font.pixelSize: 11 }
+                                        Rectangle {
+                                            width: parent.width; height: 36; radius: 8
+                                            color: "#0d0d10"
+                                            border.color: "#1e1e24"
+                                            
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: {
+                                                    var secs = newProjectDialog.inputTotalFrames / newProjectDialog.inputFPS
+                                                    var m = Math.floor(secs / 60)
+                                                    var s = (secs % 60).toFixed(1)
+                                                    return m > 0 ? m + "m " + s + "s" : s + "s"
+                                                }
+                                                color: colorAccent
+                                                font.pixelSize: 12
+                                                font.weight: Font.DemiBold
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Options row: Loop + Onion Skin preset
+                                Row {
+                                    width: parent.width; spacing: 8
+                                    
+                                    // Loop Toggle
+                                    Rectangle {
+                                        height: 34; width: (parent.width - 8) / 2; radius: 8
+                                        color: newProjectDialog.inputLoopEnabled ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : "#1a1a1e"
+                                        border.color: newProjectDialog.inputLoopEnabled ? colorAccent : "#303035"
+                                        border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                        RowLayout {
+                                            anchors.fill: parent; anchors.margins: 8; spacing: 6
+                                            Text { text: "🔁"; font.pixelSize: 14 }
+                                            Text { text: "Loop"; color: newProjectDialog.inputLoopEnabled ? "white" : "#777"; font.pixelSize: 12; font.weight: Font.Medium }
+                                        }
+                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: newProjectDialog.inputLoopEnabled = !newProjectDialog.inputLoopEnabled }
+                                    }
+                                    
+                                    // Onion Skin preset
+                                    Rectangle {
+                                        height: 34; width: (parent.width - 8) / 2; radius: 8
+                                        property bool onionOn: newProjectDialog.inputPlaybackMode === "onion"
+                                        color: onionOn ? Qt.rgba(1, 0.85, 0, 0.1) : "#1a1a1e"
+                                        border.color: onionOn ? "#f0d060" : "#303035"
+                                        border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                        RowLayout {
+                                            anchors.fill: parent; anchors.margins: 8; spacing: 6
+                                            Text { text: "🧅"; font.pixelSize: 14 }
+                                            Text { text: "Onion"; color: parent.parent.onionOn ? "#f0d060" : "#777"; font.pixelSize: 12; font.weight: Font.Medium }
+                                        }
+                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: newProjectDialog.inputPlaybackMode = newProjectDialog.inputPlaybackMode === "onion" ? "" : "onion" }
+                                    }
+                                }
+                            }
+
+                            Item { height: 16 }
                             
                             // === CREATE BUTTON ===
                             Rectangle {
-                                Layout.fillWidth: true; height: 48; radius: 12
+                                width: parent.width - 4; height: 48; radius: 12
                                 
                                 gradient: Gradient {
                                     orientation: Gradient.Horizontal
@@ -5723,6 +5948,23 @@ Window {
                                         isProjectActive = true
                                         currentPage = 1
                                         mainCanvas.fitToView()
+                                        
+                                        // Auto-activate animation mode if Animation category selected
+                                        if (newProjectDialog.selectedCategoryIndex === 3) {
+                                            showAnimationBar = true
+                                            // Apply settings — frames are user-created one by one, not pre-populated
+                                            simpleAnimationBar.projectFPS  = newProjectDialog.inputFPS
+                                            simpleAnimationBar.projectLoop = newProjectDialog.inputLoopEnabled
+                                            simpleAnimationBar.fps         = newProjectDialog.inputFPS
+                                            simpleAnimationBar.loopEnabled = newProjectDialog.inputLoopEnabled
+                                            simpleAnimationBar.onionEnabled = newProjectDialog.inputPlaybackMode === "onion"
+                                            if (isStudioMode) {
+                                                studioCanvasLayout.loadWorkspace("Animación")
+                                            }
+                                        } else {
+                                            showAnimationBar = false
+                                        }
+                                        
                                         newProjectDialog.close()
                                     }
                                     onPressed: parent.scale = 0.97
@@ -5732,7 +5974,9 @@ Window {
                                 scale: createBtnMouse.containsMouse ? 1.02 : 1.0
                                 Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
                             }
-                        }
+                            Item { height: 20 }  // bottom padding in scroll
+                        }  // end Column
+                        }  // end ScrollView
                     }
                 }
             }

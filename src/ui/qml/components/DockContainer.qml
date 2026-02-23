@@ -15,6 +15,7 @@ Rectangle {
         if (dockSide === "left2") return manager.leftDockModel2
         if (dockSide === "right") return manager.rightDockModel
         if (dockSide === "right2") return manager.rightDockModel2
+        if (dockSide === "bottom") return manager.bottomDockModel
         return null
     }
     property var mainCanvas: null
@@ -41,21 +42,30 @@ Rectangle {
     signal panelDragUpdated(real globalX, real globalY)
     signal panelDragEnded(real globalX, real globalY)
     
-    width: (isCollapsed && !isDragHover) ? 0 : expandedWidth
-    height: parent.height
-    Layout.preferredWidth: width
-    Layout.minimumWidth: width
-    Layout.maximumWidth: width
+    property bool isBottom: dockSide === "bottom"
+    
+    width: isBottom ? parent.width : ((isCollapsed && !isDragHover) ? 0 : expandedWidth)
+    height: isBottom ? ((isCollapsed && !isDragHover) ? 0 : expandedHeight) : parent.height
+    Layout.preferredWidth: isBottom ? -1 : width
+    Layout.minimumWidth: isBottom ? -1 : width
+    Layout.maximumWidth: isBottom ? -1 : width
+    Layout.preferredHeight: isBottom ? height : -1
+    
+    property int expandedHeight: 250
     color: "#0a0a0d"
     border.color: isCollapsed ? "transparent" : "#2a2a2d"
     border.width: 1
     
     Behavior on width { 
-        enabled: !resizerMa.pressed
+        enabled: !resizerMa.pressed && !isBottom
         NumberAnimation { duration: 300; easing.type: Easing.OutQuart } 
     }
+    Behavior on height {
+        enabled: isBottom
+        NumberAnimation { duration: 300; easing.type: Easing.OutQuart }
+    }
     
-    visible: width > 0
+    visible: isBottom ? height > 0 : width > 0
     clip: true
     
     Rectangle { anchors.fill: parent; color: "transparent"; border.color: "#1affffff"; border.width: 1 }
@@ -155,15 +165,16 @@ Rectangle {
                 width: 28; height: 28; radius: 14
                 color: collAllMa.containsMouse ? "#252528" : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.right: (root.dockSide.indexOf("left") !== -1) ? parent.right : undefined
-                anchors.left: (root.dockSide.indexOf("right") !== -1) ? parent.left : undefined
+                anchors.right: isBottom ? undefined : ((root.dockSide.indexOf("left") !== -1) ? parent.right : undefined)
+                anchors.left: isBottom ? parent.left : ((root.dockSide.indexOf("right") !== -1) ? parent.left : undefined)
+                anchors.horizontalCenter: isBottom ? parent.horizontalCenter : undefined
                 anchors.rightMargin: 4; anchors.leftMargin: 4
                 
                 Image {
                     source: "image://icons/chevron-left.svg"
                     width: 16; height: 16; anchors.centerIn: parent
                     opacity: 0.6; smooth: true; mipmap: true
-                    rotation: (root.dockSide.indexOf("left") !== -1) ? 0 : 180
+                    rotation: isBottom ? 90 : ((root.dockSide.indexOf("left") !== -1) ? 0 : 180)
                 }
                 
                 MouseArea {
@@ -218,7 +229,7 @@ Rectangle {
                     implicitWidth: splitView.width
                     height: isPanelVisible ? undefined : 0
                     SplitView.fillHeight: isPanelVisible
-                    SplitView.minimumHeight: isPanelVisible ? 280 : 0
+                    SplitView.minimumHeight: isPanelVisible ? (root.isBottom ? 100 : 280) : 0
                     color: "#151518"
                     clip: true
                     
@@ -406,9 +417,10 @@ Rectangle {
         }
     }
     
-    // --- RESIZER VERTICAL ---
+    // --- RESIZER ---
 
     Rectangle {
+        visible: !root.isBottom
         width: 6; height: parent.height
         anchors.right: (dockSide === "left") ? parent.right : undefined
         anchors.left: (dockSide === "right") ? parent.left : undefined
@@ -425,6 +437,29 @@ Rectangle {
                      var diff = mapToGlobal(mouse.x, 0).x - startGx
                      if (dockSide === "left") root.expandedWidth = Math.max(220, Math.min(600, startW + diff))
                      else root.expandedWidth = Math.max(220, Math.min(600, startW - diff))
+                }
+            }
+        }
+    }
+    
+    // --- BOTTOM RESIZER ---
+    Rectangle {
+        visible: root.isBottom && !root.isCollapsed
+        height: 6; width: parent.width
+        anchors.top: parent.top
+        color: bottomResizerMa.containsMouse || bottomResizerMa.pressed ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.4) : "transparent"
+        z: 10
+        
+        Rectangle { height: 2; width: parent.width; anchors.centerIn: parent; color: bottomResizerMa.containsMouse || bottomResizerMa.pressed ? accentColor : "transparent" }
+        
+        MouseArea {
+            id: bottomResizerMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.SizeVerCursor
+            property real startH; property real startGy
+            onPressed: (mouse) => { startH = root.expandedHeight; startGy = mapToGlobal(0, mouse.y).y }
+            onPositionChanged: (mouse) => {
+                if (pressed) {
+                    var diff = startGy - mapToGlobal(0, mouse.y).y
+                    root.expandedHeight = Math.max(150, Math.min(500, startH + diff))
                 }
             }
         }
