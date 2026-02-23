@@ -49,6 +49,9 @@ Popup {
     property int tempDragDist: 3
     property bool tempAutoSave: true
     property double tempUiScale: 1.0
+    property bool tempTouchGestures: true
+    property bool tempTouchEyedropper: true
+    property bool tempMultitouchUndoRedo: true
 
     readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
@@ -66,6 +69,9 @@ Popup {
             tempDragDist = preferencesManager.dragDistance
             tempAutoSave = preferencesManager.autoSaveEnabled
             if (preferencesManager.uiScale) tempUiScale = preferencesManager.uiScale
+            tempTouchGestures = preferencesManager.touchGesturesEnabled
+            tempTouchEyedropper = preferencesManager.touchEyedropperEnabled
+            tempMultitouchUndoRedo = preferencesManager.multitouchUndoRedoEnabled
         }
     }
     
@@ -82,6 +88,9 @@ Popup {
             preferencesManager.dragDistance = tempDragDist
             preferencesManager.autoSaveEnabled = tempAutoSave
             preferencesManager.uiScale = tempUiScale
+            preferencesManager.touchGesturesEnabled = tempTouchGestures
+            preferencesManager.touchEyedropperEnabled = tempTouchEyedropper
+            preferencesManager.multitouchUndoRedoEnabled = tempMultitouchUndoRedo
             
             
             toastManager.show(root.qs("saved"), "success")
@@ -463,11 +472,12 @@ Popup {
                          }
                     }
                     
-                    // 3. TABLET
+                    // 3. TABLET & TOUCH
                     ScrollView {
                         contentHeight: tabletCol.height
                         ColumnLayout {
                             id: tabletCol; width: parent.width
+                            spacing: 20
                             SettingsGroup {
                                 title: "Input Mode"
                                 CheckBoxOption { 
@@ -479,6 +489,24 @@ Popup {
                                     text: "Wintab (Legacy)"; 
                                     checked: root.tempTabletMode === "Wintab"
                                     onCheckedChanged: if(checked) root.tempTabletMode = "Wintab"
+                                }
+                            }
+                            SettingsGroup {
+                                title: "Touch & Gestures"
+                                CheckBoxOption { 
+                                    text: "Enable Multi-touch Zoom & Pan"; 
+                                    checked: root.tempTouchGestures
+                                    onCheckedChanged: root.tempTouchGestures = checked
+                                }
+                                CheckBoxOption { 
+                                    text: "One-Finger Long Press for Eyedropper"; 
+                                    checked: root.tempTouchEyedropper
+                                    onCheckedChanged: root.tempTouchEyedropper = checked
+                                }
+                                CheckBoxOption { 
+                                    text: "Two-Finger Tap Undo / Three-Finger Tap Redo"; 
+                                    checked: root.tempMultitouchUndoRedo
+                                    onCheckedChanged: root.tempMultitouchUndoRedo = checked
                                 }
                             }
                         }

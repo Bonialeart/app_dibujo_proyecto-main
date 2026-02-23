@@ -65,6 +65,9 @@ template <> constexpr inline auto PreferencesManager::qt_create_metaobjectdata<q
         "setAutoSaveEnabled",
         "setUiScale",
         "scale",
+        "setTouchGesturesEnabled",
+        "setTouchEyedropperEnabled",
+        "setMultitouchUndoRedoEnabled",
         "setPressureCurve",
         "QVariantList",
         "curve",
@@ -82,6 +85,9 @@ template <> constexpr inline auto PreferencesManager::qt_create_metaobjectdata<q
         "dragDistance",
         "autoSaveEnabled",
         "uiScale",
+        "touchGesturesEnabled",
+        "touchEyedropperEnabled",
+        "multitouchUndoRedoEnabled",
         "pressureCurve"
     };
 
@@ -142,42 +148,60 @@ template <> constexpr inline auto PreferencesManager::qt_create_metaobjectdata<q
         QtMocHelpers::SlotData<void(double)>(25, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::Double, 26 },
         }}),
+        // Slot 'setTouchGesturesEnabled'
+        QtMocHelpers::SlotData<void(bool)>(27, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 11 },
+        }}),
+        // Slot 'setTouchEyedropperEnabled'
+        QtMocHelpers::SlotData<void(bool)>(28, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 11 },
+        }}),
+        // Slot 'setMultitouchUndoRedoEnabled'
+        QtMocHelpers::SlotData<void(bool)>(29, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 11 },
+        }}),
         // Slot 'setPressureCurve'
-        QtMocHelpers::SlotData<void(const QVariantList &)>(27, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { 0x80000000 | 28, 29 },
+        QtMocHelpers::SlotData<void(const QVariantList &)>(30, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 31, 32 },
         }}),
         // Slot 'resetDefaults'
-        QtMocHelpers::SlotData<void()>(30, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(33, 2, QMC::AccessPublic, QMetaType::Void),
     };
     QtMocHelpers::UintData qt_properties {
         // property 'themeMode'
-        QtMocHelpers::PropertyData<QString>(31, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<QString>(34, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'themeAccent'
-        QtMocHelpers::PropertyData<QString>(32, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<QString>(35, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'language'
-        QtMocHelpers::PropertyData<QString>(33, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<QString>(36, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'gpuAcceleration'
-        QtMocHelpers::PropertyData<bool>(34, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'undoLevels'
-        QtMocHelpers::PropertyData<int>(35, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'memoryUsageLimit'
-        QtMocHelpers::PropertyData<int>(36, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'cursorShowOutline'
         QtMocHelpers::PropertyData<bool>(37, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'undoLevels'
+        QtMocHelpers::PropertyData<int>(38, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'memoryUsageLimit'
+        QtMocHelpers::PropertyData<int>(39, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'cursorShowOutline'
+        QtMocHelpers::PropertyData<bool>(40, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'cursorShowCrosshair'
-        QtMocHelpers::PropertyData<bool>(38, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<bool>(41, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'tabletInputMode'
-        QtMocHelpers::PropertyData<QString>(39, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<QString>(42, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'toolSwitchDelay'
-        QtMocHelpers::PropertyData<int>(40, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<int>(43, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'dragDistance'
-        QtMocHelpers::PropertyData<int>(41, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<int>(44, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'autoSaveEnabled'
-        QtMocHelpers::PropertyData<bool>(42, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<bool>(45, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'uiScale'
-        QtMocHelpers::PropertyData<double>(43, QMetaType::Double, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<double>(46, QMetaType::Double, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'touchGesturesEnabled'
+        QtMocHelpers::PropertyData<bool>(47, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'touchEyedropperEnabled'
+        QtMocHelpers::PropertyData<bool>(48, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'multitouchUndoRedoEnabled'
+        QtMocHelpers::PropertyData<bool>(49, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'pressureCurve'
-        QtMocHelpers::PropertyData<QVariantList>(44, 0x80000000 | 28, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 1),
+        QtMocHelpers::PropertyData<QVariantList>(50, 0x80000000 | 31, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 1),
     };
     QtMocHelpers::UintData qt_enums {
     };
@@ -214,8 +238,11 @@ void PreferencesManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c, i
         case 12: _t->setDragDistance((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
         case 13: _t->setAutoSaveEnabled((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
         case 14: _t->setUiScale((*reinterpret_cast<std::add_pointer_t<double>>(_a[1]))); break;
-        case 15: _t->setPressureCurve((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
-        case 16: _t->resetDefaults(); break;
+        case 15: _t->setTouchGesturesEnabled((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 16: _t->setTouchEyedropperEnabled((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 17: _t->setMultitouchUndoRedoEnabled((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 18: _t->setPressureCurve((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
+        case 19: _t->resetDefaults(); break;
         default: ;
         }
     }
@@ -241,7 +268,10 @@ void PreferencesManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c, i
         case 10: *reinterpret_cast<int*>(_v) = _t->dragDistance(); break;
         case 11: *reinterpret_cast<bool*>(_v) = _t->autoSaveEnabled(); break;
         case 12: *reinterpret_cast<double*>(_v) = _t->uiScale(); break;
-        case 13: *reinterpret_cast<QVariantList*>(_v) = _t->pressureCurve(); break;
+        case 13: *reinterpret_cast<bool*>(_v) = _t->touchGesturesEnabled(); break;
+        case 14: *reinterpret_cast<bool*>(_v) = _t->touchEyedropperEnabled(); break;
+        case 15: *reinterpret_cast<bool*>(_v) = _t->multitouchUndoRedoEnabled(); break;
+        case 16: *reinterpret_cast<QVariantList*>(_v) = _t->pressureCurve(); break;
         default: break;
         }
     }
@@ -261,7 +291,10 @@ void PreferencesManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c, i
         case 10: _t->setDragDistance(*reinterpret_cast<int*>(_v)); break;
         case 11: _t->setAutoSaveEnabled(*reinterpret_cast<bool*>(_v)); break;
         case 12: _t->setUiScale(*reinterpret_cast<double*>(_v)); break;
-        case 13: _t->setPressureCurve(*reinterpret_cast<QVariantList*>(_v)); break;
+        case 13: _t->setTouchGesturesEnabled(*reinterpret_cast<bool*>(_v)); break;
+        case 14: _t->setTouchEyedropperEnabled(*reinterpret_cast<bool*>(_v)); break;
+        case 15: _t->setMultitouchUndoRedoEnabled(*reinterpret_cast<bool*>(_v)); break;
+        case 16: _t->setPressureCurve(*reinterpret_cast<QVariantList*>(_v)); break;
         default: break;
         }
     }
@@ -286,20 +319,20 @@ int PreferencesManager::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 17)
+        if (_id < 20)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 17;
+        _id -= 20;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 17)
+        if (_id < 20)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 17;
+        _id -= 20;
     }
     if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty
             || _c == QMetaObject::RegisterPropertyMetaType) {
         qt_static_metacall(this, _c, _id, _a);
-        _id -= 14;
+        _id -= 17;
     }
     return _id;
 }

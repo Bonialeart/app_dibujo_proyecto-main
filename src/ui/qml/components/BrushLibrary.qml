@@ -26,6 +26,8 @@ Rectangle {
     signal settingsRequested(string brushName)
     signal editBrushRequested(string brushName)
 
+    property string selectedCategory: ""
+
     // Bloquear clics y rueda al lienzo
     MouseArea { 
         anchors.fill: parent
@@ -199,10 +201,17 @@ Rectangle {
                     }
 
                     MouseArea {
+                        id: brushItemMa
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: {
-                            if(root.targetCanvas) root.targetCanvas.usePreset(modelData)
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: (mouse) => {
+                            if (mouse.button === Qt.RightButton) {
+                                brushContextMenu.brushTarget = modelData
+                                brushContextMenu.popup()
+                            } else {
+                                if(root.targetCanvas) root.targetCanvas.usePreset(modelData)
+                            }
                         }
                         onDoubleClicked: {
                             if(root.targetCanvas) {
@@ -210,6 +219,85 @@ Rectangle {
                                 root.editBrushRequested(modelData)
                             }
                         }
+                    }
+
+                    // Context Menu
+                    Menu {
+                        id: brushContextMenu
+                        property string brushTarget: ""
+
+                        background: Rectangle {
+                            implicitWidth: 180
+                            color: "#1c1c1e"
+                            border.color: "#3a3a3a"
+                            border.width: 1
+                            radius: 8
+                        }
+
+                        MenuItem {
+                            text: "✏️  Edit Brush"
+                            onTriggered: {
+                                if(root.targetCanvas) {
+                                    root.targetCanvas.usePreset(brushContextMenu.brushTarget)
+                                    root.editBrushRequested(brushContextMenu.brushTarget)
+                                }
+                            }
+                        }
+                        MenuItem {
+                            text: "⎘  Duplicate"
+                            onTriggered: {
+                                if(root.targetCanvas) {
+                                    root.targetCanvas.duplicateBrush(brushContextMenu.brushTarget)
+                                    updateBrushList(root.selectedCategory || "")
+                                }
+                            }
+                        }
+                        MenuSeparator {}
+                        MenuItem {
+                            text: "✎  Rename"
+                            onTriggered: {
+                                renameDialog.oldName = brushContextMenu.brushTarget
+                                renameDialog.newNameText = brushContextMenu.brushTarget
+                                renameDialog.open()
+                            }
+                        }
+                        MenuItem {
+                            text: "🗑  Delete"
+                            enabled: root.targetCanvas ? !root.targetCanvas.isBuiltInBrush(brushContextMenu.brushTarget) : false
+                            onTriggered: {
+                                deleteDialog.brushTarget = brushContextMenu.brushTarget
+                                deleteDialog.open()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // New Brush Button
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 36
+            Layout.margins: 12
+            radius: 8
+            color: newBrushMa.containsMouse ? "#2a2a2e" : "#1c1c1e"
+            border.color: "#3a3a3c"
+            border.width: 1
+
+            Row {
+                anchors.centerIn: parent; spacing: 6
+                Text { text: "+"; color: "#6366f1"; font.pixelSize: 16; font.weight: Font.Bold; verticalAlignment: Text.AlignVCenter }
+                Text { text: "New Brush"; color: "#ababab"; font.pixelSize: 12 }
+            }
+
+            MouseArea {
+                id: newBrushMa
+                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (root.targetCanvas) {
+                        root.targetCanvas.createNewBrush("New Brush", root.selectedCategory || "Custom")
+                        updateBrushList(root.selectedCategory || "")
+                        root.editBrushRequested("New Brush")
                     }
                 }
             }
@@ -321,6 +409,66 @@ Rectangle {
                 color: "#888"
                 font.pixelSize: 12
                 Layout.alignment: Qt.AlignHCenter
+            }
+        }
+    }
+
+    // ── Rename Dialog ──────────────────────────────────────────────────
+    Dialog {
+        id: renameDialog
+        property string oldName: ""
+        property string newNameText: ""
+        title: "Rename Brush"
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Ok | Dialog.Cancel
+
+        Column {
+            spacing: 8; width: 280
+
+            Text { text: "New name:"; color: "#ccc"; font.pixelSize: 12 }
+            Rectangle {
+                width: parent.width; height: 36; radius: 6
+                color: "#1c1c1e"; border.color: "#3a3a3a"; border.width: 1
+                TextInput {
+                    id: renameInput
+                    anchors.fill: parent; anchors.margins: 8
+                    text: renameDialog.newNameText
+                    color: "white"; font.pixelSize: 13
+                    verticalAlignment: TextInput.AlignVCenter
+                    selectByMouse: true
+                }
+            }
+        }
+
+        onAccepted: {
+            var newN = renameInput.text.trim()
+            if (newN.length > 0 && root.targetCanvas) {
+                root.targetCanvas.renameBrush(renameDialog.oldName, newN)
+                updateBrushList(root.selectedCategory || "")
+            }
+        }
+    }
+
+    // ── Delete Confirm Dialog ──────────────────────────────────────────
+    Dialog {
+        id: deleteDialog
+        property string brushTarget: ""
+        title: "Delete Brush"
+        modal: true
+        anchors.centerIn: parent
+        standardButtons: Dialog.Yes | Dialog.No
+
+        Text {
+            text: "Delete \"" + deleteDialog.brushTarget + "\"?\nThis cannot be undone."
+            color: "#ccc"; font.pixelSize: 13
+            wrapMode: Text.WordWrap; width: 260
+        }
+
+        onAccepted: {
+            if (root.targetCanvas) {
+                root.targetCanvas.deleteBrush(deleteDialog.brushTarget)
+                updateBrushList(root.selectedCategory || "")
             }
         }
     }

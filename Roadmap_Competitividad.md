@@ -8,11 +8,12 @@ Este documento detalla las funcionalidades y mejoras necesarias para que ArtFlow
 *Para potenciar la creación artística desde cero.*
 
 1.  **Reglas de Perspectiva Pro**: Implementar reglas magnéticas de 1, 2 y 3 puntos de fuga que fuercen el trazo a seguir la perspectiva.
-2.  **Capas de Vectores**: Permitir lineart en vectores para poder reescalar sin pérdida de calidad y usar la "Goma de Borrar de Vectores" (que corta hasta la intersección).
-3.  **Herramienta de Licuado (Liquify)**: Modos de Empujar, Inflar, Pellizcar y Torbellino en tiempo real sobre el lienzo.
-4.  **Generador de Tramas (Screentone)**: Herramientas automáticas para aplicar puntos de semitono (manga style) de forma no destructiva.
-5.  **Lazo Magnético y Selección por Gama de Colores**: Mejorar la precisión de las selecciones complejas.
-6.  **Pinceles Duales y de Textura**: Un motor que permita mezclar dos texturas de punta de pincel para efectos hiperrealistas.
+2.  **Symmetry Tool**: Simetría en tiempo real para dibujar rostros, mandalas o diseños repetitivos (espejo vertical/horizontal, radial).
+3.  **Capas de Vectores**: Permitir lineart en vectores para poder reescalar sin pérdida de calidad y usar la "Goma de Borrar de Vectores" (que corta hasta la intersección).
+4.  **Herramienta de Licuado (Liquify)**: Modos de Empujar, Inflar, Pellizcar y Torbellino en tiempo real sobre el lienzo.
+5.  **Generador de Tramas (Screentone)**: Herramientas automáticas para aplicar puntos de semitono (manga style) de forma no destructiva.
+6.  **Lazo Magnético y Selección por Gama de Colores**: Mejorar la precisión de las selecciones complejas.
+7.  **Pinceles Duales y de Textura**: Un motor que permita mezclar dos texturas de punta de pincel para efectos hiperrealistas.
 
 ---
 

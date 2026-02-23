@@ -219,48 +219,92 @@ Rectangle {
                 // Right border
                 Rectangle { width: 1; height: parent.height; anchors.right: parent.right; color: borderDim }
 
-                // Brush stamp shape preview (Procreate-style)
-                // Auto-updates when editing preset changes
-                Connections {
-                    target: targetCanvas
-                    function onEditingPresetChanged() {
-                        if (targetCanvas && targetCanvas.isEditingBrush) {
-                            brushShapeImg.source = ""
-                            brushShapeImg.source = targetCanvas.getStampPreview()
+                // Preview sin parpadeo: usa un Timer + crossfade entre dos imágenes
+                property string nextPreviewSrc: ""
+
+                Timer {
+                    id: previewThrottle
+                    interval: 120
+                    repeat: false
+                    onTriggered: {
+                        if (targetCanvas) {
+                            var newSrc = targetCanvas.get_brush_preview(studio.brushName)
+                            brushShapeImg2.source = newSrc
+                            brushShapeImg2.opacity = 1
+                            brushShapeImg.opacity = 0
+                            swapTimer.start()
                         }
                     }
+                }
+                Timer {
+                    id: swapTimer
+                    interval: 180
+                    repeat: false
+                    onTriggered: {
+                        brushShapeImg.source  = brushShapeImg2.source
+                        brushShapeImg.opacity = 1
+                        brushShapeImg2.opacity = 0
+                    }
+                }
+
+                Connections {
+                    target: targetCanvas
+                    function onEditingPresetChanged() { previewThrottle.restart() }
+                    function onBrushPropertyChanged(category, key) { previewThrottle.restart() }
                 }
                 Rectangle {
                     id: brushPreviewThumb
                     width: parent.width - 32
-                    height: 120
+                    height: 110
                     anchors.top: parent.top
                     anchors.topMargin: 16
                     anchors.horizontalCenter: parent.horizontalCenter
-                    radius: 12
-                    color: bgDeep
+                    radius: 10
+                    color: "#0a0a0a"
                     border.color: colorAccent
                     border.width: 1.5
                     clip: true
 
-                    // Actual brush stroke preview from engine
+                    // Trazo real del pincel — imagen base
                     Image {
                         id: brushShapeImg
                         anchors.fill: parent
-                        anchors.margins: 8
                         source: (targetCanvas && studio.brushName) ? targetCanvas.get_brush_preview(studio.brushName) : ""
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                        cache: false
+                        fillMode: Image.Stretch
+                        cache: false; smooth: true
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
                     }
 
-                    // Fallback when no preview
+                    // Segunda capa para crossfade suave
+                    Image {
+                        id: brushShapeImg2
+                        anchors.fill: parent
+                        source: ""
+                        fillMode: Image.Stretch
+                        cache: false; smooth: true
+                        opacity: 0
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
+
+                    // Fallback
                     Text {
-                        text: "🖌"
+                        text: "\uD83D\uDD8C"
                         font.pixelSize: 28
                         anchors.centerIn: parent
-                        opacity: 0.4
+                        opacity: 0.3
                         visible: brushShapeImg.status !== Image.Ready
+                    }
+
+                    // Label superpuesto
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width; height: 20
+                        color: Qt.rgba(0,0,0,0.55)
+                        Text {
+                            anchors.centerIn: parent
+                            text: "live preview"
+                            color: "#888"; font.pixelSize: 9; font.letterSpacing: 0.5
+                        }
                     }
                 }
 
@@ -567,11 +611,71 @@ Rectangle {
                             visible: studio.activeTab === 1
                             width: parent.width
                             spacing: 24
-                            
+
                             Row {
                                 spacing: 8
                                 Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
                                 Text { text: "SHAPE BEHAVIOR"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
+                            }
+
+                            // TIP TEXTURE PICKER
+                            Column {
+                                width: parent.width; spacing: 10
+                                Text { text: "Brush Tip Texture"; color: textDim; font.pixelSize: 11 }
+
+                                property var tipTextures: targetCanvas ? targetCanvas.getAvailableTipTextures() : []
+                                property string currentTip: targetCanvas ? (targetCanvas.getBrushProperty("shape", "tip_texture") || "") : ""
+
+                                Grid {
+                                    width: parent.width
+                                    columns: 4
+                                    spacing: 8
+
+                                    Repeater {
+                                        model: parent.parent.tipTextures
+                                        delegate: Rectangle {
+                                            width: (parent.width - 3 * 8) / 4
+                                            height: width
+                                            radius: 8
+                                            color: modelData.filename === parent.parent.parent.currentTip ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface
+                                            border.color: modelData.filename === parent.parent.parent.currentTip ? colorAccent : borderDim
+                                            border.width: modelData.filename === parent.parent.parent.currentTip ? 2 : 1
+
+                                            Image {
+                                                anchors.centerIn: parent
+                                                width: parent.width - 12; height: parent.height - 12
+                                                source: modelData.path
+                                                fillMode: Image.PreserveAspectFit
+                                                opacity: 0.85
+                                            }
+
+                                            Text {
+                                                text: modelData.name
+                                                color: textDim; font.pixelSize: 8
+                                                anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                                                anchors.bottomMargin: 3
+                                                elide: Text.ElideRight; width: parent.width - 4
+                                                horizontalAlignment: Text.AlignHCenter
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (targetCanvas) targetCanvas.setTipTextureForBrush(studio.brushName, modelData.path)
+                                                    parent.parent.parent.currentTip = modelData.filename
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // No textures message
+                                Text {
+                                    visible: parent.tipTextures.length === 0
+                                    text: "No tip textures found in assets/brushes/"
+                                    color: textDim; font.pixelSize: 11
+                                    width: parent.width; wrapMode: Text.WordWrap
+                                }
                             }
 
                             StudioSlider {
@@ -588,13 +692,20 @@ Rectangle {
                                 value: targetCanvas ? targetCanvas.getBrushProperty("shape", "scatter") || 0 : 0
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "scatter", value)
                             }
-                            
+
                             StudioSlider {
                                 label: "Rotation"
                                 from: -180; to: 180
                                 suffix: "°"
                                 value: targetCanvas ? targetCanvas.getBrushProperty("shape", "rotation") || 0 : 0
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "rotation", value)
+                            }
+
+                            StudioSlider {
+                                label: "Calligraphic"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("shape", "calligraphic") || 0 : 0
+                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "calligraphic", value)
                             }
 
                             StudioSlider {
@@ -617,13 +728,11 @@ Rectangle {
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "follow_stroke") || false : false
                                 onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "follow_stroke", checked)
                             }
-                            
                             StudioToggle {
                                 label: "Flip X"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "flip_x") || false : false
                                 onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "flip_x", checked)
                             }
-                            
                             StudioToggle {
                                 label: "Flip Y"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "flip_y") || false : false
@@ -661,13 +770,82 @@ Rectangle {
                             visible: studio.activeTab === 3
                             width: parent.width
                             spacing: 24
-                            
+
                             Row {
                                 spacing: 8
                                 Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "GRAIN BEHAVIOR"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
+                                Text { text: "GRAIN / PAPER TEXTURE"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
                             }
-                            
+
+                            // GRAIN TEXTURE PICKER
+                            Column {
+                                width: parent.width; spacing: 10
+                                Text { text: "Grain Texture"; color: textDim; font.pixelSize: 11 }
+
+                                property var grainTextures: targetCanvas ? targetCanvas.getAvailableTipTextures() : []
+                                property string currentGrain: targetCanvas ? (targetCanvas.getBrushProperty("grain", "texture") || "") : ""
+
+                                Grid {
+                                    width: parent.width
+                                    columns: 4
+                                    spacing: 8
+
+                                    // "None" option
+                                    Rectangle {
+                                        width: (parent.width - 3 * 8) / 4
+                                        height: width
+                                        radius: 8
+                                        color: parent.parent.currentGrain === "" ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface
+                                        border.color: parent.parent.currentGrain === "" ? colorAccent : borderDim
+                                        border.width: parent.parent.currentGrain === "" ? 2 : 1
+                                        Text {
+                                            text: "None"; color: textMuted; font.pixelSize: 11
+                                            anchors.centerIn: parent
+                                        }
+                                        MouseArea {
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (targetCanvas) targetCanvas.setBrushProperty("grain", "texture", "")
+                                                parent.parent.currentGrain = ""
+                                            }
+                                        }
+                                    }
+
+                                    Repeater {
+                                        model: parent.parent.grainTextures
+                                        delegate: Rectangle {
+                                            width: (parent.width - 3 * 8) / 4
+                                            height: width
+                                            radius: 8
+                                            color: modelData.filename === parent.parent.parent.currentGrain ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface
+                                            border.color: modelData.filename === parent.parent.parent.currentGrain ? colorAccent : borderDim
+                                            border.width: modelData.filename === parent.parent.parent.currentGrain ? 2 : 1
+
+                                            Image {
+                                                anchors.centerIn: parent
+                                                width: parent.width - 12; height: parent.height - 12
+                                                source: modelData.path
+                                                fillMode: Image.PreserveAspectFit
+                                                opacity: 0.85
+                                            }
+                                            Text {
+                                                text: modelData.name; color: textDim; font.pixelSize: 8
+                                                anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                                                anchors.bottomMargin: 3; elide: Text.ElideRight
+                                                width: parent.width - 4; horizontalAlignment: Text.AlignHCenter
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (targetCanvas) targetCanvas.setGrainTextureForBrush(studio.brushName, modelData.path)
+                                                    parent.parent.parent.currentGrain = modelData.filename
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             StudioToggle {
                                 label: "Rolling (Fixed to canvas)"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("grain", "rolling") || true : true
@@ -681,14 +859,14 @@ Rectangle {
                                 suffix: "%"
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "scale", value)
                             }
-                            
+
                             StudioSlider {
                                 label: "Depth"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("grain", "intensity") || 0.5 : 0.5
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "intensity", value)
                             }
-                            
+
                             StudioSlider {
                                 label: "Brightness"
                                 from: -1.0; to: 1.0
@@ -696,7 +874,7 @@ Rectangle {
                                 offsetColor: true
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "brightness", value)
                             }
-                            
+
                             StudioSlider {
                                 label: "Contrast"
                                 from: 0; to: 2.0
@@ -704,12 +882,10 @@ Rectangle {
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "contrast", value)
                             }
 
-                            StudioSlider {
-                                label: "Rotation"
-                                from: -180; to: 180
-                                suffix: "°"
-                                value: targetCanvas ? targetCanvas.getBrushProperty("grain", "rotation") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "rotation", value)
+                            StudioToggle {
+                                label: "Invert Grain"
+                                checked: targetCanvas ? targetCanvas.getBrushProperty("grain", "invert") || false : false
+                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "invert", checked)
                             }
                         }
                         
@@ -791,17 +967,157 @@ Rectangle {
                             visible: studio.activeTab === 6
                             width: parent.width
                             spacing: 24
+
+                            // SIZE CURVE
+                            Column {
+                                width: parent.width; spacing: 10
+
+                                Row {
+                                    spacing: 8
+                                    Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                    Text { text: "SIZE → PRESSURE CURVE"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
+                                }
+
+                                // Pressure curve canvas
+                                Rectangle {
+                                    width: parent.width; height: 160
+                                    color: bgSurface; radius: 10
+                                    border.color: borderDim; border.width: 1
+
+                                    Canvas {
+                                        id: sizeCurveCanvas
+                                        anchors.fill: parent; anchors.margins: 12
+
+                                        property var pts: [[0.0,0.0],[0.33,0.33],[0.66,0.66],[1.0,1.0]]
+                                        property int dragging: -1
+
+                                        onPaint: {
+                                            var ctx = getContext("2d")
+                                            ctx.clearRect(0, 0, width, height)
+
+                                            // Grid
+                                            ctx.strokeStyle = "#2a2a2c"
+                                            ctx.lineWidth = 1
+                                            for (var i = 0; i <= 4; i++) {
+                                                ctx.beginPath()
+                                                ctx.moveTo(i * width / 4, 0)
+                                                ctx.lineTo(i * width / 4, height)
+                                                ctx.stroke()
+                                                ctx.beginPath()
+                                                ctx.moveTo(0, i * height / 4)
+                                                ctx.lineTo(width, i * height / 4)
+                                                ctx.stroke()
+                                            }
+
+                                            // Diagonal guide
+                                            ctx.strokeStyle = "#333340"
+                                            ctx.setLineDash([4,4])
+                                            ctx.beginPath()
+                                            ctx.moveTo(0, height); ctx.lineTo(width, 0)
+                                            ctx.stroke()
+                                            ctx.setLineDash([])
+
+                                            // Curve
+                                            ctx.strokeStyle = colorAccent
+                                            ctx.lineWidth = 2.5
+                                            ctx.beginPath()
+                                            for (var t = 0; t <= 1; t += 0.01) {
+                                                // Cubic bezier using the 4 control points
+                                                var mt = 1 - t
+                                                var bx = mt*mt*mt*pts[0][0] + 3*mt*mt*t*pts[1][0] + 3*mt*t*t*pts[2][0] + t*t*t*pts[3][0]
+                                                var by = mt*mt*mt*pts[0][1] + 3*mt*mt*t*pts[1][1] + 3*mt*t*t*pts[2][1] + t*t*t*pts[3][1]
+                                                var cx2 = bx * width
+                                                var cy2 = (1 - by) * height
+                                                if (t === 0) ctx.moveTo(cx2, cy2); else ctx.lineTo(cx2, cy2)
+                                            }
+                                            ctx.stroke()
+
+                                            // Control points
+                                            for (var k = 0; k < pts.length; k++) {
+                                                ctx.beginPath()
+                                                ctx.arc(pts[k][0]*width, (1-pts[k][1])*height, 7, 0, Math.PI*2)
+                                                ctx.fillStyle = k === dragging ? colorAccent : "#ffffff"
+                                                ctx.strokeStyle = colorAccent
+                                                ctx.lineWidth = 2
+                                                ctx.fill(); ctx.stroke()
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onPressed: {
+                                                // Find nearest point
+                                                var best = -1, bestD = 1e9
+                                                for (var k = 0; k < sizeCurveCanvas.pts.length; k++) {
+                                                    var px = sizeCurveCanvas.pts[k][0]*sizeCurveCanvas.width
+                                                    var py = (1-sizeCurveCanvas.pts[k][1])*sizeCurveCanvas.height
+                                                    var d = Math.sqrt((mouseX-px)*(mouseX-px)+(mouseY-py)*(mouseY-py))
+                                                    if (d < bestD) { bestD = d; best = k }
+                                                }
+                                                if (bestD < 20) sizeCurveCanvas.dragging = best
+                                            }
+                                            onReleased: { sizeCurveCanvas.dragging = -1; sizeCurveCanvas.requestPaint() }
+                                            onPositionChanged: {
+                                                if (sizeCurveCanvas.dragging >= 0) {
+                                                    var nx = Math.max(0, Math.min(1, mouseX / sizeCurveCanvas.width))
+                                                    var ny = Math.max(0, Math.min(1, 1 - mouseY / sizeCurveCanvas.height))
+                                                    sizeCurveCanvas.pts[sizeCurveCanvas.dragging] = [nx, ny]
+                                                    sizeCurveCanvas.requestPaint()
+                                                    // Apply to canvas: map to pressure curve (using P1 and P2 bezier)
+                                                    if (targetCanvas && sizeCurveCanvas.pts.length >= 4) {
+                                                        targetCanvas.setCurvePoints([sizeCurveCanvas.pts[1][0], sizeCurveCanvas.pts[1][1], sizeCurveCanvas.pts[2][0], sizeCurveCanvas.pts[2][1]])
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Curve presets
+                                Row {
+                                    width: parent.width; spacing: 6
+                                    Repeater {
+                                        model: ["Linear", "Heavy→Light", "Light→Heavy", "S-Curve", "Fixed"]
+                                        delegate: Rectangle {
+                                            height: 28
+                                            width: (parent.width - 4 * 6) / 5
+                                            radius: 6
+                                            color: presetMa.containsMouse ? bgSurface : "transparent"
+                                            border.color: borderDim; border.width: 1
+                                            Text {
+                                                text: modelData; color: textMuted; font.pixelSize: 9
+                                                anchors.centerIn: parent; wrapMode: Text.WordWrap
+                                                horizontalAlignment: Text.AlignHCenter
+                                                width: parent.width - 4
+                                            }
+                                            MouseArea {
+                                                id: presetMa
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    var presets = [
+                                                        [[0,0],[0.33,0.33],[0.66,0.66],[1,1]],        // Linear
+                                                        [[0,0],[0.1,0.6],[0.7,0.95],[1,1]],           // Heavy→Light
+                                                        [[0,0],[0.3,0.05],[0.9,0.4],[1,1]],           // Light→Heavy
+                                                        [[0,0],[0.15,0.6],[0.85,0.4],[1,1]],          // S-Curve
+                                                        [[0,1],[0.33,1],[0.66,1],[1,1]]               // Fixed
+                                                    ]
+                                                    sizeCurveCanvas.pts = presets[index]
+                                                    sizeCurveCanvas.requestPaint()
+                                                    if (targetCanvas && sizeCurveCanvas.pts.length >= 4) {
+                                                        targetCanvas.setCurvePoints([sizeCurveCanvas.pts[1][0], sizeCurveCanvas.pts[1][1], sizeCurveCanvas.pts[2][0], sizeCurveCanvas.pts[2][1]])
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // STYLUS SLIDERS
                             Row {
                                 spacing: 8
                                 Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "PRESSURE RESPONSE"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
-                            }
-
-                            StudioSlider {
-                                label: "Size Base"
-                                from: 0; to: 1.0
-                                value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_base") || 1.0 : 1.0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "size_base", value)
+                                Text { text: "SIZE DYNAMICS"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
                             }
                             StudioSlider {
                                 label: "Size Min"
@@ -810,13 +1126,13 @@ Rectangle {
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "size_min", value)
                             }
                             StudioSlider {
-                                label: "Size Tilt Influence"
+                                label: "Tilt Influence"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_tilt") || 0 : 0
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "size_tilt", value)
                             }
                             StudioSlider {
-                                label: "Size Velocity Influence"
+                                label: "Velocity Influence"
                                 from: -1.0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_velocity") || 0 : 0
                                 offsetColor: true
@@ -826,14 +1142,7 @@ Rectangle {
                             Row {
                                 spacing: 8
                                 Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "OPACITY RESPONSE"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
-                            }
-
-                            StudioSlider {
-                                label: "Opacity Base"
-                                from: 0; to: 1.0
-                                value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_base") || 1.0 : 1.0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_base", value)
+                                Text { text: "OPACITY DYNAMICS"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
                             }
                             StudioSlider {
                                 label: "Opacity Min"
@@ -842,13 +1151,13 @@ Rectangle {
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_min", value)
                             }
                             StudioSlider {
-                                label: "Opacity Tilt Influence"
+                                label: "Tilt Influence"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_tilt") || 0 : 0
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_tilt", value)
                             }
                             StudioSlider {
-                                label: "Opacity Velocity Influence"
+                                label: "Velocity Influence"
                                 from: -1.0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_velocity") || 0 : 0
                                 offsetColor: true
@@ -970,30 +1279,72 @@ Rectangle {
                             }
                         }
 
-                        // --- TAB 9: ABOUT / CREATION ---
+                        // --- TAB 9: CREATION / ABOUT ---
                         Column {
                             visible: studio.activeTab === 9
                             width: parent.width
-                            spacing: 24
+                            spacing: 20
+
                             Row {
                                 spacing: 8
                                 Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "ABOUT THIS BRUSH"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
+                                Text { text: "BRUSH IDENTITY"; color: textMuted; font.pixelSize: 11; font.weight: Font.Bold; font.letterSpacing: 1 }
                             }
 
+                            // Editable Name
                             Column {
-                                width: parent.width; spacing: 12
-                                
-                                Row { spacing: 12; Text { text: "Name:"; color: textDim; font.pixelSize: 12; width: 80 } Text { text: targetCanvas ? targetCanvas.getBrushProperty("meta", "name") || studio.brushName : studio.brushName; color: textPrimary; font.pixelSize: 12 } }
-                                Row { spacing: 12; Text { text: "Author:"; color: textDim; font.pixelSize: 12; width: 80 } Text { text: targetCanvas ? targetCanvas.getBrushProperty("meta", "author") || "ArtFlow Studio" : "ArtFlow Studio"; color: textPrimary; font.pixelSize: 12 } }
-                                Row { spacing: 12; Text { text: "Created:"; color: textDim; font.pixelSize: 12; width: 80 } Text { text: Qt.formatDate(new Date(), "dd MMM yyyy"); color: textPrimary; font.pixelSize: 12 } }
-                                Row { spacing: 12; Text { text: "Category:"; color: textDim; font.pixelSize: 12; width: 80 } Text { text: targetCanvas ? targetCanvas.getBrushProperty("meta", "category") || "Custom" : "Custom"; color: textPrimary; font.pixelSize: 12 } }
-                                Row { spacing: 12; Text { text: "UUID:"; color: textDim; font.pixelSize: 12; width: 80 } Text { text: targetCanvas ? targetCanvas.getBrushProperty("meta", "uuid") || "—" : "—"; color: textDim; font.pixelSize: 10; elide: Text.ElideMiddle; width: 120 } }
+                                width: parent.width; spacing: 6
+                                Text { text: "Name"; color: textDim; font.pixelSize: 11 }
+                                Rectangle {
+                                    width: parent.width; height: 36; radius: 8
+                                    color: bgSurface; border.color: borderDim; border.width: 1
+                                    TextInput {
+                                        anchors.fill: parent; anchors.margins: 10
+                                        text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "name") || studio.brushName) : studio.brushName
+                                        color: textPrimary; font.pixelSize: 13
+                                        verticalAlignment: TextInput.AlignVCenter
+                                        onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "name", text)
+                                    }
+                                }
+                            }
+
+                            // Editable Author
+                            Column {
+                                width: parent.width; spacing: 6
+                                Text { text: "Author"; color: textDim; font.pixelSize: 11 }
+                                Rectangle {
+                                    width: parent.width; height: 36; radius: 8
+                                    color: bgSurface; border.color: borderDim; border.width: 1
+                                    TextInput {
+                                        anchors.fill: parent; anchors.margins: 10
+                                        text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "author") || "ArtFlow Studio") : "ArtFlow Studio"
+                                        color: textPrimary; font.pixelSize: 13
+                                        verticalAlignment: TextInput.AlignVCenter
+                                        onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "author", text)
+                                    }
+                                }
+                            }
+
+                            // Editable Category
+                            Column {
+                                width: parent.width; spacing: 6
+                                Text { text: "Category"; color: textDim; font.pixelSize: 11 }
+                                Rectangle {
+                                    width: parent.width; height: 36; radius: 8
+                                    color: bgSurface; border.color: borderDim; border.width: 1
+                                    TextInput {
+                                        anchors.fill: parent; anchors.margins: 10
+                                        text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "category") || "Custom") : "Custom"
+                                        color: textPrimary; font.pixelSize: 13
+                                        verticalAlignment: TextInput.AlignVCenter
+                                        onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "category", text)
+                                    }
+                                }
                             }
 
                             // Notes area
                             Column {
-                                width: parent.width; spacing: 8
+                                width: parent.width; spacing: 6
                                 Text { text: "Notes"; color: textDim; font.pixelSize: 11 }
                                 Rectangle {
                                     width: parent.width; height: 100; radius: 8; color: bgSurface
@@ -1027,160 +1378,229 @@ Rectangle {
                 color: bgPanel
 
                 // State
-                property var drawingPaths: []
                 property bool isDrawing: false
-                property real lastX: 0
-                property real lastY: 0
+                property real padBrushSize: 18
+                property real padOpacity: 1.0
 
-                // Drawing Pad Header
+                // ── Header ──
                 Rectangle {
                     id: padHeader
-                    width: parent.width
-                    height: 44
+                    width: parent.width; height: 48
                     color: "transparent"
 
                     Row {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 16
+                        anchors.left: parent.left; anchors.leftMargin: 16
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 8
-
                         Text { text: "✎"; font.pixelSize: 14; color: textMuted }
-                        Text {
-                            text: "Drawing Pad"
-                            color: textPrimary
-                            font.pixelSize: 13
-                            font.weight: Font.DemiBold
-                        }
+                        Text { text: "Drawing Pad"; color: textPrimary; font.pixelSize: 13; font.weight: Font.DemiBold }
                     }
 
                     Row {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 16
+                        anchors.right: parent.right; anchors.rightMargin: 16
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 10
+                        spacing: 12
 
-                        // Color swatch
                         Rectangle {
-                            width: 24; height: 24; radius: 12
-                            color: targetCanvas ? targetCanvas.brushColor : "#ffffff"
-                            border.color: "#fff"; border.width: 2
-                        }
-
-                        // Clear button
-                        Rectangle {
-                            width: 60; height: 26; radius: 6
-                            color: clearMa.containsMouse ? bgSurface : "transparent"
+                            width: 52; height: 26; radius: 6
+                            color: clearPadMa.containsMouse ? bgSurface : "transparent"
                             border.color: borderDim; border.width: 1
                             Text { text: "Clear"; font.pixelSize: 11; color: textMuted; anchors.centerIn: parent }
                             MouseArea {
-                                id: clearMa
+                                id: clearPadMa
                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    drawingPad.drawingPaths = []
-                                    if (targetCanvas) targetCanvas.clearPreviewPad()
-                                    padCanvas.requestPaint()
-                                }
+                                onClicked: { if (targetCanvas) targetCanvas.clearPreviewPad() }
                             }
-                        }
-
-                        // Eraser toggle
-                        Rectangle {
-                            width: 26; height: 26; radius: 6
-                            color: padEraserMa.containsMouse ? bgSurface : "transparent"
-                            border.color: borderDim; border.width: 1
-                            Text { text: "⌫"; font.pixelSize: 12; color: textMuted; anchors.centerIn: parent }
-                            MouseArea { id: padEraserMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor }
                         }
                     }
 
-                    Rectangle { width: parent.width - 32; height: 1; anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter; color: borderDim }
+                    Rectangle { width: parent.width; height: 1; anchors.bottom: parent.bottom; color: borderDim }
                 }
 
-                // ═══ FUNCTIONAL DRAWING CANVAS ═══
+                // ── Canvas Area ──
                 Rectangle {
                     id: padCanvasContainer
                     anchors.top: padHeader.bottom
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: padSliders.top
-                    anchors.margins: 12
-                    radius: 12
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.bottom: padInfoBar.top
+                    anchors.leftMargin: 10; anchors.rightMargin: 10; anchors.topMargin: 10
+                    radius: 10
                     color: "#0a0a0c"
-                    border.color: borderDim
-                    border.width: 1
+                    border.color: borderDim; border.width: 1
                     clip: true
 
                     // Hint text
                     Text {
-                        id: drawHintText
-                        text: "Draw here to preview brush"
-                        color: textDim
-                        font.pixelSize: 12
+                        text: "Draw here to test brush"
+                        color: "#3a3a3c"; font.pixelSize: 13
                         anchors.centerIn: parent
-                        opacity: drawingPad.drawingPaths.length === 0 ? 0.4 : 0
-                        Behavior on opacity { NumberAnimation { duration: 200 } }
+                        visible: !drawingPad.isDrawing
                     }
 
+                    // Image from the C++ Brush Engine
                     Image {
-                        id: padCanvasImage
+                        id: padEngineImage
                         anchors.fill: parent
-                        anchors.margins: 2
                         source: targetCanvas ? targetCanvas.getPreviewPadImage() : ""
                         cache: false
+                        asynchronous: false
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
 
                         Connections {
                             target: targetCanvas
                             function onPreviewPadUpdated() {
-                                padCanvasImage.source = ""
-                                padCanvasImage.source = targetCanvas.getPreviewPadImage()
+                                padEngineImage.source = ""
+                                padEngineImage.source = targetCanvas.getPreviewPadImage()
                             }
                         }
                     }
 
+                    // Cursor circle — shows brush size
+                    Rectangle {
+                        id: padCursor
+                        width: Math.max(4, drawingPad.padBrushSize)
+                        height: width; radius: width * 0.5
+                        color: "transparent"
+                        border.color: Qt.rgba(1, 1, 1, 0.7)
+                        border.width: 1.5
+                        visible: padInputArea.containsMouse
+                        x: padInputArea.mouseX - width * 0.5
+                        y: padInputArea.mouseY - height * 0.5
+                        antialiasing: true
+                        z: 10
+                    }
+
+                    // ── Mouse Input ──
                     MouseArea {
+                        id: padInputArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        cursorShape: Qt.CrossCursor
-                        
+                        cursorShape: Qt.BlankCursor
+
+                        property real prevX: 0
+                        property real prevY: 0
+                        property real smoothedDist: 0
+                        property real currentPressure: 0.6
+                        property real targetPressure: 0.6
+
                         onPressed: function(mouse) {
-                            if (targetCanvas) {
-                                targetCanvas.previewPadBeginStroke(mouse.x, mouse.y, 1.0)
-                                drawingPad.isDrawing = true
-                            }
+                            // Sync size/opacity from current brush settings
+                            drawingPad.padBrushSize = targetCanvas ? targetCanvas.brushSize : 18
+                            drawingPad.padOpacity   = targetCanvas ? targetCanvas.brushOpacity : 1.0
+                            prevX = mouse.x
+                            prevY = mouse.y
+                            currentPressure = 0.6
+                            targetPressure  = 0.6
+                            smoothedDist    = 0
+                            drawingPad.isDrawing = true
+                            if (targetCanvas)
+                                targetCanvas.previewPadBeginStroke(mouse.x, mouse.y, 0.6)
                         }
+
                         onPositionChanged: function(mouse) {
-                            if (targetCanvas && drawingPad.isDrawing) {
-                                targetCanvas.previewPadContinueStroke(mouse.x, mouse.y, 1.0)
-                            }
+                            if (!drawingPad.isDrawing) return
+
+                            var dx   = mouse.x - prevX
+                            var dy   = mouse.y - prevY
+                            var dist = Math.sqrt(dx*dx + dy*dy)
+
+                            // Exponential moving average on distance per event
+                            smoothedDist = smoothedDist * 0.85 + dist * 0.15
+
+                            // Map 0–30px/event → pressure 1.0–0.15
+                            var speed = Math.min(1.0, smoothedDist / 30.0)
+                            targetPressure = Math.max(0.15, 1.0 - speed * 0.85)
+
+                            // Ease pressure to avoid sudden spikes
+                            currentPressure = currentPressure + (targetPressure - currentPressure) * 0.12
+
+                            if (targetCanvas)
+                                targetCanvas.previewPadContinueStroke(mouse.x, mouse.y, currentPressure)
+
+                            prevX = mouse.x
+                            prevY = mouse.y
                         }
+
                         onReleased: {
-                            if (targetCanvas) {
-                                targetCanvas.previewPadEndStroke()
-                                drawingPad.isDrawing = false
-                            }
+                            if (targetCanvas) targetCanvas.previewPadEndStroke()
+                            drawingPad.isDrawing = false
                         }
                     }
                 }
 
-                // Bottom info bar
-                Column {
-                    id: padSliders
+                // ── Bottom Info Bar ──
+                Rectangle {
+                    id: padInfoBar
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 12
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: 6
-                    width: parent.width - 24
+                    width: parent.width; height: 46
+                    color: "transparent"
 
                     Rectangle { width: parent.width; height: 1; color: borderDim }
 
                     Row {
-                        spacing: 16
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.centerIn: parent
+                        spacing: 20
 
-                        Text { text: "Size: " + (targetCanvas ? Math.round(targetCanvas.brushSize) : 10) + "px"; color: textDim; font.pixelSize: 10 }
-                        Text { text: "Opacity: " + (targetCanvas ? Math.round(targetCanvas.brushOpacity * 100) + "%" : "100%"); color: textDim; font.pixelSize: 10 }
-                        Text { text: "Flow: " + (targetCanvas ? Math.round(targetCanvas.brushFlow * 100) + "%" : "100%"); color: textDim; font.pixelSize: 10 }
+                        // Size slider
+                        Row {
+                            spacing: 8; anchors.verticalCenter: parent.verticalCenter
+                            Text { text: "Size"; color: textDim; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                            Slider {
+                                id: padSizeSlider
+                                width: 90; height: 20
+                                from: 2; to: 200
+                                value: drawingPad.padBrushSize
+                                onMoved: {
+                                    drawingPad.padBrushSize = value
+                                    if (targetCanvas) targetCanvas.brushSize = value
+                                }
+                                handle: Rectangle {
+                                    x: padSizeSlider.leftPadding + padSizeSlider.visualPosition*(padSizeSlider.availableWidth - width)
+                                    y: padSizeSlider.topPadding + padSizeSlider.availableHeight/2 - height/2
+                                    width: 14; height: 14; radius: 7; color: "#ffffff"
+                                    layer.enabled: true
+                                    layer.effect: null
+                                }
+                                background: Rectangle {
+                                    x: padSizeSlider.leftPadding
+                                    y: padSizeSlider.topPadding + padSizeSlider.availableHeight/2 - height/2
+                                    width: padSizeSlider.availableWidth; height: 3; radius: 2; color: bgSurface
+                                    Rectangle { width: padSizeSlider.visualPosition * parent.width; height: parent.height; color: colorAccent; radius: 2 }
+                                }
+                            }
+                            Text { text: Math.round(padSizeSlider.value)+"px"; color: textDim; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                        }
+
+                        // Opacity slider
+                        Row {
+                            spacing: 8; anchors.verticalCenter: parent.verticalCenter
+                            Text { text: "Opacity"; color: textDim; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                            Slider {
+                                id: padOpSlider
+                                width: 70; height: 20
+                                from: 0.05; to: 1.0
+                                value: drawingPad.padOpacity
+                                onMoved: {
+                                    drawingPad.padOpacity = value
+                                    if (targetCanvas) targetCanvas.brushOpacity = value
+                                }
+                                handle: Rectangle {
+                                    x: padOpSlider.leftPadding + padOpSlider.visualPosition*(padOpSlider.availableWidth - width)
+                                    y: padOpSlider.topPadding + padOpSlider.availableHeight/2 - height/2
+                                    width: 14; height: 14; radius: 7; color: "#ffffff"
+                                    layer.enabled: true
+                                    layer.effect: null
+                                }
+                                background: Rectangle {
+                                    x: padOpSlider.leftPadding
+                                    y: padOpSlider.topPadding + padOpSlider.availableHeight/2 - height/2
+                                    width: padOpSlider.availableWidth; height: 3; radius: 2; color: bgSurface
+                                    Rectangle { width: padOpSlider.visualPosition * parent.width; height: parent.height; color: colorAccent; radius: 2 }
+                                }
+                            }
+                            Text { text: Math.round(padOpSlider.value*100)+"%"; color: textDim; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                        }
                     }
                 }
             }

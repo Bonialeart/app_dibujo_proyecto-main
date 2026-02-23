@@ -15,6 +15,11 @@ Item {
     property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
     property bool isProjectActive: false
     property bool isZenMode: false
+    
+    // Custom Dropdown State
+    property bool wsMenuOpen: false
+    property real wsMenuX: 0
+    property real wsMenuY: 0
 
     signal switchToEssential()
 
@@ -273,36 +278,446 @@ Item {
     // --- TOP BAR (STUDIO INFO) ---
     Rectangle {
         id: studioInfoBar
-        width: parent.width; height: 32
+        width: parent.width; height: 42
         color: "#0a0a0d"
         z: 950
         
         Rectangle { width: parent.width; height: 1; anchors.bottom: parent.bottom; color: "#1a1a1e" }
         
         RowLayout {
-            anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8
-            spacing: 8
+            anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
+            spacing: 12
             
             // Project Info
             Text {
                 text: mainCanvas ? (mainCanvas.currentProjectName || "Untitled") : "Untitled"
-                color: "#777"; font.pixelSize: 11; font.weight: Font.DemiBold
+                color: "#999"; font.pixelSize: 13; font.weight: Font.DemiBold
             }
             Item { width: 4 }
-            Rectangle { width: 1; height: 12; color: "#333" }
+            Rectangle { width: 1; height: 16; color: "#333" }
             Item { width: 4 }
             
             Text {
                 text: mainCanvas ? Math.round((mainCanvas.zoomLevel || 1.0) * 100) + "%" : "100%"
-                color: "#555"; font.pixelSize: 10; font.family: "Monospace"
+                color: "#777"; font.pixelSize: 11; font.family: "Monospace"
             }
             Text {
                 text: mainCanvas ? (mainCanvas.canvasWidth || 1920) + " × " + (mainCanvas.canvasHeight || 1080) : "1920 × 1080"
-                color: "#555"; font.pixelSize: 10; font.family: "Monospace"
+                color: "#777"; font.pixelSize: 11; font.family: "Monospace"
             }
             
             Item { Layout.fillWidth: true }
             
+            // --- BRUSH CONTROLS ---
+            RowLayout {
+                spacing: 8
+                
+                // --- Premium Size Scrubber ---
+                Item {
+                    Layout.preferredWidth: 140
+                    Layout.preferredHeight: 28
+                    
+                    Rectangle {
+                        id: sizeBg
+                        anchors.fill: parent
+                        radius: 14
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "#111114" }
+                            GradientStop { position: 1.0; color: "#1c1c20" }
+                        }
+                        
+                        // Fill Container (clips correctly without squishing radius)
+                        Item {
+                            id: sizeFillClip
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: parent.width * (mainCanvas ? (mainCanvas.brushSize/500.0) : 0)
+                            clip: true
+                            
+                            Rectangle {
+                                width: sizeBg.width
+                                height: sizeBg.height
+                                radius: 14
+                                color: sizeMouse.pressed ? accentColor : Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.35)
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 14
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: Qt.rgba(1,1,1, 0.1) }
+                                        GradientStop { position: 0.5; color: "transparent" }
+                                    }
+                                }
+                            }
+                            
+                            // Glowing edge indicator
+                            Rectangle {
+                                width: 2
+                                height: 14
+                                radius: 1
+                                color: sizeMouse.containsMouse ? "white" : Qt.lighter(accentColor, 1.3)
+                                anchors.right: parent.right
+                                anchors.rightMargin: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                opacity: sizeFillClip.width > 8 ? (sizeMouse.containsMouse ? 1.0 : 0.6) : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                        }
+                        
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 4
+                            Text {
+                                text: "SIZE"
+                                color: sizeMouse.containsMouse ? "white" : "#999"
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: 0.5
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: mainCanvas ? Math.round(mainCanvas.brushSize) + " px" : "0 px"
+                                color: "white"
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 14
+                            color: "transparent"
+                            border.color: sizeMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : "#3a3a40"
+                            border.width: 1
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                        }
+                    }
+                    
+                    MouseArea {
+                        id: sizeMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.SizeHorCursor
+                        property bool isDragging: false
+                        onPressed: (mouse) => {
+                            isDragging = true;
+                            updateValue(mouse);
+                        }
+                        onPositionChanged: (mouse) => {
+                            if (isDragging) updateValue(mouse);
+                        }
+                        onReleased: isDragging = false
+                        
+                        function updateValue(mouse) {
+                            if (!mainCanvas) return;
+                            var v = Math.max(0.002, Math.min(1.0, mouse.x / width));
+                            mainCanvas.brushSize = v * 500;
+                        }
+                    }
+                }
+                
+                Item { width: 4 }
+                
+                // --- Premium Opacity Scrubber ---
+                Item {
+                    Layout.preferredWidth: 130
+                    Layout.preferredHeight: 28
+                    
+                    Rectangle {
+                        id: opacBg
+                        anchors.fill: parent
+                        radius: 14
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "#111114" }
+                            GradientStop { position: 1.0; color: "#1c1c20" }
+                        }
+                        
+                        // Fill Container (clips correctly without squishing radius)
+                        Item {
+                            id: opacFillClip
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: parent.width * (mainCanvas ? mainCanvas.brushOpacity : 0)
+                            clip: true
+                            
+                            Rectangle {
+                                width: opacBg.width
+                                height: opacBg.height
+                                radius: 14
+                                color: opacMouse.pressed ? accentColor : Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.35)
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 14
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: Qt.rgba(1,1,1, 0.1) }
+                                        GradientStop { position: 0.5; color: "transparent" }
+                                    }
+                                }
+                            }
+                            
+                            // Glowing edge indicator
+                            Rectangle {
+                                width: 2
+                                height: 14
+                                radius: 1
+                                color: opacMouse.containsMouse ? "white" : Qt.lighter(accentColor, 1.3)
+                                anchors.right: parent.right
+                                anchors.rightMargin: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                opacity: opacFillClip.width > 8 ? (opacMouse.containsMouse ? 1.0 : 0.6) : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                        }
+                        
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 4
+                            Text {
+                                text: "OPAC"
+                                color: opacMouse.containsMouse ? "white" : "#999"
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: 0.5
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: mainCanvas ? Math.round(mainCanvas.brushOpacity * 100) + "%" : "100%"
+                                color: "white"
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 14
+                            color: "transparent"
+                            border.color: opacMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : "#3a3a40"
+                            border.width: 1
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                        }
+                    }
+                    
+                    MouseArea {
+                        id: opacMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.SizeHorCursor
+                        property bool isDragging: false
+                        onPressed: (mouse) => {
+                            isDragging = true;
+                            updateValue(mouse);
+                        }
+                        onPositionChanged: (mouse) => {
+                            if (isDragging) updateValue(mouse);
+                        }
+                        onReleased: isDragging = false
+                        
+                        function updateValue(mouse) {
+                            if (!mainCanvas) return;
+                            var v = Math.max(0.01, Math.min(1.0, mouse.x / width));
+                            mainCanvas.brushOpacity = v;
+                        }
+                    }
+                }
+                
+                Item { width: 4 }
+                
+                // --- Premium Stabilization Scrubber ---
+                Item {
+                    Layout.preferredWidth: 130
+                    Layout.preferredHeight: 28
+                    
+                    Rectangle {
+                        id: stabBg
+                        anchors.fill: parent
+                        radius: 14
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "#111114" }
+                            GradientStop { position: 1.0; color: "#1c1c20" }
+                        }
+                        
+                        // Fill Container (clips correctly without squishing radius)
+                        Item {
+                            id: stabFillClip
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: parent.width * (mainCanvas ? mainCanvas.brushStabilization : 0)
+                            clip: true
+                            
+                            Rectangle {
+                                width: stabBg.width
+                                height: stabBg.height
+                                radius: 14
+                                color: stabMouse.pressed ? accentColor : Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.35)
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 14
+                                    gradient: Gradient {
+                                        GradientStop { position: 0.0; color: Qt.rgba(1,1,1, 0.1) }
+                                        GradientStop { position: 0.5; color: "transparent" }
+                                    }
+                                }
+                            }
+                            
+                            // Glowing edge indicator
+                            Rectangle {
+                                width: 2
+                                height: 14
+                                radius: 1
+                                color: stabMouse.containsMouse ? "white" : Qt.lighter(accentColor, 1.3)
+                                anchors.right: parent.right
+                                anchors.rightMargin: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                opacity: stabFillClip.width > 8 ? (stabMouse.containsMouse ? 1.0 : 0.6) : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                        }
+                        
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            spacing: 4
+                            Text {
+                                text: "STAB"
+                                color: stabMouse.containsMouse ? "white" : "#999"
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: 0.5
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                            Item { Layout.fillWidth: true }
+                            Text {
+                                text: mainCanvas ? Math.round(mainCanvas.brushStabilization * 100) + "%" : "0%"
+                                color: "white"
+                                font.pixelSize: 11
+                                font.weight: Font.DemiBold
+                            }
+                        }
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 14
+                            color: "transparent"
+                            border.color: stabMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : "#3a3a40"
+                            border.width: 1
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                        }
+                    }
+                    
+                    MouseArea {
+                        id: stabMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.SizeHorCursor
+                        property bool isDragging: false
+                        onPressed: (mouse) => {
+                            isDragging = true;
+                            updateValue(mouse);
+                        }
+                        onPositionChanged: (mouse) => {
+                            if (isDragging) updateValue(mouse);
+                        }
+                        onReleased: isDragging = false
+                        
+                        function updateValue(mouse) {
+                            if (!mainCanvas) return;
+                            var v = Math.max(0.00, Math.min(1.0, mouse.x / width));
+                            mainCanvas.brushStabilization = v;
+                        }
+                    }
+                }
+            }
+            
+            Item { width: 16 }
+            
+            // --- ACTION BUTTONS ---
+            RowLayout {
+                spacing: 6
+                
+                Rectangle {
+                    width: 60; height: 26; radius: 6
+                    color: saveBtn.containsMouse ? accentColor : "#1a1a1f"
+                    border.color: saveBtn.containsMouse ? Qt.lighter(accentColor, 1.2) : "#333"
+                    border.width: 1
+                    Text { text: "Save"; color: "white"; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent }
+                    MouseArea {
+                        id: saveBtn
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (typeof mainWindow !== "undefined" && mainWindow) mainWindow.saveProjectAndRefresh()
+                        }
+                    }
+                }
+                
+                Rectangle {
+                    width: 65; height: 26; radius: 6
+                    color: exportBtn.containsMouse ? accentColor : "#1a1a1f"
+                    border.color: exportBtn.containsMouse ? Qt.lighter(accentColor, 1.2) : "#333"
+                    border.width: 1
+                    Text { text: "Export"; color: "white"; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent }
+                    MouseArea {
+                        id: exportBtn
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (typeof exportImageDialog !== "undefined" && exportImageDialog) exportImageDialog.open()
+                        }
+                    }
+                }
+            }
+            
+            Item { width: 16 }
+            
+            // Symmetry
+            Rectangle {
+                width: 32; height: 24; radius: 6
+                color: mainCanvas && mainCanvas.symmetryEnabled ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.3) : (symMa.containsMouse ? "#1c1c20" : "transparent")
+                border.color: mainCanvas && mainCanvas.symmetryEnabled ? accentColor : (symMa.containsMouse ? "#333" : "transparent")
+                
+                Text { 
+                    text: mainCanvas ? (mainCanvas.symmetryMode === 0 ? "◫" : mainCanvas.symmetryMode === 1 ? "⬒" : mainCanvas.symmetryMode === 2 ? "⊞" : "⎈") : "◫"
+                    color: mainCanvas && mainCanvas.symmetryEnabled ? accentColor : "#888"
+                    font.pixelSize: 16; anchors.centerIn: parent
+                }
+                
+                MouseArea {
+                    id: symMa
+                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: (mouse) => {
+                        if (!mainCanvas) return;
+                        if (mouse.button === Qt.RightButton) {
+                            mainCanvas.symmetryMode = (mainCanvas.symmetryMode + 1) % 4;
+                            mainCanvas.symmetryEnabled = true;
+                        } else {
+                            mainCanvas.symmetryEnabled = !mainCanvas.symmetryEnabled;
+                        }
+                    }
+                }
+                ToolTip.visible: symMa.containsMouse
+                ToolTip.text: "Simetría (Click: On/Off | Click Derecho: Modo)"
+            }
+            
+            Item { width: 8 }
+
             // Undo/Redo
             Row {
                 spacing: 4
@@ -324,16 +739,58 @@ Item {
             
             Item { width: 8 }
             
+            // --- WORKSPACES SWITCHER ---
+            Rectangle {
+                id: workspaceBtn
+                width: 140; height: 26; radius: 6
+                color: wsMa.containsMouse || studioLayout.wsMenuOpen ? "#2a2a30" : "#1a1a1f"
+                border.color: wsMa.containsMouse || studioLayout.wsMenuOpen ? Qt.lighter(accentColor, 1.2) : "#333"
+                border.width: 1
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    spacing: 4
+                    
+                    Text { text: "◫"; color: "#aaa"; font.pixelSize: 12 }
+                    Text {
+                        text: panelManager.activeWorkspace
+                        color: "white"
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+                    Text { text: "▾"; color: "#aaa"; font.pixelSize: 12 }
+                }
+                
+                MouseArea {
+                    id: wsMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        var pt = workspaceBtn.mapToItem(studioLayout, 0, workspaceBtn.height + 6)
+                        studioLayout.wsMenuX = pt.x
+                        studioLayout.wsMenuY = pt.y
+                        studioLayout.wsMenuOpen = !studioLayout.wsMenuOpen
+                    }
+                }
+            }
+            
+            Item { width: 8 }
+            
             // Mode switch
             Rectangle {
-                width: 70; height: 24; radius: 12
+                width: 80; height: 26; radius: 13
                 color: essMa.containsMouse ? accentColor : "#1c1c20"
                 border.color: accentColor; border.width: 1
                 Text {
                     text: "Essential"
                     anchors.centerIn: parent
                     color: essMa.containsMouse ? "#fff" : "#aaa"
-                    font.pixelSize: 10; font.weight: Font.Bold
+                    font.pixelSize: 11; font.weight: Font.Bold
                 }
                 MouseArea {
                     id: essMa
@@ -607,6 +1064,92 @@ Item {
             dockSide: "right"
             onToggleDock: (panelId) => panelManager.togglePanel(panelId)
             onReorder: (src, tgt, mode) => panelManager.reorderPanel("right", src, tgt, mode)
+        }
+    }
+    
+    // --- CUSTOM FLOATING DROPDOWN FOR WORKSPACES ---
+    // Guaranteed to be on top of EVERYTHING via z-index and root containment
+    
+    // 1. Invisible fullscreen dismisser
+    MouseArea {
+        anchors.fill: parent
+        z: 9998
+        visible: studioLayout.wsMenuOpen
+        onClicked: studioLayout.wsMenuOpen = false
+    }
+    
+    // 2. The Floating Menu itself
+    Rectangle {
+        id: customWsMenu
+        z: 9999
+        visible: studioLayout.wsMenuOpen
+        x: studioLayout.wsMenuX
+        y: studioLayout.wsMenuY
+        width: 150
+        height: wsMenuCol.height + 16
+        color: "#18181c"
+        border.color: "#3a3a40"
+        border.width: 1
+        radius: 8
+        
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowBlur: 24
+            shadowColor: "#88000000"
+            shadowVerticalOffset: 4
+        }
+        
+        Column {
+            id: wsMenuCol
+            width: parent.width - 12
+            anchors.centerIn: parent
+            spacing: 4
+            
+            Repeater {
+                model: ["Ilustración", "Manga/Comic", "Animación"]
+                delegate: Rectangle {
+                    width: parent.width
+                    height: 32
+                    radius: 6
+                    color: wsItemMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                    border.color: wsItemMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                    border.width: 1
+                    
+                    Text { 
+                        text: modelData
+                        color: modelData === panelManager.activeWorkspace ? accentColor : (wsItemMa.containsMouse ? "white" : "#ddd")
+                        font.pixelSize: 12
+                        font.weight: modelData === panelManager.activeWorkspace ? Font.Bold : Font.Medium
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 28
+                    }
+                    
+                    // Checkmark indicator for active workspace instead of a line
+                    Text {
+                        visible: modelData === panelManager.activeWorkspace
+                        text: "✓"
+                        color: accentColor
+                        font.pixelSize: 14
+                        font.weight: Font.Bold
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 8
+                    }
+                    
+                    MouseArea {
+                        id: wsItemMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            panelManager.loadWorkspace(modelData)
+                            studioLayout.wsMenuOpen = false
+                        }
+                    }
+                }
+            }
         }
     }
 }

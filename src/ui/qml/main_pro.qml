@@ -113,6 +113,11 @@ Window {
     property bool showShapes: false
     property bool showStoryPanel: false
     property bool isStoryProject: false
+    onIsStoryProjectChanged: {
+        if (typeof comicOverlay !== "undefined" && comicOverlay) {
+            comicOverlay.showMangaGuides = isStoryProject
+        }
+    }
     property string currentStoryPath: ""
     
     // Sidebar visibility (hidden by default when on canvas for minimalist experience)
@@ -584,7 +589,12 @@ Window {
                 MenuButton {
                     label: "Tools"
                     menuItems: [
-                        { text: "Symmetry Tool", action: function() { toastManager.show("Symmetry Tool Activated (Coming Soon)", "info") } },
+                        { text: "Symmetry Tool", action: function() { 
+                            if (mainCanvas) { 
+                                mainCanvas.symmetryEnabled = !mainCanvas.symmetryEnabled; 
+                                toastManager.show("Simetría " + (mainCanvas.symmetryEnabled ? "Activada" : "Desactivada"), "info"); 
+                            } 
+                        } },
                         { text: "Liquify", action: function() { toastManager.show("Liquify Tool Activated (Coming Soon)", "info") } },
                         { isSeparator: true },
                         { text: "Perspective Guides", action: function() { toastManager.show("Perspective Guides Visible", "info") } },

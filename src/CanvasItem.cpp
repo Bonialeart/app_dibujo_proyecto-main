@@ -452,6 +452,10 @@ CanvasItem::~CanvasItem() {
     delete m_layerManager;
   if (m_undoManager)
     delete m_undoManager;
+  for (auto *engine : m_symmetryEngines) {
+    delete engine;
+  }
+  m_symmetryEngines.clear();
   if (m_impastoShader)
     delete m_impastoShader;
 
@@ -1105,6 +1109,46 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // 🎯 LÍNEAS DE GUÍA DE SIMETRÍA (SYMMETRY GUIDES)
+  // ══════════════════════════════════════════════════════════════
+  if (m_symmetryEnabled) {
+    painter->save();
+    // Transformar al espacio de la cámara
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+
+    QPen symPen(QColor(100, 150, 255, 120), 1.5f / m_zoomLevel, Qt::DashLine);
+    painter->setPen(symPen);
+
+    QPointF center(m_canvasWidth / 2.0f, m_canvasHeight / 2.0f);
+
+    if (m_symmetryMode == 0 || m_symmetryMode == 2) {
+      // Vertical line (Left/Right)
+      painter->drawLine(QPointF(center.x(), 0),
+                        QPointF(center.x(), m_canvasHeight));
+    }
+    if (m_symmetryMode == 1 || m_symmetryMode == 2) {
+      // Horizontal line (Top/Bottom)
+      painter->drawLine(QPointF(0, center.y()),
+                        QPointF(m_canvasWidth, center.y()));
+    }
+    if (m_symmetryMode == 3) {
+      // Radial lines
+      int segments = m_symmetrySegments;
+      if (segments < 1)
+        segments = 6;
+      for (int i = 0; i < segments; ++i) {
+        float angle = (2.0f * M_PI * i) / segments;
+        QPointF endPoint(center.x() + m_canvasWidth * std::cos(angle),
+                         center.y() + m_canvasWidth * std::sin(angle));
+        painter->drawLine(center, endPoint);
+      }
+    }
+    painter->restore();
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // 🎯 CURSOR PERSONALIZADO AL FINAL (ENCIMA DE TODO)
   // ══════════════════════════════════════════════════════════════
 
@@ -1501,6 +1545,28 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
         &fboPainter2, m_lastPos, canvasPos, effectivePressure, settings, tilt,
         velocityFactor, m_pingFBO->texture(), settings.wetness,
         settings.dilution, settings.smudge);
+
+    if (m_symmetryEnabled && !m_symmetryEngines.empty()) {
+      QPointF center(m_canvasWidth / 2.0f, m_canvasHeight / 2.0f);
+      for (size_t iter = 0; iter < m_symmetryEngines.size(); ++iter) {
+        QPointF p1 =
+            mirrorPoint(m_lastPos, iter, m_symmetryEngines.size(), center);
+        QPointF p2 =
+            mirrorPoint(canvasPos, iter, m_symmetryEngines.size(), center);
+        m_symmetryEngines[iter]->paintStroke(
+            &fboPainter2, p1, p2, effectivePressure, settings, tilt,
+            velocityFactor, m_pingFBO->texture(), settings.wetness,
+            settings.dilution, settings.smudge);
+
+        // EXPANDIR DIRTY RECT para incluir el trazo simétrico
+        QRectF symRect(p1, p2);
+        symRect = symRect.normalized().adjusted(
+            -settings.size * 2, -settings.size * 2, settings.size * 2,
+            settings.size * 2);
+        canvasRect = canvasRect.united(symRect);
+      }
+    }
+
     fboPainter2.end();
     m_pongFBO->release();
 
@@ -1562,6 +1628,21 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
           &predPainter, canvasPos, m_predictedPos, effectivePressure,
           predSettings, tilt, velocityFactor, m_predictionFBO->texture(),
           settings.wetness, settings.dilution, settings.smudge);
+
+      if (m_symmetryEnabled && !m_symmetryEngines.empty()) {
+        QPointF center(m_canvasWidth / 2.0f, m_canvasHeight / 2.0f);
+        for (size_t iter = 0; iter < m_symmetryEngines.size(); ++iter) {
+          QPointF p1 =
+              mirrorPoint(canvasPos, iter, m_symmetryEngines.size(), center);
+          QPointF p2 = mirrorPoint(m_predictedPos, iter,
+                                   m_symmetryEngines.size(), center);
+          m_symmetryEngines[iter]->paintStroke(
+              &predPainter, p1, p2, effectivePressure, predSettings, tilt,
+              velocityFactor, m_predictionFBO->texture(), settings.wetness,
+              settings.dilution, settings.smudge);
+        }
+      }
+
       predPainter.end();
       m_predictionFBO->release();
     }
@@ -1582,6 +1663,26 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     m_brushEngine->paintStroke(&painter, m_lastPos, canvasPos,
                                effectivePressure, settings, tilt,
                                velocityFactor);
+
+    if (m_symmetryEnabled && !m_symmetryEngines.empty()) {
+      QPointF center(m_canvasWidth / 2.0f, m_canvasHeight / 2.0f);
+      for (size_t iter = 0; iter < m_symmetryEngines.size(); ++iter) {
+        QPointF p1 =
+            mirrorPoint(m_lastPos, iter, m_symmetryEngines.size(), center);
+        QPointF p2 =
+            mirrorPoint(canvasPos, iter, m_symmetryEngines.size(), center);
+        m_symmetryEngines[iter]->paintStroke(
+            &painter, p1, p2, effectivePressure, settings, tilt, velocityFactor,
+            0, settings.wetness, settings.dilution, settings.smudge);
+
+        // EXPANDIR DIRTY RECT
+        QRectF symRect(p1, p2);
+        symRect = symRect.normalized().adjusted(
+            -settings.size * 2, -settings.size * 2, settings.size * 2,
+            settings.size * 2);
+        canvasRect = canvasRect.united(symRect);
+      }
+    }
     painter.end();
     layer->markDirty(canvasRect.toAlignedRect());
   }
@@ -1591,10 +1692,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   // screen. Use lastCanvasPos (captured at start) to ensure we cover the
   // whole segment
   // Transform back to screen for update()
-  QRectF screenRect(
-      canvasRect.x() * m_zoomLevel + m_viewOffset.x() * m_zoomLevel,
-      canvasRect.y() * m_zoomLevel + m_viewOffset.y() * m_zoomLevel,
-      canvasRect.width() * m_zoomLevel, canvasRect.height() * m_zoomLevel);
+  QRectF screenRect(0, 0, m_canvasWidth * m_zoomLevel,
+                    m_canvasHeight * m_zoomLevel);
 
   // Extra safety for screen clipping
   screenRect.adjust(-2, -2, 2, 2);
@@ -1924,6 +2023,10 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     }
 
     m_brushEngine->resetRemainder();
+    if (m_symmetryEnabled) {
+      for (auto *eng : m_symmetryEngines)
+        eng->resetRemainder();
+    }
     m_strokePoints.clear();
     m_strokePoints.push_back(event->position());
     m_holdStartPos = event->position();
@@ -2256,6 +2359,10 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     }
 
     m_brushEngine->resetRemainder();
+    if (m_symmetryEnabled) {
+      for (auto *eng : m_symmetryEngines)
+        eng->resetRemainder();
+    }
 
     m_strokePoints.clear();
     m_strokePoints.push_back(event->position());
@@ -2336,6 +2443,25 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
 }
 
 bool CanvasItem::event(QEvent *event) {
+  if (event->type() == QEvent::TouchBegin ||
+      event->type() == QEvent::TouchUpdate ||
+      event->type() == QEvent::TouchEnd ||
+      event->type() == QEvent::TouchCancel) {
+    if (PreferencesManager::instance()->touchGesturesEnabled() ||
+        PreferencesManager::instance()->touchEyedropperEnabled() ||
+        PreferencesManager::instance()->multitouchUndoRedoEnabled()) {
+      touchEventOverride(static_cast<QTouchEvent *>(event));
+      return true;
+    }
+  }
+
+  if (event->type() == QEvent::NativeGesture) {
+    if (PreferencesManager::instance()->touchGesturesEnabled()) {
+      nativeGestureEvent(static_cast<QNativeGestureEvent *>(event));
+      return true;
+    }
+  }
+
   // Dispatch tablet events manually if QQuickItem doesn't automatically
   if (event->type() == QEvent::TabletPress ||
       event->type() == QEvent::TabletMove ||
@@ -2346,7 +2472,181 @@ bool CanvasItem::event(QEvent *event) {
   return QQuickPaintedItem::event(event);
 }
 
+void CanvasItem::touchEventOverride(QTouchEvent *event) {
+  int points = event->points().count();
+  m_touchPointCount = points;
+
+  if (event->type() == QEvent::TouchBegin) {
+    if (points == 1 &&
+        PreferencesManager::instance()->touchEyedropperEnabled()) {
+      m_touchStartPos = event->points().first().position();
+      m_touchIsEyedropper = false;
+      if (!m_touchTimer) {
+        m_touchTimer = new QTimer(this);
+        m_touchTimer->setSingleShot(true);
+        connect(m_touchTimer, &QTimer::timeout, this, [this]() {
+          if (m_touchPointCount == 1 && !m_isDrawing) {
+            m_touchIsEyedropper = true;
+            QColor sampled = QColor(
+                sampleColor(m_touchStartPos.x(), m_touchStartPos.y(), 0));
+            setBrushColor(sampled);
+            emit notificationRequested("Color Picked", "info");
+          }
+        });
+      }
+      m_touchTimer->start(500); // 500ms long press
+    } else if (points > 1) {
+      if (m_touchTimer)
+        m_touchTimer->stop();
+    }
+
+    // Store initial pinch data
+    if (points == 2 && PreferencesManager::instance()->touchGesturesEnabled()) {
+      QPointF p1 = event->points()[0].position();
+      QPointF p2 = event->points()[1].position();
+      m_touchStartPos = (p1 + p2) / 2.0;
+      m_lastPinchScale = QLineF(p1, p2).length();
+    }
+    event->accept();
+  } else if (event->type() == QEvent::TouchUpdate) {
+    if (points == 1 && m_touchTimer && m_touchTimer->isActive()) {
+      // Cancel long press if moved too much
+      float dist = QPointF(event->points().first().position() - m_touchStartPos)
+                       .manhattanLength();
+      if (dist > 15.0f) {
+        m_touchTimer->stop();
+      }
+    } else if (points == 2 &&
+               PreferencesManager::instance()->touchGesturesEnabled()) {
+      QPointF p1 = event->points()[0].position();
+      QPointF p2 = event->points()[1].position();
+      QPointF center = (p1 + p2) / 2.0;
+
+      // Calculate Pan
+      QPointF panDelta = center - m_touchStartPos;
+      setViewOffset(m_viewOffset - (panDelta / m_zoomLevel));
+      m_touchStartPos = center;
+
+      // Calculate Zoom
+      float currentDist = QLineF(p1, p2).length();
+      if (m_lastPinchScale > 0) {
+        float scaleFactor = currentDist / m_lastPinchScale;
+        setZoomLevel(
+            std::clamp((float)(m_zoomLevel * scaleFactor), 0.1f, 30.0f));
+      }
+      m_lastPinchScale = currentDist;
+      event->accept();
+      return;
+    }
+  } else if (event->type() == QEvent::TouchEnd ||
+             event->type() == QEvent::TouchCancel) {
+    if (m_touchTimer)
+      m_touchTimer->stop();
+    m_touchIsEyedropper = false;
+
+    if (PreferencesManager::instance()->multitouchUndoRedoEnabled()) {
+      if (points == 2 && !m_isDrawing) {
+        undo();
+      } else if (points == 3 && !m_isDrawing) {
+        redo();
+      }
+    }
+  }
+}
+
+void CanvasItem::nativeGestureEvent(QNativeGestureEvent *event) {
+  if (event->gestureType() == Qt::ZoomNativeGesture) {
+    float scaleDelta = event->value();
+    setZoomLevel(
+        std::clamp(m_zoomLevel + (scaleDelta * m_zoomLevel), 0.1f, 30.0f));
+  } else if (event->gestureType() == Qt::RotateNativeGesture) {
+    // float rotDelta = event->value();
+    // m_viewRotation += rotDelta; if we supported canvas rotation
+    // setCanvasRotation(m_viewRotation);
+  }
+}
+
 // ... Setters and other methods ...
+
+void CanvasItem::setSymmetryEnabled(bool v) {
+  if (m_symmetryEnabled != v) {
+    m_symmetryEnabled = v;
+    emit symmetryEnabledChanged();
+    updateSymmetryEngines();
+    update();
+  }
+}
+
+void CanvasItem::setSymmetryMode(int v) {
+  if (m_symmetryMode != v) {
+    m_symmetryMode = v;
+    emit symmetryModeChanged();
+    updateSymmetryEngines();
+    update();
+  }
+}
+
+void CanvasItem::setSymmetrySegments(int v) {
+  if (m_symmetrySegments != v) {
+    m_symmetrySegments = v;
+    emit symmetrySegmentsChanged();
+    updateSymmetryEngines();
+    update();
+  }
+}
+
+void CanvasItem::updateSymmetryEngines() {
+  for (auto *engine : m_symmetryEngines) {
+    delete engine;
+  }
+  m_symmetryEngines.clear();
+
+  if (!m_symmetryEnabled)
+    return;
+
+  int totalMirrors = 0;
+  if (m_symmetryMode == 0)
+    totalMirrors = 1; // Vertical (1 mirror)
+  else if (m_symmetryMode == 1)
+    totalMirrors = 1; // Horizontal (1 mirror)
+  else if (m_symmetryMode == 2)
+    totalMirrors = 3; // Quad (3 mirrors + 1 primary = 4)
+  else if (m_symmetryMode == 3)
+    totalMirrors = std::max(1, m_symmetrySegments - 1); // Radial
+
+  for (int i = 0; i < totalMirrors; ++i) {
+    auto *eng = new artflow::BrushEngine();
+    eng->setBrush(m_brushEngine->getBrush());
+    m_symmetryEngines.push_back(eng);
+  }
+}
+
+QPointF CanvasItem::mirrorPoint(const QPointF &pt, int mirrorIndex,
+                                int totalMirrors, const QPointF &center) {
+  if (m_symmetryMode == 0) { // Vertical Mirror (Left/Right)
+    return QPointF(center.x() - (pt.x() - center.x()), pt.y());
+  } else if (m_symmetryMode == 1) { // Horizontal Mirror (Top/Bottom)
+    return QPointF(pt.x(), center.y() - (pt.y() - center.y()));
+  } else if (m_symmetryMode == 2) { // Quad Mirror
+    if (mirrorIndex == 0)
+      return QPointF(center.x() - (pt.x() - center.x()), pt.y()); // V
+    if (mirrorIndex == 1)
+      return QPointF(pt.x(), center.y() - (pt.y() - center.y())); // H
+    if (mirrorIndex == 2)
+      return QPointF(center.x() - (pt.x() - center.x()),
+                     center.y() - (pt.y() - center.y())); // HV
+  } else if (m_symmetryMode == 3) {                       // Radial
+    // Radial calculation: rotate around center
+    int totalSegments = totalMirrors + 1;
+    float angle = 2.0f * M_PI * (mirrorIndex + 1) / totalSegments;
+    float dx = pt.x() - center.x();
+    float dy = pt.y() - center.y();
+    float nx = dx * std::cos(angle) - dy * std::sin(angle);
+    float ny = dx * std::sin(angle) + dy * std::cos(angle);
+    return QPointF(center.x() + nx, center.y() + ny);
+  }
+  return pt;
+}
 
 void CanvasItem::setBrushSize(int size) {
   m_brushSize = size;
@@ -6553,4 +6853,226 @@ void CanvasItem::blendWithShader(QPainter *painter, artflow::Layer *layer,
   f->glBindTexture(GL_TEXTURE_2D, 0);
 
   painter->endNativePainting();
+}
+
+// ══════════════════════════════════════════════════════════════
+// Brush Studio — CRUD Operations
+// ══════════════════════════════════════════════════════════════
+
+void CanvasItem::createNewBrush(const QString &name, const QString &category) {
+  auto *bpm = artflow::BrushPresetManager::instance();
+  artflow::BrushPreset newPreset;
+  newPreset.uuid = artflow::BrushPreset::generateUUID();
+  newPreset.name = name.isEmpty() ? "New Brush" : name;
+  newPreset.category = category.isEmpty() ? "Custom" : category;
+  newPreset.defaultSize = 20.0f;
+  newPreset.defaultOpacity = 1.0f;
+  newPreset.defaultHardness = 0.8f;
+  newPreset.stroke.spacing = 0.1f;
+  newPreset.shape.roundness = 1.0f;
+
+  bpm->addPreset(newPreset);
+
+  QString dir = QCoreApplication::applicationDirPath() + "/brushes/user";
+  QDir().mkpath(dir);
+  bpm->savePreset(newPreset, dir);
+
+  m_availableBrushes.clear();
+  auto allP = bpm->allPresets();
+  for (auto *p : allP) {
+    QVariantMap m;
+    m["name"] = p->name;
+    m["category"] = p->category;
+    m["uuid"] = p->uuid;
+    m_availableBrushes.append(m);
+  }
+  emit availableBrushesChanged();
+  emit brushCategoriesChanged();
+
+  beginBrushEdit(newPreset.name);
+}
+
+bool CanvasItem::deleteBrush(const QString &name) {
+  if (isBuiltInBrush(name))
+    return false;
+
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *p = bpm->findByName(name);
+  if (!p)
+    return false;
+
+  QString uuid = p->uuid;
+  QString dir = QCoreApplication::applicationDirPath() + "/brushes/user";
+  QFile::remove(dir + "/" + name + ".json");
+  bpm->removePreset(uuid);
+
+  if (m_activeBrushName == name) {
+    auto allP = bpm->allPresets();
+    if (!allP.empty())
+      usePreset(allP.front()->name);
+  }
+
+  m_availableBrushes.clear();
+  auto allP = bpm->allPresets();
+  for (auto *pr : allP) {
+    QVariantMap m;
+    m["name"] = pr->name;
+    m["category"] = pr->category;
+    m["uuid"] = pr->uuid;
+    m_availableBrushes.append(m);
+  }
+  emit availableBrushesChanged();
+  return true;
+}
+
+QString CanvasItem::duplicateBrush(const QString &name) {
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *src = bpm->findByName(name);
+  if (!src)
+    return QString();
+
+  QString newName = name + " Copy";
+  int suffix = 2;
+  while (bpm->findByName(newName))
+    newName = name + " Copy " + QString::number(suffix++);
+
+  artflow::BrushPreset copy = bpm->duplicatePreset(src->uuid, newName);
+
+  QString dir = QCoreApplication::applicationDirPath() + "/brushes/user";
+  QDir().mkpath(dir);
+  bpm->savePreset(copy, dir);
+
+  m_availableBrushes.clear();
+  auto allP = bpm->allPresets();
+  for (auto *p : allP) {
+    QVariantMap m;
+    m["name"] = p->name;
+    m["category"] = p->category;
+    m["uuid"] = p->uuid;
+    m_availableBrushes.append(m);
+  }
+  emit availableBrushesChanged();
+  return copy.name;
+}
+
+bool CanvasItem::renameBrush(const QString &oldName, const QString &newName) {
+  if (newName.trimmed().isEmpty())
+    return false;
+  if (isBuiltInBrush(oldName))
+    return false;
+
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *p = bpm->findByName(oldName);
+  if (!p)
+    return false;
+
+  artflow::BrushPreset updated = *p;
+  updated.name = newName;
+
+  QString dir = QCoreApplication::applicationDirPath() + "/brushes/user";
+  QFile::remove(dir + "/" + oldName + ".json");
+  bpm->updatePreset(updated);
+  bpm->savePreset(updated, dir);
+
+  if (m_activeBrushName == oldName) {
+    m_activeBrushName = newName;
+    emit activeBrushNameChanged();
+  }
+  if (m_isEditingBrush && m_editingPreset.name == oldName)
+    m_editingPreset.name = newName;
+
+  m_availableBrushes.clear();
+  auto allP = bpm->allPresets();
+  for (auto *pr : allP) {
+    QVariantMap m;
+    m["name"] = pr->name;
+    m["category"] = pr->category;
+    m["uuid"] = pr->uuid;
+    m_availableBrushes.append(m);
+  }
+  emit availableBrushesChanged();
+  return true;
+}
+
+bool CanvasItem::isBuiltInBrush(const QString &name) const {
+  QString dir = QCoreApplication::applicationDirPath() + "/brushes/user";
+  return !QFile::exists(dir + "/" + name + ".json");
+}
+
+// ══════════════════════════════════════════════════════════════
+// Brush Studio — Texture Management
+// ══════════════════════════════════════════════════════════════
+
+QVariantList CanvasItem::getAvailableTipTextures() const {
+  QVariantList result;
+  QStringList searchPaths;
+  searchPaths << QCoreApplication::applicationDirPath() + "/assets/brushes"
+              << QCoreApplication::applicationDirPath() + "/../assets/brushes"
+              << QDir::currentPath() + "/assets/brushes";
+
+  QStringList filters;
+  filters << "*.png" << "*.PNG";
+
+  for (const QString &searchPath : searchPaths) {
+    QDir dir(searchPath);
+    if (!dir.exists())
+      continue;
+    const QStringList files = dir.entryList(filters, QDir::Files);
+    for (const QString &file : files) {
+      QVariantMap entry;
+      entry["name"] = QFileInfo(file).baseName();
+      entry["filename"] = file;
+      entry["path"] = dir.absoluteFilePath(file);
+      result.append(entry);
+    }
+    if (!result.isEmpty())
+      break;
+  }
+  return result;
+}
+
+void CanvasItem::setTipTextureForBrush(const QString &brushName,
+                                       const QString &texturePath) {
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *p = bpm->findByName(brushName);
+  QString filename = QFileInfo(texturePath).fileName();
+
+  if (p) {
+    artflow::BrushPreset updated = *p;
+    updated.shape.tipTexture = filename;
+    bpm->updatePreset(updated);
+  }
+  if (m_isEditingBrush)
+    m_editingPreset.shape.tipTexture = filename;
+
+  updateBrushTipImage();
+  emit brushPropertyChanged("shape", "tip_texture");
+  applyEditingPresetToEngine();
+}
+
+void CanvasItem::setGrainTextureForBrush(const QString &brushName,
+                                         const QString &texturePath) {
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *p = bpm->findByName(brushName);
+  QString filename = QFileInfo(texturePath).fileName();
+
+  if (p) {
+    artflow::BrushPreset updated = *p;
+    updated.grain.texture = filename;
+    if (updated.grain.intensity < 0.01f)
+      updated.grain.intensity = 0.5f;
+    if (updated.grain.scale < 0.01f)
+      updated.grain.scale = 1.0f;
+    bpm->updatePreset(updated);
+  }
+  if (m_isEditingBrush) {
+    m_editingPreset.grain.texture = filename;
+    if (m_editingPreset.grain.intensity < 0.01f)
+      m_editingPreset.grain.intensity = 0.5f;
+    if (m_editingPreset.grain.scale < 0.01f)
+      m_editingPreset.grain.scale = 1.0f;
+  }
+
+  emit brushPropertyChanged("grain", "texture");
+  applyEditingPresetToEngine();
 }

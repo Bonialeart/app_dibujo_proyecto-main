@@ -10,6 +10,7 @@
 #include <QColor>
 #include <QImage>
 #include <QMap>
+#include <QNativeGestureEvent>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLTexture>
 #include <QPainterPath>
@@ -18,6 +19,7 @@
 #include <QRectF>
 #include <QTabletEvent>
 #include <QTimer>
+#include <QTouchEvent>
 #include <QVariantList>
 #include <deque>
 #include <vector>
@@ -97,6 +99,12 @@ public:
                  currentProjectPathChanged)
   Q_PROPERTY(QString currentProjectName READ currentProjectName NOTIFY
                  currentProjectNameChanged)
+  Q_PROPERTY(bool symmetryEnabled READ symmetryEnabled WRITE setSymmetryEnabled
+                 NOTIFY symmetryEnabledChanged)
+  Q_PROPERTY(int symmetryMode READ symmetryMode WRITE setSymmetryMode NOTIFY
+                 symmetryModeChanged)
+  Q_PROPERTY(int symmetrySegments READ symmetrySegments WRITE
+                 setSymmetrySegments NOTIFY symmetrySegmentsChanged)
   Q_PROPERTY(QString brushTip READ brushTip NOTIFY brushTipChanged)
   Q_PROPERTY(
       bool isEraser READ isEraser WRITE setIsEraser NOTIFY isEraserChanged)
@@ -248,6 +256,17 @@ public:
   void setIsEraser(bool eraser);
   Q_INVOKABLE void setBackgroundColor(const QString &color);
   Q_INVOKABLE void setUseCustomCursor(bool use);
+  void setUseTexture(bool v);
+
+  bool symmetryEnabled() const { return m_symmetryEnabled; }
+  void setSymmetryEnabled(bool v);
+
+  int symmetryMode() const { return m_symmetryMode; }
+  void setSymmetryMode(int v);
+
+  int symmetrySegments() const { return m_symmetrySegments; }
+  void setSymmetrySegments(int v);
+
   Q_INVOKABLE void flattenComicPanels(const QVariantList &panels);
   Q_INVOKABLE void usePreset(const QString &name);
   Q_INVOKABLE bool loadProject(const QString &path);
@@ -378,6 +397,23 @@ public:
   // Stamp preview (single brush stamp for sidebar thumbnail)
   Q_INVOKABLE QString getStampPreview();
 
+  // ══════════════════════════════════════════════════════════════
+  // Brush CRUD — Create, Delete, Duplicate, Rename
+  // ══════════════════════════════════════════════════════════════
+  Q_INVOKABLE void createNewBrush(const QString &name, const QString &category);
+  Q_INVOKABLE bool deleteBrush(const QString &name);
+  Q_INVOKABLE QString duplicateBrush(const QString &name);
+  Q_INVOKABLE bool renameBrush(const QString &oldName, const QString &newName);
+  Q_INVOKABLE bool isBuiltInBrush(const QString &name) const;
+
+  // Tip texture management
+  // Returns list of {name, path} objects for all available tip PNGs
+  Q_INVOKABLE QVariantList getAvailableTipTextures() const;
+  Q_INVOKABLE void setTipTextureForBrush(const QString &brushName,
+                                         const QString &texturePath);
+  Q_INVOKABLE void setGrainTextureForBrush(const QString &brushName,
+                                           const QString &texturePath);
+
   QVariantList pressureCurvePoints() const { return m_rawPoints; }
   Q_INVOKABLE void setCurvePoints(const QVariantList &points);
 
@@ -432,6 +468,10 @@ signals:
   void opacityByPressureChanged();
   void flowByPressureChanged();
 
+  void symmetryEnabledChanged();
+  void symmetryModeChanged();
+  void symmetrySegmentsChanged();
+
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
   void notificationRequested(const QString &message, const QString &type);
@@ -454,16 +494,21 @@ protected:
   void hoverEnterEvent(QHoverEvent *event) override;
   void hoverLeaveEvent(QHoverEvent *event) override;
   void tabletEvent(QTabletEvent *event);
+  void touchEventOverride(QTouchEvent *event);
+  void nativeGestureEvent(QNativeGestureEvent *event);
   bool event(QEvent *event) override;
 
 private:
   artflow::BrushEngine *m_brushEngine;
   artflow::LayerManager *m_layerManager;
   artflow::UndoManager *m_undoManager;
+  std::vector<artflow::BrushEngine *> m_symmetryEngines;
+  void updateSymmetryEngines();
+  QPointF mirrorPoint(const QPointF &pt, int mirrorIndex, int totalMirrors,
+                      const QPointF &center);
   std::unique_ptr<artflow::ImageBuffer> m_strokeBeforeBuffer;
   std::unique_ptr<artflow::ImageBuffer> m_transformBeforeBuffer;
 
-  // Pressure Logic
   // Pressure Logic
   std::vector<float> m_lut;
   QVariantList m_rawPoints;
@@ -507,6 +552,9 @@ private:
   bool m_isFlippedH = false;
   bool m_isFlippedV = false;
   bool m_isEraser = false;
+  bool m_symmetryEnabled = false;
+  int m_symmetryMode = 0; // 0=Vertical, 1=Horizontal, 2=Quad, 3=Radial
+  int m_symmetrySegments = 6;
   QString m_currentProjectPath;
   QString m_currentProjectName;
   QString m_brushTip;
@@ -662,6 +710,13 @@ private:
   // Deferred GL cleanup flag (GL resources must be deleted from render thread)
   bool m_glResourcesDirty = false;
   void cleanupGlResources();
+
+  // Touch Gestures State
+  QTimer *m_touchTimer = nullptr;
+  QPointF m_touchStartPos;
+  bool m_touchIsEyedropper = false;
+  int m_touchPointCount = 0;
+  float m_lastPinchScale = 1.0f;
 };
 
 #endif // CANVASITEM_H

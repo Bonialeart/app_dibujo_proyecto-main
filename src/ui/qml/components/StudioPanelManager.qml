@@ -29,20 +29,73 @@ Item {
     }
 
     // --- INTERNAL STORAGE ---
-    ListModel {
-        id: leftModel
-        ListElement { panelId: "brushes"; name: "Brushes"; icon: "brush.svg"; source: "BrushLibraryPanel.qml"; visible: false; groupId: "" }
-        ListElement { panelId: "settings"; name: "StudioConfig"; icon: "sliders.svg"; source: "BrushSettingsPanel.qml"; visible: false; groupId: "" }
-    }
+    ListModel { id: leftModel }
     ListModel { id: leftModel2 }
-    ListModel {
-        id: rightModel
-        ListElement { panelId: "color"; name: "Color"; icon: "palette.svg"; source: "ColorPanel.qml"; visible: false; groupId: "" }
-        ListElement { panelId: "layers"; name: "Layers"; icon: "layers.svg"; source: "LayerPanel.qml"; visible: false; groupId: "" }
-        ListElement { panelId: "navigator"; name: "Navigator"; icon: "compass.svg"; source: "NavigatorPanel.qml"; visible: false; groupId: "" }
-    }
+    ListModel { id: rightModel }
     ListModel { id: rightModel2 }
     ListModel { id: floatModel }
+    
+    property string activeWorkspace: "Ilustración"
+
+    function loadWorkspace(name) {
+        activeWorkspace = name;
+        leftModel.clear();
+        leftModel2.clear();
+        rightModel.clear();
+        rightModel2.clear();
+        floatModel.clear();
+        
+        // Dictionaries of all our available panels
+        var pBrushes = { panelId: "brushes", name: "Brushes", icon: "brush.svg", source: "BrushLibraryPanel.qml", visible: false, groupId: "" };
+        var pSettings = { panelId: "settings", name: "StudioConfig", icon: "sliders.svg", source: "BrushSettingsPanel.qml", visible: false, groupId: "" };
+        var pColor = { panelId: "color", name: "Color", icon: "palette.svg", source: "ColorPanel.qml", visible: false, groupId: "" };
+        var pLayers = { panelId: "layers", name: "Layers", icon: "layers.svg", source: "LayerPanel.qml", visible: false, groupId: "" };
+        var pNavigator = { panelId: "navigator", name: "Navigator", icon: "compass.svg", source: "NavigatorPanel.qml", visible: false, groupId: "" };
+        
+        if (name === "Manga/Comic") {
+            // Manga setup
+            pBrushes.visible = true;
+            leftModel.append(pBrushes);
+            leftModel.append(pSettings); // hidden but accessible below it
+            
+            pLayers.visible = true; 
+            rightModel.append(pLayers);
+            rightModel.append(pNavigator);
+            
+            pColor.visible = true;
+            pColor.x = 200; pColor.y = 100;
+            floatModel.append(pColor); // Floating color panel
+        } else if (name === "Animación") {
+            // Animation setup (preparing for future timeline panels)
+            pLayers.visible = true;
+            leftModel.append(pLayers);
+            
+            pNavigator.visible = true;
+            rightModel.append(pNavigator);
+            rightModel.append(pColor);
+            
+            pBrushes.visible = true;
+            pBrushes.x = 250; pBrushes.y = 150;
+            floatModel.append(pBrushes);
+            
+            pSettings.visible = true;
+            pSettings.x = 450; pSettings.y = 150;
+            floatModel.append(pSettings);
+        } else {
+            // Default "Ilustración" setup
+            leftModel.append(pBrushes);
+            leftModel.append(pSettings);
+            rightModel.append(pColor);
+            rightModel.append(pLayers);
+            rightModel.append(pNavigator);
+        }
+        
+        cleanDocks();
+    }
+    
+    Component.onCompleted: {
+        loadWorkspace("Ilustración");
+    }
 
     // --- ACTIONS ---
 

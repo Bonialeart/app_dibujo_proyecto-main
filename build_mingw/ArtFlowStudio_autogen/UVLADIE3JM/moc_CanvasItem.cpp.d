@@ -174,6 +174,7 @@ C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_au
   C:/Qt/6.10.2/mingw_64/include/QtCore/qyieldcpu.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/QNativeGestureEvent \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QOpenGLExtraFunctions \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QPainter \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QPainterPath \
@@ -181,6 +182,7 @@ C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_au
   C:/Qt/6.10.2/mingw_64/include/QtGui/QRadialGradient \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QSurfaceFormat \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QTabletEvent \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/QTouchEvent \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QTransform \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qaccessible.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qaccessible_base.h \

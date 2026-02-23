@@ -46,6 +46,14 @@ class PreferencesManager : public QObject {
   Q_PROPERTY(
       double uiScale READ uiScale WRITE setUiScale NOTIFY settingsChanged)
 
+  // --- TOUCH GESTURES ---
+  Q_PROPERTY(bool touchGesturesEnabled READ touchGesturesEnabled WRITE
+                 setTouchGesturesEnabled NOTIFY settingsChanged)
+  Q_PROPERTY(bool touchEyedropperEnabled READ touchEyedropperEnabled WRITE
+                 setTouchEyedropperEnabled NOTIFY settingsChanged)
+  Q_PROPERTY(bool multitouchUndoRedoEnabled READ multitouchUndoRedoEnabled WRITE
+                 setMultitouchUndoRedoEnabled NOTIFY settingsChanged)
+
   Q_PROPERTY(QVariantList pressureCurve READ pressureCurve WRITE
                  setPressureCurve NOTIFY pressureCurveChanged)
 
@@ -100,6 +108,16 @@ public:
   }
   double uiScale() const {
     return m_settings->value("ui_scale", 1.0).toDouble();
+  }
+
+  bool touchGesturesEnabled() const {
+    return m_settings->value("touch_gestures_enabled", true).toBool();
+  }
+  bool touchEyedropperEnabled() const {
+    return m_settings->value("touch_eyedropper_enabled", true).toBool();
+  }
+  bool multitouchUndoRedoEnabled() const {
+    return m_settings->value("multitouch_undo_redo_enabled", true).toBool();
   }
 
   QVariantList pressureCurve() const {
@@ -185,6 +203,24 @@ public slots:
   void setUiScale(double scale) {
     if (uiScale() != scale) {
       m_settings->setValue("ui_scale", scale);
+      emit settingsChanged();
+    }
+  }
+  void setTouchGesturesEnabled(bool enabled) {
+    if (touchGesturesEnabled() != enabled) {
+      m_settings->setValue("touch_gestures_enabled", enabled);
+      emit settingsChanged();
+    }
+  }
+  void setTouchEyedropperEnabled(bool enabled) {
+    if (touchEyedropperEnabled() != enabled) {
+      m_settings->setValue("touch_eyedropper_enabled", enabled);
+      emit settingsChanged();
+    }
+  }
+  void setMultitouchUndoRedoEnabled(bool enabled) {
+    if (multitouchUndoRedoEnabled() != enabled) {
+      m_settings->setValue("multitouch_undo_redo_enabled", enabled);
       emit settingsChanged();
     }
   }

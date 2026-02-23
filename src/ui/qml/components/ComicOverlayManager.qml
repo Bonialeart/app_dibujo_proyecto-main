@@ -13,7 +13,7 @@ Item {
     property color accentColor: "#6366f1"
     
     // Manga Guidelines
-    property bool showMangaGuides: true
+    property bool showMangaGuides: false
     property real mangaSafeMargin: 70
     property real mangaTrimMargin: 35
     
