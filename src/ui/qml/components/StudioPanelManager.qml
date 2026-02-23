@@ -8,6 +8,7 @@ Item {
     property alias leftDockModel2: leftModel2
     property alias rightDockModel: rightModel
     property alias rightDockModel2: rightModel2
+    property alias bottomDockModel: bottomModel
     property alias floatingModel: floatModel
 
     // --- STATE ---
@@ -17,6 +18,7 @@ Item {
     property bool leftCollapsed2: true
     property bool rightCollapsed: true
     property bool rightCollapsed2: true
+    property bool bottomCollapsed: true
     
     // Tracks the currently active panelId for a given groupId
     property var activeGroupTabs: ({})
@@ -33,6 +35,7 @@ Item {
     ListModel { id: leftModel2 }
     ListModel { id: rightModel }
     ListModel { id: rightModel2 }
+    ListModel { id: bottomModel }
     ListModel { id: floatModel }
     
     property string activeWorkspace: "Ilustración"
@@ -43,6 +46,7 @@ Item {
         leftModel2.clear();
         rightModel.clear();
         rightModel2.clear();
+        bottomModel.clear();
         floatModel.clear();
         
         // Dictionaries of all our available panels
@@ -51,43 +55,61 @@ Item {
         var pColor = { panelId: "color", name: "Color", icon: "palette.svg", source: "ColorPanel.qml", visible: false, groupId: "" };
         var pLayers = { panelId: "layers", name: "Layers", icon: "layers.svg", source: "LayerPanel.qml", visible: false, groupId: "" };
         var pNavigator = { panelId: "navigator", name: "Navigator", icon: "compass.svg", source: "NavigatorPanel.qml", visible: false, groupId: "" };
+        var pHistory = { panelId: "history", name: "History", icon: "undo.svg", source: "HistoryPanel.qml", visible: false, groupId: "" };
+        var pInfo = { panelId: "info", name: "Info", icon: "sliders.svg", source: "InfoPanel.qml", visible: false, groupId: "" };
+        var pToolSettings = { panelId: "toolsettings", name: "Tool Settings", icon: "tool.svg", source: "ToolSettingsPanel.qml", visible: false, groupId: "" };
+        var pReference = { panelId: "reference", name: "Reference", icon: "image.svg", source: "ReferencePanel.qml", visible: false, groupId: "" };
+        var pTimeline = { panelId: "timeline", name: "Timeline", icon: "video.svg", source: "TimelinePanel.qml", visible: false, groupId: "" };
         
         if (name === "Manga/Comic") {
             // Manga setup
             pBrushes.visible = true;
             leftModel.append(pBrushes);
-            leftModel.append(pSettings); // hidden but accessible below it
+            leftModel.append(pSettings); 
+            leftModel.append(pToolSettings);
             
             pLayers.visible = true; 
             rightModel.append(pLayers);
             rightModel.append(pNavigator);
+            rightModel.append(pHistory);
             
             pColor.visible = true;
             pColor.x = 200; pColor.y = 100;
-            floatModel.append(pColor); // Floating color panel
+            floatModel.append(pColor); 
+            
+            floatModel.append(pReference);
         } else if (name === "Animación") {
-            // Animation setup (preparing for future timeline panels)
+            // Animation setup
             pLayers.visible = true;
             leftModel.append(pLayers);
+            leftModel.append(pHistory);
             
             pNavigator.visible = true;
             rightModel.append(pNavigator);
             rightModel.append(pColor);
+            rightModel.append(pReference);
+            
+            pTimeline.visible = true;
+            bottomModel.append(pTimeline);
             
             pBrushes.visible = true;
-            pBrushes.x = 250; pBrushes.y = 150;
+            pBrushes.x = 100; pBrushes.y = 150;
             floatModel.append(pBrushes);
             
-            pSettings.visible = true;
-            pSettings.x = 450; pSettings.y = 150;
-            floatModel.append(pSettings);
+            pToolSettings.visible = true;
+            pToolSettings.x = 300; pToolSettings.y = 150;
+            floatModel.append(pToolSettings);
         } else {
             // Default "Ilustración" setup
             leftModel.append(pBrushes);
             leftModel.append(pSettings);
+            leftModel.append(pToolSettings);
+            
             rightModel.append(pColor);
             rightModel.append(pLayers);
             rightModel.append(pNavigator);
+            rightModel.append(pHistory);
+            rightModel.append(pReference);
         }
         
         cleanDocks();
@@ -172,6 +194,7 @@ Item {
         if (model === leftModel2) return leftCollapsed2;
         if (model === rightModel) return rightCollapsed;
         if (model === rightModel2) return rightCollapsed2;
+        if (model === bottomModel) return bottomCollapsed;
         return true;
     }
 
@@ -257,6 +280,7 @@ Item {
         else if (dock === "left2") leftCollapsed2 = state;
         else if (dock === "right") rightCollapsed = state;
         else if (dock === "right2") rightCollapsed2 = state;
+        else if (dock === "bottom") bottomCollapsed = state;
     }
 
     function movePanelToFloat(panelId, x, y) {
@@ -289,6 +313,7 @@ Item {
         if (side === "left2") return leftModel2;
         if (side === "right") return rightModel;
         if (side === "right2") return rightModel2;
+        if (side === "bottom") return bottomModel;
         return null;
     }
 
@@ -297,6 +322,7 @@ Item {
         leftCollapsed2 = !hasVisible(leftModel2);
         rightCollapsed = !hasVisible(rightModel);
         rightCollapsed2 = !hasVisible(rightModel2);
+        bottomCollapsed = !hasVisible(bottomModel);
     }
 
     function hasVisible(model) {

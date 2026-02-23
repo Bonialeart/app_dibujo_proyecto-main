@@ -1,5 +1,5 @@
-C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio.dir
-C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/CMakeFiles/edit_cache.dir
-C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/CMakeFiles/rebuild_cache.dir
-C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio_autogen_timestamp_deps.dir
-C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir
+D:/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio.dir
+D:/Rescate_Proyecto/build_mingw/CMakeFiles/edit_cache.dir
+D:/Rescate_Proyecto/build_mingw/CMakeFiles/rebuild_cache.dir
+D:/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio_autogen_timestamp_deps.dir
+D:/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir

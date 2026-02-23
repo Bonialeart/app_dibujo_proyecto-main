@@ -42,7 +42,7 @@ rule CUSTOM_COMMAND
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = C:\Qt\Tools\CMake_64\bin\cmake.exe --regenerate-during-build -SC:\Users\bonil\OneDrive\Escritorio\Rescate_Proyecto -BC:\Users\bonil\OneDrive\Escritorio\Rescate_Proyecto\build_mingw
+  command = C:\Qt\Tools\CMake_64\bin\cmake.exe --regenerate-during-build -SD:\Rescate_Proyecto -BD:\Rescate_Proyecto\build_mingw
   description = Re-running CMake...
   generator = 1
 

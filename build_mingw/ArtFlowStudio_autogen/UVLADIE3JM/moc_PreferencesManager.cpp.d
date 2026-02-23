@@ -1,5 +1,5 @@
-C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_PreferencesManager.cpp: C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/src/PreferencesManager.h \
-  C:/Users/bonil/OneDrive/Escritorio/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
+D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_PreferencesManager.cpp: D:/Rescate_Proyecto/src/PreferencesManager.h \
+  D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QDir \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \

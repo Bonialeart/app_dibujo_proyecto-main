@@ -802,13 +802,18 @@ Item {
         }
     }
 
-    // --- MAIN CONTENT ROW ---
-    RowLayout {
+    // --- MAIN CONTENT AREA ---
+    ColumnLayout {
         anchors.top: studioInfoBar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         spacing: 0
+        
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
         
         // --- LEFT DOCK ---
         SideIconBar {
@@ -1064,6 +1069,25 @@ Item {
             dockSide: "right"
             onToggleDock: (panelId) => panelManager.togglePanel(panelId)
             onReorder: (src, tgt, mode) => panelManager.reorderPanel("right", src, tgt, mode)
+        }
+        }
+        
+        // --- BOTTOM DOCK ---
+        DockContainer {
+            id: bottomDock
+            Layout.fillWidth: true
+            Layout.preferredHeight: isCollapsed ? 0 : 250
+            dockSide: "bottom"
+            manager: panelManager
+            dockModel: panelManager.bottomDockModel
+            isCollapsed: !panelManager.hasVisible(panelManager.bottomDockModel)
+            mainCanvas: studioLayout.mainCanvas
+            accentColor: studioLayout.accentColor
+            
+            onToggleCollapse: (panelId) => panelManager.togglePanel(panelId)
+            onPanelDragStarted: (pid, name, icon, gx, gy) => dragGhost.startDrag(pid, name, icon, gx, gy)
+            onPanelDragUpdated: (gx, gy) => dragGhost.updateDrag(gx, gy)
+            onPanelDragEnded: (gx, gy) => dragGhost.endDrag(gx, gy)
         }
     }
     
