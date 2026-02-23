@@ -16,6 +16,9 @@ Item {
     property int swipedIndex: -1
     property int draggedIndex: -1
     property int dropTargetIndex: -1
+
+    // Group drop target: when dragging over a group layer, this is that group's layerId
+    property int groupDropTarget: -1
     
     property var activeLayer: {
         if (!layerModel) return null;
@@ -34,15 +37,13 @@ Item {
         anchors.fill: parent
         spacing: 0
         
-        // --- PRO TOOLBAR (Row 1: Actions) ---
         // --- PRO TOOLBAR (Unified Header) ---
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 80 // Combined height for both rows
+            Layout.preferredHeight: 80
             color: "transparent"
             z: 10
             
-            // Subtle glass background
             Rectangle {
                 anchors.fill: parent; anchors.margins: 4
                 radius: 10
@@ -57,47 +58,68 @@ Item {
                     // Row 1: Actions
                     Item {
                         Layout.fillWidth: true; Layout.preferredHeight: 36
-                        Rectangle { width: parent.width; anchors.bottom: parent.bottom; color: "#1E1E22"; height: 1 } // Separator
+                        Rectangle { width: parent.width; anchors.bottom: parent.bottom; color: "#1E1E22"; height: 1 }
                         RowLayout {
                             anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 2
                             
                             // Clipping Mask
-                            Rectangle { Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6; color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (clipMa.containsMouse ? "#222228" : "transparent"); border.color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"; border.width: 1
+                            Rectangle { 
+                                Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
+                                color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (clipMa.containsMouse ? "#222228" : "transparent")
+                                border.color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"; border.width: 1
                                 Image { source: "image://icons/corner-down-right.svg"; width: 14; height: 14; anchors.centerIn: parent; opacity: activeLayerClipped ? 1.0 : 0.5 }
                                 MouseArea { id: clipMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.toggleClipping(activeLayerId) }
-                                ToolTip.visible: clipMa.containsMouse; ToolTip.text: "Clipping Mask" }
+                                ToolTip.visible: clipMa.containsMouse; ToolTip.text: "Clipping Mask" 
+                            }
                             
                             // Alpha Lock
-                            Rectangle { Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6; color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (alphaMa.containsMouse ? "#222228" : "transparent"); border.color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"; border.width: 1
+                            Rectangle { 
+                                Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
+                                color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (alphaMa.containsMouse ? "#222228" : "transparent")
+                                border.color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"; border.width: 1
                                 Image { source: "image://icons/lock.svg"; width: 12; height: 12; anchors.centerIn: parent; opacity: (activeLayer && activeLayer.alpha_lock) ? 1.0 : 0.5 }
                                 MouseArea { id: alphaMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.toggleAlphaLock(activeLayerId) }
-                                ToolTip.visible: alphaMa.containsMouse; ToolTip.text: "Lock Alpha" }
+                                ToolTip.visible: alphaMa.containsMouse; ToolTip.text: "Lock Alpha" 
+                            }
 
-                            Item { Layout.fillWidth: true } // Spacer
+                            Item { Layout.fillWidth: true }
 
                             // Duplicate
-                            Rectangle { Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6; color: dupMa.containsMouse ? "#222228" : "transparent"
+                            Rectangle { 
+                                Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
+                                color: dupMa.containsMouse ? "#222228" : "transparent"
                                 Image { source: "image://icons/copy.svg"; width: 14; height: 14; anchors.centerIn: parent; opacity: dupMa.containsMouse ? 1.0 : 0.5 }
                                 MouseArea { id: dupMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.duplicateLayer(activeLayerId) }
-                                ToolTip.visible: dupMa.containsMouse; ToolTip.text: "Duplicate Layer" }
+                                ToolTip.visible: dupMa.containsMouse; ToolTip.text: "Duplicate Layer" 
+                            }
 
                             // Add Layer
-                            Rectangle { Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6; color: addLyrMa.containsMouse ? "#222228" : "transparent"
+                            Rectangle { 
+                                Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
+                                color: addLyrMa.containsMouse ? "#222228" : "transparent"
                                 Image { source: "image://icons/plus.svg"; width: 16; height: 16; anchors.centerIn: parent; opacity: addLyrMa.containsMouse ? 1.0 : 0.6 }
                                 MouseArea { id: addLyrMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas) targetCanvas.addLayer() }
-                                ToolTip.visible: addLyrMa.containsMouse; ToolTip.text: "New Layer" }
+                                ToolTip.visible: addLyrMa.containsMouse; ToolTip.text: "New Layer" 
+                            }
                             
-                            // Add Group
-                            Rectangle { Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6; color: addGrpMa.containsMouse ? "#222228" : "transparent"
+                            // Add Group / Folder
+                            Rectangle { 
+                                Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
+                                color: addGrpMa.containsMouse ? "#2a1e0a" : "transparent"
+                                border.color: addGrpMa.containsMouse ? "#f0903090" : "transparent"; border.width: 1
                                 Image { source: "image://icons/folder-plus.svg"; width: 14; height: 14; anchors.centerIn: parent; opacity: addGrpMa.containsMouse ? 1.0 : 0.5 }
                                 MouseArea { id: addGrpMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas) targetCanvas.addGroup() }
-                                ToolTip.visible: addGrpMa.containsMouse; ToolTip.text: "New Group" }
+                                ToolTip.visible: addGrpMa.containsMouse; ToolTip.text: "New Folder (Group)" 
+                            }
 
                             // Delete
-                            Rectangle { Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6; color: delMa.containsMouse ? "#3a1a1a" : "transparent"
+                            Rectangle { 
+                                Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
+                                color: delMa.containsMouse ? "#3a1a1a" : "transparent"
                                 Image { source: "image://icons/trash-2.svg"; width: 14; height: 14; anchors.centerIn: parent; opacity: delMa.containsMouse ? 1.0 : 0.5 }
                                 MouseArea { id: delMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.removeLayer(activeLayerId) }
-                                ToolTip.visible: delMa.containsMouse; ToolTip.text: "Delete Layer" }
+                                ToolTip.visible: delMa.containsMouse; ToolTip.text: "Delete Layer" 
+                            }
                         }
                     }
 
@@ -180,24 +202,6 @@ Item {
         }
         
         
-        // --- DROP AREA FOR LIST REORDERING ---
-        DropArea {
-            anchors.fill: layersListRef
-            onDropped: {
-                if (root.draggedIndex >= 0 && root.layerModel) {
-                    if (root.dropTargetIndex !== -1 && root.dropTargetIndex !== root.draggedIndex) {
-                       var fromItem = root.layerModel[root.draggedIndex]
-                       var toItem = root.layerModel[root.dropTargetIndex]
-                       if (fromItem && toItem && fromItem.layerId !== undefined && toItem.layerId !== undefined) {
-                           mainCanvas.moveLayer(fromItem.layerId, toItem.layerId)
-                       }
-                    }
-                    root.draggedIndex = -1
-                    root.dropTargetIndex = -1
-                }
-            }
-        }
-
         // --- LAYER LIST ---
         ListView {
             id: layersListRef
@@ -210,6 +214,7 @@ Item {
             property int swipedIndex: root.swipedIndex
             property int draggedIndex: root.draggedIndex
             property int dropTargetIndex: root.dropTargetIndex
+            property int groupDropTarget: root.groupDropTarget
             
             delegate: LayerDelegate { 
                 width: ListView.view.width
@@ -267,24 +272,6 @@ Item {
                             }
                         }
                     }
-                    
-                    DropArea {
-                        anchors.fill: parent
-                        onDropped: {
-                            if (root.draggedIndex >= 0 && root.layerModel) {
-                                var targetIdx = root.layerModel.length - 1
-                                if (root.draggedIndex !== targetIdx) {
-                                    var fromItem = root.layerModel[root.draggedIndex]
-                                    var toItem = root.layerModel[targetIdx]
-                                    if (fromItem && toItem && fromItem.layerId !== undefined && toItem.layerId !== undefined) {
-                                        mainCanvas.moveLayer(fromItem.layerId, toItem.layerId)
-                                    }
-                                }
-                                root.draggedIndex = -1
-                                root.dropTargetIndex = -1
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -305,11 +292,8 @@ Item {
         opacity: 0.9
         property string infoText: "Moving Layer"
         
-        // Premium Feel: Scale up slightly when dragging
         scale: visible ? 1.04 : 0.8
         Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-        
-        // Reactive motion
         
         Row {
             anchors.centerIn: parent
@@ -319,5 +303,33 @@ Item {
         }
         
         Rectangle { anchors.fill: parent; anchors.margins: -4; z: -1; color: "#000"; opacity: 0.3; radius: 12 }
+    }
+
+    // --- GROUP DROP HINT ---
+    // Shown at the bottom when dragging a layer over a group
+    Rectangle {
+        id: groupDropHint
+        visible: root.groupDropTarget !== -1 && root.draggedIndex !== -1
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: parent.width - 20
+        height: 36
+        radius: 8
+        color: "#ff990020"
+        border.color: "#ff9900"
+        border.width: 1.5
+        z: 999
+        
+        Row {
+            anchors.centerIn: parent
+            spacing: 8
+            Image { source: "image://icons/folder.svg"; width: 14; height: 14; opacity: 0.9 }
+            Text { 
+                text: "Drop to add to folder"
+                color: "#ff9900"
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+            }
+        }
     }
 }

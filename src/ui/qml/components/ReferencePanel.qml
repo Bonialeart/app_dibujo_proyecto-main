@@ -110,7 +110,7 @@ Item {
                 width: 28; height: 28; radius: 6
                 color: "#1a1a1f"; border.color: "#333"
                 Text { text: "◫"; anchors.centerIn: parent; color: "#888" }
-                MouseArea { anchors.fill: parent; onClicked: { imgTranslate.x = 0; imgTranslate.y = 0 }; ToolTip.text: "Centrar Vista"; ToolTip.visible: containsMouse }
+                MouseArea { anchors.fill: parent; onClicked: { imgTranslate.x = 0; imgTranslate.y = 0 } ToolTip.text: "Centrar Vista"; ToolTip.visible: containsMouse }
             }
             
             Item { Layout.fillWidth: true }

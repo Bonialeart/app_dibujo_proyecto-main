@@ -18,6 +18,8 @@ Item {
     
     // Helper
     property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#007aff"
+    // Group color token
+    readonly property color groupColor: "#f59e0b"
 
     // --- 0. DROP INDICATOR (Dual-Position Dot & Line) ---
     Item {
@@ -85,11 +87,16 @@ Item {
     property real layerOpacity: listModel.opacity !== undefined ? listModel.opacity : 1.0
     property string layerType: listModel.type
     property var thumbnailSource: listModel.thumbnail
+    property real thumbRefreshTime: Date.now()
     property int layerDepth: (typeof listModel.depth !== 'undefined' ? listModel.depth : 0)
     property bool isGroupExpanded: listModel.expanded
+    property bool isParentExpanded: listModel.parentExpanded !== undefined ? listModel.parentExpanded : true
+    property bool isGroup: layerType === "group"
+    property var targetCanvas: (rootRef && rootRef.targetCanvas) ? rootRef.targetCanvas : mainCanvas
+    // Is the drag ghost hovering over THIS layer and it's a group?
+    property bool isGroupDropHover: isGroup && rootRef && rootRef.groupDropTarget === layerIndex
 
     // --- NUEVO: SISTEMA DE REFRESCO DE MINIATURA EN TIEMPO REAL ---
-    property double thumbRefreshTime: Date.now()
     
     property string activeThumbnail: {
         var baseStr = thumbnailSource || ""
@@ -105,7 +112,8 @@ Item {
 
     // Escucha directamente las actualizaciones que manda C++ al modelo
     Connections {
-        target: layersListRef.model
+        target: (layersListRef && layersListRef.model && typeof layersListRef.model.dataChanged !== "undefined") ? layersListRef.model : null
+        ignoreUnknownSignals: true
         function onDataChanged(topLeft, bottomRight, roles) {
             // Si la señal de cambio incluye a esta capa (listIndex), forzamos la recarga
             if (layerDelegate.listIndex >= topLeft.row && layerDelegate.listIndex <= bottomRight.row) {
@@ -115,13 +123,15 @@ Item {
     }
     // -------------------------------------------------------------
     
-    width: layersListRef.width
-    // Height changes if active or options are open
-    height: (layersListRef.optionsIndex === layerDelegate.layerIndex) ? 320 : (isActive ? 82 : 48)
+    width: layersListRef ? layersListRef.width : 280
+    // Height: collapsed layers are 0
+    height: !isParentExpanded ? 0 : ((layersListRef && layersListRef.optionsIndex === layerDelegate.layerIndex) ? 320 : (isActive ? 82 : (isGroup ? 52 : 48)))
+    visible: isParentExpanded
+    clip: true // Ensure content doesn't bleed out when height is 0
     
     Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
     
-    property bool isSwipedOpen: layersListRef.swipedIndex === layerDelegate.listIndex
+    property bool isSwipedOpen: layersListRef ? layersListRef.swipedIndex === layerDelegate.listIndex : false
     
     // Helper function for icon paths (assuming parent context has this or we need to pass it)
     function iconPath(name) {
@@ -245,22 +255,33 @@ Item {
     // --- 2. MAIN SWIPEABLE CONTENT ---
     Rectangle {
         id: layerContent
-        width: parent.width - 4
         height: parent.height - 4
         anchors.verticalCenter: parent.verticalCenter
         
         // --- POSITION & ANIMATION ---
-        property real baseX: (layerDelegate.isSwipedOpen ? -158 : 2) + (isClipped ? 24 : 0)
+        property real baseX: (layerDelegate.isSwipedOpen ? -158 : 2) + (isClipped ? 24 : 0) + (layerDepth * 16)
         x: baseX 
+        width: (parent ? parent.width : 280) - 4 - (layerDepth * 16)
         z: 10
         scale: (dragArea.pressed || isSwipedOpen) ? 0.98 : 1.0
         Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }        
         radius: 10 // Cleaner, less rounded
-        // Dark background for all states (Active gets border only)
-        color: isClipped ? "#151517" : "#1c1c1e" 
-        opacity: layersListRef.draggedIndex === listIndex ? 0.2 : 1.0 // Dim when dragging
-        border.width: isActive ? 2 : 1
-        border.color: isActive ? layerDelegate.accentColor : (isClipped ? "#333" : "#2c2c2e")
+        // Dark background — groups get amber tint, active gets accent, clipped gets subtle
+        color: {
+            if (layerDelegate.isGroupDropHover) return "#2d2010"
+            if (layerDelegate.isGroup) return (isActive ? "#1e1a10" : "#181610")
+            if (isClipped) return "#151517"
+            return "#1c1c1e"
+        }
+        opacity: (layersListRef && layersListRef.draggedIndex === listIndex) ? 0.2 : 1.0
+        border.width: (isActive || layerDelegate.isGroupDropHover) ? 2 : 1
+        border.color: {
+            if (layerDelegate.isGroupDropHover) return layerDelegate.groupColor
+            if (layerDelegate.isGroup && isActive) return layerDelegate.groupColor
+            if (isActive) return layerDelegate.accentColor
+            if (isClipped) return "#333"
+            return "#2c2c2e"
+        }
         
         clip: true 
         
@@ -341,38 +362,44 @@ Item {
                     
                     if (isReordering && dragGhostRef) {
                         // 1. POSITION GHOST
-                        // Map mouse from our area to the Ghost's parent coordinate system
                         var pParent = dragArea.mapToItem(dragGhostRef.parent, mouse.x, mouse.y)
                         var newY = pParent.y - dragYOffset
-                        
-                        // Bounds check within parent
                         if (newY < 0) newY = 0
                         if (newY > dragGhostRef.parent.height - dragGhostRef.height) 
                              newY = dragGhostRef.parent.height - dragGhostRef.height
                         dragGhostRef.y = newY
                         
-                        // 2. FIND TARGET INDEX
-                        // Map mouse to the ListView coordinate system
+                        // 2. FIND TARGET INDEX & CHECK FOR GROUP DROP
                         var pList = dragArea.mapToItem(layersListRef, mouse.x, mouse.y)
                         var targetIdx = layersListRef.indexAt(10, pList.y + layersListRef.contentY)
+                        
+                        // Reset group drop target first
+                        if (rootRef) rootRef.groupDropTarget = -1
                         
                         if (targetIdx !== -1) {
                             var itm = layersListRef.itemAt(10, pList.y + layersListRef.contentY)
                             if (itm) {
                                 var localY = itm.mapFromItem(layersListRef, 10, pList.y + layersListRef.contentY).y
-                                // Threshold: if in bottom 50%, target the NEXT index
-                                if (localY > itm.height * 0.5) {
-                                    targetIdx = targetIdx + 1
+                                // If hovering over a GROUP layer -> activate group drop mode
+                                var targetModel = layersListRef.model[targetIdx]
+                                if (targetModel && targetModel.type === "group" && targetIdx !== listIndex) {
+                                    // GROUP DROP MODE: highlight the group, hide regular indicator
+                                    if (rootRef) rootRef.groupDropTarget = targetModel.layerId
+                                    layersListRef.dropTargetIndex = -1
+                                    if (rootRef) rootRef.dropTargetIndex = -1
+                                } else {
+                                    // Normal reorder
+                                    if (localY > itm.height * 0.5) {
+                                        targetIdx = targetIdx + 1
+                                    }
+                                    if (targetIdx === listIndex || targetIdx === listIndex + 1) {
+                                        if (rootRef) rootRef.dropTargetIndex = -1
+                                        layersListRef.dropTargetIndex = -1
+                                    } else {
+                                        if (rootRef) rootRef.dropTargetIndex = targetIdx
+                                        layersListRef.dropTargetIndex = targetIdx
+                                    }
                                 }
-                            }
-                            
-                            // Visual safety: Hide indicator if dropping results in NO CHANGE
-                            if (targetIdx === listIndex || targetIdx === listIndex + 1) {
-                                if (rootRef) rootRef.dropTargetIndex = -1
-                                layersListRef.dropTargetIndex = -1
-                            } else {
-                                if (rootRef) rootRef.dropTargetIndex = targetIdx
-                                layersListRef.dropTargetIndex = targetIdx
                             }
                         }
                     }
@@ -411,28 +438,33 @@ Item {
                         isReordering = false
                         if (dragGhostRef) dragGhostRef.visible = false
                         
-                        var finalTargetIdx = layersListRef.dropTargetIndex
-                        if (finalTargetIdx !== -1) {
-                            var model = layersListRef.model
-                            var targetId = -1
-                            
-                            // Logic: Move layerIndex TO finalTargetIdx
-                            // If moving to very bottom (count), use parent logic or target last item + handled by moveLayer
-                            var queryIdx = (finalTargetIdx >= layersListRef.count) ? layersListRef.count - 1 : finalTargetIdx
-                            
-                            if (model && queryIdx >= 0) {
-                                var item = (typeof model.get === "function") ? model.get(queryIdx) : model[queryIdx]
-                                if (item) targetId = item.layerId
-                            }
-                            
-                            if (targetId !== -1 && targetId !== undefined) {
-                                mainCanvas.moveLayer(layerIndex, targetId)
+                        // Check if we're dropping INTO a group
+                        var grpTarget = rootRef ? rootRef.groupDropTarget : -1
+                        if (grpTarget !== -1 && grpTarget !== layerIndex) {
+                            // Move layer into group
+                            mainCanvas.moveLayerToGroup(layerIndex, grpTarget)
+                        } else {
+                            var finalTargetIdx = layersListRef.dropTargetIndex
+                            if (finalTargetIdx !== -1) {
+                                var model = layersListRef.model
+                                var targetId = -1
+                                var queryIdx = (finalTargetIdx >= layersListRef.count) ? layersListRef.count - 1 : finalTargetIdx
+                                
+                                if (model && queryIdx >= 0) {
+                                    var item = (typeof model.get === "function") ? model.get(queryIdx) : model[queryIdx]
+                                    if (item) targetId = item.layerId
+                                }
+                                
+                                if (targetId !== -1 && targetId !== undefined) {
+                                    mainCanvas.moveLayer(layerIndex, targetId)
+                                }
                             }
                         }
                         
                         if (rootRef) {
                             rootRef.draggedIndex = -1
                             rootRef.dropTargetIndex = -1
+                            rootRef.groupDropTarget = -1
                         }
                         layersListRef.draggedIndex = -1
                         layersListRef.dropTargetIndex = -1
@@ -511,10 +543,15 @@ Item {
                     
                     // Group Indicator (If Group)
                     Image {
-                        visible: layerType === "group"
+                        visible: layerDelegate.isGroup
                         source: iconPath("folder.svg")
-                        width: 20; height: 20; anchors.centerIn: parent
-                        opacity: 0.7
+                        width: 22; height: 22; anchors.centerIn: parent
+                        opacity: 1.0
+                        layer.enabled: true
+                        layer.effect: MultiEffect { 
+                            colorization: 1.0; 
+                            colorizationColor: "#f59e0b" // Explicit amber for the folder
+                        }
                     }
                     
                     MouseArea {
@@ -543,11 +580,33 @@ Item {
                         RowLayout {
                             width: parent.width
                             spacing: 8
+                            // Group Toggle (Expand/Collapse)
+                            Rectangle {
+                                visible: layerDelegate.isGroup
+                                width: 24; height: 24; radius: 4; color: "transparent"
+                                Image {
+                                    source: iconPath("chevron-down.svg")
+                                    width: 12; height: 12; anchors.centerIn: parent; opacity: 0.6
+                                    rotation: isGroupExpanded ? 0 : -90
+                                    Behavior on rotation { NumberAnimation { duration: 200 } }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        if (targetCanvas) targetCanvas.toggleGroupExpanded(layerIndex)
+                                    }
+                                }
+                            }
+
                             Text {
                                 text: layerName
-                                color: isVisible ? "#ffffff" : "#777"
+                                color: {
+                                    if (!isVisible) return "#777"
+                                    if (layerDelegate.isGroup) return layerDelegate.isGroupDropHover ? layerDelegate.groupColor : "#f8d87a"
+                                    return "#ffffff"
+                                }
                                 font.pixelSize: 13
-                                font.weight: isActive ? Font.DemiBold : Font.Normal
+                                font.weight: (isActive || layerDelegate.isGroup) ? Font.DemiBold : Font.Normal
                                 Layout.fillWidth: true
                                 elide: Text.ElideRight 
                             }

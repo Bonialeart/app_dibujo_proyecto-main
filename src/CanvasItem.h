@@ -354,6 +354,8 @@ public:
   Q_INVOKABLE void fitToView();
   Q_INVOKABLE void addLayer();
   Q_INVOKABLE void addGroup();
+  Q_INVOKABLE void moveLayerToGroup(int layerId, int groupId);
+  Q_INVOKABLE void toggleGroupExpanded(int index);
   Q_INVOKABLE void removeLayer(int index);
   Q_INVOKABLE void duplicateLayer(int index);
   Q_INVOKABLE void moveLayer(int fromIndex, int toIndex);

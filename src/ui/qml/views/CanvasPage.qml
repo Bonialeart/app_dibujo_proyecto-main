@@ -2341,6 +2341,15 @@ import "../components"
                     }
                     
                     // Header Premium
+                    // Shared drag state for delegates in this panel
+                    Item {
+                        id: layersPanelDragState
+                        visible: false
+                        property int draggedIndex: -1
+                        property int dropTargetIndex: -1
+                        property int groupDropTarget: -1
+                    }
+                    
                     Item {
                         id: layerHeader
                         width: parent.width; height: 52
@@ -2483,6 +2492,8 @@ import "../components"
                         property int swipedIndex: -1
                         property int optionsIndex: -1
                         property int draggedIndex: -1 // For tracking drag operations
+                        property int dropTargetIndex: -1
+                        property int groupDropTarget: -1 // layerId of group being hovered for drop
                         
                         // Close any swiped layer when clicking on list background
                         MouseArea {
@@ -2496,7 +2507,8 @@ import "../components"
                         }
                         
                         delegate: LayerDelegate {
-                            // Delegate logic extracted to src/ui/qml/components/LayerDelegate.qml
+                            rootRef: layersPanelDragState
+                            dragGhostRef: dragGhost
                         }
                         
                         // Footer: Drop Zone for moving layers to bottom

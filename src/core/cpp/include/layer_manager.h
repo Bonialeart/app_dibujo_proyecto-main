@@ -14,12 +14,11 @@
 
 namespace artflow {
 
-/**
- * Layer - Single layer with buffer and properties
- */
 struct Layer {
   enum class Type { Drawing, Group, Background };
 
+  static uint32_t nextId() { static uint32_t s_id = 0; return ++s_id; }
+  uint32_t stableId;
   std::string name;
   std::unique_ptr<ImageBuffer> buffer;     // Main RGBA display buffer
   std::unique_ptr<ImageBuffer> wetnessMap; // 0-255 map of surface wetness
@@ -35,13 +34,15 @@ struct Layer {
   QRect dirtyRect; // Region that needs texture re-upload
   bool isPrivate = false;
   Type type = Type::Drawing;
+  int parentId = -1; // -1 means no parent (root level)
+  bool expanded = true; // For group layers: is it expanded in UI?
 
   Layer(const std::string &name, int width, int height,
         Type type = Type::Drawing)
-      : name(name), buffer(std::make_unique<ImageBuffer>(width, height)),
+      : stableId(nextId()), name(name), buffer(std::make_unique<ImageBuffer>(width, height)),
         wetnessMap(std::make_unique<ImageBuffer>(width, height)),
         pigmentMap(std::make_unique<ImageBuffer>(width, height)),
-        dirtyRect(0, 0, width, height), type(type) {}
+        dirtyRect(0, 0, width, height), type(type), parentId(-1), expanded(true) {}
 
   void markDirty(const QRect &rect = QRect()) {
     dirty = true;

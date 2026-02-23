@@ -2414,6 +2414,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
         Layer *layer = m_layerManager->getActiveLayer();
         if (layer && layer->buffer) {
           layer->buffer->loadRawData(result.bits());
+          layer->markDirty();
         }
       }
       delete m_pingFBO;
@@ -3747,19 +3748,76 @@ void CanvasItem::fitToView() {
 
 void CanvasItem::addLayer() {
   m_layerManager->addLayer("New Layer");
-  m_activeLayerIndex = m_layerManager->getLayerCount() - 1;
-  emit activeLayerChanged();
-  updateLayersList();
+  setActiveLayer(m_layerManager->getLayerCount() - 1);
   update();
 }
 
 void CanvasItem::addGroup() {
   m_layerManager->addLayer("New Group", artflow::Layer::Type::Group);
-  m_activeLayerIndex = m_layerManager->getLayerCount() - 1;
-  emit activeLayerChanged();
+  setActiveLayer(m_layerManager->getLayerCount() - 1);
+  update();
+}
+
+void CanvasItem::moveLayerToGroup(int layerId, int groupId) {
+  // layerId and groupId are the layer indices (as exposed in the model)
+  int count = m_layerManager->getLayerCount();
+
+  // layerModel is in reversed order (last layer is index 0 in UI, but highest
+  // index in manager). Convert UI IDs back to manager indices.
+  int fromManagerIdx = (count - 1) - layerId;
+  int groupManagerIdx = (count - 1) - groupId;
+
+  if (fromManagerIdx < 0 || fromManagerIdx >= count || groupManagerIdx < 0 ||
+      groupManagerIdx >= count) {
+    qWarning() << "moveLayerToGroup: invalid indices" << layerId << groupId;
+    return;
+  }
+
+  artflow::Layer *grpLayer = m_layerManager->getLayer(groupManagerIdx);
+  if (!grpLayer || grpLayer->type != artflow::Layer::Type::Group) {
+    qWarning() << "moveLayerToGroup: target is not a group";
+    return;
+  }
+
+  artflow::Layer *layerToMove = m_layerManager->getLayer(fromManagerIdx);
+  if (layerToMove) {
+      layerToMove->parentId = (int)grpLayer->stableId;
+  }
+
+  // We want the layer to be placed immediately below the group in the manager
+  // stack (which means just below groupManagerIdx — i.e. at groupManagerIdx-1).
+  // The UI shows layers in reverse, so "inside the group" visually means the
+  // layer is at a lower manager index than the group.
+  int destManagerIdx = groupManagerIdx - 1;
+  if (destManagerIdx < 0) destManagerIdx = 0;
+  if (destManagerIdx == fromManagerIdx) return;
+
+  m_layerManager->moveLayer(fromManagerIdx, destManagerIdx);
+
+  // Recalculate active index
+  if (m_activeLayerIndex == fromManagerIdx) {
+    m_activeLayerIndex = destManagerIdx;
+    emit activeLayerChanged();
+  }
+
   updateLayersList();
   update();
 }
+
+void CanvasItem::toggleGroupExpanded(int index) {
+  int count = m_layerManager->getLayerCount();
+  int managerIdx = (count - 1) - index;
+
+  if (managerIdx < 0 || managerIdx >= count)
+    return;
+
+  artflow::Layer *l = m_layerManager->getLayer(managerIdx);
+  if (l && l->type == artflow::Layer::Type::Group) {
+    l->expanded = !l->expanded;
+    updateLayersList();
+  }
+}
+
 
 void CanvasItem::removeLayer(int index) {
   Layer *l = m_layerManager->getLayer(index);
@@ -3836,8 +3894,10 @@ void CanvasItem::renameLayer(int index, const QString &name) {
     emit notificationRequested("Layer is locked", "warning");
     return;
   }
-  if (l)
+  if (l) {
     l->name = name.toStdString();
+    updateLayersList();
+  }
 }
 
 void CanvasItem::applyEffect(int index, const QString &effect,
@@ -4635,6 +4695,7 @@ void CanvasItem::updateLayersList() {
   QVariantList layerList;
   for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
     Layer *l = m_layerManager->getLayer(i);
+    if (!l) continue;
     QVariantMap layer;
     layer["layerId"] = i;
     layer["name"] = QString::fromStdString(l->name);
@@ -4645,7 +4706,62 @@ void CanvasItem::updateLayersList() {
     layer["clipped"] = l->clipped;
     layer["is_private"] = l->isPrivate;
     layer["active"] = (i == m_activeLayerIndex);
-    layer["type"] = (i == 0) ? "background" : "drawing";
+    layer["stableId"] = (int)l->stableId;
+    layer["parentId"] = l->parentId;
+
+    // Correctly map the Layer::Type enum
+    if (l->type == Layer::Type::Group) {
+      layer["type"] = QString("group");
+    } else if (l->type == Layer::Type::Background || i == 0) {
+      layer["type"] = QString("background");
+    } else {
+      layer["type"] = QString("drawing");
+    }
+
+    // Calculate depth
+    int depth = 0;
+    int pId = l->parentId;
+    while (pId != -1) {
+        depth++;
+        bool found = false;
+        for (int j = 0; j < m_layerManager->getLayerCount(); ++j) {
+            Layer *pLayer = m_layerManager->getLayer(j);
+            if (pLayer && (int)pLayer->stableId == pId) {
+                pId = pLayer->parentId;
+                found = true;
+                break;
+            }
+        }
+        if (!found || depth > 20) break; // Safety break
+    }
+
+    layer["depth"] = depth;
+    layer["expanded"] = l->expanded;
+
+    // Check if all parents are expanded
+    bool parentExpanded = true;
+    int checkId = l->parentId;
+    int iterations = 0;
+    while (checkId != -1) {
+        bool foundParent = false;
+        for (int j = 0; j < m_layerManager->getLayerCount(); ++j) {
+            Layer *pLayer = m_layerManager->getLayer(j);
+            if (pLayer && (int)pLayer->stableId == checkId) {
+                if (!pLayer->expanded) {
+                    parentExpanded = false;
+                    break;
+                }
+                checkId = pLayer->parentId;
+                foundParent = true;
+                break;
+            }
+        }
+        // Safety check to prevent infinite loop
+        if (++iterations > 20) break;
+        if (!parentExpanded || !foundParent) break;
+    }
+    layer["parentExpanded"] = parentExpanded;
+
     if (i == 0)
       layer["bgColor"] = m_backgroundColor.name();
 
@@ -5091,6 +5207,7 @@ void CanvasItem::toggleVisibility(int index) {
   Layer *l = m_layerManager->getLayer(index);
   if (l) {
     l->visible = !l->visible;
+    l->markDirty();
     updateLayersList();
     update();
   }
@@ -5100,6 +5217,7 @@ void CanvasItem::setLayerVisibility(int index, bool visible) {
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->visible != visible) {
     l->visible = visible;
+    l->markDirty();
     updateLayersList();
     update();
   }
@@ -5121,6 +5239,7 @@ void CanvasItem::clearLayer(int index) {
   }
   if (l) {
     l->buffer->clear();
+    l->markDirty();
     update();
   }
 }
@@ -5135,6 +5254,7 @@ void CanvasItem::setLayerOpacity(int index, float opacity) {
   }
   if (l) {
     l->opacity = opacity;
+    l->markDirty();
     updateLayersList();
     update();
   }
@@ -5146,6 +5266,7 @@ void CanvasItem::setLayerOpacityPreview(int index, float opacity) {
     return;
   if (l) {
     l->opacity = opacity;
+    l->markDirty();
     // Skip updateLayersList() for smooth preview
     update();
   }
@@ -5196,6 +5317,7 @@ void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
       return;
 
     l->blendMode = newMode;
+    l->markDirty();
     updateLayersList();
     update();
   }

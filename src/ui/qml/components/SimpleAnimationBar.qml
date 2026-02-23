@@ -16,11 +16,21 @@ Item {
     property int    projectFrames:  48   // max frames if needed
     property bool   projectLoop:    true
 
-    // ── Real Frame Model ─────────────────────────────────────
-    // Each entry: { thumbnail: "" }
-    ListModel { id: frameModel }
+    // Canvas background color - mirrors the actual canvas paper color
+    property color  canvasBgColor: {
+        if (targetCanvas && targetCanvas.layerModel && targetCanvas.layerModel.length > 0) {
+            var bg = targetCanvas.layerModel[0]
+            if (bg && bg.bgColor) return bg.bgColor
+        }
+        return "#ffffff"
+    }
 
-    property int frameCount: frameModel.count
+    // ── Real Frame Model ─────────────────────────────────────
+    // Each entry: { thumbnail: "", layerName: "...", duration: 1 }
+    ListModel { id: _frameModel }
+    property alias frameModel: _frameModel
+
+    property int frameCount: _frameModel.count
 
     // ── Animation State ─────────────────────────────────────
     property int    currentFrameIdx: 0
@@ -42,13 +52,23 @@ Item {
         interval: Math.round(1000 / Math.max(1, root.fps))
         repeat: true
         running: root.isPlaying && root.frameCount > 1
+        
+        property int tickCounter: 0
+        
         onTriggered: {
-            var next = root.currentFrameIdx + 1
-            if (next >= root.frameCount) {
-                if (root.loopEnabled) next = 0
-                else { root.isPlaying = false; return }
+            var currentItem = frameModel.get(root.currentFrameIdx)
+            tickCounter++
+            
+            var dur = currentItem ? (currentItem.duration !== undefined ? currentItem.duration : 1) : 1
+            if (tickCounter >= dur) {
+                tickCounter = 0
+                var next = root.currentFrameIdx + 1
+                if (next >= root.frameCount) {
+                    if (root.loopEnabled) next = 0
+                    else { root.isPlaying = false; return }
+                }
+                root.goToFrame(next)
             }
-            root.goToFrame(next)
         }
     }
 
@@ -56,13 +76,57 @@ Item {
     function goToFrame(idx) {
         if (idx < 0 || idx >= frameCount) return
         currentFrameIdx = idx
-        // TODO: targetCanvas.gotoFrame(idx)
+        if (playTimer.running) playTimer.tickCounter = 0
+        
+        // C++ LAYER VISIBILITY SYNCHRONIZATION
+        if (targetCanvas) {
+            for (var i = 0; i < frameCount; i++) {
+                var layerName = frameModel.get(i).layerName
+                if (!layerName) continue
+                
+                var rIdx = targetCanvas.findLayerIndexByName(layerName)
+                if (rIdx < 0) continue
+                
+                var isCur = (i === currentFrameIdx)
+                if (isCur) {
+                    targetCanvas.setLayerVisibility(rIdx, true)
+                    targetCanvas.setLayerOpacity(rIdx, 1.0)
+                    targetCanvas.setActiveLayer(rIdx)
+                } else if (onionEnabled) {
+                    var d = i - currentFrameIdx
+                    var show = (d < 0 && -d <= onionBefore) || (d > 0 && d <= onionAfter)
+                    if (show) {
+                        targetCanvas.setLayerVisibility(rIdx, true)
+                        var ad = Math.abs(d)
+                        var md = (d < 0) ? onionBefore : onionAfter
+                        targetCanvas.setLayerOpacity(rIdx, Math.max(0.08, onionOpacity * (1.0 - (ad-1)/md)))
+                    } else {
+                        targetCanvas.setLayerVisibility(rIdx, false)
+                    }
+                } else {
+                    targetCanvas.setLayerVisibility(rIdx, false)
+                }
+            }
+        }
     }
 
+    onOnionEnabledChanged: { goToFrame(currentFrameIdx) }
+    onOnionBeforeChanged: { goToFrame(currentFrameIdx) }
+    onOnionAfterChanged: { goToFrame(currentFrameIdx) }
+    onOnionOpacityChanged: { goToFrame(currentFrameIdx) }
+
     function addFrame() {
-        frameModel.append({ thumbnail: "" })
-        goToFrame(frameModel.count - 1)
-        // TODO: canvas.clearForNewFrame()  unless onionEnabled
+        var newIdx = frameModel.count
+        var nm = "AF_Simple_F" + (newIdx + 1)
+        
+        if (targetCanvas) {
+            targetCanvas.addLayer()
+            var ri = targetCanvas.activeLayerIndex
+            targetCanvas.renameLayer(ri, nm)
+        }
+        
+        frameModel.append({ thumbnail: "", layerName: nm, duration: 1 })
+        goToFrame(newIdx)
     }
 
     // ── Entry Animation ──────────────────────────────────────
@@ -215,44 +279,103 @@ Item {
             anchors.leftMargin: 12; anchors.rightMargin: 12
             anchors.bottomMargin: 8
 
-            Flickable {
-                id: frameFlick
-                anchors.fill: parent
-                contentWidth: frameRow.width
-                clip: true; boundsBehavior: Flickable.StopAtBounds
+            ListView {
+                id: frameList
+                anchors.left: parent.left
+                anchors.right: addFrameBtn.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                anchors.rightMargin: 8
+                
+                orientation: ListView.Horizontal
+                spacing: 6
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
 
                 function scrollToCurrent() {
-                    var cW = 44 + 3
-                    var targetX = root.currentFrameIdx * cW - (width/2 - 44/2)
-                    contentX = Math.max(0, Math.min(targetX, Math.max(0, contentWidth - width)))
+                    positionViewAtIndex(root.currentFrameIdx, ListView.Contain)
                 }
                 Connections {
                     target: root
-                    function onCurrentFrameIdxChanged() { frameFlick.scrollToCurrent() }
+                    function onCurrentFrameIdxChanged() { frameList.scrollToCurrent() }
                 }
 
-                Row {
-                    id: frameRow
-                    spacing: 3; height: frameFlick.height
+                model: DelegateModel {
+                    id: visualModel
+                    model: frameModel
+                    delegate: DropArea {
+                        id: delegateRoot
+                        width: fCell.width
+                        height: frameList.height
+                        
+                        keys: ["frame"]
 
-                    Repeater {
-                        model: frameModel
+                        onEntered: (drag) => {
+                            if (drag.source.visualIndex !== undefined && drag.source.visualIndex !== delegateRoot.visualIndex) {
+                                visualModel.items.move(drag.source.visualIndex, delegateRoot.visualIndex)
+                                // Keep playhead synced
+                                if (root.currentFrameIdx === drag.source.visualIndex) {
+                                    root.currentFrameIdx = delegateRoot.visualIndex
+                                } else if (root.currentFrameIdx === delegateRoot.visualIndex) {
+                                    root.currentFrameIdx = drag.source.visualIndex
+                                }
+                            }
+                        }
+
+                        property int visualIndex: DelegateModel.itemsIndex
 
                         Rectangle {
                             id: fCell
-                            property int   fIdx:      index
+                            property int   fIdx:      delegateRoot.visualIndex
                             property bool  isCurrent: fIdx === root.currentFrameIdx
+                            property int   baseDur:   model.duration !== undefined ? model.duration : 1
                             property int   dist:      fIdx - root.currentFrameIdx
 
-                            width: 44; height: frameFlick.height; radius: 8
+                            function getBaseWidth(dur) { return Math.max(50, 50 * dur + 6 * (dur - 1)) }
+                            property real  baseWidth: getBaseWidth(baseDur)
+                            property real  dynamicWidth: extMa.pressed ? Math.max(50, baseWidth + dragDummy.x) : baseWidth
 
-                            color: isCurrent ? "#1a1a2e" : (fCellMa.containsMouse ? "#1c1c24" : "#151518")
+                            // Instant local duration calculation to update text without hitting the model
+                            property int   visualDur: Math.max(1, Math.round((dynamicWidth + 6) / 56))
+
+                            width: dynamicWidth
+                            height: frameList.height
+                            radius: 8
+
+                            color: isCurrent ? "#1a1a2e" : (dragMa.containsMouse ? "#1c1c24" : "#151518")
                             border.color: isCurrent ? root.accentColor : "#252528"
                             border.width: isCurrent ? 2 : 1
 
-                            Behavior on color        { ColorAnimation { duration: 80 } }
-                            Behavior on border.color { ColorAnimation { duration: 80 } }
+                            Behavior on color        { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                            Behavior on width { 
+                                enabled: !extMa.pressed 
+                                NumberAnimation { duration: 250; easing.type: Easing.OutBack; easing.overshoot: 0.8 } 
+                            }
 
+                            Drag.active: dragMa.drag.active
+                            Drag.source: delegateRoot
+                            Drag.hotSpot.x: width / 2
+                            Drag.hotSpot.y: height / 2
+                            Drag.keys: ["frame"]
+
+                            states: [
+                                State {
+                                    when: dragMa.drag.active
+                                    ParentChange { target: fCell; parent: frameList }
+                                    AnchorChanges { target: fCell; anchors.verticalCenter: undefined; anchors.horizontalCenter: undefined }
+                                    PropertyChanges { target: fCell; opacity: 0.85; scale: 1.05; z: 100 }
+                                }
+                            ]
+                            
+                            transitions: [
+                                Transition {
+                                    ParentAnimation {
+                                        NumberAnimation { properties: "x,y"; duration: 200; easing.type: Easing.OutQuad }
+                                    }
+                                }
+                            ]
+                            
                             // Onion skin tint
                             Rectangle {
                                 anchors.fill: parent; radius: parent.radius; z: 1
@@ -264,15 +387,18 @@ Item {
                                        : Qt.rgba(0.2, 0.9, 0.3, root.onionOpacity * (root.onionAfter  - fCell.dist + 1) / (root.onionAfter  + 1))
                             }
 
-                            // Thumbnail or placeholder
-                            Item {
-                                anchors.fill: parent; anchors.margins: 4; z: 0
+                            // Thumbnail area with canvas bg color
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: 3; z: 0
+                                radius: 5
+                                color: root.canvasBgColor
+                                clip: true
 
                                 // Placeholder
                                 Column {
-                                    anchors.centerIn: parent; spacing: 2; opacity: 0.35
+                                    anchors.centerIn: parent; spacing: 2; opacity: 0.25
                                     visible: model.thumbnail === ""
-                                    Text { text: "🖼"; font.pixelSize: 16; anchors.horizontalCenter: parent.horizontalCenter }
+                                    Text { text: (fCell.fIdx + 1); font.pixelSize: 14; color: "#888"; font.bold: true; anchors.horizontalCenter: parent.horizontalCenter }
                                 }
 
                                 // Real thumbnail
@@ -281,55 +407,157 @@ Item {
                                     source: model.thumbnail !== "" ? model.thumbnail : ""
                                     fillMode: Image.PreserveAspectFit
                                 }
+
+                                // Duration indicator marks (vertical lines for multi-frame)
+                                Row {
+                                    visible: fCell.dur > 1
+                                    anchors.bottom: parent.bottom
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.bottomMargin: 2
+                                    spacing: 6
+                                    Repeater {
+                                        model: fCell.dur
+                                        Rectangle {
+                                            width: 2; height: 6; radius: 1
+                                            color: index === 0 ? root.accentColor : "#aaa"
+                                            opacity: 0.5
+                                        }
+                                    }
+                                }
                             }
 
                             // Frame number badge
                             Rectangle {
                                 anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.bottomMargin: 2
-                                width: numTxt.implicitWidth + 6; height: 12; radius: 4; z: 2
-                                color: fCell.isCurrent ? root.accentColor : "#1a1a1e"
+                                anchors.bottomMargin: 4
+                                width: numTxt.implicitWidth + 8; height: 14; radius: 6; z: 2
+                                color: fCell.isCurrent ? root.accentColor : "#101014"
+                                opacity: 0.95
                                 Text {
-                                    id: numTxt; text: fCell.fIdx + 1
-                                    color: fCell.isCurrent ? "white" : "#555"
-                                    font.pixelSize: 7; font.family: "Monospace"
+                                    id: numTxt; 
+                                    text: fCell.visualDur > 1 ? (fIdx + 1) + " (" + fCell.visualDur + "f)" : (fIdx + 1)
+                                    color: fCell.isCurrent ? "white" : "#888"
+                                    font.pixelSize: 9; font.family: "Monospace"; font.bold: true
                                     anchors.centerIn: parent
                                 }
                             }
 
-                            // Current indicator dot at top
-                            Rectangle {
-                                visible: fCell.isCurrent
-                                anchors.top: parent.top; anchors.topMargin: -1
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: 6; height: 3; radius: 1.5; z: 2
-                                color: root.accentColor
-                            }
-
+                            // Drag Area for reordering and selection
                             MouseArea {
-                                id: fCellMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: root.goToFrame(fCell.fIdx)
-                            }
-                            ToolTip.visible: fCellMa.containsMouse; ToolTip.text: "Frame " + (fIdx + 1); ToolTip.delay: 400
-                        }
-                    }
+                                id: dragMa
+                                anchors.fill: parent
+                                anchors.rightMargin: 16 // Leave space for the extender
+                                drag.target: fCell
+                                drag.axis: Drag.XAxis
+                                hoverEnabled: true
+                                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 
-                    // ── "+" Add-frame cell at end ──────────────
-                    Rectangle {
-                        width: 44; height: frameFlick.height; radius: 8
-                        color: addCellMa.containsMouse ? "#1a1a24" : "#101014"
-                        border.color: addCellMa.containsMouse ? root.accentColor : "#202022"
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 100 } }
-                        Text {
-                            anchors.centerIn: parent; text: "+"
-                            color: addCellMa.containsMouse ? root.accentColor : "#333"
-                            font.pixelSize: 22; font.weight: Font.Light
+                                onClicked: root.goToFrame(fIdx)
+                                onReleased: {
+                                    fCell.Drag.drop()
+                                    // Snap back smoothly
+                                    fCell.parent = delegateRoot
+                                    fCell.x = 0
+                                    fCell.y = 0
+                                    
+                                    // Re-sync layer visibilities in case order changed
+                                    root.goToFrame(root.currentFrameIdx)
+                                }
+                            }
+                            ToolTip.visible: dragMa.containsMouse && !dragMa.drag.active
+                            ToolTip.text: "Frame " + (fIdx + 1) + "\nArrastra para mover"
+                            ToolTip.delay: 400
+
+                            // Extender handle (right edge) - drag to change duration
+                            Rectangle {
+                                width: 20
+                                height: parent.height
+                                anchors.right: parent.right
+                                color: extMa.containsMouse ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.1) : "transparent"
+                                radius: fCell.radius
+                                z: 10
+                                
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                
+                                // Visual grip dots
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 3
+                                    Repeater {
+                                        model: 3
+                                        Rectangle {
+                                            width: 3; height: 3; radius: 1.5
+                                            color: (extMa.containsMouse || extMa.pressed) ? root.accentColor : "#555"
+                                            Behavior on color { ColorAnimation { duration: 120 } }
+                                        }
+                                    }
+                                }
+
+                                // Bullet-proof delta tracking using an unanchored dummy item
+                                Item { id: dragDummy; x: 0; y: 0 }
+
+                                MouseArea {
+                                    id: extMa
+                                    anchors.fill: parent
+                                    cursorShape: Qt.SizeHorCursor
+                                    hoverEnabled: true
+                                    preventStealing: true
+                                    drag.target: dragDummy
+                                    drag.axis: Drag.XAxis
+                                    drag.minimumX: -(fCell.baseWidth - 50) // Don't let it shrink below 1 frame
+
+                                    property int _myIdx: fCell.fIdx
+
+                                    onPressed: {
+                                        _myIdx = fCell.fIdx
+                                        root.goToFrame(_myIdx)
+                                        // Reset dummy for relative drag tracking
+                                        dragDummy.x = 0
+                                    }
+                                    
+                                    onReleased: {
+                                        var finalDur = fCell.visualDur
+                                        var curDur = frameModel.get(_myIdx)
+                                        // End of drag: Commit to model
+                                        if (curDur && finalDur !== curDur.duration) {
+                                            frameModel.setProperty(_myIdx, "duration", finalDur)
+                                        }
+                                        dragDummy.x = 0 // clean up
+                                    }
+                                }
+                                ToolTip.visible: extMa.containsMouse && !extMa.pressed
+                                ToolTip.text: "⟷ Estirar duración"
+                                ToolTip.delay: 300
+                            }
                         }
-                        MouseArea { id: addCellMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.addFrame() }
-                        ToolTip.visible: addCellMa.containsMouse; ToolTip.text: "Nuevo fotograma"; ToolTip.delay: 400
                     }
                 }
+            }
+
+            // ── "+" Add-frame cell at end ──────────────
+            Rectangle {
+                id: addFrameBtn
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 50; radius: 12
+                color: addCellMa.containsMouse ? "#1c1c28" : "#131318"
+                border.color: addCellMa.containsMouse ? root.accentColor : "#25252b"
+                border.width: 1
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                Text {
+                    anchors.centerIn: parent; text: "+"
+                    color: addCellMa.containsMouse ? root.accentColor : "#555"
+                    font.pixelSize: 26; font.weight: Font.Light
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                }
+                MouseArea { 
+                    id: addCellMa; anchors.fill: parent; hoverEnabled: true; 
+                    cursorShape: Qt.PointingHandCursor; onClicked: root.addFrame() 
+                }
+                ToolTip.visible: addCellMa.containsMouse; ToolTip.text: "Añadir fotograma"; ToolTip.delay: 400
             }
         }
 
