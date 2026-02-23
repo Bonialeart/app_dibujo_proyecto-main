@@ -144,6 +144,19 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   connect(m_quickShapeTimer, &QTimer::timeout, this,
           &CanvasItem::detectAndDrawQuickShape);
 
+  // QuickShape snap animation timer (premium glow effect)
+  m_quickShapeSnapTimer = new QTimer(this);
+  m_quickShapeSnapTimer->setInterval(16); // ~60fps
+  connect(m_quickShapeSnapTimer, &QTimer::timeout, this, [this]() {
+    m_quickShapeSnapAnim += 0.08f; // ~300ms total animation
+    if (m_quickShapeSnapAnim >= 1.0f) {
+      m_quickShapeSnapAnim = 1.0f;
+      m_quickShapeSnapAnimActive = false;
+      m_quickShapeSnapTimer->stop();
+    }
+    update();
+  });
+
   // Throttle de redibujado a ~60fps máximo
   m_updateThrottle = new QTimer(this);
   m_updateThrottle->setInterval(16); // ~60fps cap
@@ -1149,6 +1162,37 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // ✨ QUICKSHAPE RESIZE GUIDE (Minimal — center dot only)
+  // ══════════════════════════════════════════════════════════════
+
+  if (m_isHoldingForShape && m_quickShapeResizing &&
+      m_quickShapeType != QuickShapeType::None) {
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    QColor dotColor(255, 255, 255, 180);
+    QColor dotOutline(0, 0, 0, 120);
+
+    if (m_quickShapeType == QuickShapeType::Circle) {
+      // Small center dot
+      QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+      painter->setPen(QPen(dotOutline, 2.0f));
+      painter->setBrush(dotColor);
+      painter->drawEllipse(centerScreen, 3.5, 3.5);
+    } else if (m_quickShapeType == QuickShapeType::Line) {
+      // Small endpoint dots
+      QPointF p1Screen = m_quickShapeLineP1 * m_zoomLevel + m_viewOffset * m_zoomLevel;
+      QPointF p2Screen = m_quickShapeLineP2 * m_zoomLevel + m_viewOffset * m_zoomLevel;
+      painter->setPen(QPen(dotOutline, 1.5f));
+      painter->setBrush(dotColor);
+      painter->drawEllipse(p1Screen, 3, 3);
+      painter->drawEllipse(p2Screen, 3, 3);
+    }
+
+    painter->restore();
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // 🎯 CURSOR PERSONALIZADO AL FINAL (ENCIMA DE TODO)
   // ══════════════════════════════════════════════════════════════
 
@@ -1707,6 +1751,7 @@ void CanvasItem::detectAndDrawQuickShape() {
     return;
 
   m_isHoldingForShape = true;
+  m_quickShapeResizing = false;
 
   // 1. ANALYZE SHAPE (BEFORE REVERTING!)
   QPointF start = m_strokePoints.front();
@@ -1740,6 +1785,27 @@ void CanvasItem::detectAndDrawQuickShape() {
       layer->buffer->copyFrom(*m_strokeBeforeBuffer);
     }
     drawLine(startC, endC);
+    // Mark layer dirty so compositing cache refreshes
+    if (layer) {
+      layer->dirty = true;
+      layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+      if (layer->buffer) layer->buffer->clearDirtyFlags();
+    }
+    m_cachedCanvasImage = QImage(); // Force full recomposite
+
+    // Store LINE parameters for resize
+    m_quickShapeType = QuickShapeType::Line;
+    m_quickShapeLineP1 = startC;
+    m_quickShapeLineP2 = endC;
+    m_quickShapeCenter = (startC + endC) / 2.0;
+    m_quickShapeOrigLineLen = QLineF(startC, endC).length();
+    // Store stable direction for resize
+    if (m_quickShapeOrigLineLen > 0.01f) {
+      m_quickShapeLineDir = (endC - startC) / m_quickShapeOrigLineLen;
+    } else {
+      m_quickShapeLineDir = QPointF(1, 0);
+    }
+    m_quickShapeAnchor = m_strokePoints.back(); // Screen coords
     solved = true;
   } else {
     // Circle detection
@@ -1777,15 +1843,42 @@ void CanvasItem::detectAndDrawQuickShape() {
       float maxR = 0;
       for (float r : radii)
         maxR = std::max(maxR, r);
-      drawCircle(centroidC, maxR / m_zoomLevel);
+      float radiusCanvas = maxR / m_zoomLevel;
+      drawCircle(centroidC, radiusCanvas);
+      // Mark layer dirty so compositing cache refreshes
+      if (layer) {
+        layer->dirty = true;
+        layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+        if (layer->buffer) layer->buffer->clearDirtyFlags();
+      }
+      m_cachedCanvasImage = QImage(); // Force full recomposite
+
+      // Store CIRCLE parameters for resize
+      m_quickShapeType = QuickShapeType::Circle;
+      m_quickShapeCenter = centroidC;
+      m_quickShapeRadius = radiusCanvas;
+      m_quickShapeOrigRadius = radiusCanvas;
+      m_quickShapeAnchor = m_strokePoints.back(); // Screen coords
       solved = true;
     }
   }
 
   if (!solved) {
     m_isHoldingForShape = false;
+    m_quickShapeType = QuickShapeType::None;
     return;
   }
+
+  // Start premium snap animation
+  m_quickShapeSnapAnim = 0.0f;
+  m_quickShapeSnapAnimActive = true;
+  m_quickShapeSnapTimer->start();
+
+  // Notify user of shape correction
+  if (m_quickShapeType == QuickShapeType::Circle)
+    emit notificationRequested("Circle", "info");
+  else if (m_quickShapeType == QuickShapeType::Line)
+    emit notificationRequested("Line", "info");
 
   // 3. SYNC FBO FROM CPU BUFFER (INSTANT REFRESH)
   if (m_pingFBO && layer && layer->buffer) {
@@ -1798,7 +1891,48 @@ void CanvasItem::detectAndDrawQuickShape() {
     fboPainter.drawImage(0, 0, img);
     fboPainter.end();
     m_pingFBO->release();
-    // Pong already synced via blit if needed, or we just blit now
+    QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+  }
+
+  update();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// redrawQuickShape — Re-render the perfect shape at current size
+// Called during drag-to-resize while holding after shape snap
+// ═══════════════════════════════════════════════════════════════════
+void CanvasItem::redrawQuickShape() {
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer || !m_strokeBeforeBuffer)
+    return;
+
+  // Revert to the clean pre-stroke state
+  layer->buffer->copyFrom(*m_strokeBeforeBuffer);
+
+  // Draw shape at current (possibly resized) dimensions
+  if (m_quickShapeType == QuickShapeType::Circle) {
+    drawCircle(m_quickShapeCenter, m_quickShapeRadius);
+  } else if (m_quickShapeType == QuickShapeType::Line) {
+    drawLine(m_quickShapeLineP1, m_quickShapeLineP2);
+  }
+
+  // Mark layer dirty so compositing cache refreshes
+  layer->dirty = true;
+  layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+  if (layer->buffer) layer->buffer->clearDirtyFlags();
+  m_cachedCanvasImage = QImage(); // Force full recomposite
+
+  // Sync FBO for instant visual refresh (if GPU path is active)
+  if (m_pingFBO && layer->buffer) {
+    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+               QImage::Format_RGBA8888);
+    m_pingFBO->bind();
+    QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+    QPainter fboPainter(&device);
+    fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+    fboPainter.drawImage(0, 0, img);
+    fboPainter.end();
+    m_pingFBO->release();
     QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
   }
 
@@ -1807,22 +1941,83 @@ void CanvasItem::detectAndDrawQuickShape() {
 
 void CanvasItem::drawLine(const QPointF &p1, const QPointF &p2) {
   Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer) return;
+
+  // CRITICAL: use premultiplied format — same as handleDraw — to avoid color
+  // fringing artifacts (teal/cyan halos) from incorrect alpha compositing
   QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-             QImage::Format_RGBA8888);
+             QImage::Format_RGBA8888_Premultiplied);
   QPainter painter(&img);
   painter.setRenderHint(QPainter::Antialiasing);
-  painter.setPen(QPen(m_brushColor, m_brushSize, Qt::SolidLine, Qt::RoundCap));
-  painter.drawLine(p1, p2);
+  painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+  BrushSettings settings = m_brushEngine->getBrush();
+  settings.color = m_brushColor;
+  settings.size  = m_brushSize;
+  settings.opacity = m_brushOpacity;
+  // Disable dynamics that don't make sense for shapes
+  settings.sizeByPressure    = false;
+  settings.opacityByPressure = false;
+  settings.jitter    = 0.0f;
+  settings.posJitterX = 0.0f;
+  settings.posJitterY = 0.0f;
+
+  m_brushEngine->resetRemainder();
+
+  float lineLen = QLineF(p1, p2).length();
+  float step = std::max(0.5f, settings.size * settings.spacing * 0.5f);
+  int steps = std::max(2, (int)(lineLen / step));
+
+  QPointF prev = p1;
+  for (int i = 1; i <= steps; ++i) {
+    float t = (float)i / (float)steps;
+    QPointF cur = p1 + (p2 - p1) * t;
+    m_brushEngine->paintStroke(&painter, prev, cur, 1.0f, settings);
+    prev = cur;
+  }
+
+  painter.end();
+  layer->markDirty();
 }
 
 void CanvasItem::drawCircle(const QPointF &center, float radius) {
   Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer) return;
+
+  // CRITICAL: use premultiplied format to avoid color fringing artifacts
   QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-             QImage::Format_RGBA8888);
+             QImage::Format_RGBA8888_Premultiplied);
   QPainter painter(&img);
   painter.setRenderHint(QPainter::Antialiasing);
-  painter.setPen(QPen(m_brushColor, m_brushSize, Qt::SolidLine, Qt::RoundCap));
-  painter.drawEllipse(center, radius, radius);
+  painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+  BrushSettings settings = m_brushEngine->getBrush();
+  settings.color = m_brushColor;
+  settings.size  = m_brushSize;
+  settings.opacity = m_brushOpacity;
+  settings.sizeByPressure    = false;
+  settings.opacityByPressure = false;
+  settings.jitter    = 0.0f;
+  settings.posJitterX = 0.0f;
+  settings.posJitterY = 0.0f;
+
+  m_brushEngine->resetRemainder();
+
+  float circumference = 2.0f * M_PI * radius;
+  float step = std::max(0.5f, settings.size * settings.spacing * 0.5f);
+  int segments = std::max(36, (int)(circumference / step));
+
+  QPointF prev(center.x() + radius, center.y());
+  for (int i = 1; i <= segments; ++i) {
+    float angle = (2.0f * M_PI * i) / (float)segments;
+    QPointF cur(center.x() + radius * std::cos(angle),
+                center.y() + radius * std::sin(angle));
+    m_brushEngine->paintStroke(&painter, prev, cur, 1.0f, settings);
+    prev = cur;
+  }
+
+  painter.end();
+  layer->markDirty();
 }
 
 void CanvasItem::mousePressEvent(QMouseEvent *event) {
@@ -2031,6 +2226,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     m_strokePoints.push_back(event->position());
     m_holdStartPos = event->position();
     m_isHoldingForShape = false;
+    m_quickShapeType = QuickShapeType::None;
 
     // Emitir señal de que se ha empezado a pintar con el color actual
     if (m_tool == ToolType::Pen) {
@@ -2039,7 +2235,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
     // Solo iniciar timer si es una herramienta de dibujo
     if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser) {
-      m_quickShapeTimer->start(800);
+      m_quickShapeTimer->start(500);
     }
 
     // float pressure = 0.1f;
@@ -2137,18 +2333,45 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
         pressure = p;
     }
 
-    if (!m_isHoldingForShape) {
+    if (m_isHoldingForShape && m_quickShapeType != QuickShapeType::None) {
+      // ═══════════════════════════════════════════════════════════
+      // QUICKSHAPE RESIZE: Procreate-style drag-to-resize
+      // ═══════════════════════════════════════════════════════════
+      float distFromAnchor = QLineF(m_quickShapeAnchor, event->position()).length();
+      if (distFromAnchor > 5.0f) { // Dead zone to prevent accidental resize
+        m_quickShapeResizing = true;
+
+        if (m_quickShapeType == QuickShapeType::Circle) {
+          // Scale radius based on distance from center (in screen coords)
+          QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+          float distFromCenter = QLineF(centerScreen, event->position()).length();
+          float newRadius = distFromCenter / m_zoomLevel;
+          // Clamp to reasonable bounds
+          m_quickShapeRadius = std::max(3.0f, newRadius);
+          redrawQuickShape();
+        } else if (m_quickShapeType == QuickShapeType::Line) {
+          // Scale line from center using original direction
+          QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+          float distFromCenter = QLineF(centerScreen, event->position()).length();
+          float newHalfLen = distFromCenter / m_zoomLevel;
+
+          // Use the stored stable direction vector
+          m_quickShapeLineP1 = m_quickShapeCenter - m_quickShapeLineDir * newHalfLen;
+          m_quickShapeLineP2 = m_quickShapeCenter + m_quickShapeLineDir * newHalfLen;
+          redrawQuickShape();
+        }
+      }
+    } else if (!m_isHoldingForShape) {
       m_strokePoints.push_back(event->position());
       float dist =
           QPointF(event->position() - m_holdStartPos).manhattanLength();
       if (dist > 25.0f) {
         m_holdStartPos = event->position();
         if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser)
-          m_quickShapeTimer->start(800);
+          m_quickShapeTimer->start(500);
       }
+      handleDraw(event->position(), pressure);
     }
-
-    handleDraw(event->position(), pressure);
   }
 
   m_cursorPos = event->position();
@@ -2256,12 +2479,12 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
       bool wasHolding = m_isHoldingForShape;
       m_isDrawing = false;
       m_isHoldingForShape = false;
+    m_quickShapeType = QuickShapeType::None;
       m_hasPrediction = false;
 
       if (m_pingFBO) {
         if (!wasHolding) {
-          // Correctly convert FBO data to layer buffer without
-          // double-premultiplying
+          // Normal stroke: copy FBO result to CPU layer buffer
           QImage result = m_pingFBO->toImage(true).convertToFormat(
               QImage::Format_RGBA8888_Premultiplied);
 
@@ -2269,7 +2492,17 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
           if (layer && layer->buffer) {
             layer->buffer->loadRawData(result.bits());
             layer->markDirty();
+            m_cachedCanvasImage = QImage(); // Force recomposite
           }
+        } else {
+          // QuickShape stroke: drawCircle/drawLine already wrote to layer buffer
+          // Just mark it dirty so the cache recomposes correctly on next paint
+          Layer *layer = m_layerManager->getActiveLayer();
+          if (layer) {
+            layer->dirty = true;
+            layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+          }
+          m_cachedCanvasImage = QImage(); // Force full recomposite
         }
         delete m_pingFBO;
         m_pingFBO = nullptr;
@@ -2368,25 +2601,48 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     m_strokePoints.push_back(event->position());
     m_holdStartPos = event->position();
     m_isHoldingForShape = false;
+    m_quickShapeType = QuickShapeType::None;
 
     // Emitir señal de que se ha empezado a pintar con el color actual
     if (m_tool == ToolType::Pen) {
       emit strokeStarted(m_brushColor);
     }
 
-    m_quickShapeTimer->start(800);
+    m_quickShapeTimer->start(500);
 
     handleDraw(event->position(), pressure, tiltFactor);
     event->accept();
 
   } else if (event->type() == QEvent::TabletMove && m_isDrawing) {
-    if (m_isDrawing && !m_isHoldingForShape) {
+    if (m_isDrawing && m_isHoldingForShape && m_quickShapeType != QuickShapeType::None) {
+      // ═══════════════════════════════════════════════════════════
+      // QUICKSHAPE RESIZE (TABLET): Procreate-style drag-to-resize
+      // ═══════════════════════════════════════════════════════════
+      float distFromAnchor = QLineF(m_quickShapeAnchor, event->position()).length();
+      if (distFromAnchor > 5.0f) {
+        m_quickShapeResizing = true;
+
+        if (m_quickShapeType == QuickShapeType::Circle) {
+          QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+          float distFromCenter = QLineF(centerScreen, event->position()).length();
+          m_quickShapeRadius = std::max(3.0f, distFromCenter / m_zoomLevel);
+          redrawQuickShape();
+        } else if (m_quickShapeType == QuickShapeType::Line) {
+          QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+          float distFromCenter = QLineF(centerScreen, event->position()).length();
+          float newHalfLen = distFromCenter / m_zoomLevel;
+          m_quickShapeLineP1 = m_quickShapeCenter - m_quickShapeLineDir * newHalfLen;
+          m_quickShapeLineP2 = m_quickShapeCenter + m_quickShapeLineDir * newHalfLen;
+          redrawQuickShape();
+        }
+      }
+    } else if (m_isDrawing && !m_isHoldingForShape) {
       m_strokePoints.push_back(event->position());
       float dist =
           QPointF(event->position() - m_holdStartPos).manhattanLength();
       if (dist > 25.0f) { // Increased threshold for jitter
         m_holdStartPos = event->position();
-        m_quickShapeTimer->start(800);
+        m_quickShapeTimer->start(500);
       }
     }
 
@@ -2394,7 +2650,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     // Only draw if there's actual pressure or we are using a tool that
     // doesn't strictly require it, otherwise we leave "stamp" markers at
     // the end
-    if (pressure > 0.001f || m_tool == ToolType::Eraser) {
+    if (!m_isHoldingForShape && (pressure > 0.001f || m_tool == ToolType::Eraser)) {
       handleDraw(event->position(), pressure, tiltFactor);
     }
     update();
@@ -2405,17 +2661,27 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     bool wasHolding = m_isHoldingForShape;
     m_isDrawing = false;
     m_isHoldingForShape = false;
+    m_quickShapeType = QuickShapeType::None;
 
     // FINALIZAR TRAZO PREMIUM (Pilar 3): Volcar GPU a CPU
     if (m_pingFBO) {
       if (!wasHolding) {
         QImage result =
-            m_pingFBO->toImage(true).convertToFormat(QImage::Format_ARGB32);
+            m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888_Premultiplied);
         Layer *layer = m_layerManager->getActiveLayer();
         if (layer && layer->buffer) {
           layer->buffer->loadRawData(result.bits());
           layer->markDirty();
+          m_cachedCanvasImage = QImage();
         }
+      } else {
+        // QuickShape: layer buffer already updated by drawCircle/drawLine
+        Layer *layer = m_layerManager->getActiveLayer();
+        if (layer) {
+          layer->dirty = true;
+          layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+        }
+        m_cachedCanvasImage = QImage();
       }
       delete m_pingFBO;
       m_pingFBO = nullptr;

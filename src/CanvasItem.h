@@ -586,6 +586,24 @@ private:
   QTimer *m_quickShapeTimer = nullptr;
   QPointF m_holdStartPos;
 
+  // QuickShape resize state (Procreate-style)
+  enum class QuickShapeType { None, Line, Circle };
+  QuickShapeType m_quickShapeType = QuickShapeType::None;
+  QPointF m_quickShapeCenter;       // Circle center (canvas coords)
+  float m_quickShapeRadius = 0.0f;  // Circle radius (canvas coords)
+  QPointF m_quickShapeLineP1;       // Line start (canvas coords)
+  QPointF m_quickShapeLineP2;       // Line end   (canvas coords)
+  QPointF m_quickShapeLineDir;      // Normalized line direction (stable for resize)
+  QPointF m_quickShapeAnchor;       // Mouse pos when shape was snapped (screen)
+  float m_quickShapeOrigRadius = 0.0f; // Original detected radius
+  float m_quickShapeOrigLineLen = 0.0f; // Original line length
+  bool m_quickShapeResizing = false;    // User started dragging to resize
+
+  // Snap animation
+  QTimer *m_quickShapeSnapTimer = nullptr;
+  float m_quickShapeSnapAnim = 0.0f;   // 0.0 → 1.0 animation progress
+  bool m_quickShapeSnapAnimActive = false;
+
   // Premium Rendering (Ping-Pong FBOs)
   QOpenGLFramebufferObject *m_pingFBO = nullptr;
   QOpenGLFramebufferObject *m_pongFBO = nullptr;
@@ -609,6 +627,7 @@ private:
   void detectAndDrawQuickShape();
   void drawLine(const QPointF &p1, const QPointF &p2);
   void drawCircle(const QPointF &center, float radius);
+  void redrawQuickShape();  // Re-render shape at current size during resize
 
   QVariantList _scanSync();
   void updateLayersList();

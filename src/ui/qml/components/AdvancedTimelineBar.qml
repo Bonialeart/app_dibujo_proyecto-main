@@ -1,20 +1,18 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
+import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts 1.15
 
-// ══════════════════════════════════════════════════════════════
-//  ADVANCED TIMELINE BAR — Procreate Dreams-style
-//  Fixed: QML reactivity, frame persistence, thumbnails
-// ══════════════════════════════════════════════════════════════
 Item {
     id: root
 
-    property var    targetCanvas:   null
-    property color  accentColor:    "#ff3366"
-    property int    projectFPS:     12
+    property var targetCanvas: null
+    property string accentColor: "#10b981"
+    property int projectFPS: 12
+    property int projectFrames: 48
+    property bool projectLoop: true
 
     // Canvas background color for frame thumbnails
-    property color  canvasBgColor: {
+    property color canvasBgColor: {
         if (targetCanvas && targetCanvas.layerModel && targetCanvas.layerModel.length > 0) {
             var bg = targetCanvas.layerModel[0]
             if (bg && bg.bgColor) return bg.bgColor
@@ -35,9 +33,9 @@ Item {
     property int  onionBefore:      2
     property int  onionAfter:       1
     property int  activeTrackIdx:   0
-    property real pixelsPerFrame:   28
-    property real trackLabelWidth:  100
-    property real trackHeight:      52
+    property real pixelsPerFrame:   36
+    property real trackLabelWidth:  90
+    property real trackHeight:      56
 
     property real currentTimeSec: currentFrameIdx / Math.max(1, fps)
     property real totalTimelineWidth: Math.max(800, totalFrames * pixelsPerFrame + 300)
@@ -48,21 +46,17 @@ Item {
 
     // ═══════════════════════════════════════════════════════
     //  REACTIVE FRAME STORAGE
-    //  Key fix: we use a _version counter to force QML
-    //  to re-evaluate all bindings that depend on frame data.
     // ═══════════════════════════════════════════════════════
     property var _trackFrames: []
-    property int _version: 0  // incremented on every mutation
+    property int _version: 0
 
-    // Call this AFTER every mutation to _trackFrames
     function _changed() {
         _version++
         recalcTotalFrames()
     }
 
-    // Safe accessor that re-evaluates when _version changes
     function getFrames(trackIdx) {
-        var v = _version  // create dependency
+        var v = _version
         if (trackIdx < 0 || trackIdx >= _trackFrames.length) return []
         return _trackFrames[trackIdx]
     }
@@ -116,7 +110,7 @@ Item {
         Qt.callLater(function() { root._ready = true })
     }
     opacity: _ready ? 1.0 : 0.0
-    Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+    Behavior on opacity { NumberAnimation { duration: 350; easing.type: Easing.OutCubic } }
 
     // ═══════════════════════════════════════════════════════
     //  PLAYBACK
@@ -135,7 +129,6 @@ Item {
         }
     }
 
-    // Refresh thumbnails periodically
     Timer { interval: 1500; repeat: true; running: root.totalFrames > 0 && !root.isPlaying
         onTriggered: root._version++ }
 
@@ -195,19 +188,13 @@ Item {
         var td = trackModel.get(ti)
         var nm = "AF_" + td.trackName.replace(/[^a-zA-Z0-9]/g,"") + "_F" + _frameCounter
 
-        // Create new layer
         targetCanvas.addLayer()
         var ri = targetCanvas.activeLayerIndex
         targetCanvas.renameLayer(ri, nm)
 
-        // Store
         _trackFrames[ti].push({ layerName: nm, label: "F" + (_trackFrames[ti].length + 1) })
         _changed()
-
-        // Navigate to new frame
         goToFrame(_trackFrames[ti].length - 1)
-
-        console.log("Added frame: " + nm + " at layer index " + ri + ", total frames: " + totalFrames)
     }
 
     function deleteFrame(ti, fi) {
@@ -270,107 +257,142 @@ Item {
     }
 
     // ═══════════════════════════════════════════════════════
-    //  UI
+    //  UI — Premium Procreate Dreams Style
     // ═══════════════════════════════════════════════════════
     Rectangle {
-        anchors.fill: parent; anchors.leftMargin: 4; anchors.rightMargin: 4; anchors.bottomMargin: 2
-        radius: 12; color: "#0c0c0f"; border.color: "#1a1a1f"; border.width: 1; clip: true
+        anchors.fill: parent
+        anchors.leftMargin: 6; anchors.rightMargin: 6; anchors.bottomMargin: 4
+        radius: 16
+        color: "#0d0d11"
+        border.color: Qt.rgba(1,1,1,0.06)
+        border.width: 1
+        clip: true
+
+        // Subtle top highlight
+        Rectangle {
+            width: parent.width * 0.6; height: 1
+            anchors.top: parent.top; anchors.topMargin: 0
+            anchors.horizontalCenter: parent.horizontalCenter
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.5; color: Qt.rgba(1,1,1,0.08) }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+        }
 
         ColumnLayout {
             anchors.fill: parent; spacing: 0
 
-            // ══════════ HEADER ══════════
+            // ══════════ HEADER — Minimal & Clean ══════════
             Rectangle {
-                Layout.fillWidth: true; Layout.preferredHeight: 34; color: "#111114"
-                RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 5
+                Layout.fillWidth: true; Layout.preferredHeight: 36
+                color: "transparent"
 
-                    Text { text: "⊞"; color: "#555"; font.pixelSize: 14 }
-                    Text { text: "Timeline"; color: "#bbb"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                // Bottom separator
+                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1
+                    color: Qt.rgba(1,1,1,0.04) }
+
+                RowLayout {
+                    anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 8
+
+                    // Title
+                    Row {
+                        spacing: 6
+                        Text { text: "⊞"; color: "#444"; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: "Timeline"; color: "#999"; font.pixelSize: 11; font.weight: Font.DemiBold
+                            anchors.verticalCenter: parent.verticalCenter }
+                    }
+
                     Item { Layout.fillWidth: true }
 
-                    // Timecode
+                    // Timecode pill
                     Rectangle {
-                        width: tcT.implicitWidth + 12; height: 20; radius: 4; color: "#090909"; border.color: "#1f1f24"
+                        width: tcT.implicitWidth + 16; height: 22; radius: 11
+                        color: "#0a0a0e"; border.color: Qt.rgba(1,1,1,0.06)
                         Text { id: tcT; anchors.centerIn: parent; text: root.formatTimecode(root.currentTimeSec)
-                            color: "#777"; font.pixelSize: 10; font.family: "Consolas" }
+                            color: "#666"; font.pixelSize: 9; font.family: "Consolas" }
                     }
-                    Rectangle { width: 1; height: 16; color: "#222" }
 
-                    // Transport
-                    Row { spacing: 3
-                        TlBtn { icon: "⏮"; tip: "Inicio"; onClicked: root.goToFrame(0) }
-                        TlBtn { icon: "◀"; tip: "Anterior"; onClicked: root.goToFrame(root.currentFrameIdx-1) }
-                        TlBtn { icon: root.isPlaying?"⏸":"▶"; tip: root.isPlaying?"Pausar":"Play"
-                            highlighted: root.isPlaying; highlightColor: root.accentColor
+                    // Transport controls — minimal
+                    Row { spacing: 2
+                        PillBtn { icon: "⏮"; onClicked: root.goToFrame(0) }
+                        PillBtn { icon: "◀"; onClicked: root.goToFrame(root.currentFrameIdx-1) }
+                        PillBtn { icon: root.isPlaying ? "⏸" : "▶"; highlighted: root.isPlaying
                             onClicked: root.isPlaying = !root.isPlaying }
-                        TlBtn { icon: "▶"; tip: "Siguiente"; onClicked: root.goToFrame(root.currentFrameIdx+1) }
-                        TlBtn { icon: "⏭"; tip: "Final"; onClicked: root.goToFrame(root.totalFrames-1) }
+                        PillBtn { icon: "▶"; onClicked: root.goToFrame(root.currentFrameIdx+1) }
+                        PillBtn { icon: "⏭"; onClicked: root.goToFrame(root.totalFrames-1) }
                     }
-                    Rectangle { width: 1; height: 16; color: "#222" }
 
-                    TlBtn { icon: "◉"; tip: "Onion Skin"; highlighted: root.onionEnabled; highlightColor: "#f0d060"
+                    // Thin separator
+                    Rectangle { width: 1; height: 14; color: Qt.rgba(1,1,1,0.06) }
+
+                    PillBtn { icon: "◉"; highlighted: root.onionEnabled; highlightCol: "#f0d060"
                         onClicked: { root.onionEnabled = !root.onionEnabled; root.syncVisibility() } }
-                    TlBtn { icon: "↻"; tip: "Loop"; highlighted: root.loopEnabled; highlightColor: root.accentColor
+                    PillBtn { icon: "↻"; highlighted: root.loopEnabled
                         onClicked: root.loopEnabled = !root.loopEnabled }
-                    Rectangle { width: 1; height: 16; color: "#222" }
 
-                    // FPS
+                    Rectangle { width: 1; height: 14; color: Qt.rgba(1,1,1,0.06) }
+
+                    // FPS pill
                     Rectangle {
-                        width: fpsL.implicitWidth + 12; height: 20; radius: 4
-                        color: fpsMa.containsMouse ? "#1e1e22" : "#141418"; border.color: "#252530"
-                        Text { id: fpsL; anchors.centerIn: parent; text: root.fps+" fps"; color: "#888"; font.pixelSize: 10 }
+                        width: fpsL.implicitWidth + 14; height: 22; radius: 11
+                        color: fpsMa.containsMouse ? "#1a1a20" : "#111116"
+                        border.color: Qt.rgba(1,1,1,0.06)
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Text { id: fpsL; anchors.centerIn: parent; text: root.fps + " fps"; color: "#777"; font.pixelSize: 9 }
                         MouseArea { id: fpsMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: { var r=[6,8,12,15,24,30]; root.fps = r[(r.indexOf(root.fps)+1)%r.length] } }
                     }
-                    Rectangle { width: 1; height: 16; color: "#222" }
 
                     // Zoom
-                    Row { spacing: 2
-                        TlBtn { icon: "−"; btnSize: 20; fontSize: 11; tip: "Reducir"
-                            onClicked: { root.pixelsPerFrame = Math.max(12, root.pixelsPerFrame - 8)
-                                         root.trackHeight = Math.max(38, root.trackHeight - 8) } }
-                        Rectangle { width: zmL.implicitWidth + 6; height: 18; radius: 3; color: "#0a0a0d"; border.color: "#1f1f24"
-                            Text { id: zmL; anchors.centerIn: parent; text: Math.round(root.pixelsPerFrame)+"px"
-                                color: "#555"; font.pixelSize: 8; font.family: "Consolas" } }
-                        TlBtn { icon: "+"; btnSize: 20; fontSize: 11; tip: "Ampliar"
-                            onClicked: { root.pixelsPerFrame = Math.min(80, root.pixelsPerFrame + 8)
-                                         root.trackHeight = Math.min(120, root.trackHeight + 8) } }
+                    Row { spacing: 1
+                        PillBtn { icon: "−"; fontSize: 11
+                            onClicked: { root.pixelsPerFrame = Math.max(16, root.pixelsPerFrame - 6)
+                                         root.trackHeight = Math.max(40, root.trackHeight - 6) } }
+                        PillBtn { icon: "+"; fontSize: 11
+                            onClicked: { root.pixelsPerFrame = Math.min(80, root.pixelsPerFrame + 6)
+                                         root.trackHeight = Math.min(120, root.trackHeight + 6) } }
                     }
-                    Rectangle { width: 1; height: 16; color: "#222" }
 
-                    // + Frame
+                    Rectangle { width: 1; height: 14; color: Qt.rgba(1,1,1,0.06) }
+
+                    // + Frame — accent pill
                     Rectangle {
-                        width: addFL.implicitWidth + 18; height: 22; radius: 11
+                        width: addFL.implicitWidth + 20; height: 24; radius: 12
                         gradient: Gradient { orientation: Gradient.Horizontal
                             GradientStop { position: 0; color: root.accentColor }
-                            GradientStop { position: 1; color: Qt.lighter(root.accentColor, 1.2) } }
-                        scale: afMa.pressed ? 0.92 : (afMa.containsMouse ? 1.05 : 1.0)
-                        Behavior on scale { NumberAnimation { duration: 80 } }
-                        Text { id: addFL; anchors.centerIn: parent; text: "+ Frame"; color: "white"; font.pixelSize: 10; font.weight: Font.Bold }
+                            GradientStop { position: 1; color: Qt.lighter(root.accentColor, 1.15) } }
+                        scale: afMa.pressed ? 0.93 : (afMa.containsMouse ? 1.03 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+                        Text { id: addFL; anchors.centerIn: parent; text: "+ Frame"; color: "white"
+                            font.pixelSize: 10; font.weight: Font.Bold }
                         MouseArea { id: afMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: root.addFrameToTrack(root.activeTrackIdx) }
                     }
 
-                    // + Track
+                    // + Track — subtle pill
                     Rectangle {
-                        width: addTL.implicitWidth + 16; height: 22; radius: 11
-                        color: atMa.containsMouse ? "#252530" : "#1a1a20"; border.color: "#333"
-                        Text { id: addTL; anchors.centerIn: parent; text: "+ Pista"; color: "#aaa"; font.pixelSize: 10; font.weight: Font.DemiBold }
+                        width: addTL.implicitWidth + 18; height: 24; radius: 12
+                        color: atMa.containsMouse ? "#1e1e24" : "#141418"; border.color: Qt.rgba(1,1,1,0.08)
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Text { id: addTL; anchors.centerIn: parent; text: "+ Pista"; color: "#888"
+                            font.pixelSize: 10; font.weight: Font.DemiBold }
                         MouseArea { id: atMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: root.addNewTrack() }
                     }
-                    Rectangle { width: 1; height: 16; color: "#222" }
 
-                    TlBtn { icon: "⊟"; tip: "Modo Flipbook"
-                        onClicked: { if (typeof mainWindow !== "undefined") mainWindow.useAdvancedTimeline = false } }
+                    PillBtn { icon: "⊟"; onClicked: { if (typeof mainWindow !== "undefined") mainWindow.useAdvancedTimeline = false } }
                 }
             }
 
-            // ══════════ RULER ══════════
+            // ══════════ RULER — Minimal ══════════
             Rectangle {
-                Layout.fillWidth: true; Layout.preferredHeight: 18; color: "#08080b"
-                Rectangle { width: root.trackLabelWidth; height: parent.height; color: "#0a0a0e"; z: 2 }
+                Layout.fillWidth: true; Layout.preferredHeight: 20; color: "#08080b"
+                Rectangle { width: root.trackLabelWidth; height: parent.height; color: "#0a0a0d"; z: 2 }
+
+                // Bottom line
+                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1,1,1,0.03) }
 
                 Flickable {
                     id: rulerFlick
@@ -382,20 +404,27 @@ Item {
                     Repeater {
                         model: Math.ceil(root.totalTimelineWidth / root.pixelsPerFrame) + 1
                         Item { x: index * root.pixelsPerFrame; width: 1; height: rulerFlick.height
-                            Rectangle { visible: index % root.fps === 0; width: 1; height: 8; color: "#555"; anchors.bottom: parent.bottom }
-                            Rectangle { visible: index % root.fps !== 0; width: 1; height: 3; color: "#2a2a30"; anchors.bottom: parent.bottom }
+                            Rectangle { visible: index % root.fps === 0; width: 1; height: 10; color: "#444"; anchors.bottom: parent.bottom }
+                            Rectangle { visible: index % root.fps !== 0; width: 1; height: 4; color: "#222"; anchors.bottom: parent.bottom }
                             Text { visible: index % root.fps === 0; text: Math.floor(index/root.fps)+"s"
-                                color: "#555"; font.pixelSize: 7; x: 2; y: 1 }
+                                color: "#555"; font.pixelSize: 8; x: 3; y: 2 }
                         }
                     }
 
-                    // Playhead on ruler
+                    // Playhead marker on ruler
                     Rectangle {
                         visible: root.totalFrames > 0
-                        x: root.currentFrameIdx * root.pixelsPerFrame - 1
-                        width: 3; height: parent.height; color: root.accentColor; z: 10
-                        Rectangle { width: 8; height: 6; color: root.accentColor; radius: 1
-                            anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom }
+                        x: root.currentFrameIdx * root.pixelsPerFrame + root.pixelsPerFrame/2 - 5
+                        width: 10; height: 10; radius: 5
+                        anchors.bottom: parent.bottom; anchors.bottomMargin: -1
+                        color: root.accentColor; z: 10
+
+                        // Glow
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: -3; radius: width/2
+                            color: "transparent"; border.color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25)
+                            border.width: 2
+                        }
                     }
 
                     MouseArea { anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
@@ -404,7 +433,7 @@ Item {
                 }
             }
 
-            // ══════════ TRACKS ══════════
+            // ══════════ TRACKS — Dreams Style ══════════
             Item {
                 Layout.fillWidth: true; Layout.fillHeight: true
 
@@ -431,12 +460,17 @@ Item {
 
                                 width: tracksCol.width; height: root.trackHeight
 
-                                // ── Label ────────────
+                                // ── Track Label — Rounded Pill ────────────
                                 Rectangle {
-                                    width: root.trackLabelWidth; height: parent.height; z: 3
-                                    color: trackRow.isAct ? "#16161a" : "#0e0e12"
-                                    border.color: trackRow.isAct ? trackRow.tCol : "#1a1a1f"
-                                    border.width: trackRow.isAct ? 1 : 0
+                                    width: root.trackLabelWidth; height: parent.height - 4; z: 3
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    radius: 10
+                                    color: trackRow.isAct ? "#141418" : "#0c0c10"
+                                    border.color: trackRow.isAct ? Qt.rgba(Qt.color(trackRow.tCol).r, Qt.color(trackRow.tCol).g,
+                                                                           Qt.color(trackRow.tCol).b, 0.4) : Qt.rgba(1,1,1,0.04)
+                                    border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
 
                                     MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -448,41 +482,45 @@ Item {
                                             trkEdit.selectAll(); trkEdit.forceActiveFocus() }
                                     }
 
-                                    Column { anchors.centerIn: parent; spacing: 1; visible: !trkEdit.visible
-                                        Row { spacing: 3; anchors.horizontalCenter: parent.horizontalCenter
-                                            Text { text: model.trackIcon; font.pixelSize: 12 }
-                                            Text { text: model.trackName; color: trackRow.isAct ? "#ddd" : "#888"
-                                                font.pixelSize: 10; font.weight: Font.DemiBold } }
-                                        Text { text: trackRow.fCount + " frames"; color: "#444"; font.pixelSize: 8
+                                    Column { anchors.centerIn: parent; spacing: 2; visible: !trkEdit.visible
+                                        Row { spacing: 4; anchors.horizontalCenter: parent.horizontalCenter
+                                            // Color dot
+                                            Rectangle { width: 6; height: 6; radius: 3; color: trackRow.tCol
+                                                anchors.verticalCenter: parent.verticalCenter }
+                                            Text { text: model.trackName
+                                                color: trackRow.isAct ? "#ddd" : "#777"
+                                                font.pixelSize: 10; font.weight: Font.DemiBold }
+                                        }
+                                        Text { text: trackRow.fCount + "f"; color: "#3a3a44"; font.pixelSize: 8
                                             anchors.horizontalCenter: parent.horizontalCenter }
                                     }
 
                                     TextInput { id: trkEdit; visible: false; anchors.centerIn: parent
-                                        width: parent.width - 10; color: "white"; font.pixelSize: 10
+                                        width: parent.width - 14; color: "white"; font.pixelSize: 10
                                         horizontalAlignment: Text.AlignHCenter
                                         onAccepted: { trackModel.setProperty(trackRow.tIdx, "trackName", text); visible = false }
                                         onActiveFocusChanged: { if(!activeFocus) visible = false }
                                         Keys.onEscapePressed: visible = false }
 
-                                    Rectangle { visible: trackRow.isAct; width: 3; height: parent.height
-                                        anchors.left: parent.left; color: trackRow.tCol }
+                                    // Left accent stripe
+                                    Rectangle { visible: trackRow.isAct; width: 3; height: parent.height - 12; radius: 1.5
+                                        anchors.left: parent.left; anchors.leftMargin: 2
+                                        anchors.verticalCenter: parent.verticalCenter; color: trackRow.tCol }
                                 }
 
-                                // ── Frame cells ──────
+                                // ── Frame cells area ──────
                                 Item {
-                                    x: root.trackLabelWidth; z: 2
-                                    width: parent.width - root.trackLabelWidth; height: parent.height
+                                    x: root.trackLabelWidth + 2; z: 2
+                                    width: parent.width - root.trackLabelWidth - 2; height: parent.height
 
-                                    Rectangle { anchors.fill: parent; color: "#0a0a0e" }
-
-                                    // Grid
+                                    // Subtle grid lines
                                     Repeater {
                                         model: Math.ceil(root.totalTimelineWidth / root.pixelsPerFrame)
                                         Rectangle { x: index*root.pixelsPerFrame; width: 1; height: parent.height
-                                            color: index % root.fps === 0 ? "#1a1a20" : "#111114" }
+                                            color: index % root.fps === 0 ? Qt.rgba(1,1,1,0.04) : Qt.rgba(1,1,1,0.015) }
                                     }
 
-                                    // ── FRAME BLOCKS (Premium Rounded) ──
+                                    // ── FRAME BLOCKS — Procreate Dreams Rounded Pills ──
                                     Repeater {
                                         model: trackRow.fCount
 
@@ -490,18 +528,24 @@ Item {
                                             id: fb
                                             property int fi: index
                                             property bool cur: fi === root.currentFrameIdx
+                                            property bool hov: fbMa.containsMouse
 
-                                            x: fi * root.pixelsPerFrame + 1
-                                            width: root.pixelsPerFrame - 2; height: parent.height - 4
+                                            x: fi * root.pixelsPerFrame + 2
+                                            width: root.pixelsPerFrame - 4
+                                            height: parent.height - 8
                                             anchors.verticalCenter: parent.verticalCenter
-                                            radius: 6
+                                            radius: 10
                                             color: cur ? Qt.rgba(Qt.color(trackRow.tCol).r, Qt.color(trackRow.tCol).g,
-                                                                  Qt.color(trackRow.tCol).b, 0.3)
-                                                       : (fbMa.containsMouse ? "#1e1e28" : "#131318")
-                                            border.color: cur ? trackRow.tCol : "#222228"
-                                            border.width: cur ? 2 : 1
-                                            Behavior on color { ColorAnimation { duration: 120 } }
-                                            Behavior on border.color { ColorAnimation { duration: 120 } }
+                                                                  Qt.color(trackRow.tCol).b, 0.2)
+                                                       : (hov ? "#18181f" : "#111116")
+                                            border.color: cur ? Qt.rgba(Qt.color(trackRow.tCol).r, Qt.color(trackRow.tCol).g,
+                                                                         Qt.color(trackRow.tCol).b, 0.6)
+                                                              : (hov ? Qt.rgba(1,1,1,0.08) : Qt.rgba(1,1,1,0.04))
+                                            border.width: cur ? 1.5 : 1
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                                            Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+                                            scale: fbMa.pressed ? 0.95 : 1.0
 
                                             // Onion overlay
                                             Rectangle {
@@ -509,42 +553,42 @@ Item {
                                                 property int d: fb.fi - root.currentFrameIdx
                                                 visible: root.onionEnabled && !fb.cur && trackRow.isAct &&
                                                     ((d < 0 && -d <= root.onionBefore) || (d > 0 && d <= root.onionAfter))
-                                                color: d < 0 ? Qt.rgba(1,0.3,0.3,0.18) : Qt.rgba(0.3,1,0.4,0.15)
+                                                color: d < 0 ? Qt.rgba(1,0.3,0.3,0.12) : Qt.rgba(0.3,1,0.4,0.10)
                                             }
 
-                                            // Inner canvas-colored thumbnail area
+                                            // Inner thumbnail area
                                             Rectangle {
-                                                anchors.fill: parent; anchors.margins: 2; z: 2
-                                                radius: 4
+                                                anchors.fill: parent; anchors.margins: 3; z: 2
+                                                radius: 7
                                                 color: root.canvasBgColor
                                                 clip: true
 
-                                                // Thumbnail
                                                 Image {
                                                     anchors.fill: parent; anchors.margins: 1
                                                     fillMode: Image.PreserveAspectFit; cache: false
                                                     source: root.getFrameThumbnail(trackRow.tIdx, fb.fi, root._trackFrames)
                                                     visible: status === Image.Ready
-                                                    opacity: fb.cur ? 1.0 : 0.6
+                                                    opacity: fb.cur ? 1.0 : 0.55
                                                 }
 
-                                                // Frame number (shown when no thumbnail)
+                                                // Frame number
                                                 Text {
                                                     anchors.centerIn: parent; z: 3
                                                     text: fb.fi + 1
-                                                    color: fb.cur ? "#555" : "#bbb"
-                                                    font.pixelSize: root.pixelsPerFrame > 24 ? 11 : 8
+                                                    color: fb.cur ? "#888" : "#bbb"
+                                                    font.pixelSize: root.pixelsPerFrame > 28 ? 10 : 8
                                                     font.weight: fb.cur ? Font.Bold : Font.Normal
                                                     font.family: "Consolas"
-                                                    opacity: 0.4
+                                                    opacity: 0.3
                                                 }
                                             }
 
-                                            // Top accent bar
+                                            // Top accent dot (current)
                                             Rectangle {
-                                                width: parent.width - 4; height: 2; radius: 1
-                                                color: fb.cur ? trackRow.tCol : "transparent"
-                                                anchors.top: parent.top; anchors.topMargin: 2
+                                                visible: fb.cur
+                                                width: 4; height: 4; radius: 2
+                                                color: trackRow.tCol
+                                                anchors.top: parent.top; anchors.topMargin: 4
                                                 anchors.horizontalCenter: parent.horizontalCenter
                                                 z: 4
                                             }
@@ -562,13 +606,18 @@ Item {
                                         }
                                     }
 
-                                    // "+" add at end
+                                    // "+" add at end — subtle
                                     Rectangle {
-                                        x: trackRow.fCount * root.pixelsPerFrame
-                                        width: Math.max(root.pixelsPerFrame, 22); height: parent.height
-                                        color: aMa.containsMouse ? "#1a1a22" : "transparent"
-                                        Text { anchors.centerIn: parent; text: "+"; color: aMa.containsMouse ? "#888" : "#2a2a30"
-                                            font.pixelSize: 14 }
+                                        x: trackRow.fCount * root.pixelsPerFrame + 2
+                                        width: Math.max(root.pixelsPerFrame - 4, 22); height: parent.height - 8
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        radius: 10; color: aMa.containsMouse ? "#14141a" : "transparent"
+                                        border.color: aMa.containsMouse ? Qt.rgba(1,1,1,0.06) : "transparent"
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                                        Text { anchors.centerIn: parent; text: "+"; color: aMa.containsMouse ? "#666" : "#222"
+                                            font.pixelSize: 14; font.weight: Font.Light
+                                            Behavior on color { ColorAnimation { duration: 150 } } }
                                         MouseArea { id: aMa; anchors.fill: parent; hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
                                             onClicked: root.addFrameToTrack(trackRow.tIdx) }
@@ -580,40 +629,54 @@ Item {
                                         onPositionChanged: function(m) { if(pressed) root.seekPx(m.x) } }
                                 }
 
-                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#141418" }
+                                // Bottom separator
+                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1
+                                    color: Qt.rgba(1,1,1,0.02) }
                             }
                         }
 
                         // Empty state
                         Item {
-                            visible: root.totalFrames === 0; width: tracksCol.width; height: 32
+                            visible: root.totalFrames === 0; width: tracksCol.width; height: 40
                             Rectangle {
-                                anchors.fill: parent; anchors.leftMargin: root.trackLabelWidth + 4; anchors.rightMargin: 4
-                                color: "#0e0e12"; radius: 4
-                                Text { anchors.centerIn: parent; text: "🎬 Presiona  + Frame  para empezar"; color: "#444"; font.pixelSize: 10 }
+                                anchors.fill: parent; anchors.leftMargin: root.trackLabelWidth + 8; anchors.rightMargin: 8
+                                anchors.topMargin: 4; anchors.bottomMargin: 4
+                                color: "#0e0e13"; radius: 10; border.color: Qt.rgba(1,1,1,0.04)
+                                Text { anchors.centerIn: parent; text: "Presiona  + Frame  para empezar"
+                                    color: "#333"; font.pixelSize: 11 }
                             }
                         }
                     }
 
-                    // ── PLAYHEAD ──────────
+                    // ── PLAYHEAD — Minimal Line ──────────
                     Rectangle {
                         visible: root.totalFrames > 0
-                        x: root.currentFrameIdx * root.pixelsPerFrame + root.trackLabelWidth
+                        x: root.currentFrameIdx * root.pixelsPerFrame + root.trackLabelWidth + root.pixelsPerFrame/2 - 1
                         y: 0; width: 2; height: Math.max(trackFlick.contentHeight, trackFlick.height)
                         color: root.accentColor; z: 50
-                        Behavior on x { enabled: !root.isPlaying; NumberAnimation { duration: 60; easing.type: Easing.OutCubic } }
+                        opacity: 0.8
+                        Behavior on x { enabled: !root.isPlaying; NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
 
+                        // Glow effect
                         Rectangle {
-                            width: 18; height: 18; radius: 9; color: root.accentColor
-                            anchors.horizontalCenter: parent.horizontalCenter; y: 2
-                            Text { text: "▶"; color: "white"; font.pixelSize: 8; anchors.centerIn: parent }
-                            Rectangle { anchors.fill: parent; anchors.margins: -3; radius: width/2; color: "transparent"
-                                border.color: Qt.rgba(root.accentColor.r,root.accentColor.g,root.accentColor.b,0.3); border.width: 2 }
+                            width: 8; height: parent.height; anchors.horizontalCenter: parent.horizontalCenter
+                            color: "transparent"
+                            gradient: Gradient { orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: "transparent" }
+                                GradientStop { position: 0.5; color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.1) }
+                                GradientStop { position: 1.0; color: "transparent" }
+                            }
+                        }
+
+                        // Top handle
+                        Rectangle {
+                            width: 14; height: 14; radius: 7; color: root.accentColor
+                            anchors.horizontalCenter: parent.horizontalCenter; y: -2
+                            Text { text: "▶"; color: "white"; font.pixelSize: 7; anchors.centerIn: parent }
 
                             MouseArea {
-                                anchors.fill: parent; anchors.margins: -12
+                                anchors.fill: parent; anchors.margins: -15
                                 cursorShape: Qt.SizeHorCursor
-                                onPressed: function(m) { }
                                 onPositionChanged: function(m) {
                                     if (!pressed) return
                                     var gx = mapToItem(trackFlick.contentItem, m.x, 0).x
@@ -639,53 +702,53 @@ Item {
                 }
             }
 
-            // ══════════ STATUS ══════════
+            // ══════════ STATUS BAR — Minimal ══════════
             Rectangle {
-                Layout.fillWidth: true; Layout.preferredHeight: 22; color: "#0a0a0d"
-                Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#141418" }
+                Layout.fillWidth: true; Layout.preferredHeight: 24; color: "#09090c"
+                Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: Qt.rgba(1,1,1,0.03) }
                 RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
+                    anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14
                     Text { text: root.totalFrames > 0
-                        ? "Frame " + (root.currentFrameIdx+1) + "/" + root.totalFrames
-                          + " • " + root.formatTimecode(root.currentTimeSec) + " • " + trackModel.count + " pistas"
-                        : "🎬 Listo"; color: "#444"; font.pixelSize: 8; font.family: "Consolas" }
+                        ? "Frame " + (root.currentFrameIdx+1) + " / " + root.totalFrames
+                          + "  •  " + root.formatTimecode(root.currentTimeSec) + "  •  " + trackModel.count + " pista" + (trackModel.count>1?"s":"")
+                        : "Listo"; color: "#333"; font.pixelSize: 9; font.family: "Consolas" }
                     Item { Layout.fillWidth: true }
                     Text { visible: root.onionEnabled; text: "🧅 " + root.onionBefore + "/" + root.onionAfter
-                        color: "#f0d060"; font.pixelSize: 8 }
+                        color: "#f0d060"; font.pixelSize: 9 }
                 }
             }
         }
     }
 
     // ═══════════════════════════════════════════════════════
-    //  MENUS
+    //  MENUS — Glass Style
     // ═══════════════════════════════════════════════════════
     Menu {
         id: fCtx; property int trackIdx: 0; property int frameIdx: 0
-        background: Rectangle { color: "#1a1a20"; radius: 8; border.color: "#333" }
+        background: Rectangle { color: "#1a1a22"; radius: 12; border.color: Qt.rgba(1,1,1,0.08) }
         MenuItem { text: "📋 Duplicar"; onTriggered: root.dupFrame(fCtx.trackIdx, fCtx.frameIdx)
-            background: Rectangle { color: parent.highlighted ? "#2a2a35" : "transparent" }
+            background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
             contentItem: Text { text: parent.text; color: "#ccc"; font.pixelSize: 11 } }
         MenuItem { text: "🧹 Limpiar"; onTriggered: {
                 var fr = root._trackFrames[fCtx.trackIdx]
                 if (fr && fCtx.frameIdx < fr.length && root.targetCanvas) {
                     var ri = root.findLayerIndexByName(fr[fCtx.frameIdx].layerName)
                     if (ri >= 0) root.targetCanvas.clearLayer(ri) } }
-            background: Rectangle { color: parent.highlighted ? "#2a2a35" : "transparent" }
+            background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
             contentItem: Text { text: parent.text; color: "#ccc"; font.pixelSize: 11 } }
-        MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: "#333" } }
+        MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: Qt.rgba(1,1,1,0.06) } }
         MenuItem { text: "🗑️ Eliminar"; onTriggered: root.deleteFrame(fCtx.trackIdx, fCtx.frameIdx)
-            background: Rectangle { color: parent.highlighted ? "#3a2020" : "transparent" }
+            background: Rectangle { color: parent.highlighted ? "#3a2020" : "transparent"; radius: 8 }
             contentItem: Text { text: parent.text; color: "#ff6666"; font.pixelSize: 11 } }
     }
 
     Menu {
         id: trkCtx; property int trackIdx: 0
-        background: Rectangle { color: "#1a1a20"; radius: 8; border.color: "#333" }
+        background: Rectangle { color: "#1a1a22"; radius: 12; border.color: Qt.rgba(1,1,1,0.08) }
         MenuItem { text: "✏️ Renombrar (doble-click)"
-            background: Rectangle { color: parent.highlighted ? "#2a2a35" : "transparent" }
+            background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
             contentItem: Text { text: parent.text; color: "#888"; font.pixelSize: 11 } }
-        MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: "#333" } }
+        MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: Qt.rgba(1,1,1,0.06) } }
         MenuItem { text: "🗑️ Eliminar pista"; enabled: trackModel.count > 1
             onTriggered: {
                 var frames = root._trackFrames[trkCtx.trackIdx]
@@ -695,26 +758,30 @@ Item {
                 if (root.activeTrackIdx >= trackModel.count) root.activeTrackIdx = trackModel.count - 1
                 root._changed()
             }
-            background: Rectangle { color: parent.highlighted ? "#3a2020" : "transparent" }
+            background: Rectangle { color: parent.highlighted ? "#3a2020" : "transparent"; radius: 8 }
             contentItem: Text { text: parent.text; color: "#ff6666"; font.pixelSize: 11 } }
     }
 
     // ═══════════════════════════════════════════════════════
-    //  BUTTON COMPONENT
+    //  PILL BUTTON COMPONENT — Minimal & Clean
     // ═══════════════════════════════════════════════════════
-    component TlBtn : Rectangle {
-        id: tlb
-        property string icon: "?"; property string tip: ""
-        property bool highlighted: false; property color highlightColor: root.accentColor
-        property int btnSize: 22; property int fontSize: 12
+    component PillBtn : Rectangle {
+        id: pb
+        property string icon: "?"
+        property bool highlighted: false
+        property color highlightCol: root.accentColor
+        property int fontSize: 11
         signal clicked()
-        width: btnSize; height: btnSize; radius: btnSize/2-2
-        color: highlighted ? Qt.rgba(highlightColor.r,highlightColor.g,highlightColor.b,0.18)
-                           : (tlMa.containsMouse ? "#252530" : "transparent")
-        Text { text: tlb.icon; color: highlighted ? highlightColor : "#aaa"; font.pixelSize: tlb.fontSize
-            anchors.centerIn: parent; opacity: tlb.enabled ? (tlMa.containsMouse ? 1 : 0.8) : 0.2 }
-        MouseArea { id: tlMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            onClicked: tlb.clicked() }
-        ToolTip.visible: tlMa.containsMouse && tlb.tip !== ""; ToolTip.text: tlb.tip; ToolTip.delay: 300
+
+        width: 24; height: 24; radius: 8
+        color: highlighted ? Qt.rgba(highlightCol.r, highlightCol.g, highlightCol.b, 0.12)
+                           : (pbMa.containsMouse ? "#1a1a22" : "transparent")
+        Behavior on color { ColorAnimation { duration: 120 } }
+
+        Text { text: pb.icon; color: highlighted ? highlightCol : (pbMa.containsMouse ? "#bbb" : "#666")
+            font.pixelSize: pb.fontSize; anchors.centerIn: parent
+            Behavior on color { ColorAnimation { duration: 120 } } }
+        MouseArea { id: pbMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: pb.clicked() }
     }
 }

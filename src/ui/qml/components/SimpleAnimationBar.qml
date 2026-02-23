@@ -31,6 +31,7 @@ Item {
     property alias frameModel: _frameModel
 
     property int frameCount: _frameModel.count
+    signal durationChanged()
 
     // ── Animation State ─────────────────────────────────────
     property int    currentFrameIdx: 0
@@ -73,6 +74,17 @@ Item {
     }
 
     // ── Frame Navigation & Creation ─────────────────────────
+    // Find the raw layer index (for setLayerVisibility, setActiveLayer)
+    // by searching the layerModel for a matching name.
+    function findLayerIndexByName(name) {
+        if (!targetCanvas || !targetCanvas.layerModel) return -1
+        var model = targetCanvas.layerModel
+        for (var i = 0; i < model.length; i++) {
+            if (model[i].name === name) return model[i].layerId
+        }
+        return -1
+    }
+
     function goToFrame(idx) {
         if (idx < 0 || idx >= frameCount) return
         currentFrameIdx = idx
@@ -84,7 +96,7 @@ Item {
                 var layerName = frameModel.get(i).layerName
                 if (!layerName) continue
                 
-                var rIdx = targetCanvas.findLayerIndexByName(layerName)
+                var rIdx = findLayerIndexByName(layerName)
                 if (rIdx < 0) continue
                 
                 var isCur = (i === currentFrameIdx)
@@ -523,6 +535,8 @@ Item {
                                             frameModel.setProperty(_myIdx, "duration", finalDur)
                                         }
                                         dragDummy.x = 0 // clean up
+                                        // Notify parent to sync duration to advanced timeline
+                                        root.durationChanged()
                                     }
                                 }
                                 ToolTip.visible: extMa.containsMouse && !extMa.pressed

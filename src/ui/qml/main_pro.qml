@@ -115,6 +115,94 @@ Window {
     property bool isStoryProject: false
     property bool showAnimationBar: false
     property bool useAdvancedTimeline: false
+    onUseAdvancedTimelineChanged: {
+        console.log("useAdvancedTimeline changed to:", useAdvancedTimeline)
+        // Use callLater so both timelines have time to update their visibility
+        Qt.callLater(function() {
+            if (useAdvancedTimeline) {
+                syncSimpleToAdvanced()
+            } else {
+                syncAdvancedToSimple()
+            }
+        })
+    }
+
+    // ═══════════════════════════════════════════════
+    //  TIMELINE SYNC BRIDGE (Root scope)
+    //  Keeps Simple ↔ Advanced frame data in sync
+    // ═══════════════════════════════════════════════
+    function syncSimpleToAdvanced() {
+        console.log("SYNC S->A TRIGGERED. Simple count:", simpleAnimationBar.frameModel ? simpleAnimationBar.frameModel.count : "NULL")
+        var simpleModel = simpleAnimationBar.frameModel
+        if (!simpleModel || simpleModel.count === 0) {
+            console.log("SYNC ABORTED: simpleModel empty")
+            return
+        }
+        if (advancedAnimationBar.trackModel.count === 0) {
+            console.log("SYNC ABORTED: advanced trackModel empty")
+            return
+        }
+
+        // Build new frames array for track 0
+        var advFrames = []
+        for (var t = 0; t < advancedAnimationBar._trackFrames.length; t++) {
+            advFrames.push(advancedAnimationBar._trackFrames[t])
+        }
+        if (advFrames.length === 0) advFrames.push([])
+
+        var trk0 = []
+        for (var i = 0; i < simpleModel.count; i++) {
+            var item = simpleModel.get(i)
+            var dur = item.duration !== undefined ? item.duration : 1
+            for (var d = 0; d < dur; d++) {
+                trk0.push({
+                    layerName: item.layerName || "",
+                    label: "F" + (trk0.length + 1)
+                })
+            }
+        }
+        advFrames[0] = trk0
+
+        advancedAnimationBar._trackFrames = advFrames
+        advancedAnimationBar._changed()
+        console.log("SYNC S->A DONE. track0 frames:", trk0.length, "totalFrames:", advancedAnimationBar.totalFrames)
+        advancedAnimationBar.goToFrame(Math.min(simpleAnimationBar.currentFrameIdx, Math.max(0, advancedAnimationBar.totalFrames - 1)))
+    }
+
+    function syncAdvancedToSimple() {
+        console.log("SYNC A->S TRIGGERED")
+        var activeTrack = advancedAnimationBar.activeTrackIdx
+        if (advancedAnimationBar._trackFrames.length === 0) return
+        if (activeTrack < 0 || activeTrack >= advancedAnimationBar._trackFrames.length) activeTrack = 0
+
+        var frames = advancedAnimationBar._trackFrames[activeTrack]
+        if (!frames) frames = []
+
+        var simpleModel = simpleAnimationBar.frameModel
+        simpleModel.clear()
+
+        var i = 0
+        while (i < frames.length) {
+            var curLayer = frames[i].layerName ? frames[i].layerName : ""
+            var dur = 1
+            while (i + dur < frames.length) {
+                var nextLayer = frames[i + dur].layerName ? frames[i + dur].layerName : ""
+                if (nextLayer === curLayer) dur++
+                else break
+            }
+            simpleModel.append({
+                thumbnail: "",
+                layerName: curLayer,
+                duration: dur
+            })
+            i += dur
+        }
+
+        if (frames.length > 0) {
+            simpleAnimationBar.goToFrame(Math.min(advancedAnimationBar.currentFrameIdx, simpleModel.count - 1))
+        }
+        console.log("SYNC A->S DONE. simple frames:", simpleModel.count)
+    }
     onIsStoryProjectChanged: {
         if (typeof comicOverlay !== "undefined" && comicOverlay) {
             comicOverlay.showMangaGuides = isStoryProject
@@ -2104,114 +2192,14 @@ Window {
                     projectFPS:    12
                     projectFrames: 48
                     projectLoop:   true
-                }
 
-                // ═══════════════════════════════════════════════
-                //  TIMELINE SYNC BRIDGE
-                //  Keeps Simple ↔ Advanced frame data in sync
-                // ═══════════════════════════════════════════════
-                Connections {
-                    target: mainWindow
-                    function onUseAdvancedTimelineChanged() {
-                        if (useAdvancedTimeline) {
-                            // Simple → Advanced: push simple frames into advanced track 0
-                            syncSimpleToAdvanced()
-                        } else {
-                            // Advanced → Simple: pull advanced track 0 frames into simple
-                            syncAdvancedToSimple()
-                        }
+                    // Live sync: when user stretches frame duration, push to advanced
+                    onDurationChanged: {
+                        if (useAdvancedTimeline) return  // Only pre-sync for when they switch
+                        console.log("Duration changed in Simple — ready for next sync")
                     }
                 }
-
-                function syncSimpleToAdvanced() {
-                    console.log("SYNC S->A TRIGGERED. Simple count:", simpleAnimationBar.frameModel ? simpleAnimationBar.frameModel.count : "NULL")
-                    // Read all frames from SimpleAnimationBar's frameModel
-                    var simpleModel = simpleAnimationBar.frameModel
-                    if (!simpleModel || simpleModel.count === 0) {
-                        console.log("SYNC ABORTED: simpleModel empty")
-                        return
-                    }
-
-                    // Ensure advanced has at least 1 track
-                    if (advancedAnimationBar.trackModel.count === 0) {
-                        console.log("SYNC ABORTED: advanced trackModel empty")
-                        return
-                    }
-
-                    // Get a fresh copy of the array of tracks
-                    var advFrames = []
-                    for(var t=0; t<advancedAnimationBar._trackFrames.length; t++) {
-                        advFrames.push(advancedAnimationBar._trackFrames[t])
-                    }
-
-                    if (advFrames.length === 0) {
-                        advFrames.push([])
-                    }
-                    
-                    // Clear and rebuild track 0
-                    var trk0 = []
-
-                    // Copy simple frames into advanced track 0 (expanding duration blocks)
-                    for (var i = 0; i < simpleModel.count; i++) {
-                        var item = simpleModel.get(i)
-                        var dur = item.duration !== undefined ? item.duration : 1
-                        console.log("Copying frame", i, "with dur", dur)
-                        for (var d = 0; d < dur; d++) {
-                            trk0.push({
-                                layerName: item.layerName || "",
-                                label: "F" + (trk0.length + 1)
-                            })
-                        }
-                    }
-                    
-                    advFrames[0] = trk0
-                    console.log("Assigning advFrames track 0 count:", trk0.length)
-                    
-                    // Explicit assignment for QML reactivity
-                    advancedAnimationBar._trackFrames = advFrames
-                    advancedAnimationBar._changed()
-                    
-                    console.log("SYNC S->A DONE. Final getFrameCount:", advancedAnimationBar.getFrameCount(0))
-                    advancedAnimationBar.goToFrame(Math.min(simpleAnimationBar.currentFrameIdx, advancedAnimationBar.totalFrames - 1))
-                }
-
-                function syncAdvancedToSimple() {
-                    // Read frames from advanced track 0 (or active track)
-                    var activeTrack = advancedAnimationBar.activeTrackIdx
-                    if (advancedAnimationBar._trackFrames.length === 0) return
-                    if (activeTrack < 0 || activeTrack >= advancedAnimationBar._trackFrames.length) activeTrack = 0
-                    
-                    var frames = advancedAnimationBar._trackFrames[activeTrack]
-                    if (!frames) frames = []
-
-                    // Clear and rebuild simple model (collating consecutive same layers into durations)
-                    var simpleModel = simpleAnimationBar.frameModel
-                    simpleModel.clear()
-
-                    var i = 0
-                    while (i < frames.length) {
-                        var curLayer = frames[i].layerName ? frames[i].layerName : ""
-                        var dur = 1
-                        while (i + dur < frames.length) {
-                            var nextLayer = frames[i + dur].layerName ? frames[i + dur].layerName : ""
-                            if (nextLayer === curLayer) {
-                                dur++
-                            } else {
-                                break
-                            }
-                        }
-                        simpleModel.append({
-                            thumbnail: "",
-                            layerName: curLayer,
-                            duration: dur
-                        })
-                        i += dur
-                    }
-
-                    if (frames.length > 0) {
-                        simpleAnimationBar.goToFrame(Math.min(advancedAnimationBar.currentFrameIdx, simpleModel.count - 1))
-                    }
-                }
+                
 
                 // EMPTY STATE OVERLAY — Premium Design
                 Rectangle {
