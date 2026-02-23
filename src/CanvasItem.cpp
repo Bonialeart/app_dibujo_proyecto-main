@@ -148,7 +148,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_quickShapeSnapTimer = new QTimer(this);
   m_quickShapeSnapTimer->setInterval(16); // ~60fps
   connect(m_quickShapeSnapTimer, &QTimer::timeout, this, [this]() {
-    m_quickShapeSnapAnim += 0.08f; // ~300ms total animation
+    m_quickShapeSnapAnim += 0.04f; // ~400ms total animation for premium feel
     if (m_quickShapeSnapAnim >= 1.0f) {
       m_quickShapeSnapAnim = 1.0f;
       m_quickShapeSnapAnimActive = false;
@@ -1162,6 +1162,50 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // ✨ PREMIUM QUICKSHAPE SNAP ANIMATION
+  // ══════════════════════════════════════════════════════════════
+  if (m_quickShapeSnapAnimActive && m_quickShapeType != QuickShapeType::None) {
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    // Easing Out effect for smooth expansion and fade
+    float progress = m_quickShapeSnapAnim;
+    float easeOut = 1.0f - std::pow(1.0f - progress, 3.0f); // Cubic ease-out
+    
+    // Scale expansion: starts at 1.0, expands to slightly larger
+    float scaleAnim = 1.0f + (easeOut * 0.05f);
+    
+    // Opacity fade: starts bright, drops to 0
+    float alphaAnim = 1.0f - easeOut; 
+    
+    QColor glowColor = m_accentColor;
+    if (glowColor.value() < 50) glowColor = Qt::white; // Prevents invisible dark glows
+    glowColor.setAlphaF(alphaAnim * 0.9f);
+
+    painter->translate(m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+
+    QPen glowPen(glowColor, (4.0f + (easeOut * 8.0f)) / m_zoomLevel, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    painter->setPen(glowPen);
+    painter->setBrush(QColor(glowColor.red(), glowColor.green(), glowColor.blue(), int(alphaAnim * 40.0f))); // Slight fill glow
+
+    if (m_quickShapeType == QuickShapeType::Circle) {
+      painter->translate(m_quickShapeCenter);
+      painter->scale(scaleAnim, scaleAnim);
+      painter->drawEllipse(QPointF(0, 0), m_quickShapeRadius, m_quickShapeRadius);
+    } else if (m_quickShapeType == QuickShapeType::Line) {
+      painter->setBrush(Qt::NoBrush);
+      painter->translate(m_quickShapeCenter);
+      painter->scale(scaleAnim, scaleAnim);
+      QPointF p1 = m_quickShapeLineP1 - m_quickShapeCenter;
+      QPointF p2 = m_quickShapeLineP2 - m_quickShapeCenter;
+      painter->drawLine(p1, p2);
+    }
+    
+    painter->restore();
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // ✨ QUICKSHAPE RESIZE GUIDE (Minimal — center dot only)
   // ══════════════════════════════════════════════════════════════
 
@@ -1831,7 +1875,7 @@ void CanvasItem::detectAndDrawQuickShape() {
     float avgDist = 0;
     std::vector<float> radii;
     for (const auto &p : m_strokePoints) {
-      float r = QPointF(p - centroid).manhattanLength();
+      float r = QLineF(p, centroid).length();
       avgDist += r;
       radii.push_back(r);
     }
@@ -1854,10 +1898,7 @@ void CanvasItem::detectAndDrawQuickShape() {
       if (m_isFlippedV)
         centroidC.setY(m_canvasHeight - centroidC.y());
 
-      float maxR = 0;
-      for (float r : radii)
-        maxR = std::max(maxR, r);
-      float radiusCanvas = maxR / m_zoomLevel;
+      float radiusCanvas = avgDist / m_zoomLevel;
       drawCircle(centroidC, radiusCanvas);
       // Mark layer dirty so compositing cache refreshes
       if (layer) {
@@ -1994,6 +2035,7 @@ void CanvasItem::drawLine(const QPointF &p1, const QPointF &p2) {
   }
 
   painter.end();
+  layer->buffer->loadRawData(layer->buffer->data());
   layer->markDirty();
 }
 
@@ -2034,6 +2076,7 @@ void CanvasItem::drawCircle(const QPointF &center, float radius) {
   }
 
   painter.end();
+  layer->buffer->loadRawData(layer->buffer->data());
   layer->markDirty();
 }
 
