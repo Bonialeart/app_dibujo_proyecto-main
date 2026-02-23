@@ -1793,6 +1793,20 @@ void CanvasItem::detectAndDrawQuickShape() {
     }
     m_cachedCanvasImage = QImage(); // Force full recomposite
 
+    // Sync FBO
+    if (m_pingFBO && layer && layer->buffer) {
+      QImage fboImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                 QImage::Format_RGBA8888_Premultiplied);
+      m_pingFBO->bind();
+      QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+      QPainter fboPainter(&device);
+      fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+      fboPainter.drawImage(0, 0, fboImg);
+      fboPainter.end();
+      m_pingFBO->release();
+      QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+    }
+
     // Store LINE parameters for resize
     m_quickShapeType = QuickShapeType::Line;
     m_quickShapeLineP1 = startC;
@@ -1853,6 +1867,21 @@ void CanvasItem::detectAndDrawQuickShape() {
       }
       m_cachedCanvasImage = QImage(); // Force full recomposite
 
+      // 3. SYNC FBO FROM CPU BUFFER (INSTANT REFRESH)
+      if (m_pingFBO && layer && layer->buffer) {
+        QImage fboImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                   QImage::Format_RGBA8888_Premultiplied);
+        m_pingFBO->bind();
+        QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+        QPainter fboPainter(&device);
+        fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+        fboPainter.drawImage(0, 0, fboImg);
+        fboPainter.end();
+        m_pingFBO->release();
+        // Crucial: Blit to Pong too so both GPU buffers are in sync with CPU
+        QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+      }
+
       // Store CIRCLE parameters for resize
       m_quickShapeType = QuickShapeType::Circle;
       m_quickShapeCenter = centroidC;
@@ -1880,19 +1909,7 @@ void CanvasItem::detectAndDrawQuickShape() {
   else if (m_quickShapeType == QuickShapeType::Line)
     emit notificationRequested("Line", "info");
 
-  // 3. SYNC FBO FROM CPU BUFFER (INSTANT REFRESH)
-  if (m_pingFBO && layer && layer->buffer) {
-    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-               QImage::Format_RGBA8888);
-    m_pingFBO->bind();
-    QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
-    QPainter fboPainter(&device);
-    fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
-    fboPainter.drawImage(0, 0, img);
-    fboPainter.end();
-    m_pingFBO->release();
-    QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
-  }
+  // No longer need the redundant sync block here as it's handled above in both Line/Circle cases
 
   update();
 }
@@ -1925,7 +1942,7 @@ void CanvasItem::redrawQuickShape() {
   // Sync FBO for instant visual refresh (if GPU path is active)
   if (m_pingFBO && layer->buffer) {
     QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-               QImage::Format_RGBA8888);
+               QImage::Format_RGBA8888_Premultiplied);
     m_pingFBO->bind();
     QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
     QPainter fboPainter(&device);
