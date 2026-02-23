@@ -1345,8 +1345,9 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   if (!layer || !layer->visible || layer->locked)
     return;
 
-  // --- STABILIZATION: Lazy Buffer (Procreate / CSP style) ---
-  // strength 0.0 = off, 1.0 = maximum lag (25 buffered positions)
+  // --- STABILIZATION: Procreate "StreamLine" Style (Double EMA) ---
+  // Un modelo de Doble Media Móvil Exponencial (Nested EMA) da ese efecto
+  // "sabroso", fluido y elástico ("buttery smooth") al dibujar.
   QPointF targetPos = pos;
   float effectivePressure = pressure;
 
@@ -1354,40 +1355,42 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     float strength = std::clamp(m_brushStabilization, 0.0f, 1.0f);
 
     if (strength > 0.01f) {
-      // ── Step 1: Push new raw position into the queue ──────────────────────
-      m_stabPosQueue.push_back(pos);
-      m_stabPresQueue.push_back(pressure);
-
-      // ── Step 2: Keep queue size proportional to strength ─────────────────
-      // Max queue depth = 30 samples (~500ms at 60fps).
-      // At strength=0.2 we hold ~6 samples; at 1.0 we hold 30.
-      int maxDepth = std::max(1, static_cast<int>(strength * 30.0f));
-
-      // Trim excess from the front
-      while (static_cast<int>(m_stabPosQueue.size()) > maxDepth) {
-        m_stabPosQueue.pop_front();
-        m_stabPresQueue.pop_front();
+      if (m_stabPosQueue.empty()) {
+        m_stabilizedPos = pos;
+        effectivePressure = pressure;
+        // Usamos la cola para el Estado del Double EMA:
+        // m_stabPosQueue[0] = EMA Primario
+        // m_stabPosQueue[1] = EMA Secundario
+        m_stabPosQueue.push_back(pos);
+        m_stabPosQueue.push_back(pos);
+        
+        m_stabPresQueue.clear();
+        m_stabPresQueue.push_back(pressure);
       }
 
-      // ── Step 3: Draw position = FRONT of the queue (the oldest point) ─────
-      // This gives a clean lag: the actual stroke trails behind the finger.
-      targetPos = m_stabPosQueue.front();
-      effectivePressure = m_stabPresQueue.front();
+      // Mapeo no lineal para que se sienta premium.
+      // Un mass = 0.95 significa 95% de inercia, 5% de la nueva posición.
+      // En un Double EMA, la inercia se siente aún más, por lo que 0.92 = muy suave.
+      float mass = std::pow(strength, 0.65f) * 0.92f;
 
-      // ── Step 4: Optional micro-smoothing on top (removes high-freq jitter) ─
-      // Average the front third of the queue for a silky finish.
-      int avgCount = std::max(1, static_cast<int>(m_stabPosQueue.size() / 3));
-      QPointF avgPos = targetPos;
-      float avgPres = effectivePressure;
-      for (int i = 1; i < avgCount; ++i) {
-        avgPos += m_stabPosQueue[i];
-        avgPres += m_stabPresQueue[i];
-      }
-      targetPos = avgPos / static_cast<float>(avgCount);
-      effectivePressure = avgPres / static_cast<float>(avgCount);
+      // Double EMA Position
+      QPointF ema1 = m_stabPosQueue[0] * mass + pos * (1.0f - mass);
+      QPointF ema2 = m_stabPosQueue[1] * mass + ema1 * (1.0f - mass);
+
+      m_stabPosQueue[0] = ema1;
+      m_stabPosQueue[1] = ema2;
+      
+      m_stabilizedPos = ema2;
+
+      // Single EMA Pressure (la presión no necesita double EMA, perdería respuesta rápida)
+      float prevPres = m_stabPresQueue.front();
+      effectivePressure = prevPres * mass + pressure * (1.0f - mass);
+      m_stabPresQueue.front() = effectivePressure;
+
+      targetPos = m_stabilizedPos;
 
     } else {
-      // No stabilization: flush the queue and use raw position
+      // No stabilization
       m_stabPosQueue.clear();
       m_stabPresQueue.clear();
       m_stabilizedPos = pos;
