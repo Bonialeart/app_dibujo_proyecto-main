@@ -562,11 +562,7 @@ import "../components"
                 property bool isSampling: false
                 property point samplePos: Qt.point(0,0)
                 
-                // Shortcuts
-                Shortcut { sequence: "I"; onActivated: canvasPage.activeToolIdx = 11 }
-                Shortcut { sequence: "B"; onActivated: canvasPage.activeToolIdx = 7 }
-                Shortcut { sequence: "E"; onActivated: canvasPage.activeToolIdx = 9 }
-                
+                // Shortcuts (Now managed globally in main_pro.qml)                
                 // Alt logic: Need to capture Alt press/release
                 focus: isProjectActive
                 Keys.onPressed: (event) => {

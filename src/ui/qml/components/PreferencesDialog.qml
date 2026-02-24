@@ -546,17 +546,24 @@ Popup {
                             // Shortcuts Data
                             Repeater {
                                 model: [
-                                    { cmd: "New Project", key: "Ctrl+N" },
-                                    { cmd: "Open Project", key: "Ctrl+O" },
-                                    { cmd: "Save", key: "Ctrl+S" },
-                                    { cmd: "Undo", key: "Ctrl+Z" },
-                                    { cmd: "Redo", key: "Ctrl+Y" },
-                                    { cmd: "New Layer", key: "Ctrl+Shift+N" },
-                                    { cmd: "Pen Tool", key: "P" },
-                                    { cmd: "Pencil Tool", key: "Shift+P" },
-                                    { cmd: "Brush Tool", key: "B" },
-                                    { cmd: "Eraser Tool", key: "E" },
-                                    { cmd: "Move (Hand)", key: "H / Space" }
+                                    { id: "New Project", cmd: "New Project" },
+                                    { id: "Open Project", cmd: "Open Project" },
+                                    { id: "Save", cmd: "Save" },
+                                    { id: "Undo", cmd: "Undo" },
+                                    { id: "Redo", cmd: "Redo" },
+                                    { id: "New Layer", cmd: "New Layer" },
+                                    { id: "Pen Tool", cmd: "Pen Tool" },
+                                    { id: "Brush Tool", cmd: "Brush Tool" },
+                                    { id: "Eraser Tool", cmd: "Eraser Tool" },
+                                    { id: "Lasso Tool", cmd: "Lasso Tool" },
+                                    { id: "Hand Tool", cmd: "Hand Tool" },
+                                    { id: "Eyedropper Tool", cmd: "Eyedropper Tool" },
+                                    { id: "Move Tool", cmd: "Move Tool" },
+                                    { id: "Transform", cmd: "Transform" },
+                                    { id: "Select None", cmd: "Select None" },
+                                    { id: "Zoom In", cmd: "Zoom In" },
+                                    { id: "Zoom Out", cmd: "Zoom Out" },
+                                    { id: "Fit to Screen", cmd: "Fit to Screen" }
                                 ]
                                 delegate: RowLayout {
                                     width: parent.width
@@ -566,16 +573,19 @@ Popup {
                                     Rectangle {
                                         Layout.preferredWidth: 100; Layout.preferredHeight: 24
                                         color: "#2c2c2e"; radius: 4
-                                        border.color: "#3f3f46"
-                                        Text { 
-                                            text: modelData.key; color: "white"; font.pixelSize: 12 
-                                            anchors.centerIn: parent
-                                        }
-                                        MouseArea {
-                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                // Logic to change shortcut would go here
-                                                parent.border.color = colorAccent
+                                        border.color: shortcutField.activeFocus ? colorAccent : "#3f3f46"
+                                        
+                                        TextInput {
+                                            id: shortcutField
+                                            anchors.fill: parent
+                                            horizontalAlignment: TextInput.AlignHCenter
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            color: "white"; font.pixelSize: 12
+                                            text: typeof preferencesManager !== "undefined" ? preferencesManager.getShortcut(modelData.id) : ""
+                                            onEditingFinished: {
+                                                if (typeof preferencesManager !== "undefined") {
+                                                    preferencesManager.setShortcut(modelData.id, text)
+                                                }
                                             }
                                         }
                                     }

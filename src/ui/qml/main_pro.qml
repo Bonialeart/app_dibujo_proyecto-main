@@ -81,6 +81,30 @@ Window {
         }
     }
 
+    // --- GLOBAL SHORTCUTS ---
+    // These ensure shortcuts work globally even if focus is lost (fixing the "funcionen siempre" issue).
+    property var sm: typeof preferencesManager !== "undefined" ? preferencesManager.shortcuts : null
+
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["New Project"] ? mainWindow.sm["New Project"] : "Ctrl+N"; onActivated: newProjectDialog.open() }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Open Project"] ? mainWindow.sm["Open Project"] : "Ctrl+O"; onActivated: openProjectDialog.open() }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Save"] ? mainWindow.sm["Save"] : "Ctrl+S"; onActivated: mainWindow.saveProjectAndRefresh() }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Undo"] ? mainWindow.sm["Undo"] : "Ctrl+Z"; onActivated: mainCanvas.undo() }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Redo"] ? mainWindow.sm["Redo"] : "Ctrl+Y"; onActivated: mainCanvas.redo() }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["New Layer"] ? mainWindow.sm["New Layer"] : "Ctrl+Shift+N"; onActivated: mainCanvas.addLayer() }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Pen Tool"] ? mainWindow.sm["Pen Tool"] : "P"; onActivated: mainCanvas.currentTool = "pen" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Brush Tool"] ? mainWindow.sm["Brush Tool"] : "B"; onActivated: mainCanvas.currentTool = "brush" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eraser Tool"] ? mainWindow.sm["Eraser Tool"] : "E"; onActivated: mainCanvas.currentTool = "eraser" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Lasso Tool"] ? mainWindow.sm["Lasso Tool"] : "L"; onActivated: mainCanvas.currentTool = "lasso" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Hand Tool"] ? mainWindow.sm["Hand Tool"] : "H"; onActivated: mainCanvas.currentTool = "hand" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: mainCanvas.currentTool = "eyedropper" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Move Tool"] ? mainWindow.sm["Move Tool"] : "V"; onActivated: mainCanvas.currentTool = "move" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Transform"] ? mainWindow.sm["Transform"] : "Ctrl+T"; onActivated: mainCanvas.currentTool = "transform" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Select None"] ? mainWindow.sm["Select None"] : "Ctrl+D"; onActivated: { mainCanvas.deselect(); mainCanvas.update() } }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Fit to Screen"] ? mainWindow.sm["Fit to Screen"] : "Ctrl+0"; onActivated: mainCanvas.fitToView() }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Zoom In"] ? mainWindow.sm["Zoom In"] : "Ctrl++"; onActivated: mainCanvas.zoomLevel *= 1.2 }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Zoom Out"] ? mainWindow.sm["Zoom Out"] : "Ctrl+-"; onActivated: mainCanvas.zoomLevel *= 0.8 }
+
+
     Component.onCompleted: {
         Qt.callLater(loadRecentProjects)
     }
@@ -618,9 +642,9 @@ Window {
                 MenuButton {
                     label: "File"
                     menuItems: [
-                        { text: "New Project...", shortcut: "Ctrl+N", action: function() { newProjectDialog.open() } },
-                        { text: "Open Project...", shortcut: "Ctrl+O", action: function() { openProjectDialog.open() } },
-                        { text: "Save", shortcut: "Ctrl+S", action: function() { mainWindow.saveProjectAndRefresh() } },
+                        { text: "New Project...", shortcut: mainWindow.sm && mainWindow.sm["New Project"] ? mainWindow.sm["New Project"] : "Ctrl+N", action: function() { newProjectDialog.open() } },
+                        { text: "Open Project...", shortcut: mainWindow.sm && mainWindow.sm["Open Project"] ? mainWindow.sm["Open Project"] : "Ctrl+O", action: function() { openProjectDialog.open() } },
+                        { text: "Save", shortcut: mainWindow.sm && mainWindow.sm["Save"] ? mainWindow.sm["Save"] : "Ctrl+S", action: function() { mainWindow.saveProjectAndRefresh() } },
                         { text: "Save As...", shortcut: "Ctrl+Shift+S", action: function() { saveProjectDialog.open() } },
                         { text: "Export Image...", shortcut: "Ctrl+E", action: function() { exportImageDialog.open() } },
                         { text: "Export All Pages...", shortcut: "", action: function() { if (isStoryProject && currentStoryPath !== "") { comicExportAllDialog.open() } } },
@@ -633,8 +657,8 @@ Window {
                 MenuButton {
                     label: "Edit"
                     menuItems: [
-                        { text: "Undo", shortcut: "Ctrl+Z", action: function() { mainCanvas.undo() } },
-                        { text: "Redo", shortcut: "Ctrl+Y", action: function() { mainCanvas.redo() } },
+                        { text: "Undo", shortcut: mainWindow.sm && mainWindow.sm["Undo"] ? mainWindow.sm["Undo"] : "Ctrl+Z", action: function() { mainCanvas.undo() } },
+                        { text: "Redo", shortcut: mainWindow.sm && mainWindow.sm["Redo"] ? mainWindow.sm["Redo"] : "Ctrl+Y", action: function() { mainCanvas.redo() } },
                         { isSeparator: true },
                         { text: "Pen Pressure Config...", action: function() { pressureDialog.open() } },
                         { text: "Preferences", action: function() { preferencesDialog.open() } }
@@ -645,9 +669,9 @@ Window {
                 MenuButton {
                     label: "View"
                     menuItems: [
-                        { text: "Fit to Screen", shortcut: "Ctrl+0", action: function() { mainCanvas.fitToView() } },
-                        { text: "Zoom In", shortcut: "Ctrl++", action: function() { mainCanvas.zoomLevel *= 1.2 } },
-                        { text: "Zoom Out", shortcut: "Ctrl+-", action: function() { mainCanvas.zoomLevel *= 0.8 } },
+                        { text: "Fit to Screen", shortcut: mainWindow.sm && mainWindow.sm["Fit to Screen"] ? mainWindow.sm["Fit to Screen"] : "Ctrl+0", action: function() { mainCanvas.fitToView() } },
+                        { text: "Zoom In", shortcut: mainWindow.sm && mainWindow.sm["Zoom In"] ? mainWindow.sm["Zoom In"] : "Ctrl++", action: function() { mainCanvas.zoomLevel *= 1.2 } },
+                        { text: "Zoom Out", shortcut: mainWindow.sm && mainWindow.sm["Zoom Out"] ? mainWindow.sm["Zoom Out"] : "Ctrl+-", action: function() { mainCanvas.zoomLevel *= 0.8 } },
                         { isSeparator: true },
                         { text: "Toggle Zen Mode", shortcut: "Tab", action: function() { isZenMode = !isZenMode } }
                     ]
@@ -657,7 +681,7 @@ Window {
                 MenuButton {
                     label: "Layer"
                     menuItems: [
-                        { text: "New Layer", shortcut: "Ctrl+Shift+N", action: function() { mainCanvas.addLayer() } },
+                        { text: "New Layer", shortcut: mainWindow.sm && mainWindow.sm["New Layer"] ? mainWindow.sm["New Layer"] : "Ctrl+Shift+N", action: function() { mainCanvas.addLayer() } },
                         { text: "Duplicate Layer", shortcut: "Ctrl+J", action: function() { mainCanvas.duplicateLayer(mainCanvas.activeLayerIndex) } },
                         { text: "Delete Layer", action: function() { mainCanvas.removeLayer(mainCanvas.activeLayerIndex) } },
                         { isSeparator: true },

@@ -57,6 +57,10 @@ class PreferencesManager : public QObject {
   Q_PROPERTY(QVariantList pressureCurve READ pressureCurve WRITE
                  setPressureCurve NOTIFY pressureCurveChanged)
 
+  // --- SHORTCUTS ---
+  Q_PROPERTY(QVariantMap shortcuts READ shortcuts WRITE setShortcuts NOTIFY
+                 shortcutsChanged)
+
 public:
   static PreferencesManager *instance();
 
@@ -124,6 +128,33 @@ public:
     QVariantList defaultCurve;
     defaultCurve << 0.0 << 0.0 << 1.0 << 1.0;
     return m_settings->value("pressure_curve", defaultCurve).toList();
+  }
+
+  QVariantMap shortcuts() const {
+    QVariantMap def;
+    def["New Project"] = "Ctrl+N";
+    def["Open Project"] = "Ctrl+O";
+    def["Save"] = "Ctrl+S";
+    def["Undo"] = "Ctrl+Z";
+    def["Redo"] = "Ctrl+Y";
+    def["New Layer"] = "Ctrl+Shift+N";
+    def["Pen Tool"] = "P";
+    def["Brush Tool"] = "B";
+    def["Eraser Tool"] = "E";
+    def["Lasso Tool"] = "L";
+    def["Hand Tool"] = "H";
+    def["Eyedropper Tool"] = "I";
+    def["Move Tool"] = "V";
+    def["Transform"] = "Ctrl+T";
+    def["Select None"] = "Ctrl+D";
+    def["Zoom In"] = "Ctrl++";
+    def["Zoom Out"] = "Ctrl+-";
+    def["Fit to Screen"] = "Ctrl+0";
+    return m_settings->value("shortcuts", def).toMap();
+  }
+
+  Q_INVOKABLE QString getShortcut(const QString &name) const {
+    return shortcuts().value(name).toString();
   }
 
 public slots:
@@ -229,6 +260,19 @@ public slots:
     emit pressureCurveChanged();
   }
 
+  void setShortcuts(const QVariantMap &map) {
+    if (shortcuts() != map) {
+      m_settings->setValue("shortcuts", map);
+      emit shortcutsChanged();
+    }
+  }
+
+  Q_INVOKABLE void setShortcut(const QString &name, const QString &seq) {
+    QVariantMap map = shortcuts();
+    map[name] = seq;
+    setShortcuts(map);
+  }
+
   void resetDefaults() {
     m_settings->clear();
     emit settingsChanged();
@@ -240,6 +284,7 @@ public slots:
 signals:
   void settingsChanged();
   void pressureCurveChanged();
+  void shortcutsChanged();
 
 private:
   QSettings *m_settings;

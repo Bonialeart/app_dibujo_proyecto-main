@@ -4066,37 +4066,8 @@ bool CanvasItem::create_folder_from_merge(const QString &sourcePath,
 
 void CanvasItem::load_file_path(const QString &path) { loadProject(path); }
 void CanvasItem::handle_shortcuts(int key, int modifiers) {
-  bool ctrl = modifiers & Qt::ControlModifier;
-  bool shift = modifiers & Qt::ShiftModifier;
-
-  // Undo / Redo
-  if (ctrl && key == Qt::Key_Z) {
-    if (shift)
-      redo();
-    else
-      undo();
-  } else if (ctrl && key == Qt::Key_Y) {
-    redo();
-  }
-  // Transform
-  else if (ctrl && key == Qt::Key_T) {
-    setCurrentTool("transform");
-  }
-  // Select None
-  else if (ctrl && key == Qt::Key_D) {
-    m_selectionPath = QPainterPath();
-    m_hasSelection = false;
-    update();
-  }
-  // Space (Pan)
-  else if (key == Qt::Key_Space) {
-    if (!m_spacePressed) {
-      m_spacePressed = true;
-      QGuiApplication::setOverrideCursor(Qt::OpenHandCursor);
-    }
-  }
-  // Brush Size/Opacity
-  else if (key == Qt::Key_BracketLeft)
+  // Brush Size/Opacity are left here as they are fine-grained
+  if (key == Qt::Key_BracketLeft)
     adjustBrushSize(-0.1f);
   else if (key == Qt::Key_BracketRight)
     adjustBrushSize(0.1f);
@@ -4104,20 +4075,6 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
     adjustBrushOpacity(-0.1f);
   else if (key == Qt::Key_P) // Optional: Opacity increase
     adjustBrushOpacity(0.1f);
-
-  // Tool Switches
-  else if (key == Qt::Key_B)
-    setCurrentTool("brush");
-  else if (key == Qt::Key_E)
-    setCurrentTool("eraser");
-  else if (key == Qt::Key_L)
-    setCurrentTool("lasso");
-  else if (key == Qt::Key_H)
-    setCurrentTool("hand");
-  else if (key == Qt::Key_I) // Eyedropper shortcut
-    setCurrentTool("eyedropper");
-  else if (key == Qt::Key_V)
-    setCurrentTool("move");
 }
 
 void CanvasItem::handle_key_release(int key) {
