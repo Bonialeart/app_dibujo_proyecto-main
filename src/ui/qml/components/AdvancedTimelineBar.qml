@@ -67,6 +67,62 @@ Item {
         return _trackFrames[trackIdx].length
     }
 
+    // ── SPAN HELPERS ─────────────────────────────────────────
+    // Returns the pixel x-offset for frame at index fi in track ti
+    function getFrameXOffset(ti, fi) {
+        var v = _version
+        if (ti < 0 || ti >= _trackFrames.length) return 0
+        var frames = _trackFrames[ti]
+        var px = 0
+        for (var i = 0; i < fi && i < frames.length; i++) {
+            px += (frames[i].span || 1) * pixelsPerFrame
+        }
+        return px
+    }
+
+    // Returns how many "timeline slots" a frame occupies
+    function getFrameSpan(ti, fi) {
+        var v = _version
+        if (ti < 0 || ti >= _trackFrames.length) return 1
+        var frames = _trackFrames[ti]
+        if (fi < 0 || fi >= frames.length) return 1
+        return frames[fi].span || 1
+    }
+
+    // Sets the span of a frame (minimum 1)
+    function setFrameSpan(ti, fi, newSpan) {
+        if (ti < 0 || ti >= _trackFrames.length) return
+        var frames = _trackFrames[ti]
+        if (fi < 0 || fi >= frames.length) return
+        frames[fi].span = Math.max(1, newSpan)
+        _changed()
+    }
+
+    // Given a timeline slot index, find which frame (fi) covers it in track ti
+    function findFrameAtSlot(ti, slot) {
+        var v = _version
+        if (ti < 0 || ti >= _trackFrames.length) return -1
+        var frames = _trackFrames[ti]
+        var pos = 0
+        for (var i = 0; i < frames.length; i++) {
+            var sp = frames[i].span || 1
+            if (slot >= pos && slot < pos + sp) return i
+            pos += sp
+        }
+        return -1
+    }
+
+    // Total slots used by a track (sum of all spans)
+    function totalSlotsForTrack(ti) {
+        var v = _version
+        if (ti < 0 || ti >= _trackFrames.length) return 0
+        var frames = _trackFrames[ti]
+        var total = 0
+        for (var i = 0; i < frames.length; i++)
+            total += (frames[i].span || 1)
+        return total
+    }
+
     // ═══════════════════════════════════════════════════════
     //  HELPERS
     // ═══════════════════════════════════════════════════════
@@ -148,6 +204,14 @@ Item {
         goToFrame(f)
     }
 
+    // Seek based on slot position (for clicking in the track area)
+    function seekSlotPx(ti, px) {
+        if (totalFrames <= 0) return
+        var slot = Math.round(px / pixelsPerFrame)
+        slot = Math.max(0, Math.min(totalFrames - 1, slot))
+        goToFrame(slot)
+    }
+
     function syncVisibility() {
         if (!targetCanvas) return
         for (var t = 0; t < _trackFrames.length; t++) {
@@ -155,14 +219,18 @@ Item {
             for (var f = 0; f < frames.length; f++) {
                 var ri = findLayerIndexByName(frames[f].layerName)
                 if (ri < 0) continue
-                var isCur = (f === currentFrameIdx)
+
+                // Check if current slot falls within this frame's span
+                var fi = findFrameAtSlot(t, currentFrameIdx)
+                var isCur = (fi === f)
 
                 if (isCur) {
                     targetCanvas.setLayerVisibility(ri, true)
                     targetCanvas.setLayerOpacity(ri, 1.0)
                     if (t === activeTrackIdx) targetCanvas.setActiveLayer(ri)
                 } else if (onionEnabled && t === activeTrackIdx) {
-                    var d = f - currentFrameIdx
+                    // For onion, use the distance between frame indices
+                    var d = f - fi
                     var show = (d < 0 && -d <= onionBefore) || (d > 0 && d <= onionAfter)
                     if (show) {
                         targetCanvas.setLayerVisibility(ri, true)
@@ -192,7 +260,7 @@ Item {
         var ri = targetCanvas.activeLayerIndex
         targetCanvas.renameLayer(ri, nm)
 
-        _trackFrames[ti].push({ layerName: nm, label: "F" + (_trackFrames[ti].length + 1) })
+        _trackFrames[ti].push({ layerName: nm, label: "F" + (_trackFrames[ti].length + 1), span: 1 })
         _changed()
         goToFrame(_trackFrames[ti].length - 1)
     }
@@ -228,7 +296,7 @@ Item {
         targetCanvas.duplicateLayer(srcRi)
         targetCanvas.renameLayer(targetCanvas.activeLayerIndex, nm)
 
-        frames.splice(fi + 1, 0, { layerName: nm, label: "" })
+        frames.splice(fi + 1, 0, { layerName: nm, label: "", span: 1 })
         for (var i = 0; i < frames.length; i++) frames[i].label = "F" + (i+1)
         _changed()
         goToFrame(fi + 1)
@@ -251,8 +319,10 @@ Item {
 
     function recalcTotalFrames() {
         var mx = 0
-        for (var t = 0; t < _trackFrames.length; t++)
-            if (_trackFrames[t].length > mx) mx = _trackFrames[t].length
+        for (var t = 0; t < _trackFrames.length; t++) {
+            var slots = totalSlotsForTrack(t)
+            if (slots > mx) mx = slots
+        }
         totalFrames = mx
     }
 
@@ -527,11 +597,18 @@ Item {
                                         Rectangle {
                                             id: fb
                                             property int fi: index
-                                            property bool cur: fi === root.currentFrameIdx
+                                            property int frameSpan: root.getFrameSpan(trackRow.tIdx, fi)
+                                            property real frameXOff: root.getFrameXOffset(trackRow.tIdx, fi)
+                                            property bool cur: {
+                                                var v = root._version
+                                                var slot = root.currentFrameIdx
+                                                var found = root.findFrameAtSlot(trackRow.tIdx, slot)
+                                                return found === fi
+                                            }
                                             property bool hov: fbMa.containsMouse
 
-                                            x: fi * root.pixelsPerFrame + 2
-                                            width: root.pixelsPerFrame - 4
+                                            x: frameXOff + 2
+                                            width: root.pixelsPerFrame * frameSpan - 4
                                             height: parent.height - 8
                                             anchors.verticalCenter: parent.verticalCenter
                                             radius: 10
@@ -547,10 +624,27 @@ Item {
                                             Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
                                             scale: fbMa.pressed ? 0.95 : 1.0
 
+                                            // Span indicator — shows how many slots when span > 1
+                                            Rectangle {
+                                                visible: fb.frameSpan > 1
+                                                anchors.bottom: parent.bottom; anchors.bottomMargin: 3
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                width: spanLabel.implicitWidth + 10; height: 14; radius: 7
+                                                color: Qt.rgba(Qt.color(trackRow.tCol).r, Qt.color(trackRow.tCol).g,
+                                                               Qt.color(trackRow.tCol).b, 0.3)
+                                                z: 5
+                                                Text {
+                                                    id: spanLabel; anchors.centerIn: parent
+                                                    text: "×" + fb.frameSpan
+                                                    color: "#ccc"; font.pixelSize: 8; font.weight: Font.Bold; font.family: "Consolas"
+                                                }
+                                            }
+
                                             // Onion overlay
                                             Rectangle {
                                                 anchors.fill: parent; radius: parent.radius; z: 1
-                                                property int d: fb.fi - root.currentFrameIdx
+                                                property int curFi: root.findFrameAtSlot(trackRow.tIdx, root.currentFrameIdx)
+                                                property int d: fb.fi - curFi
                                                 visible: root.onionEnabled && !fb.cur && trackRow.isAct &&
                                                     ((d < 0 && -d <= root.onionBefore) || (d > 0 && d <= root.onionAfter))
                                                 color: d < 0 ? Qt.rgba(1,0.3,0.3,0.12) : Qt.rgba(0.3,1,0.4,0.10)
@@ -593,14 +687,76 @@ Item {
                                                 z: 4
                                             }
 
+                                            // ── RIGHT EDGE STRETCH HANDLE ──────
+                                            Rectangle {
+                                                id: stretchHandle
+                                                width: 8; height: parent.height - 8
+                                                anchors.right: parent.right; anchors.rightMargin: 0
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                radius: 4; z: 10
+                                                color: stretchMa.containsMouse || stretchMa.pressed
+                                                    ? Qt.rgba(Qt.color(trackRow.tCol).r, Qt.color(trackRow.tCol).g,
+                                                              Qt.color(trackRow.tCol).b, 0.5)
+                                                    : "transparent"
+                                                Behavior on color { ColorAnimation { duration: 120 } }
+
+                                                // Grip dots
+                                                Column {
+                                                    anchors.centerIn: parent; spacing: 3
+                                                    visible: stretchMa.containsMouse || stretchMa.pressed || fb.hov
+                                                    Repeater {
+                                                        model: 3
+                                                        Rectangle {
+                                                            width: 2; height: 2; radius: 1
+                                                            color: stretchMa.containsMouse || stretchMa.pressed
+                                                                ? "#fff" : "#555"
+                                                        }
+                                                    }
+                                                }
+
+                                                MouseArea {
+                                                    id: stretchMa
+                                                    anchors.fill: parent; anchors.margins: -4
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.SizeHorCursor
+                                                    preventStealing: true
+
+                                                    property real startX: 0
+                                                    property int startSpan: 1
+
+                                                    onPressed: function(m) {
+                                                        startX = mapToItem(trackFlick.contentItem, m.x, 0).x
+                                                        startSpan = fb.frameSpan
+                                                    }
+                                                    onPositionChanged: function(m) {
+                                                        if (!pressed) return
+                                                        var gx = mapToItem(trackFlick.contentItem, m.x, 0).x
+                                                        var dx = gx - startX
+                                                        var dSlots = Math.round(dx / root.pixelsPerFrame)
+                                                        var newSpan = Math.max(1, startSpan + dSlots)
+                                                        if (newSpan !== fb.frameSpan) {
+                                                            root.setFrameSpan(trackRow.tIdx, fb.fi, newSpan)
+                                                        }
+                                                    }
+                                                }
+                                            }
+
                                             MouseArea { id: fbMa; anchors.fill: parent; hoverEnabled: true
+                                                anchors.rightMargin: 10 // leave room for stretch handle
                                                 cursorShape: Qt.PointingHandCursor
                                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                                 onClicked: function(m) {
                                                     root.activeTrackIdx = trackRow.tIdx
                                                     if (m.button === Qt.RightButton) {
                                                         fCtx.trackIdx = trackRow.tIdx; fCtx.frameIdx = fb.fi; fCtx.popup()
-                                                    } else root.goToFrame(fb.fi)
+                                                    } else {
+                                                        // Navigate to the first slot of this frame
+                                                        var slot = 0
+                                                        var frames = root._trackFrames[trackRow.tIdx]
+                                                        for (var i = 0; i < fb.fi && i < frames.length; i++)
+                                                            slot += (frames[i].span || 1)
+                                                        root.goToFrame(slot)
+                                                    }
                                                 }
                                             }
                                         }
@@ -608,7 +764,7 @@ Item {
 
                                     // "+" add at end — subtle
                                     Rectangle {
-                                        x: trackRow.fCount * root.pixelsPerFrame + 2
+                                        x: root.getFrameXOffset(trackRow.tIdx, trackRow.fCount) + 2
                                         width: Math.max(root.pixelsPerFrame - 4, 22); height: parent.height - 8
                                         anchors.verticalCenter: parent.verticalCenter
                                         radius: 10; color: aMa.containsMouse ? "#14141a" : "transparent"
@@ -736,6 +892,35 @@ Item {
                     if (ri >= 0) root.targetCanvas.clearLayer(ri) } }
             background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
             contentItem: Text { text: parent.text; color: "#ccc"; font.pixelSize: 11 } }
+        MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: Qt.rgba(1,1,1,0.06) } }
+
+        // ── Stretch / Span submenu ──
+        Menu {
+            title: "↔ Estirar frame"
+            background: Rectangle { color: "#1a1a22"; radius: 12; border.color: Qt.rgba(1,1,1,0.08) }
+            MenuItem { text: "1 slot (normal)"; onTriggered: root.setFrameSpan(fCtx.trackIdx, fCtx.frameIdx, 1)
+                background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
+                contentItem: Text { text: parent.text; color: root.getFrameSpan(fCtx.trackIdx, fCtx.frameIdx) === 1 ? root.accentColor : "#ccc"; font.pixelSize: 11 } }
+            MenuItem { text: "2 slots"; onTriggered: root.setFrameSpan(fCtx.trackIdx, fCtx.frameIdx, 2)
+                background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
+                contentItem: Text { text: parent.text; color: root.getFrameSpan(fCtx.trackIdx, fCtx.frameIdx) === 2 ? root.accentColor : "#ccc"; font.pixelSize: 11 } }
+            MenuItem { text: "3 slots"; onTriggered: root.setFrameSpan(fCtx.trackIdx, fCtx.frameIdx, 3)
+                background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
+                contentItem: Text { text: parent.text; color: root.getFrameSpan(fCtx.trackIdx, fCtx.frameIdx) === 3 ? root.accentColor : "#ccc"; font.pixelSize: 11 } }
+            MenuItem { text: "4 slots"; onTriggered: root.setFrameSpan(fCtx.trackIdx, fCtx.frameIdx, 4)
+                background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
+                contentItem: Text { text: parent.text; color: root.getFrameSpan(fCtx.trackIdx, fCtx.frameIdx) === 4 ? root.accentColor : "#ccc"; font.pixelSize: 11 } }
+            MenuItem { text: "6 slots"; onTriggered: root.setFrameSpan(fCtx.trackIdx, fCtx.frameIdx, 6)
+                background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
+                contentItem: Text { text: parent.text; color: root.getFrameSpan(fCtx.trackIdx, fCtx.frameIdx) === 6 ? root.accentColor : "#ccc"; font.pixelSize: 11 } }
+            MenuItem { text: "8 slots"; onTriggered: root.setFrameSpan(fCtx.trackIdx, fCtx.frameIdx, 8)
+                background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
+                contentItem: Text { text: parent.text; color: root.getFrameSpan(fCtx.trackIdx, fCtx.frameIdx) === 8 ? root.accentColor : "#ccc"; font.pixelSize: 11 } }
+            MenuItem { text: "12 slots"; onTriggered: root.setFrameSpan(fCtx.trackIdx, fCtx.frameIdx, 12)
+                background: Rectangle { color: parent.highlighted ? "#252530" : "transparent"; radius: 8 }
+                contentItem: Text { text: parent.text; color: root.getFrameSpan(fCtx.trackIdx, fCtx.frameIdx) === 12 ? root.accentColor : "#ccc"; font.pixelSize: 11 } }
+        }
+
         MenuSeparator { contentItem: Rectangle { implicitHeight: 1; color: Qt.rgba(1,1,1,0.06) } }
         MenuItem { text: "🗑️ Eliminar"; onTriggered: root.deleteFrame(fCtx.trackIdx, fCtx.frameIdx)
             background: Rectangle { color: parent.highlighted ? "#3a2020" : "transparent"; radius: 8 }

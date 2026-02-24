@@ -2180,7 +2180,7 @@ Window {
                     anchors.right:  parent.right
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 12
-                    height: 120
+                    height: 160
                     z: 800
 
                     visible:       showAnimationBar && isProjectActive && !useAdvancedTimeline
