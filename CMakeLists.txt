@@ -39,12 +39,14 @@ set(CORE_SOURCES
     src/core/cpp/src/panel_manager.cpp
     src/core/cpp/src/color_harmony.cpp
     src/core/cpp/src/drag_zone_calculator.cpp
+    src/core/cpp/src/liquify_engine.cpp
     src/core/cpp/include/ColorPicker.h
     src/core/cpp/include/ColorPickerImpl.h
     src/core/cpp/include/panel_manager.h
     src/core/cpp/include/panel_list_model.h
     src/core/cpp/include/color_harmony.h
     src/core/cpp/include/drag_zone_calculator.h
+    src/core/cpp/include/liquify_engine.h
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)

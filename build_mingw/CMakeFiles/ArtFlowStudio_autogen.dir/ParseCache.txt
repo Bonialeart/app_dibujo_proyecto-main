@@ -495,6 +495,7 @@ E:/Rescate_Proyecto/src/CanvasItem.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/common_types.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/image_buffer.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/layer_manager.h
+ mdp:E:/Rescate_Proyecto/src/core/cpp/include/liquify_engine.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/stroke_renderer.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/stroke_undo_command.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/undo_command.h
@@ -2619,6 +2620,7 @@ E:/Rescate_Proyecto/src/core/cpp/include/color_harmony.h
  mdp:C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h
  mdp:E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/color_harmony.h
+E:/Rescate_Proyecto/src/core/cpp/include/liquify_engine.h
 E:/Rescate_Proyecto/src/core/cpp/src/brush_preset_manager.cpp
 E:/Rescate_Proyecto/src/CanvasItem.cpp
 E:/Rescate_Proyecto/src/PreferencesManager.cpp
@@ -2983,3 +2985,4 @@ E:/Rescate_Proyecto/src/core/cpp/include/drag_zone_calculator.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_data.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h
 E:/Rescate_Proyecto/src/core/cpp/src/drag_zone_calculator.cpp
+E:/Rescate_Proyecto/src/core/cpp/src/liquify_engine.cpp

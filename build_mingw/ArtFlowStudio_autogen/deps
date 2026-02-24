@@ -1204,6 +1204,7 @@ ArtFlowStudio_autogen/timestamp: \
 	E:/Rescate_Proyecto/src/core/cpp/include/drag_zone_calculator.h \
 	E:/Rescate_Proyecto/src/core/cpp/include/image_buffer.h \
 	E:/Rescate_Proyecto/src/core/cpp/include/layer_manager.h \
+	E:/Rescate_Proyecto/src/core/cpp/include/liquify_engine.h \
 	E:/Rescate_Proyecto/src/core/cpp/include/panel_data.h \
 	E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h \
 	E:/Rescate_Proyecto/src/core/cpp/include/panel_manager.h \
@@ -1222,6 +1223,7 @@ ArtFlowStudio_autogen/timestamp: \
 	E:/Rescate_Proyecto/src/core/cpp/src/gl_utils.cpp \
 	E:/Rescate_Proyecto/src/core/cpp/src/image_buffer.cpp \
 	E:/Rescate_Proyecto/src/core/cpp/src/layer_manager.cpp \
+	E:/Rescate_Proyecto/src/core/cpp/src/liquify_engine.cpp \
 	E:/Rescate_Proyecto/src/core/cpp/src/panel_list_model.cpp \
 	E:/Rescate_Proyecto/src/core/cpp/src/panel_manager.cpp \
 	E:/Rescate_Proyecto/src/core/cpp/src/stroke_renderer.cpp \

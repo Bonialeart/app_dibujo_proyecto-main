@@ -72,6 +72,7 @@ void LayerManager::duplicateLayer(int index) {
   newLayer->clipped = src->clipped;
   newLayer->isPrivate = src->isPrivate;
   newLayer->type = src->type;
+  newLayer->parentId = src->parentId;
 
   m_layers.insert(m_layers.begin() + index + 1, std::move(newLayer));
 }

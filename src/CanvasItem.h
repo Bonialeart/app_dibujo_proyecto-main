@@ -4,6 +4,7 @@
 #include "core/cpp/include/brush_engine.h"
 #include "core/cpp/include/brush_preset.h"
 #include "core/cpp/include/layer_manager.h"
+#include "core/cpp/include/liquify_engine.h"
 #include "core/cpp/include/stroke_renderer.h"
 #include "core/cpp/include/stroke_undo_command.h"
 #include "core/cpp/include/undo_manager.h"
@@ -41,7 +42,8 @@ public:
     Hand,
     Fill,
     Shape,
-    PanelCut
+    PanelCut,
+    Liquify
   };
   Q_ENUM(ToolType)
 
@@ -145,6 +147,9 @@ public:
   Q_PROPERTY(bool isImporting READ isImporting NOTIFY isImportingChanged)
   Q_PROPERTY(
       float importProgress READ importProgress NOTIFY importProgressChanged)
+
+  // ── Liquify Tool Properties ──
+  Q_PROPERTY(bool isLiquifying READ isLiquifying NOTIFY isLiquifyingChanged)
 
   Q_PROPERTY(int transformMode READ transformMode WRITE setTransformMode NOTIFY
                  transformModeChanged)
@@ -269,6 +274,16 @@ public:
 
   Q_INVOKABLE void flattenComicPanels(const QVariantList &panels);
   Q_INVOKABLE void usePreset(const QString &name);
+
+  // ── Liquify Tool API (called from QML LiquifyBar) ──
+  Q_INVOKABLE void beginLiquify();
+  Q_INVOKABLE void applyLiquify();
+  Q_INVOKABLE void cancelLiquify();
+  Q_INVOKABLE void setLiquifyMode(int mode);
+  Q_INVOKABLE void setLiquifyRadius(float radius);
+  Q_INVOKABLE void setLiquifyStrength(float strength);
+  Q_INVOKABLE void setLiquifyMorpher(float morpher);
+  bool isLiquifying() const { return m_isLiquifying; }
   Q_INVOKABLE bool loadProject(const QString &path);
   Q_INVOKABLE bool saveProject(const QString &path);
   Q_INVOKABLE bool saveProjectAs(const QString &path);
@@ -474,6 +489,7 @@ signals:
   void symmetryEnabledChanged();
   void symmetryModeChanged();
   void symmetrySegmentsChanged();
+  void isLiquifyingChanged();
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
@@ -589,19 +605,19 @@ private:
   // QuickShape resize state (Procreate-style)
   enum class QuickShapeType { None, Line, Circle };
   QuickShapeType m_quickShapeType = QuickShapeType::None;
-  QPointF m_quickShapeCenter;       // Circle center (canvas coords)
-  float m_quickShapeRadius = 0.0f;  // Circle radius (canvas coords)
-  QPointF m_quickShapeLineP1;       // Line start (canvas coords)
-  QPointF m_quickShapeLineP2;       // Line end   (canvas coords)
-  QPointF m_quickShapeLineDir;      // Normalized line direction (stable for resize)
-  QPointF m_quickShapeAnchor;       // Mouse pos when shape was snapped (screen)
-  float m_quickShapeOrigRadius = 0.0f; // Original detected radius
+  QPointF m_quickShapeCenter;      // Circle center (canvas coords)
+  float m_quickShapeRadius = 0.0f; // Circle radius (canvas coords)
+  QPointF m_quickShapeLineP1;      // Line start (canvas coords)
+  QPointF m_quickShapeLineP2;      // Line end   (canvas coords)
+  QPointF m_quickShapeLineDir; // Normalized line direction (stable for resize)
+  QPointF m_quickShapeAnchor;  // Mouse pos when shape was snapped (screen)
+  float m_quickShapeOrigRadius = 0.0f;  // Original detected radius
   float m_quickShapeOrigLineLen = 0.0f; // Original line length
   bool m_quickShapeResizing = false;    // User started dragging to resize
 
   // Snap animation
   QTimer *m_quickShapeSnapTimer = nullptr;
-  float m_quickShapeSnapAnim = 0.0f;   // 0.0 → 1.0 animation progress
+  float m_quickShapeSnapAnim = 0.0f; // 0.0 → 1.0 animation progress
   bool m_quickShapeSnapAnimActive = false;
 
   // Premium Rendering (Ping-Pong FBOs)
@@ -627,7 +643,7 @@ private:
   void detectAndDrawQuickShape();
   void drawLine(const QPointF &p1, const QPointF &p2);
   void drawCircle(const QPointF &center, float radius);
-  void redrawQuickShape();  // Re-render shape at current size during resize
+  void redrawQuickShape(); // Re-render shape at current size during resize
 
   QVariantList _scanSync();
   void updateLayersList();
@@ -739,6 +755,15 @@ private:
   bool m_touchIsEyedropper = false;
   int m_touchPointCount = 0;
   float m_lastPinchScale = 1.0f;
+
+  // ── Liquify Engine ──
+  artflow::LiquifyEngine *m_liquifyEngine = nullptr;
+  bool m_isLiquifying = false;
+  QPointF m_liquifyLastPos;
+  std::unique_ptr<artflow::ImageBuffer> m_liquifyBeforeBuffer;
+  QImage m_liquifyPreviewCache;
+  void handleLiquifyDraw(const QPointF &canvasPos, float pressure);
+  void renderLiquifyPreview(QPainter *painter, const QRectF &paperRect);
 };
 
 #endif // CANVASITEM_H

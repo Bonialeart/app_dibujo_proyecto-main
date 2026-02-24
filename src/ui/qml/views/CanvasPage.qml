@@ -3058,4 +3058,20 @@ import "../components"
                     accentColor: canvasPage.colorAccent
                     z: 5000
                 }
+
+                LiquifyBar {
+                    id: liquifyBar
+                    canvas: mainCanvas
+                    uiScale: canvasPage.uiScale
+                    accentColor: canvasPage.colorAccent
+                    active: mainCanvas ? mainCanvas.isLiquifying : false
+                    z: 5001
+
+                    onApplyRequested: {
+                        if (mainCanvas) mainCanvas.applyLiquify()
+                    }
+                    onCancelRequested: {
+                        if (mainCanvas) mainCanvas.cancelLiquify()
+                    }
+                }
             } // Fin Item (Canvas Page)

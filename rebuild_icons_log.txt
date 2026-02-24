@@ -1,0 +1,5 @@
+﻿[1/5] Automatic MOC and UIC for target ArtFlowStudio
+[2/5] Automatic RCC for src/ui/resources.qrc
+[3/5] Building CXX object CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/YPKJ5OE7LN/qrc_resources.cpp.obj
+[4/5] Building CXX object CMakeFiles/ArtFlowStudio.dir/ArtFlowStudio_autogen/mocs_compilation.cpp.obj
+[5/5] Linking CXX executable ArtFlowStudio.exe

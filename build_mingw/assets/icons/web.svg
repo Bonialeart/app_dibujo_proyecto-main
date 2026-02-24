@@ -1,17 +1,7 @@
-<!-- @license lucide-static v0.562.0 - ISC -->
-<svg
-  class="lucide lucide-globe"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="white"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <circle cx="12" cy="12" r="10" />
-  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-  <path d="M2 12h20" />
+<svg width="24" height="24" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"/>
+<path d="M12 2C8.16 5.69 6 9.73 6 12C6 14.27 8.16 18.31 12 22" stroke="#1C1C1E" stroke-width="1.2"/>
+<path d="M12 2C15.84 5.69 18 9.73 18 12C18 14.27 15.84 18.31 12 22" stroke="#1C1C1E" stroke-width="1.2"/>
+<path d="M2.63 15.63H21.37" stroke="#1C1C1E" stroke-width="1.2" stroke-linecap="round"/>
+<path d="M2.63 8.37H21.37" stroke="#1C1C1E" stroke-width="1.2" stroke-linecap="round"/>
 </svg>

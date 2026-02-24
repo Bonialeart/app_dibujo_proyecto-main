@@ -21,6 +21,7 @@ Window {
     title: "ArtFlow Studio Pro"
     color: "#050507"
     property alias comicOverlayManager: comicOverlay
+    property alias simpleAnimationBar: simpleAnimationBar
     
     function openPanelSettings(layoutType, label) {
         panelSettingsPopup.layoutType = layoutType
@@ -685,7 +686,7 @@ Window {
                                 toastManager.show("Simetría " + (mainCanvas.symmetryEnabled ? "Activada" : "Desactivada"), "info"); 
                             } 
                         } },
-                        { text: "Liquify", action: function() { toastManager.show("Liquify Tool Activated (Coming Soon)", "info") } },
+                        { text: "Liquify", action: function() { if (mainCanvas) mainCanvas.currentTool = "liquify" } },
                         { isSeparator: true },
                         { text: "Perspective Guides", action: function() { toastManager.show("Perspective Guides Visible", "info") } },
                         { text: "Snapping", action: function() { toastManager.show("Snapping Toggled", "info") } },

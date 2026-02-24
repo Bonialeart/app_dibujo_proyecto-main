@@ -471,6 +471,8 @@ CanvasItem::~CanvasItem() {
   m_symmetryEngines.clear();
   if (m_impastoShader)
     delete m_impastoShader;
+  if (m_liquifyEngine)
+    delete m_liquifyEngine;
 
   // Cleanup layer textures
   for (auto *tex : m_layerTextures.values()) {
@@ -1171,28 +1173,34 @@ void CanvasItem::paint(QPainter *painter) {
     // Easing Out effect for smooth expansion and fade
     float progress = m_quickShapeSnapAnim;
     float easeOut = 1.0f - std::pow(1.0f - progress, 3.0f); // Cubic ease-out
-    
+
     // Scale expansion: starts at 1.0, expands to slightly larger
     float scaleAnim = 1.0f + (easeOut * 0.05f);
-    
+
     // Opacity fade: starts bright, drops to 0
-    float alphaAnim = 1.0f - easeOut; 
-    
+    float alphaAnim = 1.0f - easeOut;
+
     QColor glowColor = m_accentColor;
-    if (glowColor.value() < 50) glowColor = Qt::white; // Prevents invisible dark glows
+    if (glowColor.value() < 50)
+      glowColor = Qt::white; // Prevents invisible dark glows
     glowColor.setAlphaF(alphaAnim * 0.9f);
 
-    painter->translate(m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel);
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
     painter->scale(m_zoomLevel, m_zoomLevel);
 
-    QPen glowPen(glowColor, (4.0f + (easeOut * 8.0f)) / m_zoomLevel, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen glowPen(glowColor, (4.0f + (easeOut * 8.0f)) / m_zoomLevel,
+                 Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     painter->setPen(glowPen);
-    painter->setBrush(QColor(glowColor.red(), glowColor.green(), glowColor.blue(), int(alphaAnim * 40.0f))); // Slight fill glow
+    painter->setBrush(QColor(glowColor.red(), glowColor.green(),
+                             glowColor.blue(),
+                             int(alphaAnim * 40.0f))); // Slight fill glow
 
     if (m_quickShapeType == QuickShapeType::Circle) {
       painter->translate(m_quickShapeCenter);
       painter->scale(scaleAnim, scaleAnim);
-      painter->drawEllipse(QPointF(0, 0), m_quickShapeRadius, m_quickShapeRadius);
+      painter->drawEllipse(QPointF(0, 0), m_quickShapeRadius,
+                           m_quickShapeRadius);
     } else if (m_quickShapeType == QuickShapeType::Line) {
       painter->setBrush(Qt::NoBrush);
       painter->translate(m_quickShapeCenter);
@@ -1201,7 +1209,7 @@ void CanvasItem::paint(QPainter *painter) {
       QPointF p2 = m_quickShapeLineP2 - m_quickShapeCenter;
       painter->drawLine(p1, p2);
     }
-    
+
     painter->restore();
   }
 
@@ -1219,14 +1227,17 @@ void CanvasItem::paint(QPainter *painter) {
 
     if (m_quickShapeType == QuickShapeType::Circle) {
       // Small center dot
-      QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+      QPointF centerScreen =
+          m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
       painter->setPen(QPen(dotOutline, 2.0f));
       painter->setBrush(dotColor);
       painter->drawEllipse(centerScreen, 3.5, 3.5);
     } else if (m_quickShapeType == QuickShapeType::Line) {
       // Small endpoint dots
-      QPointF p1Screen = m_quickShapeLineP1 * m_zoomLevel + m_viewOffset * m_zoomLevel;
-      QPointF p2Screen = m_quickShapeLineP2 * m_zoomLevel + m_viewOffset * m_zoomLevel;
+      QPointF p1Screen =
+          m_quickShapeLineP1 * m_zoomLevel + m_viewOffset * m_zoomLevel;
+      QPointF p2Screen =
+          m_quickShapeLineP2 * m_zoomLevel + m_viewOffset * m_zoomLevel;
       painter->setPen(QPen(dotOutline, 1.5f));
       painter->setBrush(dotColor);
       painter->drawEllipse(p1Screen, 3, 3);
@@ -1234,6 +1245,35 @@ void CanvasItem::paint(QPainter *painter) {
     }
 
     painter->restore();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // LIQUIFY PREVIEW OVERLAY
+  // ══════════════════════════════════════════════════════════════
+  if (m_isLiquifying && !m_liquifyPreviewCache.isNull()) {
+    QRectF lPaperRect(
+        m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
+        m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
+    renderLiquifyPreview(painter, lPaperRect);
+
+    // Draw Liquify cursor (radius circle)
+    if (m_cursorVisible && m_liquifyEngine) {
+      float liqRadius = m_liquifyEngine->radius() * m_zoomLevel;
+      painter->save();
+      painter->setRenderHint(QPainter::Antialiasing);
+      QPen outerPen(QColor(0, 0, 0, 100), 2.0f);
+      painter->setPen(outerPen);
+      painter->setBrush(Qt::NoBrush);
+      painter->drawEllipse(m_cursorPos, liqRadius, liqRadius);
+      QPen innerPen(QColor(255, 255, 255, 180), 1.2f);
+      painter->setPen(innerPen);
+      painter->drawEllipse(m_cursorPos, liqRadius, liqRadius);
+      // Center dot
+      painter->setPen(Qt::NoPen);
+      painter->setBrush(QColor(255, 255, 255, 200));
+      painter->drawEllipse(m_cursorPos, 2, 2);
+      painter->restore();
+    }
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1363,14 +1403,15 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
         // m_stabPosQueue[1] = EMA Secundario
         m_stabPosQueue.push_back(pos);
         m_stabPosQueue.push_back(pos);
-        
+
         m_stabPresQueue.clear();
         m_stabPresQueue.push_back(pressure);
       }
 
       // Mapeo no lineal para que se sienta premium.
       // Un mass = 0.95 significa 95% de inercia, 5% de la nueva posición.
-      // En un Double EMA, la inercia se siente aún más, por lo que 0.92 = muy suave.
+      // En un Double EMA, la inercia se siente aún más, por lo que 0.92 = muy
+      // suave.
       float mass = std::pow(strength, 0.65f) * 0.92f;
 
       // Double EMA Position
@@ -1379,10 +1420,11 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
       m_stabPosQueue[0] = ema1;
       m_stabPosQueue[1] = ema2;
-      
+
       m_stabilizedPos = ema2;
 
-      // Single EMA Pressure (la presión no necesita double EMA, perdería respuesta rápida)
+      // Single EMA Pressure (la presión no necesita double EMA, perdería
+      // respuesta rápida)
       float prevPres = m_stabPresQueue.front();
       effectivePressure = prevPres * mass + pressure * (1.0f - mass);
       m_stabPresQueue.front() = effectivePressure;
@@ -1836,14 +1878,15 @@ void CanvasItem::detectAndDrawQuickShape() {
     if (layer) {
       layer->dirty = true;
       layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
-      if (layer->buffer) layer->buffer->clearDirtyFlags();
+      if (layer->buffer)
+        layer->buffer->clearDirtyFlags();
     }
     m_cachedCanvasImage = QImage(); // Force full recomposite
 
     // Sync FBO
     if (m_pingFBO && layer && layer->buffer) {
       QImage fboImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                 QImage::Format_RGBA8888_Premultiplied);
+                    QImage::Format_RGBA8888_Premultiplied);
       m_pingFBO->bind();
       QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
       QPainter fboPainter(&device);
@@ -1907,14 +1950,15 @@ void CanvasItem::detectAndDrawQuickShape() {
       if (layer) {
         layer->dirty = true;
         layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
-        if (layer->buffer) layer->buffer->clearDirtyFlags();
+        if (layer->buffer)
+          layer->buffer->clearDirtyFlags();
       }
       m_cachedCanvasImage = QImage(); // Force full recomposite
 
       // 3. SYNC FBO FROM CPU BUFFER (INSTANT REFRESH)
       if (m_pingFBO && layer && layer->buffer) {
         QImage fboImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                   QImage::Format_RGBA8888_Premultiplied);
+                      QImage::Format_RGBA8888_Premultiplied);
         m_pingFBO->bind();
         QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
         QPainter fboPainter(&device);
@@ -1953,7 +1997,8 @@ void CanvasItem::detectAndDrawQuickShape() {
   else if (m_quickShapeType == QuickShapeType::Line)
     emit notificationRequested("Line", "info");
 
-  // No longer need the redundant sync block here as it's handled above in both Line/Circle cases
+  // No longer need the redundant sync block here as it's handled above in both
+  // Line/Circle cases
 
   update();
 }
@@ -1980,7 +2025,8 @@ void CanvasItem::redrawQuickShape() {
   // Mark layer dirty so compositing cache refreshes
   layer->dirty = true;
   layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
-  if (layer->buffer) layer->buffer->clearDirtyFlags();
+  if (layer->buffer)
+    layer->buffer->clearDirtyFlags();
   m_cachedCanvasImage = QImage(); // Force full recomposite
 
   // Sync FBO for instant visual refresh (if GPU path is active)
@@ -2002,7 +2048,8 @@ void CanvasItem::redrawQuickShape() {
 
 void CanvasItem::drawLine(const QPointF &p1, const QPointF &p2) {
   Layer *layer = m_layerManager->getActiveLayer();
-  if (!layer || !layer->buffer) return;
+  if (!layer || !layer->buffer)
+    return;
 
   // CRITICAL: use premultiplied format — same as handleDraw — to avoid color
   // fringing artifacts (teal/cyan halos) from incorrect alpha compositing
@@ -2014,12 +2061,12 @@ void CanvasItem::drawLine(const QPointF &p1, const QPointF &p2) {
 
   BrushSettings settings = m_brushEngine->getBrush();
   settings.color = m_brushColor;
-  settings.size  = m_brushSize;
+  settings.size = m_brushSize;
   settings.opacity = m_brushOpacity;
   // Disable dynamics that don't make sense for shapes
-  settings.sizeByPressure    = false;
+  settings.sizeByPressure = false;
   settings.opacityByPressure = false;
-  settings.jitter    = 0.0f;
+  settings.jitter = 0.0f;
   settings.posJitterX = 0.0f;
   settings.posJitterY = 0.0f;
 
@@ -2044,7 +2091,8 @@ void CanvasItem::drawLine(const QPointF &p1, const QPointF &p2) {
 
 void CanvasItem::drawCircle(const QPointF &center, float radius) {
   Layer *layer = m_layerManager->getActiveLayer();
-  if (!layer || !layer->buffer) return;
+  if (!layer || !layer->buffer)
+    return;
 
   // CRITICAL: use premultiplied format to avoid color fringing artifacts
   QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
@@ -2055,11 +2103,11 @@ void CanvasItem::drawCircle(const QPointF &center, float radius) {
 
   BrushSettings settings = m_brushEngine->getBrush();
   settings.color = m_brushColor;
-  settings.size  = m_brushSize;
+  settings.size = m_brushSize;
   settings.opacity = m_brushOpacity;
-  settings.sizeByPressure    = false;
+  settings.sizeByPressure = false;
   settings.opacityByPressure = false;
-  settings.jitter    = 0.0f;
+  settings.jitter = 0.0f;
   settings.posJitterX = 0.0f;
   settings.posJitterY = 0.0f;
 
@@ -2093,6 +2141,16 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       QGuiApplication::changeOverrideCursor(Qt::ClosedHandCursor);
     else
       setCursor(Qt::ClosedHandCursor);
+    return;
+  }
+
+  // Liquify Tool — Start stroke
+  if (m_tool == ToolType::Liquify && m_isLiquifying) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    m_liquifyLastPos = QPointF(-1, -1); // Reset for new gesture
+    handleLiquifyDraw(canvasPos, 0.5f);
+    event->accept();
     return;
   }
 
@@ -2346,6 +2404,15 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     return;
   }
 
+  // Liquify Tool — Continuous deformation
+  if (m_tool == ToolType::Liquify && m_isLiquifying &&
+      (event->buttons() & Qt::LeftButton)) {
+    QPointF canvasPos =
+        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    handleLiquifyDraw(canvasPos, 0.5f);
+    return;
+  }
+
   if (m_tool == ToolType::Eyedropper && (event->buttons() & Qt::LeftButton)) {
     QString color = sampleColor(static_cast<int>(event->position().x()),
                                 static_cast<int>(event->position().y()));
@@ -2400,27 +2467,34 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
       // ═══════════════════════════════════════════════════════════
       // QUICKSHAPE RESIZE: Procreate-style drag-to-resize
       // ═══════════════════════════════════════════════════════════
-      float distFromAnchor = QLineF(m_quickShapeAnchor, event->position()).length();
+      float distFromAnchor =
+          QLineF(m_quickShapeAnchor, event->position()).length();
       if (distFromAnchor > 5.0f) { // Dead zone to prevent accidental resize
         m_quickShapeResizing = true;
 
         if (m_quickShapeType == QuickShapeType::Circle) {
           // Scale radius based on distance from center (in screen coords)
-          QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
-          float distFromCenter = QLineF(centerScreen, event->position()).length();
+          QPointF centerScreen =
+              m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+          float distFromCenter =
+              QLineF(centerScreen, event->position()).length();
           float newRadius = distFromCenter / m_zoomLevel;
           // Clamp to reasonable bounds
           m_quickShapeRadius = std::max(3.0f, newRadius);
           redrawQuickShape();
         } else if (m_quickShapeType == QuickShapeType::Line) {
           // Scale line from center using original direction
-          QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
-          float distFromCenter = QLineF(centerScreen, event->position()).length();
+          QPointF centerScreen =
+              m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+          float distFromCenter =
+              QLineF(centerScreen, event->position()).length();
           float newHalfLen = distFromCenter / m_zoomLevel;
 
           // Use the stored stable direction vector
-          m_quickShapeLineP1 = m_quickShapeCenter - m_quickShapeLineDir * newHalfLen;
-          m_quickShapeLineP2 = m_quickShapeCenter + m_quickShapeLineDir * newHalfLen;
+          m_quickShapeLineP1 =
+              m_quickShapeCenter - m_quickShapeLineDir * newHalfLen;
+          m_quickShapeLineP2 =
+              m_quickShapeCenter + m_quickShapeLineDir * newHalfLen;
           redrawQuickShape();
         }
       }
@@ -2542,7 +2616,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
       bool wasHolding = m_isHoldingForShape;
       m_isDrawing = false;
       m_isHoldingForShape = false;
-    m_quickShapeType = QuickShapeType::None;
+      m_quickShapeType = QuickShapeType::None;
       m_hasPrediction = false;
 
       if (m_pingFBO) {
@@ -2558,8 +2632,9 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
             m_cachedCanvasImage = QImage(); // Force recomposite
           }
         } else {
-          // QuickShape stroke: drawCircle/drawLine already wrote to layer buffer
-          // Just mark it dirty so the cache recomposes correctly on next paint
+          // QuickShape stroke: drawCircle/drawLine already wrote to layer
+          // buffer Just mark it dirty so the cache recomposes correctly on next
+          // paint
           Layer *layer = m_layerManager->getActiveLayer();
           if (layer) {
             layer->dirty = true;
@@ -2677,25 +2752,33 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     event->accept();
 
   } else if (event->type() == QEvent::TabletMove && m_isDrawing) {
-    if (m_isDrawing && m_isHoldingForShape && m_quickShapeType != QuickShapeType::None) {
+    if (m_isDrawing && m_isHoldingForShape &&
+        m_quickShapeType != QuickShapeType::None) {
       // ═══════════════════════════════════════════════════════════
       // QUICKSHAPE RESIZE (TABLET): Procreate-style drag-to-resize
       // ═══════════════════════════════════════════════════════════
-      float distFromAnchor = QLineF(m_quickShapeAnchor, event->position()).length();
+      float distFromAnchor =
+          QLineF(m_quickShapeAnchor, event->position()).length();
       if (distFromAnchor > 5.0f) {
         m_quickShapeResizing = true;
 
         if (m_quickShapeType == QuickShapeType::Circle) {
-          QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
-          float distFromCenter = QLineF(centerScreen, event->position()).length();
+          QPointF centerScreen =
+              m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+          float distFromCenter =
+              QLineF(centerScreen, event->position()).length();
           m_quickShapeRadius = std::max(3.0f, distFromCenter / m_zoomLevel);
           redrawQuickShape();
         } else if (m_quickShapeType == QuickShapeType::Line) {
-          QPointF centerScreen = m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
-          float distFromCenter = QLineF(centerScreen, event->position()).length();
+          QPointF centerScreen =
+              m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
+          float distFromCenter =
+              QLineF(centerScreen, event->position()).length();
           float newHalfLen = distFromCenter / m_zoomLevel;
-          m_quickShapeLineP1 = m_quickShapeCenter - m_quickShapeLineDir * newHalfLen;
-          m_quickShapeLineP2 = m_quickShapeCenter + m_quickShapeLineDir * newHalfLen;
+          m_quickShapeLineP1 =
+              m_quickShapeCenter - m_quickShapeLineDir * newHalfLen;
+          m_quickShapeLineP2 =
+              m_quickShapeCenter + m_quickShapeLineDir * newHalfLen;
           redrawQuickShape();
         }
       }
@@ -2713,7 +2796,8 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     // Only draw if there's actual pressure or we are using a tool that
     // doesn't strictly require it, otherwise we leave "stamp" markers at
     // the end
-    if (!m_isHoldingForShape && (pressure > 0.001f || m_tool == ToolType::Eraser)) {
+    if (!m_isHoldingForShape &&
+        (pressure > 0.001f || m_tool == ToolType::Eraser)) {
       handleDraw(event->position(), pressure, tiltFactor);
     }
     update();
@@ -2729,8 +2813,8 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     // FINALIZAR TRAZO PREMIUM (Pilar 3): Volcar GPU a CPU
     if (m_pingFBO) {
       if (!wasHolding) {
-        QImage result =
-            m_pingFBO->toImage(true).convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+        QImage result = m_pingFBO->toImage(true).convertToFormat(
+            QImage::Format_RGBA8888_Premultiplied);
         Layer *layer = m_layerManager->getActiveLayer();
         if (layer && layer->buffer) {
           layer->buffer->loadRawData(result.bits());
@@ -3460,6 +3544,10 @@ void CanvasItem::setCurrentTool(const QString &tool) {
   } else if (tool == "panel_cut") {
     m_tool = ToolType::PanelCut;
     setCursor(QCursor(Qt::BlankCursor));
+  } else if (tool == "liquify") {
+    m_tool = ToolType::Liquify;
+    setCursor(QCursor(Qt::BlankCursor));
+    beginLiquify();
   }
 
   invalidateCursorCache();
@@ -4110,7 +4198,7 @@ void CanvasItem::moveLayerToGroup(int layerId, int groupId) {
 
   artflow::Layer *layerToMove = m_layerManager->getLayer(fromManagerIdx);
   if (layerToMove) {
-      layerToMove->parentId = (int)grpLayer->stableId;
+    layerToMove->parentId = (int)grpLayer->stableId;
   }
 
   // We want the layer to be placed immediately below the group in the manager
@@ -4118,15 +4206,17 @@ void CanvasItem::moveLayerToGroup(int layerId, int groupId) {
   // The UI shows layers in reverse, so "inside the group" visually means the
   // layer is at a lower manager index than the group.
   int destManagerIdx = groupManagerIdx - 1;
-  if (destManagerIdx < 0) destManagerIdx = 0;
-  if (destManagerIdx == fromManagerIdx) return;
+  if (destManagerIdx < 0)
+    destManagerIdx = 0;
 
-  m_layerManager->moveLayer(fromManagerIdx, destManagerIdx);
+  if (destManagerIdx != fromManagerIdx) {
+    m_layerManager->moveLayer(fromManagerIdx, destManagerIdx);
 
-  // Recalculate active index
-  if (m_activeLayerIndex == fromManagerIdx) {
-    m_activeLayerIndex = destManagerIdx;
-    emit activeLayerChanged();
+    // Recalculate active index
+    if (m_activeLayerIndex == fromManagerIdx) {
+      m_activeLayerIndex = destManagerIdx;
+      emit activeLayerChanged();
+    }
   }
 
   updateLayersList();
@@ -4146,7 +4236,6 @@ void CanvasItem::toggleGroupExpanded(int index) {
     updateLayersList();
   }
 }
-
 
 void CanvasItem::removeLayer(int index) {
   Layer *l = m_layerManager->getLayer(index);
@@ -4173,18 +4262,33 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
     return;
 
   // Validate indices
-  if (fromIndex < 0 || fromIndex >= m_layerManager->getLayerCount() ||
-      toIndex < 0 || toIndex >= m_layerManager->getLayerCount()) {
+  int count = m_layerManager->getLayerCount();
+  if (fromIndex < 0 || fromIndex >= count || toIndex < 0 || toIndex >= count) {
     return;
   }
 
   m_layerManager->moveLayer(fromIndex, toIndex);
 
-  // Auto-clipping logic: If dropped into the middle of a clipping group,
-  // join it.
-  int count = m_layerManager->getLayerCount();
-  Layer *moved = m_layerManager->getLayer(toIndex);
-  Layer *above =
+  // Update parentId based on new neighbors to allow entering/exiting groups
+  artflow::Layer *moved = m_layerManager->getLayer(toIndex);
+  if (moved && moved->type != artflow::Layer::Type::Background) {
+    artflow::Layer *neighborAbove =
+        (toIndex + 1 < count) ? m_layerManager->getLayer(toIndex + 1) : nullptr;
+
+    if (neighborAbove) {
+      if (neighborAbove->type == artflow::Layer::Type::Group) {
+        moved->parentId = (int)neighborAbove->stableId;
+      } else {
+        moved->parentId = neighborAbove->parentId;
+      }
+    } else {
+      moved->parentId = -1;
+    }
+  }
+
+  // Auto-clipping logic: If dropped into the middle of a clipping group, join
+  // it.
+  artflow::Layer *above =
       (toIndex + 1 < count) ? m_layerManager->getLayer(toIndex + 1) : nullptr;
   if (moved && above && above->clipped) {
     moved->clipped = true;
@@ -5024,7 +5128,8 @@ void CanvasItem::updateLayersList() {
   QVariantList layerList;
   for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
     Layer *l = m_layerManager->getLayer(i);
-    if (!l) continue;
+    if (!l)
+      continue;
     QVariantMap layer;
     layer["layerId"] = i;
     layer["name"] = QString::fromStdString(l->name);
@@ -5051,17 +5156,18 @@ void CanvasItem::updateLayersList() {
     int depth = 0;
     int pId = l->parentId;
     while (pId != -1) {
-        depth++;
-        bool found = false;
-        for (int j = 0; j < m_layerManager->getLayerCount(); ++j) {
-            Layer *pLayer = m_layerManager->getLayer(j);
-            if (pLayer && (int)pLayer->stableId == pId) {
-                pId = pLayer->parentId;
-                found = true;
-                break;
-            }
+      depth++;
+      bool found = false;
+      for (int j = 0; j < m_layerManager->getLayerCount(); ++j) {
+        Layer *pLayer = m_layerManager->getLayer(j);
+        if (pLayer && (int)pLayer->stableId == pId) {
+          pId = pLayer->parentId;
+          found = true;
+          break;
         }
-        if (!found || depth > 20) break; // Safety break
+      }
+      if (!found || depth > 20)
+        break; // Safety break
     }
 
     layer["depth"] = depth;
@@ -5072,22 +5178,24 @@ void CanvasItem::updateLayersList() {
     int checkId = l->parentId;
     int iterations = 0;
     while (checkId != -1) {
-        bool foundParent = false;
-        for (int j = 0; j < m_layerManager->getLayerCount(); ++j) {
-            Layer *pLayer = m_layerManager->getLayer(j);
-            if (pLayer && (int)pLayer->stableId == checkId) {
-                if (!pLayer->expanded) {
-                    parentExpanded = false;
-                    break;
-                }
-                checkId = pLayer->parentId;
-                foundParent = true;
-                break;
-            }
+      bool foundParent = false;
+      for (int j = 0; j < m_layerManager->getLayerCount(); ++j) {
+        Layer *pLayer = m_layerManager->getLayer(j);
+        if (pLayer && (int)pLayer->stableId == checkId) {
+          if (!pLayer->expanded) {
+            parentExpanded = false;
+            break;
+          }
+          checkId = pLayer->parentId;
+          foundParent = true;
+          break;
         }
-        // Safety check to prevent infinite loop
-        if (++iterations > 20) break;
-        if (!parentExpanded || !foundParent) break;
+      }
+      // Safety check to prevent infinite loop
+      if (++iterations > 20)
+        break;
+      if (!parentExpanded || !foundParent)
+        break;
     }
     layer["parentExpanded"] = parentExpanded;
 
@@ -5535,8 +5643,21 @@ void CanvasItem::toggleAlphaLock(int index) {
 void CanvasItem::toggleVisibility(int index) {
   Layer *l = m_layerManager->getLayer(index);
   if (l) {
-    l->visible = !l->visible;
+    bool newVisible = !l->visible;
+    l->visible = newVisible;
     l->markDirty();
+
+    // If it's a group, toggle all children recursively
+    if (l->type == Layer::Type::Group) {
+      uint32_t groupStableId = l->stableId;
+      for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+        Layer *child = m_layerManager->getLayer(i);
+        if (child && child->parentId == (int)groupStableId) {
+          child->visible = newVisible;
+        }
+      }
+    }
+
     updateLayersList();
     update();
   }
@@ -7535,4 +7656,167 @@ void CanvasItem::setGrainTextureForBrush(const QString &brushName,
 
   emit brushPropertyChanged("grain", "texture");
   applyEditingPresetToEngine();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  LIQUIFY TOOL — Implementation
+// ══════════════════════════════════════════════════════════════════
+
+void CanvasItem::beginLiquify() {
+  if (m_isLiquifying)
+    return; // Already active
+
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer) {
+    emit notificationRequested("No active layer for Liquify", "warning");
+    return;
+  }
+
+  if (layer->locked) {
+    emit notificationRequested("Layer is locked", "warning");
+    return;
+  }
+
+  // Create engine if needed
+  if (!m_liquifyEngine)
+    m_liquifyEngine = new artflow::LiquifyEngine();
+
+  // Snapshot for undo
+  m_liquifyBeforeBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+
+  // Initialize the engine with the current layer data
+  m_liquifyEngine->begin(*layer->buffer, m_canvasWidth, m_canvasHeight);
+
+  m_isLiquifying = true;
+  m_liquifyLastPos = QPointF(-1, -1);
+
+  // Render initial preview (just the original)
+  m_liquifyPreviewCache = QImage();
+
+  emit isLiquifyingChanged();
+  emit notificationRequested("Liquify active — drag to deform", "info");
+  update();
+}
+
+void CanvasItem::applyLiquify() {
+  if (!m_isLiquifying || !m_liquifyEngine)
+    return;
+
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer)
+    return;
+
+  // Get the final deformed image
+  QImage result = m_liquifyEngine->end();
+
+  if (!result.isNull()) {
+    // Bake into the layer buffer
+    const uint8_t *src = result.constBits();
+    layer->buffer->loadRawData(src);
+    layer->dirty = true;
+  }
+
+  // Push undo
+  if (m_liquifyBeforeBuffer) {
+    auto afterBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+    auto cmd = std::make_unique<artflow::StrokeUndoCommand>(
+        m_layerManager, m_activeLayerIndex, std::move(m_liquifyBeforeBuffer),
+        std::move(afterBuffer));
+    m_undoManager->pushCommand(std::move(cmd));
+  }
+
+  m_isLiquifying = false;
+  m_liquifyPreviewCache = QImage();
+
+  clearRenderCaches();
+  emit isLiquifyingChanged();
+  emit notificationRequested("Liquify applied", "success");
+
+  // Switch back to previous tool
+  m_previousToolStr = m_currentToolStr;
+  update();
+}
+
+void CanvasItem::cancelLiquify() {
+  if (!m_isLiquifying || !m_liquifyEngine)
+    return;
+
+  Layer *layer = m_layerManager->getActiveLayer();
+
+  // Restore original
+  if (layer && layer->buffer && m_liquifyBeforeBuffer) {
+    layer->buffer->copyFrom(*m_liquifyBeforeBuffer);
+    layer->dirty = true;
+  }
+
+  m_liquifyEngine->end(); // Clears engine state
+  m_liquifyBeforeBuffer.reset();
+  m_isLiquifying = false;
+  m_liquifyPreviewCache = QImage();
+
+  clearRenderCaches();
+  emit isLiquifyingChanged();
+  emit notificationRequested("Liquify cancelled", "info");
+  update();
+}
+
+void CanvasItem::setLiquifyMode(int mode) {
+  if (m_liquifyEngine)
+    m_liquifyEngine->setMode(static_cast<artflow::LiquifyMode>(mode));
+}
+
+void CanvasItem::setLiquifyRadius(float radius) {
+  if (m_liquifyEngine)
+    m_liquifyEngine->setRadius(radius);
+}
+
+void CanvasItem::setLiquifyStrength(float strength) {
+  if (m_liquifyEngine)
+    m_liquifyEngine->setStrength(strength);
+}
+
+void CanvasItem::setLiquifyMorpher(float morpher) {
+  if (m_liquifyEngine)
+    m_liquifyEngine->setMorpher(morpher);
+}
+
+void CanvasItem::handleLiquifyDraw(const QPointF &canvasPos, float pressure) {
+  if (!m_isLiquifying || !m_liquifyEngine || !m_liquifyEngine->isActive())
+    return;
+
+  float cx = static_cast<float>(canvasPos.x());
+  float cy = static_cast<float>(canvasPos.y());
+
+  // Use pressure to modulate effect
+  float origStrength = m_liquifyEngine->strength();
+  m_liquifyEngine->setStrength(origStrength * std::max(0.1f, pressure));
+
+  if (m_liquifyLastPos.x() < 0) {
+    // First dab — no direction yet, skip Push but apply stationary effects
+    m_liquifyLastPos = canvasPos;
+    m_liquifyEngine->applyBrush(cx, cy, cx, cy);
+  } else {
+    float prevX = static_cast<float>(m_liquifyLastPos.x());
+    float prevY = static_cast<float>(m_liquifyLastPos.y());
+    m_liquifyEngine->applyBrush(cx, cy, prevX, prevY);
+    m_liquifyLastPos = canvasPos;
+  }
+
+  // Restore original strength
+  m_liquifyEngine->setStrength(origStrength);
+
+  // Update preview cache (throttled via requestUpdate)
+  m_liquifyPreviewCache = m_liquifyEngine->renderPreview();
+  requestUpdate();
+}
+
+void CanvasItem::renderLiquifyPreview(QPainter *painter,
+                                      const QRectF &paperRect) {
+  if (!m_isLiquifying || m_liquifyPreviewCache.isNull())
+    return;
+
+  painter->save();
+  painter->setRenderHint(QPainter::SmoothPixmapTransform);
+  painter->drawImage(paperRect, m_liquifyPreviewCache);
+  painter->restore();
 }

@@ -404,12 +404,7 @@ Popup {
                             Behavior on scale { NumberAnimation { duration: 100 } }
                         }
                     }
-                    Image {
-                        source: "image://icons/grip.svg"
-                        width: 20; height: 20
-                        Layout.alignment: Qt.AlignVCenter
-                        opacity: 0.6
-                    }
+
                 }
             }
             

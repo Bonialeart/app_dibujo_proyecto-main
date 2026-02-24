@@ -1,23 +1,4 @@
-<!-- @license lucide-static v0.562.0 - ISC -->
-<svg
-  class="lucide lucide-keyboard"
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="white"
-  stroke-width="2"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <rect width="20" height="16" x="2" y="4" rx="2" ry="2" />
-  <path d="M6 8h.001" />
-  <path d="M10 8h.001" />
-  <path d="M14 8h.001" />
-  <path d="M18 8h.001" />
-  <path d="M8 12h.001" />
-  <path d="M12 12h.001" />
-  <path d="M16 12h.001" />
-  <path d="M7 16h10" />
+<svg width="24" height="24" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
+<path d="M19.5 7.5H4.5C3.12 7.5 2 8.62 2 10V17C2 18.38 3.12 19.5 4.5 19.5H19.5C20.88 19.5 22 18.38 22 17V10C22 8.62 20.88 7.5 19.5 7.5ZM7 16H5V14H7V16ZM7 13H5V11H7V13ZM10 16H8V14H10V16ZM10 13H8V11H10V13ZM13 16H11V14H13V16ZM13 13H11V11H13V13ZM16 16H14V14H16V16ZM16 13H14V11H16V13ZM19 16H17V14H19V16ZM19 13H17V11H19V13Z"/>
+<path d="M12 5.5C12.83 5.5 13.5 4.83 13.5 4C13.5 3.17 12.83 2.5 12 2.5C11.17 2.5 10.5 3.17 10.5 4C10.5 4.83 11.17 5.5 12 5.5Z"/>
 </svg>

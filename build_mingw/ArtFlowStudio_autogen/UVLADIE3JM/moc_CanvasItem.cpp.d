@@ -492,6 +492,7 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_CanvasItem.
   E:/Rescate_Proyecto/src/core/cpp/include/common_types.h \
   E:/Rescate_Proyecto/src/core/cpp/include/image_buffer.h \
   E:/Rescate_Proyecto/src/core/cpp/include/layer_manager.h \
+  E:/Rescate_Proyecto/src/core/cpp/include/liquify_engine.h \
   E:/Rescate_Proyecto/src/core/cpp/include/stroke_renderer.h \
   E:/Rescate_Proyecto/src/core/cpp/include/stroke_undo_command.h \
   E:/Rescate_Proyecto/src/core/cpp/include/undo_command.h \
