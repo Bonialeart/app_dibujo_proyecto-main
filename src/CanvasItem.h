@@ -415,6 +415,9 @@ public:
   // Stamp preview (single brush stamp for sidebar thumbnail)
   Q_INVOKABLE QString getStampPreview();
 
+  // Canvas preview for navigator (base64 PNG)
+  Q_INVOKABLE QString getCanvasPreview();
+
   // ══════════════════════════════════════════════════════════════
   // Brush CRUD — Create, Delete, Duplicate, Rename
   // ══════════════════════════════════════════════════════════════

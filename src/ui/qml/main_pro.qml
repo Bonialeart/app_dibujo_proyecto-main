@@ -2598,13 +2598,57 @@ Window {
                     Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                 }
 
-                // === TOP BAR REDESIGN: DUAL FLOATING CAPSULES ===
+                // === TOP BAR REDESIGN: PREMIUM ICON-ONLY FLOATING CAPSULES ===
+                // TopBarButton — reusable inline component for icon-only toolbar buttons
+                component TopBarButton : Rectangle {
+                    id: _tbb
+                    property string iconSource: ""
+                    property string tooltip: ""
+                    property bool active: false
+                    property color activeColor: colorAccent
+                    property bool useCustomContent: false
+                    signal clicked()
+
+                    width: 36 * uiScale; height: 36 * uiScale; radius: 12 * uiScale
+                    color: {
+                        if (active) return Qt.rgba(activeColor.r, activeColor.g, activeColor.b, 0.18)
+                        if (_tbbMa.containsMouse) return Qt.rgba(1, 1, 1, 0.08)
+                        return "transparent"
+                    }
+                    border.color: active ? Qt.rgba(activeColor.r, activeColor.g, activeColor.b, 0.5) : "transparent"
+                    border.width: active ? 1.5 : 0
+
+                    scale: _tbbMa.pressed ? 0.90 : (_tbbMa.containsMouse ? 1.05 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: 140 } }
+                    Behavior on border.color { ColorAnimation { duration: 140 } }
+
+                    Image {
+                        source: _tbb.iconSource
+                        width: 18 * uiScale; height: 18 * uiScale
+                        anchors.centerIn: parent
+                        visible: !_tbb.useCustomContent && _tbb.iconSource !== ""
+                        opacity: _tbb.active ? 1.0 : (_tbbMa.containsMouse ? 0.9 : 0.6)
+                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                    }
+
+                    MouseArea {
+                        id: _tbbMa; anchors.fill: parent
+                        hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: _tbb.clicked()
+                    }
+
+                    ToolTip.visible: _tbbMa.containsMouse && _tbb.tooltip !== ""
+                    ToolTip.text: _tbb.tooltip
+                    ToolTip.delay: 500
+                }
+
                 Item {
                     id: topBarContainer
                     width: parent.width - 40 * uiScale
-                    height: 48 * uiScale
+                    height: 52 * uiScale
                     anchors.top: parent.top
-                    anchors.topMargin: 16 * uiScale
+                    anchors.topMargin: 12 * uiScale
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: isProjectActive && !isZenMode && !isStudioMode
                     z: 950
@@ -2613,105 +2657,111 @@ Window {
                     Rectangle {
                         id: topBarLeft
                         height: parent.height
-                        width: leftLayout.implicitWidth + 32 * uiScale
+                        width: leftLayout.implicitWidth + 28 * uiScale
                         anchors.left: parent.left
                         radius: height / 2
-                        color: "#f01a1a1e"
-                        border.color: Qt.rgba(1, 1, 1, 0.08)
+                        color: "#e81a1a1e"
+                        border.color: Qt.rgba(1, 1, 1, 0.06)
                         border.width: 1
 
-                        // Shadow
+                        // Deep shadow
                         Rectangle {
-                            anchors.fill: parent; anchors.margins: -4
-                            z: -1; radius: parent.radius + 4
-                            color: "black"; opacity: 0.25
+                            anchors.fill: parent; anchors.margins: -6
+                            z: -2; radius: parent.radius + 6
+                            color: "black"; opacity: 0.35
+                        }
+                        // Inner shadow
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: -2
+                            z: -1; radius: parent.radius + 2
+                            color: "black"; opacity: 0.15
+                        }
+                        // Top-edge highlight
+                        Rectangle {
+                            width: parent.width * 0.4; height: 1
+                            anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
+                            gradient: Gradient { orientation: Gradient.Horizontal
+                                GradientStop { position: 0; color: "transparent" }
+                                GradientStop { position: 0.5; color: Qt.rgba(1,1,1,0.10) }
+                                GradientStop { position: 1; color: "transparent" }
+                            }
                         }
 
                         RowLayout {
                             id: leftLayout
                             anchors.centerIn: parent
-                            spacing: 12 * uiScale
+                            spacing: 4 * uiScale
 
                             // Sidebar Toggle
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: sidebarToggleMouse.containsMouse ? "#22ffffff" : "transparent"
-                                Column {
-                                    anchors.centerIn: parent; spacing: 3 * uiScale
-                                    Rectangle { width: 12 * uiScale; height: 1.5 * uiScale; radius: 1; color: showSidebar ? colorAccent : "#777" }
-                                    Rectangle { width: 8 * uiScale; height: 1.5 * uiScale; radius: 1; color: showSidebar ? colorAccent : "#777" }
-                                    Rectangle { width: 12 * uiScale; height: 1.5 * uiScale; radius: 1; color: showSidebar ? colorAccent : "#777" }
-                                }
-                                MouseArea { 
-                                    id: sidebarToggleMouse
-                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                    onClicked: showSidebar = !showSidebar
-                                }
+                            TopBarButton {
+                                iconSource: iconPath("sidebar.svg")
+                                tooltip: showSidebar ? "Ocultar panel lateral" : "Mostrar panel lateral"
+                                active: showSidebar
+                                onClicked: showSidebar = !showSidebar
                             }
 
                             // Back Arrow
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: backMouse.containsMouse ? "#22ffffff" : "transparent"
-                                Text { text: "←"; color: "#888"; font.pixelSize: 14 * uiScale; anchors.centerIn: parent }
-                                MouseArea { id: backMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: currentPage = 0 }
+                            TopBarButton {
+                                iconSource: iconPath("arrow-left.svg")
+                                tooltip: "Volver al inicio"
+                                onClicked: currentPage = 0
                             }
 
-                            Rectangle { width: 1; height: 16 * uiScale; color: "#22ffffff" } // Separator
+                            // Separator
+                            Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
 
                             // Settings Button
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: settingsBtnMouse.containsMouse ? "#22ffffff" : "transparent"
-                                Image { 
-                                    source: iconPath("settings.svg") 
-                                    width: 14 * uiScale; height: 14 * uiScale 
-                                    anchors.centerIn: parent 
-                                    opacity: 0.7 
-                                }
-                                MouseArea { 
-                                    id: settingsBtnMouse; anchors.fill: parent 
-                                    hoverEnabled: true; cursorShape: Qt.PointingHandCursor 
-                                    onClicked: settingsMenu.open() 
-                                }
+                            TopBarButton {
+                                iconSource: iconPath("settings.svg")
+                                tooltip: "Configuración"
+                                onClicked: settingsMenu.open()
                             }
 
                             // Reference Button
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: refBtnMouse.containsMouse ? "#22ffffff" : "transparent"
-                                Image { source: iconPath("image.svg"); width: 14 * uiScale; height: 14 * uiScale; anchors.centerIn: parent; opacity: refWindow.active ? 1.0 : 0.6 }
-                                MouseArea { id: refBtnMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.active = !refWindow.active }
+                            TopBarButton {
+                                iconSource: iconPath("image.svg")
+                                tooltip: refWindow.active ? "Cerrar referencia" : "Abrir referencia / navegador"
+                                active: refWindow.active
+                                onClicked: refWindow.active = !refWindow.active
                             }
 
-                            // Timelapse
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: tlIndicatorMouse.containsMouse ? "#22ffffff" : "transparent"
+                            // Timelapse Recording
+                            TopBarButton {
+                                id: tlIndicator
+                                property bool tlRecording: true
+                                tooltip: "Timelapse"
+                                useCustomContent: true
+                                onClicked: tlMiniMenu.visible = !tlMiniMenu.visible
+
+                                // Recording indicator dot
                                 Rectangle {
-                                    width: 6 * uiScale; height: 6 * uiScale; radius: 3 * uiScale
+                                    width: 10 * uiScale; height: 10 * uiScale; radius: 5 * uiScale
                                     anchors.centerIn: parent
-                                    color: tlIndicator.tlRecording ? "#ff3b30" : "#444"
+                                    color: tlIndicator.tlRecording ? "#ff3b30" : "#555"
                                     SequentialAnimation on opacity {
                                         running: tlIndicator.tlRecording; loops: Animation.Infinite
-                                        NumberAnimation { to: 0.3; duration: 800 }
-                                        NumberAnimation { to: 1.0; duration: 800 }
+                                        NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutQuad }
+                                        NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
+                                    }
+                                    // Glow ring when recording
+                                    Rectangle {
+                                        visible: tlIndicator.tlRecording
+                                        anchors.centerIn: parent
+                                        width: parent.width + 6 * uiScale; height: parent.height + 6 * uiScale
+                                        radius: width / 2; color: "transparent"
+                                        border.color: Qt.rgba(1, 0.23, 0.19, 0.3); border.width: 1.5
                                     }
                                 }
-                                MouseArea { 
-                                    id: tlIndicatorMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                    onClicked: tlMiniMenu.visible = !tlMiniMenu.visible 
-                                }
-                                property bool tlRecording: true
-                                id: tlIndicator
                             }
-                            
-                            // Save Button
-                            Rectangle {
-                                width: 44 * uiScale; height: 24 * uiScale; radius: 12 * uiScale
-                                color: saveMouse.containsMouse ? colorAccent : "#1affffff"
-                                Text { text: "Save"; color: "white"; font.pixelSize: 10 * uiScale; font.weight: Font.Medium; anchors.centerIn: parent }
-                                MouseArea { id: saveMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: mainWindow.saveProjectAndRefresh() }
+
+                            // Separator
+                            Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
+
+                            // Save Button (icon-only)
+                            TopBarButton {
+                                iconSource: iconPath("save.svg")
+                                tooltip: "Guardar proyecto (Ctrl+S)"
+                                onClicked: mainWindow.saveProjectAndRefresh()
                             }
                         }
                     }
@@ -2720,119 +2770,128 @@ Window {
                     Rectangle {
                         id: topBarRight
                         height: parent.height
-                        width: rightLayout.implicitWidth + 32 * uiScale
+                        width: rightLayout.implicitWidth + 28 * uiScale
                         anchors.right: parent.right
                         radius: height / 2
-                        color: "#f01a1a1e"
-                        border.color: Qt.rgba(1, 1, 1, 0.08)
+                        color: "#e81a1a1e"
+                        border.color: Qt.rgba(1, 1, 1, 0.06)
                         border.width: 1
 
-                        // Shadow
+                        // Deep shadow
                         Rectangle {
-                            anchors.fill: parent; anchors.margins: -4
-                            z: -1; radius: parent.radius + 4
-                            color: "black"; opacity: 0.25
+                            anchors.fill: parent; anchors.margins: -6
+                            z: -2; radius: parent.radius + 6
+                            color: "black"; opacity: 0.35
+                        }
+                        // Inner shadow
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: -2
+                            z: -1; radius: parent.radius + 2
+                            color: "black"; opacity: 0.15
+                        }
+                        // Top-edge highlight
+                        Rectangle {
+                            width: parent.width * 0.4; height: 1
+                            anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
+                            gradient: Gradient { orientation: Gradient.Horizontal
+                                GradientStop { position: 0; color: "transparent" }
+                                GradientStop { position: 0.5; color: Qt.rgba(1,1,1,0.10) }
+                                GradientStop { position: 1; color: "transparent" }
+                            }
                         }
 
                         RowLayout {
                             id: rightLayout
                             anchors.centerIn: parent
-                            spacing: 12 * uiScale
+                            spacing: 4 * uiScale
 
                             // Undo
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: undoMouse.containsMouse ? "#22ffffff" : "transparent"
-                                Image { source: iconPath("undo.svg"); width: 14 * uiScale; height: 14 * uiScale; anchors.centerIn: parent; opacity: 0.7 }
-                                MouseArea { id: undoMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: mainCanvas.undo() }
+                            TopBarButton {
+                                iconSource: iconPath("undo.svg")
+                                tooltip: "Deshacer (Ctrl+Z)"
+                                onClicked: mainCanvas.undo()
                             }
 
                             // Redo
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: redoMouse.containsMouse ? "#22ffffff" : "transparent"
-                                Image { source: iconPath("redo.svg"); width: 14 * uiScale; height: 14 * uiScale; anchors.centerIn: parent; opacity: 0.7 }
-                                MouseArea { id: redoMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: mainCanvas.redo() }
+                            TopBarButton {
+                                iconSource: iconPath("redo.svg")
+                                tooltip: "Rehacer (Ctrl+Y)"
+                                onClicked: mainCanvas.redo()
                             }
 
-                            Rectangle { width: 1; height: 16 * uiScale; color: "#22ffffff" } // Separator
+                            // Separator
+                            Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
 
-                            // Brush Config (Renamed from Settings)
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: showBrushSettings ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (brushSettingsMouse.containsMouse ? "#22ffffff" : "transparent")
-                                Image { source: iconPath("sliders.svg"); width: 14 * uiScale; height: 14 * uiScale; anchors.centerIn: parent; opacity: showBrushSettings ? 1 : 0.6 }
-                                MouseArea { id: brushSettingsMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { brushStudioDialog.open(); showBrush = false; showLayers = false; showColor = false } }
+                            // Brush Config
+                            TopBarButton {
+                                iconSource: iconPath("sliders.svg")
+                                tooltip: "Configuración de pincel"
+                                active: showBrushSettings
+                                onClicked: { brushStudioDialog.open(); showBrush = false; showLayers = false; showColor = false }
                             }
 
                             // Layers
-                            Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
-                                color: showLayers ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (layersBtnMouse.containsMouse ? "#22ffffff" : "transparent")
-                                Image { source: iconPath("layers.svg"); width: 14 * uiScale; height: 14 * uiScale; anchors.centerIn: parent; opacity: showLayers ? 1 : 0.6 }
-                                MouseArea { id: layersBtnMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { showLayers = !showLayers; showColor = false; showBrush = false; showBrushSettings = false } }
+                            TopBarButton {
+                                iconSource: iconPath("layers.svg")
+                                tooltip: "Capas"
+                                active: showLayers
+                                onClicked: { showLayers = !showLayers; showColor = false; showBrush = false; showBrushSettings = false }
                             }
 
                             // Animation Timeline Toggle
-                            Rectangle {
-                                width: showAnimationBar ? 68 * uiScale : 28 * uiScale
-                                height: 28 * uiScale; radius: 14 * uiScale
-                                color: showAnimationBar ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : (animBtnMouse.containsMouse ? "#22ffffff" : "transparent")
-                                border.color: showAnimationBar ? colorAccent : "#33ffffff"
-                                border.width: showAnimationBar ? 1.5 : 0.5
-                                clip: true
-                                Behavior on width  { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-                                Behavior on color  { ColorAnimation { duration: 150 } }
-                                Row {
-                                    anchors.centerIn: parent; spacing: 5
-                                    Text { text: "🎞"; font.pixelSize: 13; opacity: 1.0 }
-                                    Text {
-                                        text: "Anim"
-                                        color: showAnimationBar ? colorAccent : "#aaa"
-                                        font.pixelSize: 10; font.weight: Font.DemiBold
-                                        visible: showAnimationBar
-                                        opacity: showAnimationBar ? 1 : 0
-                                        Behavior on opacity { NumberAnimation { duration: 150 } }
-                                    }
-                                }
-                                MouseArea { id: animBtnMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: showAnimationBar = !showAnimationBar }
-                                ToolTip.visible: animBtnMouse.containsMouse
-                                ToolTip.text: showAnimationBar ? "Cerrar Timeline" : "Abrir Timeline de Animación"
-                                ToolTip.delay: 400
+                            TopBarButton {
+                                iconSource: iconPath("animation.svg")
+                                tooltip: showAnimationBar ? "Cerrar Timeline" : "Abrir Timeline de Animación"
+                                active: showAnimationBar
+                                activeColor: colorAccent
+                                onClicked: showAnimationBar = !showAnimationBar
                             }
 
-                            // Studio Mode Toggle
-                            Rectangle {
-                                width: 54 * uiScale; height: 24 * uiScale; radius: 12 * uiScale
-                                color: studioSwitchMouse.containsMouse ? colorAccent : "#1affffff"
-                                Text { text: "Studio"; color: "white"; font.pixelSize: 9 * uiScale; font.weight: Font.Bold; anchors.centerIn: parent }
-                                MouseArea { id: studioSwitchMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: mainWindow.canvasMode = "studio" }
+                            // Separator
+                            Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
+
+                            // Studio Mode Toggle (icon-only)
+                            TopBarButton {
+                                iconSource: iconPath("studio.svg")
+                                tooltip: "Modo Studio"
+                                onClicked: mainWindow.canvasMode = "studio"
                             }
 
-                            // Color Swatch
+                            // Color Swatch (special — not TopBarButton)
                             Rectangle {
-                                width: 28 * uiScale; height: 28 * uiScale; radius: 14 * uiScale
+                                width: 32 * uiScale; height: 32 * uiScale; radius: 10 * uiScale
                                 color: mainCanvas.brushColor
-                                border.color: showColor ? "white" : Qt.rgba(1,1,1,0.2)
-                                border.width: 2 * uiScale
-                                
-                                MouseArea { 
+                                border.color: showColor ? "white" : Qt.rgba(1,1,1,0.25)
+                                border.width: showColor ? 2.5 * uiScale : 1.5 * uiScale
+                                scale: colorBtnArea.pressed ? 0.88 : (colorBtnArea.containsMouse ? 1.08 : 1.0)
+                                Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+                                Behavior on border.width { NumberAnimation { duration: 100 } }
+
+                                // Inner shadow for depth
+                                Rectangle {
+                                    anchors.fill: parent; anchors.margins: 2
+                                    radius: parent.radius - 2; color: "transparent"
+                                    border.color: Qt.rgba(0,0,0,0.25); border.width: 1
+                                }
+
+                                MouseArea {
                                     id: colorBtnArea; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    hoverEnabled: true
                                     property bool isDragging: false
                                     property point startPos
-                                    
+
                                     onPressed: (mouse) => {
                                         startPos = Qt.point(mouse.x, mouse.y)
-                                        isDragging = false 
+                                        isDragging = false
                                         dropOrb.dropColor = mainCanvas.brushColor
                                     }
-                                    
+
                                     onPositionChanged: (mouse) => {
                                         if (!pressed) return
                                         var dist = Math.sqrt(Math.pow(mouse.x - startPos.x, 2) + Math.pow(mouse.y - startPos.y, 2))
                                         if (dist > 8 && !isDragging) {
                                             isDragging = true
-                                            // Guardar posición inicial para efecto Gooey
                                             var startGlobal = mapToItem(canvasPage, startPos.x, startPos.y)
                                             dropOrb.startX = startGlobal.x
                                             dropOrb.startY = startGlobal.y
@@ -2844,7 +2903,7 @@ Window {
                                             dropOrb.y = globalPos.y
                                         }
                                     }
-                                    
+
                                     onReleased: (mouse) => {
                                         if (isDragging) {
                                             dropOrb.active = false
@@ -2856,6 +2915,10 @@ Window {
                                         isDragging = false
                                     }
                                 }
+
+                                ToolTip.visible: colorBtnArea.containsMouse && !colorBtnArea.isDragging
+                                ToolTip.text: "Color del pincel"
+                                ToolTip.delay: 500
                             }
                         }
                     }
@@ -2865,23 +2928,41 @@ Window {
                     Rectangle {
                         id: tlMiniMenu
                         visible: false
-                        width: 140 * uiScale; height: 70 * uiScale
-                        color: "#1c1c1e"; radius: 12 * uiScale; border.color: "#333"
-                        anchors.top: topBarLeft.bottom; anchors.topMargin: 8 * uiScale; anchors.left: topBarLeft.left
+                        width: 160 * uiScale; height: 80 * uiScale
+                        color: "#e81a1a1e"; radius: 14 * uiScale
+                        border.color: Qt.rgba(1,1,1,0.08); border.width: 1
+                        anchors.top: topBarLeft.bottom; anchors.topMargin: 10 * uiScale; anchors.left: topBarLeft.left
                         z: 1000
+
+                        opacity: visible ? 1.0 : 0.0
+                        scale: visible ? 1.0 : 0.92
+                        transformOrigin: Item.Top
+                        Behavior on opacity { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+
+                        // Shadow
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: -4
+                            z: -1; radius: parent.radius + 4
+                            color: "black"; opacity: 0.3
+                        }
+
                         ColumnLayout {
-                            anchors.fill: parent; anchors.margins: 6 * uiScale
+                            anchors.fill: parent; anchors.margins: 8 * uiScale
+                            spacing: 4 * uiScale
                             Rectangle {
-                                Layout.fillWidth: true; Layout.fillHeight: true; radius: 6 * uiScale
-                                color: tlRecMouse.containsMouse ? "#333" : "transparent"
-                                Text { text: tlIndicator.tlRecording ? "Pause Recording" : "Resume Recording"; color: "white"; font.pixelSize: 11 * uiScale; anchors.centerIn: parent }
-                                MouseArea { id: tlRecMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { tlIndicator.tlRecording = !tlIndicator.tlRecording; tlMiniMenu.visible = false } }
+                                Layout.fillWidth: true; Layout.fillHeight: true; radius: 8 * uiScale
+                                color: tlRecMouse.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+                                Behavior on color { ColorAnimation { duration: 100 } }
+                                Text { text: tlIndicator.tlRecording ? "⏸  Pausar" : "⏺  Grabar"; color: "white"; font.pixelSize: 11 * uiScale; anchors.centerIn: parent }
+                                MouseArea { id: tlRecMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { tlIndicator.tlRecording = !tlIndicator.tlRecording; tlMiniMenu.visible = false } }
                             }
                             Rectangle {
-                                Layout.fillWidth: true; Layout.fillHeight: true; radius: 6 * uiScale
-                                color: tlExpMouse.containsMouse ? "#333" : "transparent"
-                                Text { text: "Export Video"; color: "white"; font.pixelSize: 11 * uiScale; anchors.centerIn: parent }
-                                MouseArea { id: tlExpMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { tlMiniMenu.visible = false; videoConfigDialog.open() } }
+                                Layout.fillWidth: true; Layout.fillHeight: true; radius: 8 * uiScale
+                                color: tlExpMouse.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
+                                Behavior on color { ColorAnimation { duration: 100 } }
+                                Text { text: "🎬  Exportar video"; color: "white"; font.pixelSize: 11 * uiScale; anchors.centerIn: parent }
+                                MouseArea { id: tlExpMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { tlMiniMenu.visible = false; videoConfigDialog.open() } }
                             }
                         }
                     }
@@ -2908,295 +2989,158 @@ Window {
                     }
                 }
 
-                // === SUPER PREMIUM NAVIGATOR / REFERENCE PANEL ===
+                // === PROCREATE-STYLE MINIMALIST NAVIGATOR ===
                 Rectangle {
                     id: refWindow
-                    
+
                     // State & Visibility
                     property bool active: false
                     visible: opacity > 0
                     opacity: active ? 1.0 : 0.0
                     scale: active ? 1.0 : 0.92
-                    
+
                     onActiveChanged: if(active) mainCanvas.canvasPreviewChanged.emit()
 
                     // Size constraints
-                    property real minW: 150; property real maxW: 500
-                    property real minH: 120; property real maxH: 450
-                    
-                    width: 260; height: 200
-                    x: parent.width - width - 16; y: 80
-                    
-                    // Super clean dark glass
-                    color: "#f0101012"
-                    radius: 12
+                    property real minW: 180; property real maxW: 500
+                    property real minH: 140; property real maxH: 450
+
+                    width: 280; height: 200
+                    x: 16; y: parent.height - height - 80
+
+                    // Procreate dark style — no borders visible unless hovered
+                    color: "#f0101014"
+                    radius: 14
                     z: 1500
                     clip: true
-                    
-                    // Subtle border only on hover
-                    border.color: refHoverArea.containsMouse ? "#22ffffff" : "#0affffff"
+
+                    border.color: _navHover.containsMouse ? Qt.rgba(1,1,1,0.12) : Qt.rgba(1,1,1,0.04)
                     border.width: 1
-                    
-                    // Transitions
+
                     Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                     Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutBack } }
                     Behavior on width { NumberAnimation { duration: 100 } }
                     Behavior on height { NumberAnimation { duration: 100 } }
-                    
-                    // Soft Shadow
-                    Rectangle { 
-                        z: -1; anchors.fill: parent; anchors.margins: -10
-                        color: "#000"; opacity: 0.5; radius: 20 
+
+                    // Soft shadow
+                    Rectangle {
+                        z: -1; anchors.fill: parent; anchors.margins: -8
+                        color: "#000"; opacity: 0.45; radius: 22
                     }
-                    
+
                     property string mode: "canvas" // "canvas" or "image"
-                    property string refTool: "move" // "move" or "pick"
+                    property string refTool: "move"
                     property string refSource: ""
                     property real navZoom: 1.0
                     property bool flipH: false
                     property point panOffset: Qt.point(0,0)
-                    
-                    // Main hover detector
+
+                    // Master hover detector
                     MouseArea {
-                        id: refHoverArea
+                        id: _navHover
                         anchors.fill: parent
                         hoverEnabled: true
                         acceptedButtons: Qt.NoButton
-                        function onWheel(wheel) { wheel.accepted = true }
                     }
-                    
-                    // ===== HEADER (Minimal) =====
-                    Item {
-                        id: refHeader
-                        width: parent.width; height: 28
-                        z: 10
 
-                        // Drag area (Background)
-                        MouseArea {
-                            anchors.fill: parent
-                            drag.target: refWindow
-                            drag.axis: Drag.XAndYAxis
-                            drag.minimumX: 0; drag.maximumX: mainWindow.width - refWindow.width
-                            drag.minimumY: 0; drag.maximumY: mainWindow.height - refWindow.height
-                            cursorShape: Qt.OpenHandCursor
-                            function onWheel(wheel) { wheel.accepted = true }
-                        }
-                        
-                        // Title
-                        Text { 
-                            text: refWindow.mode === "canvas" ? "Navigator" : "Reference"
-                            color: "#aaa"; font.pixelSize: 10; font.weight: Font.DemiBold
-                            anchors.left: parent.left; anchors.leftMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            font.letterSpacing: 0.3
-                        }
-                        
-                        // Tab switcher (compact pills)
-                        Row {
-                            anchors.centerIn: parent
-                            spacing: 2
-                            
-                            Rectangle {
-                                width: 36; height: 18; radius: 9
-                                color: refWindow.mode === "canvas" ? "#333" : "transparent"
-                                Text { text: "Nav"; color: refWindow.mode === "canvas" ? "#fff" : "#555"; font.pixelSize: 8; font.weight: Font.Bold; anchors.centerIn: parent }
-                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.mode = "canvas" }
-                            }
-                            Rectangle {
-                                width: 36; height: 18; radius: 9
-                                color: refWindow.mode === "image" ? "#333" : "transparent"
-                                Text { text: "Ref"; color: refWindow.mode === "image" ? "#fff" : "#555"; font.pixelSize: 8; font.weight: Font.Bold; anchors.centerIn: parent }
-                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.mode = "image" }
-                            }
-                        }
-                        
-                        // Close button
-                        Rectangle {
-                            width: 18; height: 18; radius: 9
-                            color: closeRefMouse.containsMouse ? "#44ffffff" : "transparent"
-                            anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                            Text { text: "×"; color: "#666"; font.pixelSize: 12; anchors.centerIn: parent }
-                            MouseArea { id: closeRefMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.active = false }
-                        }
-                    }
-                    
-                    // ===== CONTENT AREA (Full bleed, minimal padding) =====
+                    // === FULL-BLEED CANVAS PREVIEW ===
                     Rectangle {
-                        id: refContent
-                        anchors.top: refHeader.bottom
-                        anchors.left: parent.left; anchors.right: parent.right
-                        anchors.bottom: refFooter.top
-                        anchors.margins: 4
-                        anchors.topMargin: 0
+                        id: _navContent
+                        anchors.fill: parent
+                        anchors.bottomMargin: 28
                         color: "#080809"
-                        radius: 6
+                        radius: parent.radius
                         clip: true
-                        
-                        // Canvas/Image Preview with Pan & Zoom
-                           // PROCRETE-STYLE GESTURES
-                        MultiPointTouchArea {
-                            anchors.fill: parent
-                            mouseEnabled: false // Let mouse/pen pass through to QCanvasItem
-                            z: 100 // Above canvas
-                            
-                            property point lastCentroid: Qt.point(0,0)
-                            property bool isPanning: false
 
-                            onPressed: (touchPoints) => {
-                                if (touchPoints.length === 2) {
-                                    // Start Pan
-                                    isPanning = true
-                                    var p1 = touchPoints[0]
-                                    var p2 = touchPoints[1]
-                                    lastCentroid = Qt.point((p1.x + p2.x)/2, (p1.y + p2.y)/2)
-                                } else if (touchPoints.length === 3) {
-                                    isPanning = false
+                        // Checkerboard for transparency
+                        Canvas {
+                            anchors.fill: parent; opacity: 0.06; z: 0
+                            onPaint: {
+                                var ctx = getContext("2d"); ctx.fillStyle = "#555"
+                                for (var i = 0; i < width; i += 8)
+                                    for (var j = 0; j < height; j += 8)
+                                        if ((i + j) % 16 === 0) ctx.fillRect(i, j, 8, 8)
+                            }
+                        }
+
+                        // Canvas preview property cache
+                        property string _previewSrc: ""
+
+                        // Refresh timer — updates preview every 500ms while visible
+                        Timer {
+                            id: _navRefreshTimer
+                            interval: 500
+                            repeat: true
+                            running: refWindow.active && refWindow.mode === "canvas"
+                            onTriggered: {
+                                // Force re-read of the property
+                                _navContent._previewSrc = ""
+                                _navContent._previewSrc = mainCanvas.canvas_preview
+                            }
+                        }
+
+                        // Also refresh when navigator opens
+                        Connections {
+                            target: refWindow
+                            function onActiveChanged() {
+                                if (refWindow.active && refWindow.mode === "canvas") {
+                                    _navContent._previewSrc = mainCanvas.canvas_preview
                                 }
                             }
-                            
-                            onUpdated: (touchPoints) => {
-                                if (isPanning && touchPoints.length === 2) {
-                                    var p1 = touchPoints[0]
-                                    var p2 = touchPoints[1]
-                                    var currentCentroid = Qt.point((p1.x + p2.x)/2, (p1.y + p2.y)/2)
-                                    
-                                    var dx = currentCentroid.x - lastCentroid.x
-                                    var dy = currentCentroid.y - lastCentroid.y
-                                    
-                                    mainCanvas.pan_canvas(dx, dy)
-                                    lastCentroid = currentCentroid
-                                }
-                            }
-                            
-                            onReleased: (touchPoints) => {
-                                if (isPanning && touchPoints.length < 2) {
-                                    // End Pan check - if it was a short tap, treat as Undo
-                                    // Here we might need logic to distinguish tap vs drag.
-                                    // For now, simpler: Tap logic was in onPressed previously, but that triggers immediately.
-                                    // Undo on release is safer if no movement occurred.
-                                    isPanning = false
-                                }
-                                
-                                // Reset Tap Logic
-                                // If we want 2-finger TAP for Undo, we should measure time or distance.
-                                // Simple approach: If clean 2 finger press & release without much movement -> Undo.
-                                // Current code has onPressed handling "Undo" immediately.
-                                // That conflicts with Pan.
-                                // Improved Logic: 
-                                // On Press 2 fingers: Reset movement tracker.
-                                // On Update: if moved > threshold, it's a pan.
-                                // On Release: if not moved, it's undo.
-                            }
-                            
-                            // To simplify, let's separate Tap (Undo) vs Drag (Pan).
-                        } // End MultiPointTouchArea
-                        
-                        // (Touch logic handled by MultiPointTouchArea above)
-                        
+                        }
+
+                        // Canvas/Image display
                         Item {
-                            id: contentContainer
-                            anchors.fill: parent
-                            clip: true
+                            id: _navImgHolder
+                            width: parent.width
+                            height: parent.height
+                            x: refWindow.panOffset.x
+                            y: refWindow.panOffset.y
+                            scale: refWindow.navZoom
+                            transformOrigin: Item.Center
+                            z: 1
 
-                            // Image Item
-                            Item {
-                                id: imgHolder
-                                width: parent.width
-                                height: parent.height
-                                
-                                // Panning Transform
-                                x: refWindow.panOffset.x
-                                y: refWindow.panOffset.y
-                                scale: refWindow.navZoom
-                                
-                                transformOrigin: Item.Center
-                                
-                                transform: Scale { 
-                                    origin.x: imgHolder.width / 2
-                                    origin.y: imgHolder.height / 2
-                                    xScale: refWindow.flipH ? -1 : 1 
-                                }
+                            transform: Scale {
+                                origin.x: _navImgHolder.width / 2
+                                origin.y: _navImgHolder.height / 2
+                                xScale: refWindow.flipH ? -1 : 1
+                            }
 
-                                Image {
-                                    id: refImage
-                                    anchors.fill: parent
-                                    fillMode: Image.PreserveAspectFit
-                                    mipmap: true
-                                    source: refWindow.mode === "canvas" ? mainCanvas.canvas_preview : refWindow.refSource
-                                    asynchronous: true
-                                    cache: false
-                                    
-                                    opacity: status === Image.Ready ? 1.0 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 200 } }
-                                }
+                            Image {
+                                id: _navImage
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectFit
+                                mipmap: true
+                                source: refWindow.mode === "canvas" ? _navContent._previewSrc : refWindow.refSource
+                                asynchronous: false
+                                cache: false
+                                opacity: status === Image.Ready ? 1.0 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
                             }
                         }
-                        
-                        // Floating toolbar (appears on hover)
-                        Row {
-                            anchors.top: parent.top; anchors.right: parent.right
-                            anchors.margins: 6
-                            spacing: 4
-                            z: 20
-                            // Fix: Keep visible when hovering buttons OR content
-                            opacity: (refHoverArea.containsMouse || refContentMouse.containsMouse || flipBtnM.containsMouse || resetBtnM.containsMouse || (loadBtnM.visible && loadBtnM.containsMouse) || handBtnM.containsMouse || pickBtnM.containsMouse) ? 1.0 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 120 } }
-                            
-                            // Flip button
-                            Rectangle {
-                                width: 22; height: 22; radius: 6
-                                color: flipBtnM.containsMouse ? "#333" : "#222"
-                                Image { source: iconPath("flip_horizontal.svg"); width: 14; height: 14; anchors.centerIn: parent }
-                                MouseArea { id: flipBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.flipH = !refWindow.flipH }
-                            }
-                            // Reset/Rotate button
-                            Rectangle {
-                                width: 22; height: 22; radius: 6
-                                color: resetBtnM.containsMouse ? "#333" : "#222"
-                                Image { source: iconPath("rotate.svg"); width: 14; height: 14; anchors.centerIn: parent }
-                                MouseArea { id: resetBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { refWindow.navZoom = 1.0; refWindow.panOffset = Qt.point(0,0); refWindow.flipH = false } }
-                            }
-                            // Hand Tool
-                            Rectangle {
-                                width: 22; height: 22; radius: 6
-                                color: refWindow.refTool === "move" ? colorAccent : (handBtnM.containsMouse ? "#333" : "#222")
-                                Image { source: iconPath("hand.svg"); width: 14; height: 14; anchors.centerIn: parent }
-                                MouseArea { id: handBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.refTool = "move" }
-                            }
-                            // Picker Tool (Only for Image Mode really useful, but allowed in canvas too)
-                            Rectangle {
-                                width: 22; height: 22; radius: 6
-                                color: refWindow.refTool === "pick" ? colorAccent : (pickBtnM.containsMouse ? "#333" : "#222")
-                                Image { source: iconPath("picker.svg"); width: 14; height: 14; anchors.centerIn: parent }
-                                MouseArea { id: pickBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.refTool = "pick" }
-                            }
-                            
-                            // Load (only in Ref mode)
-                            Rectangle {
-                                visible: refWindow.mode === "image"
-                                width: 22; height: 22; radius: 6
-                                color: loadBtnM.containsMouse ? "#444" : "#222"
-                                Image { source: iconPath("folder.svg"); width: 14; height: 14; anchors.centerIn: parent }
-                                MouseArea { id: loadBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: referenceFileDialog.open() }
-                            }
+
+                        // Empty state for Reference mode
+                        Column {
+                            anchors.centerIn: parent; spacing: 8; z: 2
+                            visible: refWindow.mode === "image" && refWindow.refSource === ""
+                            opacity: 0.35
+                            Text { text: "📷"; font.pixelSize: 28; anchors.horizontalCenter: parent.horizontalCenter }
+                            Text { text: "Tap 📁 to load image"; color: "#666"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
                         }
-                        
-                        // Interaction Handler (Zoom, Pan, Pick)
+
+                        // Interaction: Pan & Pick (z: 5 — above image, below action bar)
                         MouseArea {
-                            id: refContentMouse
+                            id: _navContentMouse
                             anchors.fill: parent
+                            z: 5
                             hoverEnabled: true
                             cursorShape: refWindow.refTool === "pick" ? Qt.CrossCursor : (pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor)
-                            
                             property point lastPos
-                            
+
                             onPressed: (mouse) => {
                                 lastPos = Qt.point(mouse.x, mouse.y)
-                                if (refWindow.refTool === "pick") {
-                                    pickColor(mouse.x, mouse.y)
-                                }
+                                if (refWindow.refTool === "pick") _pickColor(mouse.x, mouse.y)
                             }
-                            
                             onPositionChanged: (mouse) => {
                                 if (pressed) {
                                     if (refWindow.refTool === "move") {
@@ -3205,101 +3149,175 @@ Window {
                                         refWindow.panOffset = Qt.point(refWindow.panOffset.x + dx, refWindow.panOffset.y + dy)
                                         lastPos = Qt.point(mouse.x, mouse.y)
                                     } else if (refWindow.refTool === "pick") {
-                                        pickColor(mouse.x, mouse.y)
-                                    }
-                                }
-                            }
-                            
-                            function pickColor(x, y) {
-                                // Only works for local images currently handled by Python backend
-                                if (refWindow.mode === "image" && refWindow.refSource !== "") {
-                                    // 1. Map from RefContent (MouseArea) to RefImage (Local transformed space)
-                                    //    This handles Pan, Zoom, and Flip automatically.
-                                    var pt = refImage.mapFromItem(refContentMouse, x, y)
-                                    
-                                    // 2. Pass local coordinates + image source size to Python
-                                    //    Python will map 'PreserveAspectFit' logic using the source constraints.
-                                    //    We use refImage.width (which corresponds to the container width in local space)
-                                    //    as the reference for aspect calculation.
-                                    var c = mainCanvas.sampleColorFromImage(refWindow.refSource, pt.x, pt.y, refImage.width, refImage.height)
-                                    
-                                    if (c !== "#000000") {
-                                        mainCanvas.brushColor = c
+                                        _pickColor(mouse.x, mouse.y)
                                     }
                                 }
                             }
 
-                            function onWheel(wheel) {
+                            function _pickColor(x, y) {
+                                if (refWindow.mode === "image" && refWindow.refSource !== "") {
+                                    var pt = _navImage.mapFromItem(_navContentMouse, x, y)
+                                    var c = mainCanvas.sampleColorFromImage(refWindow.refSource, pt.x, pt.y, _navImage.width, _navImage.height)
+                                    if (c !== "#000000") mainCanvas.brushColor = c
+                                }
+                            }
+
+                            onWheel: (wheel) => {
                                 if (wheel.angleDelta.y > 0) refWindow.navZoom = Math.min(5.0, refWindow.navZoom + 0.1)
                                 else refWindow.navZoom = Math.max(0.1, refWindow.navZoom - 0.1)
                                 wheel.accepted = true
                             }
                         }
-                        
-                        // Empty state for Ref mode
-                        Column {
-                            anchors.centerIn: parent; spacing: 8
-                            visible: refWindow.mode === "image" && refWindow.refSource === ""
-                            opacity: 0.4
-                            Text { text: "📷"; font.pixelSize: 28; anchors.horizontalCenter: parent.horizontalCenter }
-                            Text { text: "Drop or load image"; color: "#555"; font.pixelSize: 9; anchors.horizontalCenter: parent.horizontalCenter }
+
+                        // === FLOATING ACTION BAR (z: 10 — ABOVE mouse area) ===
+                        Rectangle {
+                            id: _navActionBar
+                            z: 10
+                            anchors.bottom: parent.bottom; anchors.bottomMargin: 8
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: _navActions.implicitWidth + 16
+                            height: 32; radius: 16
+                            color: "#cc1a1a1e"
+                            border.color: Qt.rgba(1,1,1,0.1); border.width: 0.5
+
+                            opacity: _navHover.containsMouse ? 1.0 : 0.0
+                            scale: _navHover.containsMouse ? 1.0 : 0.9
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+                            Row {
+                                id: _navActions
+                                anchors.centerIn: parent
+                                spacing: 2
+
+                                // Mode switcher (Nav / Ref)
+                                Rectangle {
+                                    width: 28; height: 24; radius: 8
+                                    color: refWindow.mode === "canvas" ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : (_navModeMa.containsMouse ? "#33ffffff" : "transparent")
+                                    Image { source: iconPath("compass.svg"); width: 14; height: 14; anchors.centerIn: parent; opacity: refWindow.mode === "canvas" ? 1.0 : 0.5 }
+                                    MouseArea { id: _navModeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.mode = (refWindow.mode === "canvas") ? "image" : "canvas" }
+                                    ToolTip.visible: _navModeMa.containsMouse; ToolTip.text: refWindow.mode === "canvas" ? "Cambiar a Referencia" : "Cambiar a Navegador"; ToolTip.delay: 400
+                                }
+
+                                // Flip Horizontal (canvas)
+                                Rectangle {
+                                    width: 28; height: 24; radius: 8
+                                    color: mainCanvas.isFlippedH ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : (_flipHMa.containsMouse ? "#33ffffff" : "transparent")
+                                    Image { source: iconPath("flip_horizontal.svg"); width: 14; height: 14; anchors.centerIn: parent; opacity: mainCanvas.isFlippedH ? 1.0 : 0.5 }
+                                    MouseArea { id: _flipHMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: mainCanvas.isFlippedH = !mainCanvas.isFlippedH }
+                                    ToolTip.visible: _flipHMa.containsMouse; ToolTip.text: "Voltear horizontal"; ToolTip.delay: 400
+                                    visible: refWindow.mode === "canvas"
+                                }
+
+                                // Fit to View
+                                Rectangle {
+                                    width: 28; height: 24; radius: 8
+                                    color: _fitMa.containsMouse ? "#33ffffff" : "transparent"
+                                    Text { text: "⊞"; color: _fitMa.containsMouse ? "#fff" : "#888"; font.pixelSize: 16; anchors.centerIn: parent }
+                                    MouseArea { id: _fitMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { mainCanvas.fitToView(); refWindow.navZoom = 1.0; refWindow.panOffset = Qt.point(0,0) } }
+                                    ToolTip.visible: _fitMa.containsMouse; ToolTip.text: "Ajustar al lienzo"; ToolTip.delay: 400
+                                    visible: refWindow.mode === "canvas"
+                                }
+
+                                // Load (Ref mode)
+                                Rectangle {
+                                    visible: refWindow.mode === "image"
+                                    width: 28; height: 24; radius: 8
+                                    color: _loadMa.containsMouse ? "#33ffffff" : "transparent"
+                                    Image { source: iconPath("folder.svg"); width: 14; height: 14; anchors.centerIn: parent; opacity: 0.6 }
+                                    MouseArea { id: _loadMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refFileDialog.open() }
+                                    ToolTip.visible: _loadMa.containsMouse; ToolTip.text: "Cargar imagen de referencia"; ToolTip.delay: 400
+                                }
+
+                                // Pick color (Ref mode)
+                                Rectangle {
+                                    visible: refWindow.mode === "image"
+                                    width: 28; height: 24; radius: 8
+                                    color: refWindow.refTool === "pick" ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : (_pickMa.containsMouse ? "#33ffffff" : "transparent")
+                                    Image { source: iconPath("eyedropper.svg"); width: 14; height: 14; anchors.centerIn: parent; opacity: refWindow.refTool === "pick" ? 1.0 : 0.5 }
+                                    MouseArea { id: _pickMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.refTool = (refWindow.refTool === "pick") ? "move" : "pick" }
+                                    ToolTip.visible: _pickMa.containsMouse; ToolTip.text: "Seleccionar color"; ToolTip.delay: 400
+                                }
+
+                                // Separator
+                                Rectangle { width: 1; height: 16; color: "#33ffffff"; anchors.verticalCenter: parent.verticalCenter }
+
+                                // Close
+                                Rectangle {
+                                    width: 28; height: 24; radius: 8
+                                    color: _closeMa.containsMouse ? "#44ff4444" : "transparent"
+                                    Text { text: "✕"; color: _closeMa.containsMouse ? "#ff6666" : "#666"; font.pixelSize: 11; anchors.centerIn: parent }
+                                    MouseArea { id: _closeMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.active = false }
+                                    ToolTip.visible: _closeMa.containsMouse; ToolTip.text: "Cerrar"; ToolTip.delay: 400
+                                }
+                            }
                         }
                     }
-                    
-                    // ===== FOOTER (Minimal zoom bar) =====
+
+                    // === MINIMAL ZOOM BAR (Bottom strip) ===
                     Item {
-                        id: refFooter
+                        id: _navFooter
                         anchors.bottom: parent.bottom
                         anchors.left: parent.left; anchors.right: parent.right
-                        height: 24
-                        
-                        // Zoom slider track
+                        height: 28
+
+                        // Draggable header (top area of footer)
+                        MouseArea {
+                            anchors.fill: parent
+                            drag.target: refWindow
+                            drag.axis: Drag.XAndYAxis
+                            drag.minimumX: 0; drag.maximumX: mainWindow.width - refWindow.width
+                            drag.minimumY: 0; drag.maximumY: mainWindow.height - refWindow.height
+                            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                        }
+
+                        // Zoom track
                         Rectangle {
-                            width: parent.width - 50; height: 3; radius: 1.5
-                            anchors.centerIn: parent
+                            width: parent.width - 60; height: 3; radius: 1.5
+                            anchors.left: parent.left; anchors.leftMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
                             color: "#1a1a1c"
-                            
+
                             // Fill
                             Rectangle {
                                 width: Math.max(0, (refWindow.navZoom - 0.3) / 2.7) * parent.width
                                 height: parent.height; radius: parent.radius
-                                color: colorAccent
-                                opacity: 0.7
+                                color: colorAccent; opacity: 0.6
                             }
-                            
+
                             // Thumb
                             Rectangle {
-                                x: Math.max(0, (refWindow.navZoom - 0.3) / 2.7) * (parent.width - 10)
-                                y: -3; width: 10; height: 10; radius: 5
-                                color: zoomThumbM.containsMouse ? "#fff" : "#ccc"
-                                
+                                x: Math.max(0, (refWindow.navZoom - 0.3) / 2.7) * (parent.width - 8)
+                                y: -3; width: 8; height: 8; radius: 4
+                                color: _zThumbM.containsMouse || _zThumbM.drag.active ? "#fff" : "#aaa"
+                                Behavior on color { ColorAnimation { duration: 100 } }
+
                                 MouseArea {
-                                    id: zoomThumbM
-                                    anchors.fill: parent; anchors.margins: -8
+                                    id: _zThumbM
+                                    anchors.fill: parent; anchors.margins: -6
                                     hoverEnabled: true
                                     drag.target: parent; drag.axis: Drag.XAxis
-                                    drag.minimumX: 0; drag.maximumX: parent.parent.width - 10
+                                    drag.minimumX: 0; drag.maximumX: parent.parent.width - 8
                                     onPositionChanged: {
                                         if (drag.active) {
-                                            var p = parent.x / (parent.parent.width - 10)
+                                            var p = parent.x / (parent.parent.width - 8)
                                             refWindow.navZoom = 0.3 + (p * 2.7)
                                         }
                                     }
                                 }
                             }
                         }
-                        
-                        // Zoom percentage
+
+                        // Zoom %
                         Text {
                             text: Math.round(refWindow.navZoom * 100) + "%"
-                            color: "#444"; font.pixelSize: 8
-                            anchors.right: parent.right; anchors.rightMargin: 8
+                            color: "#555"; font.pixelSize: 9; font.weight: Font.Medium
+                            anchors.right: parent.right; anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
-                    
-                    // ===== CORNER RESIZE HANDLES =====
-                    // Bottom-Right
+
+                    // === CORNER RESIZE HANDLES ===
                     MouseArea {
                         width: 14; height: 14
                         anchors.right: parent.right; anchors.bottom: parent.bottom
@@ -3310,9 +3328,7 @@ Window {
                             refWindow.width = Math.min(refWindow.maxW, Math.max(refWindow.minW, ss.width + mouseX - sp.x))
                             refWindow.height = Math.min(refWindow.maxH, Math.max(refWindow.minH, ss.height + mouseY - sp.y))
                         }
-                        Rectangle { anchors.fill: parent; color: "transparent" }
                     }
-                    // Bottom-Left
                     MouseArea {
                         width: 14; height: 14
                         anchors.left: parent.left; anchors.bottom: parent.bottom
@@ -3326,9 +3342,7 @@ Window {
                             refWindow.width = newW
                             refWindow.height = Math.min(refWindow.maxH, Math.max(refWindow.minH, ss.height + mouseY - sp.y))
                         }
-                        Rectangle { anchors.fill: parent; color: "transparent" }
                     }
-                    // Top-Right
                     MouseArea {
                         width: 14; height: 14
                         anchors.right: parent.right; anchors.top: parent.top
@@ -3342,9 +3356,7 @@ Window {
                             refWindow.height = newH
                             refWindow.width = Math.min(refWindow.maxW, Math.max(refWindow.minW, ss.width + mouseX - sp.x))
                         }
-                        Rectangle { anchors.fill: parent; color: "transparent" }
                     }
-                    // Top-Left
                     MouseArea {
                         width: 14; height: 14
                         anchors.left: parent.left; anchors.top: parent.top
@@ -3361,7 +3373,6 @@ Window {
                             refWindow.width = newW
                             refWindow.height = newH
                         }
-                        Rectangle { anchors.fill: parent; color: "transparent" }
                     }
                 }
                 

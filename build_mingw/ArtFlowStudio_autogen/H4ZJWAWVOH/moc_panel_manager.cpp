@@ -61,6 +61,9 @@ template <> constexpr inline auto artflow::PanelManager::qt_create_metaobjectdat
         "y",
         "setActiveTab",
         "groupId",
+        "setDockCollapsedByName",
+        "dock",
+        "state",
         "leftDockModel",
         "artflow::PanelListModel*",
         "leftDockModel2",
@@ -121,34 +124,38 @@ template <> constexpr inline auto artflow::PanelManager::qt_create_metaobjectdat
         QtMocHelpers::MethodData<void(const QString &, const QString &)>(21, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::QString, 22 }, { QMetaType::QString, 8 },
         }}),
+        // Method 'setDockCollapsedByName'
+        QtMocHelpers::MethodData<void(const QString &, bool)>(23, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 24 }, { QMetaType::Bool, 25 },
+        }}),
     };
     QtMocHelpers::UintData qt_properties {
         // property 'leftDockModel'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(23, 0x80000000 | 24, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(26, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'leftDockModel2'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(25, 0x80000000 | 24, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(28, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'rightDockModel'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(26, 0x80000000 | 24, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(29, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'rightDockModel2'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(27, 0x80000000 | 24, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(30, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'bottomDockModel'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(28, 0x80000000 | 24, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(31, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'floatingModel'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(29, 0x80000000 | 24, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(32, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'leftCollapsed'
-        QtMocHelpers::PropertyData<bool>(30, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
-        // property 'leftCollapsed2'
-        QtMocHelpers::PropertyData<bool>(31, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
-        // property 'rightCollapsed'
-        QtMocHelpers::PropertyData<bool>(32, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
-        // property 'rightCollapsed2'
         QtMocHelpers::PropertyData<bool>(33, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
-        // property 'bottomCollapsed'
+        // property 'leftCollapsed2'
         QtMocHelpers::PropertyData<bool>(34, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
+        // property 'rightCollapsed'
+        QtMocHelpers::PropertyData<bool>(35, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
+        // property 'rightCollapsed2'
+        QtMocHelpers::PropertyData<bool>(36, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
+        // property 'bottomCollapsed'
+        QtMocHelpers::PropertyData<bool>(37, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
         // property 'activeWorkspace'
-        QtMocHelpers::PropertyData<QString>(35, QMetaType::QString, QMC::DefaultPropertyFlags, 1),
+        QtMocHelpers::PropertyData<QString>(38, QMetaType::QString, QMC::DefaultPropertyFlags, 1),
         // property 'activeGroupTabs'
-        QtMocHelpers::PropertyData<QVariantMap>(36, 0x80000000 | 37, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 2),
+        QtMocHelpers::PropertyData<QVariantMap>(39, 0x80000000 | 40, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 2),
     };
     QtMocHelpers::UintData qt_enums {
     };
@@ -182,6 +189,7 @@ void artflow::PanelManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c
         case 9: _t->movePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
         case 10: _t->movePanelToFloat((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<qreal>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<qreal>>(_a[3]))); break;
         case 11: _t->setActiveTab((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 12: _t->setDockCollapsedByName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2]))); break;
         default: ;
         }
     }
@@ -245,14 +253,14 @@ int artflow::PanelManager::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 12)
+        if (_id < 13)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 12;
+        _id -= 13;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 12)
+        if (_id < 13)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 12;
+        _id -= 13;
     }
     if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty

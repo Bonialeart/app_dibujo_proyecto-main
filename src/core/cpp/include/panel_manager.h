@@ -93,6 +93,10 @@ public:
   // Set active tab within a group
   Q_INVOKABLE void setActiveTab(const QString &groupId, const QString &panelId);
 
+  // Set collapsed state by dock name directly from QML (e.g. via drag to
+  // expand)
+  Q_INVOKABLE void setDockCollapsedByName(const QString &dock, bool state);
+
 signals:
   void dockStateChanged();
   void workspaceChanged();
@@ -114,9 +118,6 @@ private:
 
   // Get collapsed state for a given model
   bool getDockCollapsed(PanelListModel *model) const;
-
-  // Set collapsed state by dock name
-  void setDockCollapsedByName(const QString &dock, bool state);
 
   // Create the standard panel definitions
   static PanelInfo makePanel(const QString &id, const QString &name,

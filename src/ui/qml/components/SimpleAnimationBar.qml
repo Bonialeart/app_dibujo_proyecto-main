@@ -51,8 +51,14 @@ Item {
     property real rulerH:     18        // ruler height
     property int  visibleCols: Math.max(8, Math.floor((pill.width - trackLabelW - 40) / cellStep))
 
-    // Derived
-    property real currentTimeSec: currentFrameIdx / Math.max(1, fps)
+    // Derived — sum durations of all frames before current
+    property real currentTimeSec: {
+        if (!frameModel || frameModel.count === 0) return 0
+        var slots = 0
+        for (var i = 0; i < currentFrameIdx && i < frameModel.count; i++)
+            slots += getFrameDuration(i)
+        return slots / Math.max(1, fps)
+    }
 
     // ── Slot helpers (for duration/spanning) ──────────────────
     function getFrameDuration(fi) {
@@ -80,6 +86,17 @@ Item {
     }
 
     // ── Playback Timer ───────────────────────────────────────
+    property bool _advancingFromTimer: false   // guard to avoid tickCounter reset
+    // Smooth playhead: tracks the exact slot position
+    property real _playheadSlot: 0
+
+    onIsPlayingChanged: {
+        playTimer.tickCounter = 0
+        _advancingFromTimer = false
+        // Snap playhead to current frame start
+        _playheadSlot = getSlotOffset(currentFrameIdx)
+    }
+
     Timer {
         id: playTimer
         interval: Math.round(1000 / Math.max(1, root.fps))
@@ -89,18 +106,29 @@ Item {
         property int tickCounter: 0
 
         onTriggered: {
-            var currentItem = frameModel.get(root.currentFrameIdx)
-            tickCounter++
+            var fi = root.currentFrameIdx
+            if (fi < 0 || fi >= root.frameModel.count) return
+            var currentItem = root.frameModel.get(fi)
+            var dur = (currentItem && currentItem.duration !== undefined) ? currentItem.duration : 1
 
-            var dur = currentItem ? (currentItem.duration !== undefined ? currentItem.duration : 1) : 1
+            tickCounter++
+            // Advance the playhead by one slot each tick
+            root._playheadSlot = root.getSlotOffset(fi) + tickCounter
+
             if (tickCounter >= dur) {
                 tickCounter = 0
-                var next = root.currentFrameIdx + 1
+                var next = fi + 1
                 if (next >= root.frameCount) {
-                    if (root.loopEnabled) next = 0
+                    if (root.loopEnabled) {
+                        next = 0
+                        // Jump playhead back to start
+                        root._playheadSlot = 0
+                    }
                     else { root.isPlaying = false; return }
                 }
+                root._advancingFromTimer = true
                 root.goToFrame(next)
+                root._advancingFromTimer = false
             }
         }
     }
@@ -118,7 +146,10 @@ Item {
     function goToFrame(idx) {
         if (idx < 0 || idx >= frameCount) return
         currentFrameIdx = idx
-        if (playTimer.running) playTimer.tickCounter = 0
+        // Only reset tickCounter for manual navigation, not when the timer advances
+        if (playTimer.running && !_advancingFromTimer) playTimer.tickCounter = 0
+        // Snap playhead for manual navigation
+        if (!_advancingFromTimer) _playheadSlot = getSlotOffset(idx)
 
         if (targetCanvas) {
             for (var i = 0; i < frameCount; i++) {
@@ -514,18 +545,30 @@ Item {
 
                                 // Visual drag tracking for live-resize
                                 property real dragDelta: 0
+                                property bool isDragging: extMa.pressed
                                 property int visualDur: Math.max(1, Math.min(12,
-                                    Math.round((dur * root.cellStep + dragDelta) / root.cellStep)))
+                                    Math.round((dur * root.cellStep + _smoothDelta) / root.cellStep)))
 
+                                // Smoothed drag delta for premium feel
+                                property real _smoothDelta: 0
+                                Behavior on _smoothDelta {
+                                    enabled: true
+                                    NumberAnimation { duration: 60; easing.type: Easing.OutQuad }
+                                }
+                                onDragDeltaChanged: _smoothDelta = dragDelta
+
+                                // Live resize: while dragging, show the visual width
                                 x: slotOff * root.cellStep + 1
                                 y: 1
-                                width: dur * root.cellStep - root.cellGap
+                                width: isDragging
+                                    ? Math.max(root.cellStep - root.cellGap, dur * root.cellStep + _smoothDelta - root.cellGap)
+                                    : dur * root.cellStep - root.cellGap
                                 height: cellsRow.height - 2
                                 radius: 4
 
                                 Behavior on width {
-                                    enabled: fCell.dragDelta === 0
-                                    NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                                    enabled: !fCell.isDragging
+                                    NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 0.8 }
                                 }
 
                                 color: {
@@ -609,28 +652,41 @@ Item {
                                 // ── EXTENDER HANDLE (right edge) ─────
                                 Rectangle {
                                     id: extHandle
-                                    width: 10; height: parent.height
+                                    width: 14; height: parent.height
                                     anchors.right: parent.right
-                                    color: extMa.containsMouse || extMa.pressed
-                                        ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.2)
-                                        : "transparent"
-                                    radius: 2; z: 15
-                                    Behavior on color { ColorAnimation { duration: 100 } }
+                                    color: "transparent"
+                                    radius: 3; z: 15
 
-                                    // Grip dots
+                                    // Glow background on hover/press
+                                    Rectangle {
+                                        anchors.fill: parent; radius: parent.radius
+                                        color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b,
+                                            extMa.pressed ? 0.35 : (extMa.containsMouse ? 0.15 : 0))
+                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                    }
+
+                                    // Grip dots with glow
                                     Column {
-                                        anchors.centerIn: parent; spacing: 2
+                                        anchors.centerIn: parent; spacing: 3
                                         Repeater {
                                             model: 3
                                             Rectangle {
-                                                width: 2; height: 2; radius: 1
-                                                color: extMa.containsMouse || extMa.pressed ? root.accentColor : "#444"
+                                                width: 3; height: 3; radius: 1.5
+                                                color: extMa.pressed
+                                                    ? root.accentColor
+                                                    : (extMa.containsMouse ? Qt.lighter(root.accentColor, 1.3) : "#555")
+                                                Behavior on color { ColorAnimation { duration: 120 } }
+                                                // Subtle scale on press
+                                                scale: extMa.pressed ? 1.3 : 1.0
+                                                Behavior on scale { NumberAnimation { duration: 100 } }
                                             }
                                         }
                                     }
 
                                     MouseArea {
                                         id: extMa; anchors.fill: parent
+                                        anchors.leftMargin: -4  // larger hit area
+                                        anchors.rightMargin: -2
                                         cursorShape: Qt.SizeHorCursor; hoverEnabled: true
                                         preventStealing: true
 
@@ -639,6 +695,7 @@ Item {
                                         onPressed: function(m) {
                                             startX = mapToItem(cellsRow, m.x, 0).x
                                             fCell.dragDelta = 0
+                                            fCell._smoothDelta = 0
                                             root.goToFrame(fCell.fi)
                                         }
                                         onPositionChanged: function(m) {
@@ -649,12 +706,24 @@ Item {
                                         onReleased: {
                                             var newDur = fCell.visualDur
                                             fCell.dragDelta = 0
+                                            fCell._smoothDelta = 0
                                             root.setFrameDuration(fCell.fi, newDur)
                                         }
                                     }
                                     ToolTip.visible: extMa.containsMouse && !extMa.pressed
                                     ToolTip.text: "⟷ Estirar duración"
                                     ToolTip.delay: 300
+                                }
+
+                                // Snap indicator — shows target slot lines while dragging
+                                Rectangle {
+                                    visible: fCell.isDragging && fCell.visualDur !== fCell.dur
+                                    x: fCell.visualDur * root.cellStep - root.cellGap - 2
+                                    y: 0; width: 2; height: parent.height
+                                    radius: 1
+                                    color: root.accentColor
+                                    opacity: 0.7
+                                    Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
                                 }
 
                                 // Main click area
@@ -716,22 +785,49 @@ Item {
 
                     // ── PLAYHEAD LINE ─────────────────────────
                     Rectangle {
+                        id: playheadLine
                         visible: root.frameCount > 0
-                        x: root.getSlotOffset(root.currentFrameIdx) * root.cellStep + root.cellStep / 2 - 1
+                        // During playback use the smooth _playheadSlot; otherwise snap to frame start
+                        x: (root.isPlaying
+                            ? root._playheadSlot * root.cellStep + root.cellStep / 2 - 1
+                            : root.getSlotOffset(root.currentFrameIdx) * root.cellStep + root.cellStep / 2 - 1) || 0
                         y: 0; width: 2
                         height: parent.height
-                        color: root.accentColor; z: 20; opacity: 0.6
+                        color: root.accentColor; z: 20
+                        opacity: root.isPlaying ? 0.85 : 0.6
 
                         Behavior on x {
-                            enabled: !root.isPlaying
-                            NumberAnimation { duration: 80; easing.type: Easing.OutCubic }
+                            NumberAnimation {
+                                duration: root.isPlaying ? Math.round(900 / Math.max(1, root.fps)) : 120
+                                easing.type: root.isPlaying ? Easing.Linear : Easing.OutCubic
+                            }
+                        }
+                        Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                        // Glow effect during playback
+                        Rectangle {
+                            visible: root.isPlaying
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: 0; width: 8; height: parent.height
+                            color: root.accentColor; opacity: 0.08; radius: 4
                         }
 
-                        // Top triangle
+                        // Top diamond marker
                         Rectangle {
-                            width: 8; height: 8; rotation: 45; z: 21
+                            width: 10; height: 10; rotation: 45; z: 21
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: -2; color: root.accentColor
+                            y: -3; color: root.accentColor
+                            radius: 1.5
+                            // Pulse during playback
+                            scale: root.isPlaying ? 1.0 + Math.abs(Math.sin(_pulseTimer.t * 3.14)) * 0.15 : 1.0
+                            Item {
+                                id: _pulseTimer
+                                property real t: 0
+                                NumberAnimation on t {
+                                    from: 0; to: 2; duration: 2000
+                                    running: root.isPlaying; loops: Animation.Infinite
+                                }
+                            }
                         }
                     }
                 }

@@ -45,30 +45,31 @@ Rectangle {
     property bool isBottom: dockSide === "bottom"
     
     width: isBottom ? parent.width : ((isCollapsed && !isDragHover) ? 0 : expandedWidth)
-    height: isBottom ? ((isCollapsed && !isDragHover) ? 0 : expandedHeight) : parent.height
-    Layout.preferredWidth: isBottom ? -1 : width
+    height: isBottom ? ((isCollapsed && !isDragHover) ? 12 : expandedHeight) : parent.height
+    Layout.fillWidth: isBottom
+    Layout.preferredWidth: isBottom ? parent.width : width
     Layout.minimumWidth: isBottom ? -1 : width
     Layout.maximumWidth: isBottom ? -1 : width
     Layout.preferredHeight: isBottom ? height : -1
     
     property int expandedHeight: 250
     color: "#0a0a0d"
-    border.color: isCollapsed ? "transparent" : "#2a2a2d"
-    border.width: 1
+    border.color: isCollapsed && !isBottom ? "transparent" : "#2a2a2d"
+    border.width: isCollapsed && isBottom ? 0 : 1
     
     Behavior on width { 
         enabled: !resizerMa.pressed && !isBottom
         NumberAnimation { duration: 300; easing.type: Easing.OutQuart } 
     }
     Behavior on height {
-        enabled: isBottom
+        enabled: isBottom && !(bottomResizerMa.pressed || bottomResizerMa.dragActive)
         NumberAnimation { duration: 300; easing.type: Easing.OutQuart }
     }
     
-    visible: isBottom ? height > 0 : width > 0
+    visible: isBottom ? true : width > 0
     clip: true
     
-    Rectangle { anchors.fill: parent; color: "transparent"; border.color: "#1affffff"; border.width: 1 }
+    Rectangle { anchors.fill: parent; color: "transparent"; border.color: "#1affffff"; border.width: 1; visible: !isCollapsed || !isBottom }
     
     // Drag Hover Indicator
     Rectangle {
@@ -444,22 +445,76 @@ Rectangle {
     
     // --- BOTTOM RESIZER ---
     Rectangle {
-        visible: root.isBottom && !root.isCollapsed
-        height: 6; width: parent.width
+        visible: root.isBottom
+        height: root.isCollapsed && !bottomResizerMa.pressed ? 12 : 8; width: parent.width
         anchors.top: parent.top
-        color: bottomResizerMa.containsMouse || bottomResizerMa.pressed ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.4) : "transparent"
-        z: 10
+        color: bottomResizerMa.containsMouse || bottomResizerMa.pressed ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.4) : ((root.isCollapsed && !bottomResizerMa.pressed) ? "#0d0d11" : "transparent")
+        z: 999
         
-        Rectangle { height: 2; width: parent.width; anchors.centerIn: parent; color: bottomResizerMa.containsMouse || bottomResizerMa.pressed ? accentColor : "transparent" }
+        // The subtle timeline tab for when collapsed
+        Rectangle {
+            visible: root.isCollapsed
+            width: 48; height: 3
+            color: bottomResizerMa.containsMouse || bottomResizerMa.pressed ? accentColor : "#4a4a55"
+            radius: 1.5; anchors.centerIn: parent
+            Behavior on color { ColorAnimation { duration: 150 } }
+        }
+
+        // Regular separator line for when expanded
+        Rectangle { 
+            visible: !root.isCollapsed
+            height: 2; width: parent.width; anchors.centerIn: parent; 
+            color: bottomResizerMa.containsMouse || bottomResizerMa.pressed ? accentColor : "transparent" 
+        }
         
         MouseArea {
             id: bottomResizerMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.SizeVerCursor
             property real startH; property real startGy
-            onPressed: (mouse) => { startH = root.expandedHeight; startGy = mapToGlobal(0, mouse.y).y }
+            property bool wasCollapsed: false
+            property bool dragActive: false
+            
+            onPressed: (mouse) => { 
+                dragActive = true
+                startGy = mapToGlobal(0, mouse.y).y 
+                wasCollapsed = root.isCollapsed
+                
+                if (wasCollapsed) {
+                    root.expandedHeight = 12 // Start growing from current visual size seamlessly
+                    root.manager.setDockCollapsedByName(root.dockSide, false) // Inform C++ we are now open
+                    startH = 12
+                } else {
+                    startH = root.expandedHeight
+                }
+            }
             onPositionChanged: (mouse) => {
                 if (pressed) {
-                    var diff = startGy - mapToGlobal(0, mouse.y).y
-                    root.expandedHeight = Math.max(150, Math.min(500, startH + diff))
+                    var currentGy = mapToGlobal(0, mouse.y).y
+                    var diff = startGy - currentGy
+                    var newH = startH + diff
+                    
+                    if (newH < 80) { // pull down too far = hide
+                        if (!root.isCollapsed) root.manager.setDockCollapsedByName(root.dockSide, true)
+                        root.expandedHeight = 12 // clamp visual size
+                    } else {
+                        if (root.isCollapsed) root.manager.setDockCollapsedByName(root.dockSide, false)
+                        root.expandedHeight = Math.min(800, newH)
+                    }
+                }
+            }
+            onReleased: {
+                dragActive = false
+                // Auto-snap if too small when released
+                if (!root.isCollapsed && root.expandedHeight < 150) {
+                    root.manager.setDockCollapsedByName(root.dockSide, true)
+                    root.expandedHeight = 250 // restore default so it pops back correctly next time
+                }
+            }
+            onDoubleClicked: {
+                if (root.isCollapsed) {
+                    root.expandedHeight = 250
+                    root.manager.setDockCollapsedByName(root.dockSide, false)
+                } else {
+                    root.manager.setDockCollapsedByName(root.dockSide, true)
                 }
             }
         }

@@ -6710,8 +6710,29 @@ QString CanvasItem::getPreviewPadImage() {
 
   return "data:image/png;base64," + ba.toBase64();
 }
+// ─── Canvas Preview (Live Preview for Navigator) ────────────────────────
+QString CanvasItem::getCanvasPreview() {
+  if (m_cachedCanvasImage.isNull())
+    return "";
+
+  // Make a very cheap, downscaled version for the navigator
+  QImage preview = m_cachedCanvasImage;
+  if (preview.width() > 350 || preview.height() > 350) {
+    // Keep it fast, no smooth transform
+    preview =
+        preview.scaled(350, 350, Qt::KeepAspectRatio, Qt::FastTransformation);
+  }
+
+  QByteArray ba;
+  QBuffer buffer(&ba);
+  buffer.open(QIODevice::WriteOnly);
+  preview.save(&buffer, "PNG");
+
+  return "data:image/png;base64," + QString(ba.toBase64());
+}
 
 // ─── Stamp Preview ────────────────────────────────────────────────────
+
 QString CanvasItem::getStampPreview() {
   QImage img(120, 120, QImage::Format_ARGB32);
   img.fill(Qt::transparent);
