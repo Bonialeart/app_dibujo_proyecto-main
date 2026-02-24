@@ -60,90 +60,49 @@ Item {
     }
     
     function updateDragZones(gx, gy) {
-        // Find visible widths safely
-        var lw1 = leftIconBar.width + leftDock.width;
-        var lw2 = (leftIconBar2.visible ? leftIconBar2.width : 0) + leftDock2.width;
-        var rw1 = rightIconBar.width + rightDock.width;
-        var rw2 = (rightIconBar2.visible ? rightIconBar2.width : 0) + rightDock2.width;
-        
-        // Define dynamic thresholds based on collapsed states
-        var zL1 = leftIconBar.width + (panelManager.leftCollapsed ? 40 : leftDock.expandedWidth/2) + 20;
-        var zL2 = lw1 + (leftIconBar2.visible ? leftIconBar2.width : 20) + (panelManager.leftCollapsed2 ? 40 : leftDock2.expandedWidth) + 30;
-        
-        var zR1 = studioLayout.width - rightIconBar.width - (panelManager.rightCollapsed ? 40 : rightDock.expandedWidth/2) - 20;
-        var zR2 = studioLayout.width - rw1 - (rightIconBar2.visible ? rightIconBar2.width : 20) - (panelManager.rightCollapsed2 ? 40 : rightDock2.expandedWidth) - 30;
-        
+        // --- C++ does the heavy math ---
+        var zone = dragCalculator.computeDragZone(
+            gx, studioLayout.width,
+            leftIconBar.width, leftDock.width,
+            leftIconBar2.visible, leftIconBar2.visible ? leftIconBar2.width : 0, leftDock2.width,
+            rightIconBar.width, rightDock.width,
+            rightIconBar2.visible, rightIconBar2.visible ? rightIconBar2.width : 0, rightDock2.width,
+            panelManager.leftCollapsed, panelManager.leftCollapsed2,
+            panelManager.rightCollapsed, panelManager.rightCollapsed2,
+            leftDock.expandedWidth, leftDock2.expandedWidth,
+            rightDock.expandedWidth, rightDock2.expandedWidth
+        )
+
         leftDock.isDragHover = false; leftDock2.isDragHover = false;
         rightDock.isDragHover = false; rightDock2.isDragHover = false;
-        
-        if (gx <= zL1) {
-            leftDock.isDragHover = true;
-            var res = calculateHoverIndex(leftDock.mapFromGlobal(0, gy).y, leftDock.height, panelManager.leftDockModel);
-            leftDock.hoverIndex = res.index;
-            leftDock.dragMode = res.mode;
-            return { dock: "left", index: res.index, mode: res.mode, modelIndex: res.modelIndex };
-        } else if (gx <= zL2) {
-            leftDock2.isDragHover = true;
-            var res = calculateHoverIndex(leftDock2.mapFromGlobal(0, gy).y, leftDock2.height, panelManager.leftDockModel2);
-            leftDock2.hoverIndex = res.index;
-            leftDock2.dragMode = res.mode;
-            return { dock: "left2", index: res.index, mode: res.mode, modelIndex: res.modelIndex };
-        } else if (gx >= zR1) {
-            rightDock.isDragHover = true;
-            var res = calculateHoverIndex(rightDock.mapFromGlobal(0, gy).y, rightDock.height, panelManager.rightDockModel);
-            rightDock.hoverIndex = res.index;
-            rightDock.dragMode = res.mode;
-            return { dock: "right", index: res.index, mode: res.mode, modelIndex: res.modelIndex };
-        } else if (gx >= zR2) {
-            rightDock2.isDragHover = true;
-            var res = calculateHoverIndex(rightDock2.mapFromGlobal(0, gy).y, rightDock2.height, panelManager.rightDockModel2);
-            rightDock2.hoverIndex = res.index;
-            rightDock2.dragMode = res.mode;
-            return { dock: "right2", index: res.index, mode: res.mode, modelIndex: res.modelIndex };
-        }
-        return null;
+
+        if (!zone.dock || zone.dock === "") return null;
+
+        var targetDockWidget, targetModel;
+        if (zone.dock === "left")        { targetDockWidget = leftDock;  targetModel = panelManager.leftDockModel; }
+        else if (zone.dock === "left2")  { targetDockWidget = leftDock2; targetModel = panelManager.leftDockModel2; }
+        else if (zone.dock === "right")  { targetDockWidget = rightDock; targetModel = panelManager.rightDockModel; }
+        else if (zone.dock === "right2") { targetDockWidget = rightDock2; targetModel = panelManager.rightDockModel2; }
+        else return null;
+
+        targetDockWidget.isDragHover = true;
+        // C++ calculates hover index directly on the model — no JS loops
+        var localY = targetDockWidget.mapFromGlobal(0, gy).y;
+        var res = dragCalculator.calculateHoverIndex(localY, targetDockWidget.height, targetModel);
+        targetDockWidget.hoverIndex = res.index;
+        targetDockWidget.dragMode = res.mode;
+        return { dock: zone.dock, index: res.index, mode: res.mode, modelIndex: res.modelIndex };
     }
     
+    // calculateHoverIndex is now fully in C++ — dragCalculator.calculateHoverIndex()
+    // Kept as a thin wrapper for any external callers
     function calculateHoverIndex(localY, dHeight, dModel) {
-        var visibleItems = []; 
-        for(var i=0; i<dModel.count; i++) {
-            var it = dModel.get(i);
-            if(it.visible && it.groupId === "") {
-                visibleItems.push(i);
-            } else if (it.visible) {
-                 var gid = it.groupId;
-                 var isFirst = true;
-                 for(var j=0; j<i; j++) { if(dModel.get(j).visible && dModel.get(j).groupId === gid) { isFirst = false; break; } }
-                 if (isFirst) visibleItems.push(i);
-            }
-        }
-        
-        var vCount = visibleItems.length;
-        if (vCount === 0) return { index: 0, mode: "insert", modelIndex: -1 };
-        
-        var itemHeight = dHeight / vCount;
-        var vIdx = Math.floor(localY / itemHeight);
-        var subY_pixels = localY % itemHeight;
-        
-        var modelIdx = visibleItems[Math.max(0, Math.min(vCount - 1, vIdx))];
-        
-        var mode = "group";
-        // Thin insertion zones (15px) at the very top/bottom of items
-        if (subY_pixels < 15) {
-            if (vIdx === 0) mode = "insert"; // Top of dock
-            else mode = "insert"; // Between panels
-        } else if (subY_pixels > itemHeight - 15) {
-            mode = "insert";
-            vIdx++; // Increment visible index for insertion
-        }
-        
-        return { index: vIdx, mode: mode, modelIndex: modelIdx };
+        return dragCalculator.calculateHoverIndex(localY, dHeight, dModel);
     }
 
-    // --- MANAGER ---
-    StudioPanelManager {
-        id: panelManager
-    }
+
+    // MANAGER: The global C++ `panelManager` context property is used directly.
+    // No local QML wrapper needed — the C++ PanelManager handles everything.
 
     // --- DRAG GHOST (Float Preview) ---
     Rectangle {

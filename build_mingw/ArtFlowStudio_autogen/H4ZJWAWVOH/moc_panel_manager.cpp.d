@@ -1,7 +1,8 @@
-E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectModel.cpp: E:/Rescate_Proyecto/src/ProjectModel.h \
+E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_panel_manager.cpp: E:/Rescate_Proyecto/src/core/cpp/include/panel_manager.h \
   E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/QDateTime \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QMap \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QVector \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q17memory.h \
@@ -27,7 +28,6 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayalgorithms.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearraylist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayview.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/qcalendar.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qchar.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare_impl.h \
@@ -41,7 +41,6 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcontiguouscache.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qdarwinhelpers.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qdatastream.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/qdatetime.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qexceptionhandling.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qflags.h \
@@ -59,7 +58,6 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterator.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlatin1stringview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/qlocale.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlogging.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmalloc.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmap.h \
@@ -338,4 +336,6 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/sys/types.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/time.h \
   C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/vadefs.h \
-  C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h
+  C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h \
+  E:/Rescate_Proyecto/src/core/cpp/include/panel_data.h \
+  E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h

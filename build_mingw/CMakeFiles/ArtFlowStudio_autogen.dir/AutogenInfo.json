@@ -1,17 +1,17 @@
 {
 	"AUTOGEN_COMMAND_LINE_LENGTH_MAX" : 32000,
-	"BUILD_DIR" : "D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen",
-	"CMAKE_BINARY_DIR" : "D:/Rescate_Proyecto/build_mingw",
-	"CMAKE_CURRENT_BINARY_DIR" : "D:/Rescate_Proyecto/build_mingw",
-	"CMAKE_CURRENT_SOURCE_DIR" : "D:/Rescate_Proyecto",
+	"BUILD_DIR" : "E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen",
+	"CMAKE_BINARY_DIR" : "E:/Rescate_Proyecto/build_mingw",
+	"CMAKE_CURRENT_BINARY_DIR" : "E:/Rescate_Proyecto/build_mingw",
+	"CMAKE_CURRENT_SOURCE_DIR" : "E:/Rescate_Proyecto",
 	"CMAKE_EXECUTABLE" : "C:/Qt/Tools/CMake_64/bin/cmake.exe",
 	"CMAKE_LIST_FILES" : 
 	[
-		"D:/Rescate_Proyecto/CMakeLists.txt",
-		"D:/Rescate_Proyecto/build_mingw/CMakeFiles/3.30.5/CMakeSystem.cmake",
+		"E:/Rescate_Proyecto/CMakeLists.txt",
+		"E:/Rescate_Proyecto/build_mingw/CMakeFiles/3.30.5/CMakeSystem.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeSystemSpecificInitialize.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-Initialize.cmake",
-		"D:/Rescate_Proyecto/build_mingw/CMakeFiles/3.30.5/CMakeCXXCompiler.cmake",
+		"E:/Rescate_Proyecto/build_mingw/CMakeFiles/3.30.5/CMakeCXXCompiler.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeSystemSpecificInformation.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeGenericSystem.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeInitializeConfigs.cmake",
@@ -24,7 +24,7 @@
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Compiler/CMakeCommonCompilerMacros.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-GNU.cmake",
-		"D:/Rescate_Proyecto/build_mingw/CMakeFiles/3.30.5/CMakeRCCompiler.cmake",
+		"E:/Rescate_Proyecto/build_mingw/CMakeFiles/3.30.5/CMakeRCCompiler.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeRCInformation.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-windres.cmake",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/Platform/Windows-GNU-CXX-ABI.cmake",
@@ -894,48 +894,72 @@
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsTargets-relwithdebinfo.cmake",
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsAdditionalTargetInfo.cmake",
 		"C:/Qt/6.10.2/mingw_64/lib/cmake/Qt6ShaderTools/Qt6ShaderToolsVersionlessAliasTargets.cmake",
-		"D:/Rescate_Proyecto/src/ui/resources.qrc"
+		"E:/Rescate_Proyecto/src/ui/resources.qrc"
 	],
-	"CMAKE_SOURCE_DIR" : "D:/Rescate_Proyecto",
+	"CMAKE_SOURCE_DIR" : "E:/Rescate_Proyecto",
 	"CROSS_CONFIG" : false,
-	"DEP_FILE" : "D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/deps",
+	"DEP_FILE" : "E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/deps",
 	"DEP_FILE_RULE_NAME" : "ArtFlowStudio_autogen/timestamp",
 	"HEADERS" : 
 	[
 		[
-			"D:/Rescate_Proyecto/src/CanvasItem.h",
+			"E:/Rescate_Proyecto/src/CanvasItem.h",
 			"MU",
 			"UVLADIE3JM/moc_CanvasItem.cpp",
 			null
 		],
 		[
-			"D:/Rescate_Proyecto/src/PreferencesManager.h",
+			"E:/Rescate_Proyecto/src/PreferencesManager.h",
 			"MU",
 			"UVLADIE3JM/moc_PreferencesManager.cpp",
 			null
 		],
 		[
-			"D:/Rescate_Proyecto/src/ProjectModel.h",
+			"E:/Rescate_Proyecto/src/ProjectModel.h",
 			"MU",
 			"UVLADIE3JM/moc_ProjectModel.cpp",
 			null
 		],
 		[
-			"D:/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h",
+			"E:/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h",
 			"MU",
 			"H4ZJWAWVOH/moc_ColorPicker.cpp",
 			null
 		],
 		[
-			"D:/Rescate_Proyecto/src/core/cpp/include/ColorPickerImpl.h",
+			"E:/Rescate_Proyecto/src/core/cpp/include/ColorPickerImpl.h",
 			"MU",
 			"H4ZJWAWVOH/moc_ColorPickerImpl.cpp",
+			null
+		],
+		[
+			"E:/Rescate_Proyecto/src/core/cpp/include/color_harmony.h",
+			"MU",
+			"H4ZJWAWVOH/moc_color_harmony.cpp",
+			null
+		],
+		[
+			"E:/Rescate_Proyecto/src/core/cpp/include/drag_zone_calculator.h",
+			"MU",
+			"H4ZJWAWVOH/moc_drag_zone_calculator.cpp",
+			null
+		],
+		[
+			"E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h",
+			"MU",
+			"H4ZJWAWVOH/moc_panel_list_model.cpp",
+			null
+		],
+		[
+			"E:/Rescate_Proyecto/src/core/cpp/include/panel_manager.h",
+			"MU",
+			"H4ZJWAWVOH/moc_panel_manager.cpp",
 			null
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
-	"INCLUDE_DIR" : "D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/include",
-	"MOC_COMPILATION_FILE" : "D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/mocs_compilation.cpp",
+	"INCLUDE_DIR" : "E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/include",
+	"MOC_COMPILATION_FILE" : "E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/mocs_compilation.cpp",
 	"MOC_DEFINITIONS" : 
 	[
 		"MINGW_HAS_SECURE_API=1",
@@ -969,8 +993,8 @@
 	],
 	"MOC_INCLUDES" : 
 	[
-		"D:/Rescate_Proyecto/src",
-		"D:/Rescate_Proyecto/src/core/cpp/include",
+		"E:/Rescate_Proyecto/src",
+		"E:/Rescate_Proyecto/src/core/cpp/include",
 		"C:/Qt/6.10.2/mingw_64/include/QtCore",
 		"C:/Qt/6.10.2/mingw_64/include",
 		"C:/Qt/6.10.2/mingw_64/mkspecs/win32-g++",
@@ -1013,51 +1037,63 @@
 		"-c",
 		"C:/Qt/Tools/CMake_64/share/cmake-3.30/Modules/CMakeCXXCompilerABI.cpp"
 	],
-	"MOC_PREDEFS_FILE" : "D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h",
+	"MOC_PREDEFS_FILE" : "E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h",
 	"MOC_RELAXED_MODE" : false,
 	"MOC_SKIP" : [],
 	"MULTI_CONFIG" : false,
-	"PARALLEL" : 8,
-	"PARSE_CACHE_FILE" : "D:/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir/ParseCache.txt",
+	"PARALLEL" : 4,
+	"PARSE_CACHE_FILE" : "E:/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir/ParseCache.txt",
 	"QT_MOC_EXECUTABLE" : "C:/Qt/6.10.2/mingw_64/bin/moc.exe",
 	"QT_UIC_EXECUTABLE" : "C:/Qt/6.10.2/mingw_64/bin/uic.exe",
 	"QT_VERSION_MAJOR" : 6,
 	"QT_VERSION_MINOR" : 10,
-	"SETTINGS_FILE" : "D:/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir/AutogenUsed.txt",
+	"SETTINGS_FILE" : "E:/Rescate_Proyecto/build_mingw/CMakeFiles/ArtFlowStudio_autogen.dir/AutogenUsed.txt",
 	"SOURCES" : 
 	[
-		[ "D:/Rescate_Proyecto/src/CanvasItem.cpp", "MU", null ],
-		[ "D:/Rescate_Proyecto/src/PreferencesManager.cpp", "MU", null ],
-		[ "D:/Rescate_Proyecto/src/ProjectModel.cpp", "MU", null ],
-		[ "D:/Rescate_Proyecto/src/core/cpp/src/ColorPicker.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/CanvasItem.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/PreferencesManager.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/ProjectModel.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/ColorPicker.cpp", "MU", null ],
 		[
-			"D:/Rescate_Proyecto/src/core/cpp/src/ColorPickerImpl.cpp",
+			"E:/Rescate_Proyecto/src/core/cpp/src/ColorPickerImpl.cpp",
 			"MU",
 			null
 		],
-		[ "D:/Rescate_Proyecto/src/core/cpp/src/brush_engine.cpp", "MU", null ],
-		[ "D:/Rescate_Proyecto/src/core/cpp/src/brush_preset.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/brush_engine.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/brush_preset.cpp", "MU", null ],
 		[
-			"D:/Rescate_Proyecto/src/core/cpp/src/brush_preset_manager.cpp",
+			"E:/Rescate_Proyecto/src/core/cpp/src/brush_preset_manager.cpp",
 			"MU",
 			null
 		],
-		[ "D:/Rescate_Proyecto/src/core/cpp/src/color_utils.cpp", "MU", null ],
-		[ "D:/Rescate_Proyecto/src/core/cpp/src/gl_utils.cpp", "MU", null ],
-		[ "D:/Rescate_Proyecto/src/core/cpp/src/image_buffer.cpp", "MU", null ],
-		[ "D:/Rescate_Proyecto/src/core/cpp/src/layer_manager.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/color_harmony.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/color_utils.cpp", "MU", null ],
 		[
-			"D:/Rescate_Proyecto/src/core/cpp/src/stroke_renderer.cpp",
+			"E:/Rescate_Proyecto/src/core/cpp/src/drag_zone_calculator.cpp",
+			"MU",
+			null
+		],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/gl_utils.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/image_buffer.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/layer_manager.cpp", "MU", null ],
+		[
+			"E:/Rescate_Proyecto/src/core/cpp/src/panel_list_model.cpp",
+			"MU",
+			null
+		],
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/panel_manager.cpp", "MU", null ],
+		[
+			"E:/Rescate_Proyecto/src/core/cpp/src/stroke_renderer.cpp",
 			"MU",
 			null
 		],
 		[
-			"D:/Rescate_Proyecto/src/core/cpp/src/stroke_undo_command.cpp",
+			"E:/Rescate_Proyecto/src/core/cpp/src/stroke_undo_command.cpp",
 			"MU",
 			null
 		],
-		[ "D:/Rescate_Proyecto/src/core/cpp/src/undo_manager.cpp", "MU", null ],
-		[ "D:/Rescate_Proyecto/src/main.cpp", "MU", null ]
+		[ "E:/Rescate_Proyecto/src/core/cpp/src/undo_manager.cpp", "MU", null ],
+		[ "E:/Rescate_Proyecto/src/main.cpp", "MU", null ]
 	],
 	"UIC_OPTIONS" : [],
 	"UIC_SEARCH_PATHS" : [],

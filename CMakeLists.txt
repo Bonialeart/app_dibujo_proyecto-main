@@ -35,8 +35,16 @@ set(CORE_SOURCES
     src/core/cpp/src/stroke_undo_command.cpp
     src/core/cpp/src/ColorPicker.cpp
     src/core/cpp/src/ColorPickerImpl.cpp
+    src/core/cpp/src/panel_list_model.cpp
+    src/core/cpp/src/panel_manager.cpp
+    src/core/cpp/src/color_harmony.cpp
+    src/core/cpp/src/drag_zone_calculator.cpp
     src/core/cpp/include/ColorPicker.h
     src/core/cpp/include/ColorPickerImpl.h
+    src/core/cpp/include/panel_manager.h
+    src/core/cpp/include/panel_list_model.h
+    src/core/cpp/include/color_harmony.h
+    src/core/cpp/include/drag_zone_calculator.h
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)

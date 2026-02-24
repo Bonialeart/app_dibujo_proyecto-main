@@ -1,9 +1,12 @@
-E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectModel.cpp: E:/Rescate_Proyecto/src/ProjectModel.h \
+E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_color_harmony.cpp: E:/Rescate_Proyecto/src/core/cpp/include/color_harmony.h \
   E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/QDateTime \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QMap \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/QVector \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QVariant \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QVariantList \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/QVariantMap \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q17memory.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20functional.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20memory.h \
@@ -11,7 +14,6 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20utility.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q23type_traits.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q23utility.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/qabstractitemmodel.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qalgorithms.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qalloc.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qanystringview.h \
@@ -27,7 +29,6 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayalgorithms.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearraylist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayview.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/qcalendar.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qchar.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare_impl.h \
@@ -41,7 +42,6 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcontiguouscache.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qdarwinhelpers.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qdatastream.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/qdatetime.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qdebug.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qexceptionhandling.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qflags.h \
@@ -59,7 +59,6 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterator.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlatin1stringview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/qlocale.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlogging.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmalloc.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmap.h \
@@ -122,11 +121,19 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/moc_ProjectMode
   C:/Qt/6.10.2/mingw_64/include/QtCore/qtypes.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qutf8stringview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvariant.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantlist.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qvariantmap.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qvarlengtharray.h \
-  C:/Qt/6.10.2/mingw_64/include/QtCore/qvector.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qversiontagging.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qxptype_traits.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qyieldcpu.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qcolor.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qrgb.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qrgba64.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qtgui-config.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiexports.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiglobal.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/algorithm \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/array \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/atomic \

@@ -3,6 +3,10 @@
 #include "IconProvider.h"
 #include "PreferencesManager.h"
 #include "ProjectModel.h"
+#include "color_harmony.h"
+#include "drag_zone_calculator.h"
+#include "panel_list_model.h"
+#include "panel_manager.h"
 #include <QDir>
 #include <QGuiApplication>
 #include <QIcon>
@@ -36,8 +40,12 @@ int main(int argc, char *argv[]) {
   app.setApplicationName("ArtFlow Pro");
 
   // Registro del componente de dibujo nativo
+  // Registro de tipos QML
   qmlRegisterType<CanvasItem>("ArtFlow", 1, 0, "QCanvasItem");
   qmlRegisterType<ColorPicker>("ArtFlow", 1, 0, "ColorPicker");
+  qmlRegisterUncreatableType<artflow::PanelListModel>(
+      "ArtFlow", 1, 0, "PanelListModel",
+      "PanelListModel is managed by PanelManager");
 
   QQmlApplicationEngine engine;
   engine.addImageProvider(QLatin1String("icons"), new IconProvider());
@@ -45,10 +53,16 @@ int main(int argc, char *argv[]) {
   // Inyectar managers globales
   ProjectModel projectModel;
   PreferencesManager preferencesManager;
+  artflow::PanelManager panelManager;
+  artflow::ColorHarmony colorHarmony;
+  artflow::DragZoneCalculator dragCalculator;
 
   engine.rootContext()->setContextProperty("nativeProjectModel", &projectModel);
   engine.rootContext()->setContextProperty("preferencesManager",
                                            &preferencesManager);
+  engine.rootContext()->setContextProperty("panelManager", &panelManager);
+  engine.rootContext()->setContextProperty("colorHarmony", &colorHarmony);
+  engine.rootContext()->setContextProperty("dragCalculator", &dragCalculator);
 
   // Carga de la App desde Recursos (.qrc)
   const QUrl url(QStringLiteral("qrc:/qml/main_pro.qml"));

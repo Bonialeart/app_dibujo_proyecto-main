@@ -144,57 +144,25 @@ Popup {
 
     function addToHistory() {
         var c = root.currentColor
-        
-        // Función de comparación ultra-robusta
-        var areEqual = function(c1, c2) {
-            var col1 = Qt.color(c1)
-            var col2 = Qt.color(c2)
-            
-            // 1. Comparación por HEX redondeado (evita ruidos de precisión float)
-            var toHex6 = function(col) {
-                var r = Math.round(col.r * 255).toString(16).padStart(2, '0')
-                var g = Math.round(col.g * 255).toString(16).padStart(2, '0')
-                var b = Math.round(col.b * 255).toString(16).padStart(2, '0')
-                return ("#" + r + g + b).toUpperCase()
-            }
-            
-            if (toHex6(col1) === toHex6(col2)) return true
-            
-            // 2. Comparación directa de Qt (Fallback)
-            if (col1 === col2) return true
-            
-            return false
+        // Use C++ colorHarmony for efficient hex-rounded comparison
+        if (colorHarmony.isInList(c, backend.history)) {
+            return // Duplicate detected, skip
         }
-        
-        var hist = backend.history
-        for (var i = 0; i < hist.length; i++) {
-            if (areEqual(hist[i], c)) {
-                return // Duplicado detectado, ignorar
-            }
-        }
-        
         backend.addToHistory(c)
     }
 
     function getCMYK() {
-        var r = currentColor.r, g = currentColor.g, b = currentColor.b
-        var k = 1.0 - Math.max(r, g, b)
-        if (k >= 1.0) return {c:0, m:0, y:0, k:1}
-        var c = (1.0 - r - k) / (1.0 - k)
-        var m = (1.0 - g - k) / (1.0 - k)
-        var y = (1.0 - b - k) / (1.0 - k)
-        return {c: c, m: m, y: y, k: k}
+        // Delegated to C++ colorHarmony for exact same result, faster
+        return colorHarmony.rgbToCMYK(currentColor)
     }
 
     function setCMYK(c, m, y, k) {
-        var r = (1.0 - c) * (1.0 - k)
-        var g = (1.0 - m) * (1.0 - k)
-        var b = (1.0 - y) * (1.0 - k)
-        currentColor = Qt.rgba(r, g, b, 1.0)
-        h = currentColor.hsvHue
-        s = currentColor.hsvSaturation
-        v = currentColor.hsvValue
-        if (targetCanvas) targetCanvas.brushColor = currentColor
+        var col = colorHarmony.cmykToRGB(c, m, y, k)
+        currentColor = col
+        h = col.hsvHue
+        s = col.hsvSaturation
+        v = col.hsvValue
+        if (targetCanvas) targetCanvas.brushColor = col
     }
 
     onHChanged: updateHarmony()
@@ -203,23 +171,8 @@ Popup {
     onHarmonyModeChanged: updateHarmony()
     
     function updateHarmony() {
-        var baseHue = root.h
-        var offsets = []
-        
-        switch(harmonyMode) {
-            case "Complementary": offsets = [0.5]; break;
-            case "Split Complementary": offsets = [0.41, 0.59]; break; 
-            case "Analogous": offsets = [0.917, 0.083]; break; 
-            case "Triadic": offsets = [0.333, 0.666]; break; 
-            case "Square": offsets = [0.25, 0.5, 0.75]; break; 
-        }
-        
-        var colors = [Qt.hsva(root.h, root.s, root.v, 1.0)] // Primary
-        for (var i=0; i<offsets.length; i++) {
-            var h2 = (baseHue + offsets[i]) % 1.0
-            colors.push(Qt.hsva(h2, root.s, root.v, 1.0))
-        }
-        harmonyColors = colors
+        // Delegated to C++ colorHarmony — returns QVariantList of QColors
+        harmonyColors = colorHarmony.getHarmonyColors(root.h, root.s, root.v, harmonyMode)
     }
 
     signal colorSelected(color newColor)
