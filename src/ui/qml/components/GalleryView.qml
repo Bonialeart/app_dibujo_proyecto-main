@@ -21,21 +21,57 @@ Item {
     property int draggedIndex: -1
     property int targetIndex: -1
     property point grabOffset: "0,0"
-    readonly property color colorAccent: "#3c82f6"
+
+    readonly property color colorAccent: (typeof mainWindow !== "undefined") ? mainWindow.colorAccent : "#6366f1"
+    readonly property color colorTextPrimary: "#f4f4f8"
+    readonly property color colorTextSecondary: "#6e6e7a"
+    readonly property color colorTextMuted: "#4a4a55"
 
     readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
+    function iconPath(name) { return "image://icons/" + name; }
 
-    // 1. FONDO PREMIUM RESTAURADO
+    // ═══════════════════════════════════════
+    // 1. PREMIUM DEEP BACKGROUND
+    // ═══════════════════════════════════════
     Rectangle {
         anchors.fill: parent
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#08080a" }
-            GradientStop { position: 1.0; color: "#0f0f12" }
+            GradientStop { position: 0.0; color: "#040406" }
+            GradientStop { position: 0.4; color: "#08080c" }
+            GradientStop { position: 1.0; color: "#0a0a0f" }
         }
     }
 
-    // 2. EL FANTASMA (Levitación Pro)
+    // Ambient glow orb (top-right)
+    Rectangle {
+        width: 400; height: 400; radius: 200
+        x: parent.width - 250; y: -150
+        color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.03)
+        z: -1
+        layer.enabled: true
+        layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
+
+        SequentialAnimation on y {
+            loops: Animation.Infinite
+            NumberAnimation { to: -130; duration: 6000; easing.type: Easing.InOutSine }
+            NumberAnimation { to: -150; duration: 6000; easing.type: Easing.InOutSine }
+        }
+    }
+
+    // Ambient glow orb (bottom-left)
+    Rectangle {
+        width: 300; height: 300; radius: 150
+        x: -100; y: parent.height - 200
+        color: Qt.rgba(1.0, 0.4, 0.2, 0.02)
+        z: -1
+        layer.enabled: true
+        layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
+    }
+
+    // ═══════════════════════════════════════
+    // 2. GHOST (Drag Preview)
+    // ═══════════════════════════════════════
     Item {
         id: ghost
         width: 170; height: 230
@@ -47,7 +83,6 @@ Item {
         rotation: visible ? 4 : 0
         Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
         Behavior on rotation { NumberAnimation { duration: 250 } }
-        // REMOVED BEHAVIORS ON X/Y FOR INSTANT FEEDBACK
 
         layer.enabled: true
         layer.effect: MultiEffect {
@@ -63,35 +98,164 @@ Item {
         }
     }
 
-    // 3. CONTENIDO (ColumnLayout para estructura limpia)
+    // ═══════════════════════════════════════
+    // 3. MAIN CONTENT
+    // ═══════════════════════════════════════
     ColumnLayout {
-        anchors.fill: parent; anchors.margins: 40; spacing: 40
+        anchors.fill: parent; spacing: 0
 
-        // HEADER PREMIUM (Imagen 2)
-        RowLayout {
-            Layout.fillWidth: true; spacing: 15
-            Text { 
-                text: "Gallery"
-                color: "white"
-                font.pixelSize: 22
-                font.bold: true
+        // ── Premium Header ──
+        Rectangle {
+            Layout.fillWidth: true; Layout.preferredHeight: 72
+            color: "transparent"
+
+            RowLayout {
+                anchors.fill: parent; anchors.leftMargin: 36; anchors.rightMargin: 36
+                spacing: 16
+
+                // Back button with SVG icon
+                Rectangle {
+                    width: 42; height: 42; radius: 14
+                    color: backMa.containsMouse ? "#15ffffff" : "#0affffff"
+                    border.color: backMa.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : "#12ffffff"
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                    Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                    Image {
+                        source: iconPath("arrow-left.svg")
+                        width: 20; height: 20; anchors.centerIn: parent
+                        opacity: backMa.containsMouse ? 1.0 : 0.6
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
+
+                    scale: backMa.pressed ? 0.9 : 1.0
+                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+                    MouseArea {
+                        id: backMa; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: galleryRoot.backRequested()
+                    }
+                }
+
+                // Title
+                Column {
+                    spacing: 2
+                    Text {
+                        text: "Gallery"
+                        color: colorTextPrimary
+                        font.pixelSize: 26; font.weight: Font.Bold; font.letterSpacing: -0.8
+                    }
+                    Text {
+                        text: projectModel.count + " projects"
+                        color: colorTextMuted
+                        font.pixelSize: 12; font.letterSpacing: 0.3
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                // Search placeholder button
+                Rectangle {
+                    width: 42; height: 42; radius: 14
+                    color: searchMa.containsMouse ? "#15ffffff" : "#0affffff"
+                    border.color: "#12ffffff"; border.width: 1
+                    Behavior on color { ColorAnimation { duration: 200 } }
+
+                    Image {
+                        source: iconPath("search.svg")
+                        width: 18; height: 18; anchors.centerIn: parent
+                        opacity: searchMa.containsMouse ? 1.0 : 0.5
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
+
+                    MouseArea {
+                        id: searchMa; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                    }
+                }
+
+                // Sort button
+                Rectangle {
+                    width: 42; height: 42; radius: 14
+                    color: sortMa.containsMouse ? "#15ffffff" : "#0affffff"
+                    border.color: "#12ffffff"; border.width: 1
+                    Behavior on color { ColorAnimation { duration: 200 } }
+
+                    Image {
+                        source: iconPath("sort.svg")
+                        width: 18; height: 18; anchors.centerIn: parent
+                        opacity: sortMa.containsMouse ? 1.0 : 0.5
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
+
+                    MouseArea {
+                        id: sortMa; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                    }
+                }
             }
-            Item { Layout.fillWidth: true }
-            
-            // Icono de salida/puerta (Imagen 2 arriba a la derecha)
+
+            // Bottom separator gradient
             Rectangle {
-                width: 44; height: 44; radius: 12; color: "transparent"; border.color: "#333"
-                Text { text: "🚪"; color: "white"; font.pixelSize: 18; anchors.centerIn: parent; opacity: 0.7 }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: galleryRoot.backRequested() }
+                width: parent.width; height: 1; anchors.bottom: parent.bottom
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 0.3; color: "#15ffffff" }
+                    GradientStop { position: 0.7; color: "#15ffffff" }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
             }
         }
 
-        // GRID DE PROYECTOS (Ajustado a Imagen 2)
+        // ── Project Grid ──
         GridView {
             id: grid
             Layout.fillWidth: true; Layout.fillHeight: true
-            cellWidth: 200; cellHeight: 180
+            Layout.leftMargin: 36; Layout.rightMargin: 36
+            Layout.topMargin: 25
+            cellWidth: 220; cellHeight: 210
             model: projectModel; clip: true; interactive: galleryRoot.draggedIndex === -1
+            boundsBehavior: Flickable.StopAtBounds
+
+            // Empty state
+            Rectangle {
+                anchors.fill: parent
+                visible: projectModel.count === 0
+                color: "transparent"
+
+                Column {
+                    anchors.centerIn: parent; spacing: 16
+
+                    // Icon circle
+                    Rectangle {
+                        width: 80; height: 80; radius: 40
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.08)
+                        border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15)
+                        border.width: 1
+
+                        Image {
+                            source: iconPath("image.svg")
+                            width: 32; height: 32; anchors.centerIn: parent
+                            opacity: 0.4
+                        }
+                    }
+
+                    Text {
+                        text: "No projects yet"
+                        color: colorTextSecondary; font.pixelSize: 18; font.weight: Font.Medium
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                    Text {
+                        text: "Create your first masterpiece with the + button below"
+                        color: colorTextMuted; font.pixelSize: 13
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+            }
 
             delegate: Item {
                 id: delegateRoot; width: grid.cellWidth; height: grid.cellHeight
@@ -101,46 +265,58 @@ Item {
                 Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
 
                 Column {
-                    anchors.centerIn: parent; spacing: 8
+                    anchors.centerIn: parent; spacing: 10
                     
+                    // ── Thumbnail Card ──
                     Rectangle {
-                        width: 170; height: 110; radius: 18
-                        
-                        // 1. Si es carpeta, fondo transparente. Si es lienzo, fondo oscuro.
-                        color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : "#16161a"
-                        // 2. Si es carpeta, sin bordes (los dibujaremos en la pila).
-                        border.color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : (maGalItem.containsMouse ? "#3c82f6" : "#222")
+                        width: 195; height: 140; radius: 20
+                        color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : "#12121a"
+                        border.color: (model.type === "folder" || model.type === "sketchbook") ? "transparent"
+                            : (maGalItem.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.5) : "#15ffffff")
                         border.width: (model.type === "folder" || model.type === "sketchbook") ? 0 : (maGalItem.containsMouse ? 2 : 1)
-                        // 3. VITAL: No recortar si es carpeta
-                        clip: (model.type === "folder" || model.type === "sketchbook") ? false : true 
-                        
+                        clip: (model.type === "folder" || model.type === "sketchbook") ? false : true
+
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+
                         Loader {
                             id: cellLoaderGal
                             anchors.fill: parent
-                            // ✅ CORRECCIÓN 1: Pasar el modelo directo sin chequear .length
-                            property var thumbnails: model.thumbnails 
+                            property var thumbnails: model.thumbnails
                             property string title: model.name || ""
                             property bool isExpanded: (galleryRoot.targetIndex === index)
                             property string preview: model.preview || ""
-                            // 4. NUEVO: Pasamos el estado del mouse para animar la pila
-                            property bool isHovered: maGalItem.containsMouse 
+                            property bool isHovered: maGalItem.containsMouse
                             sourceComponent: (model.type === "folder" || model.type === "sketchbook") ? stackComp : drawingComp
                         }
                     }
                     
+                    // ── Title & Date ──
                     Item {
-                        width: 170; height: 24
-                        Text { 
-                            anchors.fill: parent
-                            visible: !delegateRoot.isEditing
-                            text: model.name || "Sin título"
-                            color: maGalItem.containsMouse ? "#3c82f6" : "#aaa"
-                            font.pixelSize: 12; font.weight: Font.Medium
-                            elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter 
-                            verticalAlignment: Text.AlignVCenter
+                        width: 195; height: 36
+
+                        Column {
+                            anchors.fill: parent; spacing: 2
+                            
+                            Text {
+                                width: parent.width
+                                visible: !delegateRoot.isEditing
+                                text: model.name || "Sin título"
+                                color: maGalItem.containsMouse ? colorTextPrimary : colorTextSecondary
+                                font.pixelSize: 13; font.weight: Font.DemiBold; font.letterSpacing: -0.2
+                                elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                            }
+
+                            Text {
+                                width: parent.width
+                                text: model.date || ""
+                                color: colorTextMuted; font.pixelSize: 11
+                                horizontalAlignment: Text.AlignHCenter
+                                visible: text !== "" && !delegateRoot.isEditing
+                            }
                         }
 
-                        // ✅ RIGHT CLICK FOR RENAMING
+                        // Right-click to rename
                         MouseArea {
                             anchors.fill: parent
                             visible: !delegateRoot.isEditing
@@ -157,18 +333,15 @@ Item {
 
                         TextField {
                             id: editField
-                            anchors.fill: parent
+                            anchors.fill: parent; anchors.topMargin: 0
                             visible: delegateRoot.isEditing
                             text: model.name || ""
-                            font.pixelSize: 12
+                            font.pixelSize: 13; font.weight: Font.DemiBold
                             horizontalAlignment: Text.AlignHCenter
-                            color: "white"
-                            selectByMouse: true
-                            background: Rectangle { 
-                                color: "#1a1a1e"
-                                radius: 4
-                                border.color: "#3c82f6"
-                                border.width: 1
+                            color: "white"; selectByMouse: true
+                            background: Rectangle {
+                                color: "#1a1a1e"; radius: 8
+                                border.color: colorAccent; border.width: 1
                             }
                             onAccepted: {
                                 if (text !== "" && text !== model.name) {
@@ -183,17 +356,26 @@ Item {
                     }
                 }
 
-                // Action Buttons (Top Right)
+                // ── Delete Button (Top Right) ──
                 Rectangle {
-                    width: 26; height: 26; radius: 13; z: 100
-                    anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 6
-                    color: maDel.containsMouse ? "#ef4444" : "#cc1c1c1e"
-                    border.color: "#30ffffff"; border.width: 1
+                    width: 28; height: 28; radius: 14; z: 100
+                    anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 8
+                    color: maDel.containsMouse ? "#ef4444" : "#cc1a1a20"
+                    border.color: maDel.containsMouse ? "#ef4444" : "#25ffffff"
+                    border.width: 1
                     opacity: (maGalItem.containsMouse || maDel.containsMouse) ? 1.0 : 0.0
                     Behavior on opacity { NumberAnimation { duration: 200 } }
-                    Text { text: "✕"; color: "white"; font.pixelSize: 12; anchors.centerIn: parent }
+                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                    Image {
+                        source: iconPath("trash-2.svg")
+                        width: 14; height: 14; anchors.centerIn: parent
+                        opacity: 0.9
+                    }
+
                     MouseArea {
                         id: maDel; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (model.type === "folder" || model.type === "sketchbook") {
                                 if (mainCanvas.deleteFolder(model.path)) refreshGallery()
@@ -214,14 +396,10 @@ Item {
                     onPressAndHold: (mouse) => {
                         galleryRoot.draggedIndex = index
                         ghost.ghostData = projectModel.get(index)
-                        // Absolute mapping to global gallery root
                         var globalGrab = maGalItem.mapToItem(galleryRoot, mouse.x, mouse.y)
                         var itemPos = delegateRoot.mapToItem(galleryRoot, 0, 0)
-                        
                         ghost.x = itemPos.x + (delegateRoot.width - ghost.width)/2
                         ghost.y = itemPos.y + (delegateRoot.height - ghost.height)/2
-                        
-                        // Recalculate grabOffset based on ghost's top-left
                         galleryRoot.grabOffset = Qt.point(globalGrab.x - ghost.x, globalGrab.y - ghost.y)
                     }
                     onPositionChanged: (mouse) => {
@@ -229,7 +407,6 @@ Item {
                             var globalPos = maGalItem.mapToItem(galleryRoot, mouse.x, mouse.y)
                             ghost.x = globalPos.x - galleryRoot.grabOffset.x
                             ghost.y = globalPos.y - galleryRoot.grabOffset.y
-                            
                             var gridPos = galleryRoot.mapToItem(grid, globalPos.x, globalPos.y)
                             var idx = grid.indexAt(gridPos.x, gridPos.y + grid.contentY)
                             galleryRoot.targetIndex = (idx !== -1 && idx !== galleryRoot.draggedIndex) ? idx : -1
@@ -257,47 +434,158 @@ Item {
         }
     }
 
-    // TOOLBAR INFERIOR (Imagen 2)
+    // ═══════════════════════════════════════
+    // 4. PREMIUM BOTTOM TOOLBAR
+    // ═══════════════════════════════════════
     Rectangle {
-        anchors.bottom: parent.bottom; anchors.bottomMargin: 30
+        id: bottomToolbar
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 28
         anchors.horizontalCenter: parent.horizontalCenter
-        width: 320; height: 60; radius: 30; color: "#1c1c1e"
+        width: toolbarRow.width + 32; height: 64; radius: 32
+        color: "#cc0e0e14"
+        border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15)
+        border.width: 1
+
         opacity: galleryRoot.draggedIndex === -1 ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: 200 } }
-        
-        Row {
-            anchors.centerIn: parent; spacing: 12
-            
-            // Botones redondos premium
-            GalleryToolButton { icon: "✅"; onClicked: console.log("Select") }
-            GalleryToolButton { icon: "☆"; onClicked: console.log("Favorite") }
-            
-            // Botón central Grande "+"
-            Rectangle {
-                width: 50; height: 50; radius: 25
-                gradient: Gradient { GradientStop { position: 0; color: "#4facfe" } GradientStop { position: 1; color: "#00f2fe" } }
-                Text { text: "+"; color: "white"; font.pixelSize: 28; font.bold: true; anchors.centerIn: parent }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: galleryRoot.createNewProject() }
-                scale: 1.1
+        scale: galleryRoot.draggedIndex === -1 ? 1.0 : 0.9
+        Behavior on opacity { NumberAnimation { duration: 250 } }
+        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+
+        // Frosted glass inner layer
+        Rectangle {
+            anchors.fill: parent; anchors.margins: 1; radius: 31
+            color: Qt.rgba(1, 1, 1, 0.03)
+            gradient: Gradient {
+                GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.04) }
+                GradientStop { position: 1.0; color: "transparent" }
             }
-            
-            GalleryToolButton { icon: "📁"; onClicked: galleryRoot.createNewGroup() }
-            GalleryToolButton { icon: "📥"; onClicked: console.log("Import") }
+        }
+
+        Row {
+            id: toolbarRow
+            anchors.centerIn: parent; spacing: 6
+
+            // Select All
+            GalleryToolButton {
+                iconSource: iconPath("select-all.svg")
+                label: "Select"
+                onClicked: console.log("Select")
+            }
+
+            // Favorites
+            GalleryToolButton {
+                iconSource: iconPath("star.svg")
+                label: "Favorites"
+                onClicked: console.log("Favorite")
+            }
+
+            // ── Central "+" Button (Primary CTA) ──
+            Rectangle {
+                width: 54; height: 54; radius: 27
+                anchors.verticalCenter: parent.verticalCenter
+
+                gradient: Gradient {
+                    orientation: Gradient.Vertical
+                    GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.15) }
+                    GradientStop { position: 1.0; color: Qt.darker(colorAccent, 1.1) }
+                }
+
+                // Top shine
+                Rectangle {
+                    width: parent.width - 4; height: parent.height / 2
+                    anchors.top: parent.top; anchors.topMargin: 2
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    radius: 25
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.2) }
+                        GradientStop { position: 1.0; color: "transparent" }
+                    }
+                }
+
+                // Border ring
+                Rectangle {
+                    anchors.fill: parent; anchors.margins: 1; radius: 26
+                    color: "transparent"
+                    border.color: Qt.rgba(1, 1, 1, 0.12); border.width: 1
+                }
+
+                Image {
+                    source: iconPath("plus.svg")
+                    width: 22; height: 22; anchors.centerIn: parent
+
+                    rotation: addBtnMa.containsMouse ? 90 : 0
+                    Behavior on rotation { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
+                }
+
+                scale: addBtnMa.pressed ? 0.9 : (addBtnMa.containsMouse ? 1.1 : 1.0)
+                Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+
+                MouseArea {
+                    id: addBtnMa; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: galleryRoot.createNewProject()
+                }
+            }
+
+            // New Folder
+            GalleryToolButton {
+                iconSource: iconPath("folder.svg")
+                label: "New Folder"
+                onClicked: galleryRoot.createNewGroup()
+            }
+
+            // Import
+            GalleryToolButton {
+                iconSource: iconPath("import.svg")
+                label: "Import"
+                onClicked: console.log("Import")
+            }
         }
     }
 
-    // Componente interno para botones de la toolbar
+    // ═══════════════════════════════════════
+    // INTERNAL COMPONENTS
+    // ═══════════════════════════════════════
+
+    // Premium Gallery Toolbar Button
     component GalleryToolButton : Rectangle {
-        property string icon: ""
+        property string iconSource: ""
+        property string label: ""
         signal clicked()
-        width: 40; height: 40; radius: 20; color: "#2c2c2e"
-        Text { text: icon; color: "white"; font.pixelSize: 16; anchors.centerIn: parent; opacity: 0.8 }
-        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked() }
+
+        width: 46; height: 46; radius: 23
+        anchors.verticalCenter: parent.verticalCenter
+        color: gtbMa.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.12) : "#15ffffff"
+        border.color: gtbMa.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : "transparent"
+        border.width: 1
+        Behavior on color { ColorAnimation { duration: 200 } }
+        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+        Image {
+            source: iconSource
+            width: 20; height: 20; anchors.centerIn: parent
+            opacity: gtbMa.containsMouse ? 1.0 : 0.6
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+        }
+
+        scale: gtbMa.pressed ? 0.9 : 1.0
+        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+        MouseArea {
+            id: gtbMa; anchors.fill: parent; hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: parent.clicked()
+        }
+
+        ToolTip {
+            visible: gtbMa.containsMouse; delay: 600
+            text: label
+        }
     }
 
-
-
-    // MODELO Y RECARGA
+    // ═══════════════════════════════════════
+    // MODEL & DATA
+    // ═══════════════════════════════════════
     ListModel { id: projectModel }
     function refreshGallery() {
         projectModel.clear()
@@ -323,7 +611,11 @@ Item {
         }
     }
 
-    // COMPONENTES DELEGADOS
+    // ═══════════════════════════════════════
+    // DELEGATE COMPONENTS
+    // ═══════════════════════════════════════
+
+    // Stack/Folder Component
     Component {
         id: stackComp
         Item {
@@ -345,14 +637,13 @@ Item {
             property int tCount: thumbnails ? (thumbnails.count !== undefined ? thumbnails.count : (thumbnails.length || 0)) : 0
             property bool isEmpty: tCount === 0
 
-            // === CARD 3 (Al fondo) ===
+            // === CARD 3 (Background) ===
             Rectangle {
                 anchors.fill: parent; anchors.centerIn: parent
                 visible: tCount > 2
                 z: 1; radius: 18; color: "#1c1c22"
                 border.color: "#2a2a30"; border.width: 1
                 
-                // Rotación y offset significativos para que sea MUY visible
                 rotation: stackRoot.isHovered ? -18 : -10
                 scale: stackRoot.isHovered ? 0.95 : 0.92
                 x: stackRoot.isHovered ? -35 : -15
@@ -374,14 +665,13 @@ Item {
                 Rectangle { id: m3; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
             }
 
-            // === CARD 2 (Medio) ===
+            // === CARD 2 (Middle) ===
             Rectangle {
                 anchors.fill: parent; anchors.centerIn: parent
                 visible: tCount > 1
                 z: 2; radius: 18; color: "#1c1c22"
                 border.color: "#2a2a30"; border.width: 1
                 
-                // ✅ MEJORA: Siempre visible con offset
                 rotation: stackRoot.isHovered ? 14 : 7
                 scale: stackRoot.isHovered ? 0.98 : 0.95
                 x: stackRoot.isHovered ? 35 : 15
@@ -403,13 +693,13 @@ Item {
                 Rectangle { id: m2; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
             }
 
-            // === CARD 1 (Frente) ===
+            // === CARD 1 (Front) ===
             Rectangle {
                 anchors.fill: parent; anchors.centerIn: parent
                 visible: !isEmpty
                 z: 3; radius: 18; color: "#1c1c22"
                 
-                border.color: stackRoot.isHovered ? "#3c82f6" : "#333"
+                border.color: stackRoot.isHovered ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.6) : "#333"
                 border.width: stackRoot.isHovered ? 2 : 1
                 
                 scale: stackRoot.isHovered ? 1.02 : 1.0
@@ -430,12 +720,12 @@ Item {
                 Rectangle { id: m1; anchors.fill: parent; radius: 18; visible: false; layer.enabled: true }
             }
 
-            // === ESTADO VACÍO (Carpeta nueva) ===
+            // === Empty State ===
             Rectangle {
                 anchors.fill: parent
                 visible: isEmpty
                 color: "#1c1c22"; radius: 18
-                border.color: stackRoot.isHovered ? "#3c82f6" : "#333"
+                border.color: stackRoot.isHovered ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.6) : "#333"
                 border.width: stackRoot.isHovered ? 2 : 1
 
                 layer.enabled: true
@@ -443,90 +733,85 @@ Item {
 
                 Column {
                     anchors.centerIn: parent; spacing: 8
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "📁"; font.pixelSize: 32; opacity: 0.5 }
+                    Image {
+                        source: iconPath("folder.svg")
+                        width: 28; height: 28; opacity: 0.35
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
                     Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Empty Group"; color: "#555"; font.pixelSize: 11 }
                 }
             }
         }
     }
-    Component { 
+
+    // Drawing Component
+    Component {
         id: drawingComp
-        Item { 
+        Item {
             anchors.fill: parent
-            
-            // ✅ CORRECCIÓN 1: En lugar de usar `model.preview`, leemos 
-            // la propiedad que pasamos a través del Loader.
             property string previewUrl: parent.preview || ""
 
-            // Contenedor principal de la tarjeta Premium
             Rectangle {
                 id: card
                 anchors.fill: parent
-                color: "#1c1c22" // Fondo oscuro base
-                radius: 16       // Bordes súper redondeados estilo Apple/Procreate
-                
-                // La Imagen de la Miniatura
+                color: "#14141a"
+                radius: 20
+
                 Image {
                     id: imgPreviewGal
                     anchors.fill: parent
                     source: previewUrl
                     fillMode: Image.PreserveAspectCrop
-                    mipmap: true 
+                    mipmap: true
                     asynchronous: true
-                    
-                    // ✅ CORRECCIÓN 2: Aplicación correcta de la máscara en Qt6
+
                     layer.enabled: true
                     layer.effect: MultiEffect {
                         maskEnabled: true
                         maskSource: maskRect
                     }
                 }
-                
-                // Sombra Premium (A nivel de tarjeta, debajo de la imagen enmascarada)
+
                 layer.enabled: true
                 layer.effect: MultiEffect {
                     shadowEnabled: true
-                    shadowColor: "#80000000" // Sombra oscura y profunda
+                    shadowColor: "#80000000"
                     shadowBlur: 1.0
                     shadowVerticalOffset: 8
                     shadowOpacity: 0.5
                 }
-                
-                // Máscara (El secreto para que la imagen respete los bordes redondeados)
+
                 Rectangle {
                     id: maskRect
-                    anchors.fill: parent
-                    radius: 16
-                    visible: false
-                    layer.enabled: true // REQUISITO OBLIGATORIO PARA QUE FUNCIONE LA MÁSCARA
+                    anchors.fill: parent; radius: 20
+                    visible: false; layer.enabled: true
                 }
-                
-                // Borde sutil
-                border.color: maGalItem.containsMouse ? "#3c82f6" : "#333"
-                border.width: maGalItem.containsMouse ? 2 : 1
             }
-            
-            // Placeholder: Si la imagen está cargando o C++ no envió nada, 
-            // mostramos un icono bonito en lugar de una caja negra vacía.
+
+            // Placeholder
             Column {
-                anchors.centerIn: parent
-                spacing: 8
+                anchors.centerIn: parent; spacing: 8
                 visible: imgPreviewGal.status !== Image.Ready && imgPreviewGal.source == ""
-                
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "🎨"; font.pixelSize: 32; opacity: 0.4 }
+
+                Image {
+                    source: iconPath("image.svg")
+                    width: 28; height: 28; opacity: 0.3
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; text: "No preview"; color: "#555"; font.pixelSize: 10 }
             }
-        } 
+        }
     }
+
     Component { id: ghostStackComp; StackFolder { thumbnails: ghost.ghostData ? ghost.ghostData.thumbnails : []; title: ghost.ghostData ? (ghost.ghostData.title || ghost.ghostData.name) : "" } }
-    Component { 
+    Component {
         id: ghostImgComp
-        Item { 
+        Item {
             width: 170; height: 230
-            Rectangle { 
+            Rectangle {
                 anchors.fill: parent; radius: 18; color: "#1c1c1e"; border.color: "#444"; clip: true
-                Image { anchors.fill: parent; source: ghost.ghostData ? ghost.ghostData.preview : ""; fillMode: Image.PreserveAspectCrop; mipmap: true } 
-            } 
-        } 
+                Image { anchors.fill: parent; source: ghost.ghostData ? ghost.ghostData.preview : ""; fillMode: Image.PreserveAspectCrop; mipmap: true }
+            }
+        }
     }
 }

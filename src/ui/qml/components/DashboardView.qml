@@ -25,11 +25,12 @@ Item {
     function qs(key) { return Trans.get(key, lang); }
 
     readonly property color colorAccent: (typeof mainWindow !== "undefined") ? mainWindow.colorAccent : "#6366f1"
-    readonly property color colorSurface: "#111113"
-    readonly property color colorBorder: "#1e1e22"
-    readonly property color colorGlass: "#0cffffff"
-    readonly property color colorTextPrimary: "#f0f0f5"
-    readonly property color colorTextSecondary: "#7a7a85"
+    readonly property color colorSurface: "#0d0d11"
+    readonly property color colorBorder: "#1a1a20"
+    readonly property color colorGlass: "#0affffff"
+    readonly property color colorTextPrimary: "#f4f4f8"
+    readonly property color colorTextSecondary: "#6e6e7a"
+    readonly property color colorTextMuted: "#4a4a55"
 
     // Time-based greeting
     property string timeGreeting: {
@@ -47,10 +48,10 @@ Item {
         anchors.fill: parent
         z: -10
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#030305" }
-            GradientStop { position: 0.3; color: "#06060a" }
-            GradientStop { position: 0.7; color: "#0a0a0f" }
-            GradientStop { position: 1.0; color: "#08080d" }
+            GradientStop { position: 0.0; color: "#020204" }
+            GradientStop { position: 0.25; color: "#050508" }
+            GradientStop { position: 0.6; color: "#08080d" }
+            GradientStop { position: 1.0; color: "#060609" }
         }
     }
 
@@ -180,44 +181,59 @@ Item {
             // ═══════════════════════════════════════
             Item {
                 width: parent.width
-                height: 280
+                height: 300
 
-                // Hero Card Background with Glass effect
+                // Hero Card Background with premium Glass effect
                 Rectangle {
                     anchors.fill: parent
-                    radius: 28
-                    color: "#0a0a0e"
-                    border.color: "#15ffffff"
-                    border.width: 1
+                    radius: 32
+                    color: "#080810"
+                    border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.12)
+                    border.width: 1.5
 
-                    // Inner gradient glow
+                    // Inner gradient glow — multi-stop
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: 1
-                        radius: 27
+                        radius: 31
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.06) }
-                            GradientStop { position: 0.4; color: "transparent" }
-                            GradientStop { position: 1.0; color: "transparent" }
+                            GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.08) }
+                            GradientStop { position: 0.3; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.02) }
+                            GradientStop { position: 0.6; color: "transparent" }
+                            GradientStop { position: 1.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.015) }
                         }
                     }
 
-                    // Top-right decorative circles
+                    // Decorative ambient circles
                     Rectangle {
-                        width: 200; height: 200; radius: 100
-                        anchors.right: parent.right; anchors.rightMargin: 60
+                        width: 240; height: 240; radius: 120
+                        anchors.right: parent.right; anchors.rightMargin: 40
                         anchors.verticalCenter: parent.verticalCenter
-                        color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.04)
+                        color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.05)
+                        layer.enabled: true
+                        layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
+
+                        SequentialAnimation on scale {
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 1.08; duration: 4000; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 1.0; duration: 4000; easing.type: Easing.InOutSine }
+                        }
+                    }
+                    Rectangle {
+                        width: 140; height: 140; radius: 70
+                        anchors.right: parent.right; anchors.rightMargin: 140
+                        anchors.top: parent.top; anchors.topMargin: 15
+                        color: Qt.rgba(1, 0.45, 0.25, 0.035)
                         layer.enabled: true
                         layer.effect: MultiEffect { blurEnabled: true; blur: 0.8 }
                     }
                     Rectangle {
-                        width: 120; height: 120; radius: 60
-                        anchors.right: parent.right; anchors.rightMargin: 120
-                        anchors.top: parent.top; anchors.topMargin: 20
-                        color: Qt.rgba(1, 0.5, 0.3, 0.03)
+                        width: 80; height: 80; radius: 40
+                        anchors.left: parent.left; anchors.leftMargin: 30
+                        anchors.bottom: parent.bottom; anchors.bottomMargin: 20
+                        color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.03)
                         layer.enabled: true
-                        layer.effect: MultiEffect { blurEnabled: true; blur: 0.7 }
+                        layer.effect: MultiEffect { blurEnabled: true; blur: 0.6 }
                     }
                 }
 
@@ -232,36 +248,53 @@ Item {
                         Layout.fillWidth: true
                         spacing: 14
 
-                        // Time-based greeting tag
+                        // Time-based greeting badge
                         Rectangle {
-                            width: greetingText.width + 22; height: 30
-                            radius: 15
-                            color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.12)
-                            border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25)
+                            width: greetingText.width + 28; height: 32
+                            radius: 16
+                            color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.1)
+                            border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2)
                             border.width: 1
+
+                            // Subtle inner gradient
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: 1; radius: 15
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.06) }
+                                    GradientStop { position: 1.0; color: "transparent" }
+                                }
+                            }
 
                             Text {
                                 id: greetingText
                                 text: dashboardRoot.timeGreeting
-                                color: Qt.lighter(colorAccent, 1.4)
+                                color: Qt.lighter(colorAccent, 1.5)
                                 font.pixelSize: 12
                                 font.weight: Font.DemiBold
-                                font.letterSpacing: 0.5
+                                font.letterSpacing: 0.6
                                 anchors.centerIn: parent
                             }
+
+                            // Staggered fade-in
+                            opacity: 0; y: 8
+                            Component.onCompleted: { opacity = 1; y = 0 }
+                            Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
+                            Behavior on y { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
                         }
 
                         Text {
                             text: dashboardRoot.qs("welcome")
                             color: colorTextPrimary
-                            font.pixelSize: 46
+                            font.pixelSize: 48
                             font.weight: Font.Black
-                            font.letterSpacing: -2.0
+                            font.letterSpacing: -2.2
 
-                            // Fade-in animation
-                            opacity: 0
-                            Component.onCompleted: opacity = 1
-                            Behavior on opacity { NumberAnimation { duration: 800; easing.type: Easing.OutCubic } }
+                            // Staggered fade-in
+                            opacity: 0; y: 12
+                            Component.onCompleted: { opacity = 1; y = 0 }
+                            Behavior on opacity { NumberAnimation { duration: 900; easing.type: Easing.OutCubic } }
+                            Behavior on y { NumberAnimation { duration: 900; easing.type: Easing.OutCubic } }
                         }
 
                         Text {
@@ -269,11 +302,14 @@ Item {
                             color: colorTextSecondary
                             font.pixelSize: 17
                             font.weight: Font.Light
-                            font.letterSpacing: 0.3
+                            font.letterSpacing: 0.4
+                            lineHeight: 1.4
 
-                            opacity: 0
-                            Component.onCompleted: opacity = 1
-                            Behavior on opacity { NumberAnimation { duration: 1000; easing.type: Easing.OutCubic } }
+                            // Staggered fade-in (delayed)
+                            opacity: 0; y: 10
+                            Component.onCompleted: { opacity = 1; y = 0 }
+                            Behavior on opacity { NumberAnimation { duration: 1100; easing.type: Easing.OutCubic } }
+                            Behavior on y { NumberAnimation { duration: 1100; easing.type: Easing.OutCubic } }
                         }
                     }
 
@@ -285,20 +321,33 @@ Item {
                         // Primary CTA — New Drawing
                         Rectangle {
                             id: btnNew
-                            width: 260; height: 58
-                            radius: 29
+                            width: 270; height: 60
+                            radius: 30
 
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
-                                GradientStop { position: 0.0; color: colorAccent }
-                                GradientStop { position: 1.0; color: Qt.darker(colorAccent, 1.2) }
+                                GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.1) }
+                                GradientStop { position: 0.5; color: colorAccent }
+                                GradientStop { position: 1.0; color: Qt.darker(colorAccent, 1.15) }
                             }
 
-                            // Inner highlight
+                            // Inner shine (top half)
+                            Rectangle {
+                                width: parent.width - 4; height: parent.height / 2
+                                anchors.top: parent.top; anchors.topMargin: 2
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                radius: 28
+                                gradient: Gradient {
+                                    GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.18) }
+                                    GradientStop { position: 1.0; color: "transparent" }
+                                }
+                            }
+
+                            // Border ring
                             Rectangle {
                                 anchors.fill: parent; anchors.margins: 1
-                                radius: 28; color: "transparent"
-                                border.color: Qt.rgba(1, 1, 1, 0.18); border.width: 1
+                                radius: 29; color: "transparent"
+                                border.color: Qt.rgba(1, 1, 1, 0.12); border.width: 1
                             }
 
                             Row {
@@ -337,11 +386,13 @@ Item {
 
                         // Secondary CTA — Open Gallery
                         Rectangle {
-                            width: 260; height: 50
-                            radius: 25
+                            width: 270; height: 52
+                            radius: 26
                             color: "transparent"
-                            border.color: "#25ffffff"
+                            border.color: maGalHero.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.35) : "#20ffffff"
                             border.width: 1
+
+                            Behavior on border.color { ColorAnimation { duration: 200 } }
 
                             Row {
                                 anchors.centerIn: parent; spacing: 10
@@ -352,19 +403,20 @@ Item {
                                 }
                                 Text {
                                     text: dashboardRoot.qs("go_gallery")
-                                    color: colorTextSecondary
+                                    color: maGalHero.containsMouse ? colorTextPrimary : colorTextSecondary
                                     font.pixelSize: 14; font.weight: Font.Medium
                                     anchors.verticalCenter: parent.verticalCenter
+                                    Behavior on color { ColorAnimation { duration: 200 } }
                                 }
                             }
 
                             Rectangle {
-                                anchors.fill: parent; radius: 25
+                                anchors.fill: parent; radius: 26
                                 color: "white"; opacity: maGalHero.containsMouse ? 0.06 : 0.0
                                 Behavior on opacity { NumberAnimation { duration: 150 } }
                             }
 
-                            scale: maGalHero.pressed ? 0.96 : (maGalHero.containsMouse ? 1.02 : 1.0)
+                            scale: maGalHero.pressed ? 0.96 : (maGalHero.containsMouse ? 1.03 : 1.0)
                             Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
 
                             MouseArea {
@@ -380,12 +432,25 @@ Item {
             // SECTION 2: QUICK ACTIONS — Canvas Preset Cards
             // ═══════════════════════════════════════
             Column {
-                width: parent.width; spacing: 20
+                width: parent.width; spacing: 22
 
-                Text {
-                    text: "Quick Start"
-                    color: colorTextPrimary
-                    font.pixelSize: 20; font.weight: Font.Bold; font.letterSpacing: -0.3
+                // Section header with accent underline
+                Item {
+                    width: parent.width; height: 30
+                    Text {
+                        text: "Quick Start"
+                        color: colorTextPrimary
+                        font.pixelSize: 21; font.weight: Font.Bold; font.letterSpacing: -0.3
+                    }
+                    Rectangle {
+                        width: 40; height: 2; radius: 1
+                        anchors.bottom: parent.bottom
+                        gradient: Gradient {
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: colorAccent }
+                            GradientStop { position: 1.0; color: "transparent" }
+                        }
+                    }
                 }
 
                 RowLayout {
@@ -467,19 +532,32 @@ Item {
 
                 RowLayout {
                     width: parent.width
-                    Text {
-                        text: dashboardRoot.qs("recent_creations")
-                        color: colorTextPrimary
-                        font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: -0.5
+                    Item {
+                        Layout.fillWidth: true; height: 32
+                        Text {
+                            text: dashboardRoot.qs("recent_creations")
+                            color: colorTextPrimary
+                            font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: -0.5
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Rectangle {
+                            width: 45; height: 2; radius: 1
+                            anchors.bottom: parent.bottom
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: colorAccent }
+                                GradientStop { position: 1.0; color: "transparent" }
+                            }
+                        }
                     }
-                    Item { Layout.fillWidth: true }
                     Rectangle {
-                        width: galLink.width + 24; height: 34
-                        radius: 17
-                        color: maGal.containsMouse ? "#15ffffff" : "transparent"
-                        border.color: maGal.containsMouse ? "#25ffffff" : "transparent"
+                        width: galLink.width + 28; height: 36
+                        radius: 18
+                        color: maGal.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.1) : "transparent"
+                        border.color: maGal.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : "transparent"
                         border.width: 1
                         Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
 
                         Text {
                             id: galLink
@@ -807,7 +885,7 @@ Item {
     // INTERNAL COMPONENTS
     // ═══════════════════════════════════════
 
-    // Quick Action Card Component
+    // Quick Action Card Component (Premium v2)
     component QuickActionCard : Rectangle {
         id: qacRoot
         property string title: ""
@@ -816,59 +894,91 @@ Item {
         property color cardAccent: colorAccent
         signal clicked()
 
-        height: 100
-        radius: 18
-        color: "#0c0c10"
-        border.color: qacHover.containsMouse ? Qt.rgba(cardAccent.r, cardAccent.g, cardAccent.b, 0.4) : "#12ffffff"
+        height: 108
+        radius: 20
+        color: "#0a0a0f"
+        border.color: qacHover.containsMouse ? Qt.rgba(cardAccent.r, cardAccent.g, cardAccent.b, 0.45) : "#10ffffff"
         border.width: 1
 
-        Behavior on border.color { ColorAnimation { duration: 200 } }
+        Behavior on border.color { ColorAnimation { duration: 250 } }
 
-        // Accent glow on hover
+        // Accent glow on hover — multi-direction
         Rectangle {
-            anchors.fill: parent; radius: 18
+            anchors.fill: parent; radius: 20
             gradient: Gradient {
                 orientation: Gradient.Horizontal
-                GradientStop { position: 0.0; color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.08) }
+                GradientStop { position: 0.0; color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.1) }
+                GradientStop { position: 0.5; color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.02) }
                 GradientStop { position: 1.0; color: "transparent" }
             }
             opacity: qacHover.containsMouse ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 250 } }
+            Behavior on opacity { NumberAnimation { duration: 300 } }
+        }
+
+        // Bottom accent line on hover
+        Rectangle {
+            width: parent.width * 0.6; height: 2; radius: 1
+            anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottomMargin: 0
+            gradient: Gradient {
+                orientation: Gradient.Horizontal
+                GradientStop { position: 0.0; color: "transparent" }
+                GradientStop { position: 0.5; color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.5) }
+                GradientStop { position: 1.0; color: "transparent" }
+            }
+            opacity: qacHover.containsMouse ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 300 } }
         }
 
         RowLayout {
             anchors.fill: parent; anchors.margins: 18; spacing: 16
 
-            // Icon container
+            // Icon container with gradient background
             Rectangle {
-                width: 52; height: 52; radius: 16
-                color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.12)
-                border.color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.2)
+                width: 54; height: 54; radius: 17
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.18) }
+                    GradientStop { position: 1.0; color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.08) }
+                }
+                border.color: Qt.rgba(qacRoot.cardAccent.r, qacRoot.cardAccent.g, qacRoot.cardAccent.b, 0.22)
                 border.width: 1
 
                 Text {
                     text: qacRoot.iconText
-                    font.pixelSize: 22
+                    font.pixelSize: 24
                     anchors.centerIn: parent
+
+                    scale: qacHover.containsMouse ? 1.15 : 1.0
+                    Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
                 }
             }
 
             Column {
-                Layout.fillWidth: true; spacing: 4
+                Layout.fillWidth: true; spacing: 5
                 Text {
                     text: qacRoot.title
                     color: colorTextPrimary
-                    font.pixelSize: 15; font.weight: Font.Bold
+                    font.pixelSize: 15; font.weight: Font.Bold; font.letterSpacing: -0.2
                 }
                 Text {
                     text: qacRoot.subtitle
                     color: colorTextSecondary
-                    font.pixelSize: 12
+                    font.pixelSize: 12; font.letterSpacing: 0.1
                 }
+            }
+
+            // Arrow indicator
+            Text {
+                text: "→"
+                color: colorTextSecondary
+                font.pixelSize: 16
+                opacity: qacHover.containsMouse ? 1.0 : 0.0
+                Layout.rightMargin: 4
+                Behavior on opacity { NumberAnimation { duration: 200 } }
             }
         }
 
-        scale: qacHover.pressed ? 0.97 : (qacHover.containsMouse ? 1.02 : 1.0)
+        scale: qacHover.pressed ? 0.97 : (qacHover.containsMouse ? 1.025 : 1.0)
         Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
 
         MouseArea {

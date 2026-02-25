@@ -735,63 +735,113 @@ Window {
             Layout.fillWidth: true; Layout.fillHeight: true
             spacing: 0
 
-        // NAVBAR IZQUIERDA (PREMIUM - Collapsible with Glassmorphism)
+        // NAVBAR IZQUIERDA (PREMIUM v2 - Glassmorphism Sidebar)
         Rectangle {
             id: leftNavbar
-            Layout.preferredWidth: (showSidebar && !isZenMode) ? 72 * uiScale : 0
+            Layout.preferredWidth: (showSidebar && !isZenMode) ? 84 * uiScale : 0
             Layout.fillHeight: true
             z: 80
             clip: true
-            Behavior on Layout.preferredWidth { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+            color: "transparent"
+            Behavior on Layout.preferredWidth { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
-            // Dark gradient background
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#0c0c0f" }
-                GradientStop { position: 0.5; color: "#0a0a0d" }
-                GradientStop { position: 1.0; color: "#08080b" }
+            // ── Layer 1: Deep Dark Base ──
+            Rectangle {
+                anchors.fill: parent
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "#0e0e12" }
+                    GradientStop { position: 0.35; color: "#0b0b0f" }
+                    GradientStop { position: 0.7; color: "#09090d" }
+                    GradientStop { position: 1.0; color: "#07070b" }
+                }
             }
 
-            // Right edge separator — subtle glassmorphism line
-            Rectangle { width: 1; height: parent.height; anchors.right: parent.right; color: "#10ffffff" }
+            // ── Layer 2: Frosted Glass Overlay ──
+            Rectangle {
+                anchors.fill: parent
+                color: Qt.rgba(1, 1, 1, 0.02)
+                Rectangle {
+                    anchors.fill: parent
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.03) }
+                        GradientStop { position: 0.3; color: "transparent" }
+                        GradientStop { position: 1.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.02) }
+                    }
+                }
+            }
+
+            // ── Right edge: Accent gradient line ──
+            Rectangle {
+                width: 1; height: parent.height; anchors.right: parent.right
+                gradient: Gradient {
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 0.25; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) }
+                    GradientStop { position: 0.5; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) }
+                    GradientStop { position: 0.75; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) }
+                    GradientStop { position: 1.0; color: "transparent" }
+                }
+            }
             
             ColumnLayout {
-                anchors.fill: parent; anchors.margins: 12; spacing: 8
+                anchors.fill: parent; anchors.margins: 12; spacing: 6
                 
-                // ── Premium Logo ──
+                // ── Premium Logo with Ambient Glow ──
                 Item { 
-                    Layout.preferredWidth: 44; Layout.preferredHeight: 44; Layout.alignment: Qt.AlignHCenter
-                    Layout.topMargin: 6; Layout.bottomMargin: 10
+                    Layout.preferredWidth: 48; Layout.preferredHeight: 48; Layout.alignment: Qt.AlignHCenter
+                    Layout.topMargin: 8; Layout.bottomMargin: 12
 
-                    // Glow behind logo
+                    // Animated ambient glow
                     Rectangle {
-                        anchors.fill: parent; anchors.margins: -6
-                        radius: 20
-                        color: colorAccent; opacity: 0.08
+                        id: logoGlow
+                        anchors.fill: parent; anchors.margins: -10
+                        radius: 24
+                        color: colorAccent
+                        opacity: 0.06
+
+                        SequentialAnimation on opacity {
+                            loops: Animation.Infinite
+                            NumberAnimation { to: 0.1; duration: 2500; easing.type: Easing.InOutSine }
+                            NumberAnimation { to: 0.06; duration: 2500; easing.type: Easing.InOutSine }
+                        }
                     }
 
+                    // Logo button
                     Rectangle { 
-                        anchors.fill: parent; radius: 14
+                        anchors.fill: parent; radius: 15
                         gradient: Gradient {
                             orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.15) }
-                            GradientStop { position: 1.0; color: colorAccent }
+                            GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.2) }
+                            GradientStop { position: 1.0; color: Qt.darker(colorAccent, 1.1) }
                         }
                         
-                        // Inner highlight
+                        // Inner highlight (top shine)
                         Rectangle {
-                            anchors.fill: parent; anchors.margins: 1; radius: 13
+                            width: parent.width - 6; height: parent.height / 2
+                            anchors.top: parent.top; anchors.topMargin: 2
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            radius: 13
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.22) }
+                                GradientStop { position: 1.0; color: "transparent" }
+                            }
+                        }
+
+                        // Border ring
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: 1; radius: 14
                             color: "transparent"
-                            border.color: Qt.rgba(1, 1, 1, 0.2); border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.15); border.width: 1
                         }
 
                         Text { 
                             text: "A"; anchors.centerIn: parent; color: "white"
-                            font.bold: true; font.pixelSize: 20; font.letterSpacing: -0.5
+                            font.bold: true; font.pixelSize: 22; font.letterSpacing: -0.5
+                            style: Text.Raised; styleColor: Qt.rgba(0,0,0,0.3)
                         }
                     }
                     
-                    scale: logoMouse.pressed ? 0.9 : (logoMouse.containsMouse ? 1.08 : 1.0)
-                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                    scale: logoMouse.pressed ? 0.88 : (logoMouse.containsMouse ? 1.1 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                     
                     MouseArea { id: logoMouse; anchors.fill: parent; hoverEnabled: true; onClicked: currentPage = 0; cursorShape: Qt.PointingHandCursor }
                 }
@@ -816,13 +866,21 @@ Window {
 
                 Item { Layout.fillHeight: true }
 
-                // Separator line
-                Rectangle { width: 28; height: 1; color: "#18ffffff"; Layout.alignment: Qt.AlignHCenter }
+                // ── Premium Separator ──
+                Rectangle {
+                    width: 32; height: 1; Layout.alignment: Qt.AlignHCenter
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 0.5; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) }
+                        GradientStop { position: 1.0; color: "transparent" }
+                    }
+                }
                 Item { height: 2 }
 
                 SidebarButton { iconName: "settings.svg"; label: "Setup"; active: currentPage === 4; onClicked: currentPage = 4 }
 
-                Item { height: 6 }
+                Item { height: 8 }
             }
         }
 
@@ -6149,30 +6207,72 @@ Window {
     component SidebarButton : Item {
         property string iconName; property string label; property bool active: false
         signal clicked()
-        width: 52; height: 52
-        
-        Rectangle { 
+        width: 58; height: 58
+
+        // ── Radial Glow behind icon when active ──
+        Rectangle {
+            width: 44; height: 44; radius: 22
+            anchors.centerIn: parent
+            color: colorAccent
+            opacity: active ? 0.12 : 0
+            scale: active ? 1.3 : 0.6
+            Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutBack } }
+        }
+
+        // ── Background card ──
+        Rectangle {
             anchors.fill: parent; radius: 14
-            color: active ? "#206366f1" : (ma.containsMouse ? "#10ffffff" : "transparent")
-            border.color: active ? colorAccent : (ma.containsMouse ? "#3a3a3c" : "transparent")
+            color: active
+                ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.14)
+                : (sbMa.containsMouse ? "#0dffffff" : "transparent")
+            border.color: active
+                ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.35)
+                : (sbMa.containsMouse ? "#1affffff" : "transparent")
             border.width: 1
-            Behavior on color { ColorAnimation { duration: 150 } }
-            Behavior on border.color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: 200; easing.type: Easing.OutCubic } }
+            Behavior on border.color { ColorAnimation { duration: 200 } }
         }
-        
-        Image { 
+
+        // ── Left Active Pill Indicator ──
+        Rectangle {
+            width: 3; height: active ? 22 : 0; radius: 1.5
+            anchors.left: parent.left; anchors.leftMargin: -1
+            anchors.verticalCenter: parent.verticalCenter
+            color: colorAccent
+            opacity: active ? 1.0 : 0
+            Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+            Behavior on opacity { NumberAnimation { duration: 200 } }
+
+            // Subtle glow behind pill
+            Rectangle {
+                anchors.fill: parent; anchors.margins: -4
+                radius: 6; color: colorAccent; opacity: 0.25
+                visible: active
+            }
+        }
+
+        // ── Icon ──
+        Image {
             source: iconPath(iconName)
-            width: 22; height: 22; anchors.centerIn: parent
-            opacity: active ? 1.0 : (ma.containsMouse ? 0.8 : 0.5)
-            Behavior on opacity { NumberAnimation { duration: 150 } }
+            width: 24; height: 24; anchors.centerIn: parent
+            opacity: active ? 1.0 : (sbMa.containsMouse ? 0.85 : 0.45)
+            scale: sbMa.pressed ? 0.85 : (sbMa.containsMouse ? 1.12 : 1.0)
+            Behavior on opacity { NumberAnimation { duration: 200 } }
+            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
         }
-        
-        MouseArea { 
-            id: ma; anchors.fill: parent; onClicked: parent.clicked(); cursorShape: Qt.PointingHandCursor; hoverEnabled: true 
-            
+
+        // ── Press scale for whole item ──
+        scale: sbMa.pressed ? 0.92 : 1.0
+        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+        MouseArea {
+            id: sbMa; anchors.fill: parent; onClicked: parent.clicked()
+            cursorShape: Qt.PointingHandCursor; hoverEnabled: true
+
             ToolTip.visible: containsMouse
             ToolTip.text: label
-            ToolTip.delay: 800
+            ToolTip.delay: 600
         }
     }
 
