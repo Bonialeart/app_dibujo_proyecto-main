@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+  <!-- Brush handle -->
+  <path d="M16 2L20 6L10 16C9 17 7.5 17.5 6 17C5 16.5 4.5 15.5 5 14C5.5 13 6 11.5 7 10L16 2Z" fill="white" opacity="0.9"/>
+  <!-- Brush tip highlight -->
+  <path d="M17.5 3.5L19.5 5.5L18 7L16 5L17.5 3.5Z" fill="white" opacity="0.6"/>
+  <!-- Brush bristles -->
+  <path d="M6 17C6 17 5 18.5 5 20C5 21.1 5.9 22 7 22C8.5 22 9 20 9 20L6 17Z" fill="white" opacity="0.85"/>
+  <!-- Store tag -->
+  <rect x="13" y="15" width="9" height="7" rx="1.5" fill="white" opacity="0.25"/>
+  <rect x="14" y="16" width="7" height="5" rx="1" fill="white" opacity="0.15"/>
+  <text x="17.5" y="20.5" text-anchor="middle" font-family="sans-serif" font-size="4" font-weight="bold" fill="white" opacity="0.9">$</text>
+</svg>
