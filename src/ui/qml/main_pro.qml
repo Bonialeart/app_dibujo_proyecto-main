@@ -83,7 +83,7 @@ Window {
 
     // --- GLOBAL SHORTCUTS ---
     // These ensure shortcuts work globally even if focus is lost (fixing the "funcionen siempre" issue).
-    property var sm: typeof preferencesManager !== "undefined" ? preferencesManager.shortcuts : null
+    property var sm: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.shortcuts : null
 
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["New Project"] ? mainWindow.sm["New Project"] : "Ctrl+N"; onActivated: newProjectDialog.open() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Open Project"] ? mainWindow.sm["Open Project"] : "Ctrl+O"; onActivated: openProjectDialog.open() }
@@ -112,9 +112,9 @@ Window {
     // === DESIGN TOKENS ===
     // === DESIGN TOKENS ===
     // If preferencesManager is not ready, fallback to dark
-    property string themeMode: (typeof preferencesManager !== "undefined") ? preferencesManager.themeMode : "Dark"
-    property color themeAccent: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
-    property real uiScale: (typeof preferencesManager !== "undefined" && preferencesManager.uiScale) ? preferencesManager.uiScale : 1.0
+    property string themeMode: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.themeMode : "Dark"
+    property color themeAccent: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.themeAccent : "#6366f1"
+    property real uiScale: (preferencesManager !== undefined && preferencesManager !== null && preferencesManager.uiScale) ? preferencesManager.uiScale : 1.0
     
     readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey"
     
@@ -7266,6 +7266,68 @@ Window {
                     color: "white"; opacity: parent.children[1].containsMouse ? 0.1 : 0
                     Behavior on opacity { NumberAnimation { duration: 150 } }
                 }
+            }
+        }
+    }
+
+    // ==========================================
+    // EXTRA PAGES (OVERLAYS)
+    // ==========================================
+
+    LearnCenterPage {
+        id: learnPage
+        anchors.left: leftNavbar.right
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        visible: currentPage === 2
+        z: 9000
+    }
+
+    AssetsPage {
+        id: assetsPage
+        anchors.left: leftNavbar.right
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        visible: currentPage === 3
+        z: 9000
+    }
+
+    // Placeholder for Setup Page
+    Rectangle {
+        id: setupPage
+        anchors.left: leftNavbar.right
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        color: "#121214"
+        visible: currentPage === 4
+        z: 9000
+        
+        Column {
+            anchors.centerIn: parent
+            spacing: 20
+            
+            Text {
+                text: "⚙️"
+                font.pixelSize: 64
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            
+            Text {
+                text: "Configuraciones en construcción"
+                color: "white"
+                font.pixelSize: 24
+                font.weight: Font.Bold
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            
+            Text {
+                text: "Próximamente podrás modificar ajustes de tu cuenta y de la aplicación aquí."
+                color: "#888"
+                font.pixelSize: 14
+                anchors.horizontalCenter: parent.horizontalCenter
             }
         }
     }

@@ -21,7 +21,7 @@ Item {
     property int targetIndex: -1
     property point grabOffset: "0,0"
 
-    readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
+    readonly property string lang: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
 
     readonly property color colorAccent: (typeof mainWindow !== "undefined") ? mainWindow.colorAccent : "#6366f1"

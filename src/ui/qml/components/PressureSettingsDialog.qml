@@ -368,7 +368,7 @@ Popup {
 
     function savePoints() {
         // Guardar en persistencia (C++)
-        if (typeof preferencesManager !== "undefined") {
+        if (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") {
             preferencesManager.pressureCurve = _visualPoints
         }
     }

@@ -12,7 +12,7 @@ Item {
     property var canvasPage: null
     property var toolsModel: null
     property var subToolBar: null
-    property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
+    property color accentColor: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
     property bool isProjectActive: false
     property bool isZenMode: false
     

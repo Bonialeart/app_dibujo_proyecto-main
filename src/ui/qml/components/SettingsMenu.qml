@@ -17,14 +17,14 @@ Popup {
     y: 70
     
     // --- PROPERTIES & SIGNALS ---
-    signal settingsChanged()
+    signal settingsChanged
     property int currentCategoryIndex: 0
     property var windowRef: null
     property var canvasRef: null
 
     // Design Tokens
-    property string themeMode: (typeof preferencesManager !== "undefined") ? preferencesManager.themeMode : "Dark"
-    property color themeAccent: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
+    property string themeMode: (preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeMode : "Dark"
+    property color themeAccent: (preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
     
     readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey"
     

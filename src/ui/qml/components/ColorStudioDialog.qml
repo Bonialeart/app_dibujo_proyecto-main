@@ -43,7 +43,7 @@ Popup {
     }
     
     // --- THEME & COLORS ---
-    property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#8E7CC3"
+    property color accentColor: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#8E7CC3"
     property color bgColor: "#121214"      // Near Black
     property color panelColor: "#1C1C1E"   // Dark Gray
     property color borderColor: "#2C2C2E"

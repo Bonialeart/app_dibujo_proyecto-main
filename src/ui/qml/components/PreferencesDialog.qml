@@ -17,11 +17,11 @@ Popup {
     y: (parent.height - height) / 2
     
     // --- PROPERTIES & SIGNALS ---
-    signal settingsChanged()
+    signal settingsChanged
     
     // Theme Colors - Bound to PreferencesManager if available, else fallback
-    property string themeMode: (typeof preferencesManager !== "undefined") ? preferencesManager.themeMode : "Dark"
-    property color themeAccent: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
+    property string themeMode: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.themeMode : "Dark"
+    property color themeAccent: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.themeAccent : "#6366f1"
     
     // Computed based on Mode
     readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey"
@@ -53,11 +53,11 @@ Popup {
     property bool tempTouchEyedropper: true
     property bool tempMultitouchUndoRedo: true
 
-    readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
+    readonly property string lang: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
     
     onOpened: {
-        if (typeof preferencesManager !== "undefined") {
+        if (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") {
             tempGpuEnabled = preferencesManager.gpuAcceleration
             tempUndoLevels = preferencesManager.undoLevels
             tempLanguage = preferencesManager.language
@@ -76,7 +76,7 @@ Popup {
     }
     
     function saveSettings() {
-        if (typeof preferencesManager !== "undefined") {
+        if (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") {
             preferencesManager.gpuAcceleration = tempGpuEnabled
             preferencesManager.undoLevels = tempUndoLevels
             preferencesManager.language = tempLanguage
@@ -581,9 +581,9 @@ Popup {
                                             horizontalAlignment: TextInput.AlignHCenter
                                             verticalAlignment: TextInput.AlignVCenter
                                             color: "white"; font.pixelSize: 12
-                                            text: typeof preferencesManager !== "undefined" ? preferencesManager.getShortcut(modelData.id) : ""
+                                            text: preferencesManager && typeof preferencesManager !== "undefined" ? preferencesManager.getShortcut(modelData.id) : ""
                                             onEditingFinished: {
-                                                if (typeof preferencesManager !== "undefined") {
+                                                if (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") {
                                                     preferencesManager.setShortcut(modelData.id, text)
                                                 }
                                             }
@@ -687,7 +687,7 @@ Popup {
                     flat: true
                     palette.buttonText: colorTextMuted
                     onClicked: {
-                        if (typeof preferencesManager !== "undefined") {
+                        if (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") {
                             preferencesManager.resetDefaults()
                             root.close()
                              toastManager.show("Config reset to defaults", "info")

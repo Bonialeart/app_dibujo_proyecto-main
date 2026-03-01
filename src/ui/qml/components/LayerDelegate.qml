@@ -17,7 +17,7 @@ Item {
     property var rootRef: null // Reference to the main panel root
     
     // Helper
-    property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#007aff"
+    property color accentColor: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#007aff"
     // Group color token
     readonly property color groupColor: "#f59e0b"
 

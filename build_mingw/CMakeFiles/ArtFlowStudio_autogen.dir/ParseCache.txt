@@ -894,6 +894,7 @@ E:/Rescate_Proyecto/src/PreferencesManager.h
  mdp:C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wctype.h
  mdp:E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h
  mdp:E:/Rescate_Proyecto/src/PreferencesManager.h
+E:/Rescate_Proyecto/src/core/cpp/include/ColorPickerImpl.h
 E:/Rescate_Proyecto/src/ProjectModel.h
  mmc:Q_OBJECT
  mdp:C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel
@@ -1237,7 +1238,6 @@ E:/Rescate_Proyecto/src/ProjectModel.h
  mdp:C:/Qt/Tools/mingw1310_64/x86_64-w64-mingw32/include/wchar.h
  mdp:E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h
  mdp:E:/Rescate_Proyecto/src/ProjectModel.h
-E:/Rescate_Proyecto/src/core/cpp/include/ColorPickerImpl.h
 E:/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h
  mmc:Q_OBJECT
  mdp:C:/Qt/6.10.2/mingw_64/include/QtCore/QList
@@ -2282,6 +2282,7 @@ E:/Rescate_Proyecto/src/core/cpp/include/drag_zone_calculator.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/drag_zone_calculator.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_data.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h
+E:/Rescate_Proyecto/src/core/cpp/src/brush_preset.cpp
 E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h
  mmc:Q_OBJECT
  mdp:C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel
@@ -2622,7 +2623,7 @@ E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h
  mdp:E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_data.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h
-E:/Rescate_Proyecto/src/core/cpp/src/brush_preset.cpp
+E:/Rescate_Proyecto/src/core/cpp/src/stroke_undo_command.cpp
 E:/Rescate_Proyecto/src/core/cpp/include/panel_manager.h
  mmc:Q_OBJECT
  mdp:C:/Qt/6.10.2/mingw_64/include/QtCore/QAbstractListModel
@@ -2966,12 +2967,11 @@ E:/Rescate_Proyecto/src/core/cpp/include/panel_manager.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_data.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_list_model.h
  mdp:E:/Rescate_Proyecto/src/core/cpp/include/panel_manager.h
-E:/Rescate_Proyecto/src/core/cpp/src/stroke_undo_command.cpp
-E:/Rescate_Proyecto/src/CanvasItem.cpp
 E:/Rescate_Proyecto/src/core/cpp/src/brush_preset_manager.cpp
+E:/Rescate_Proyecto/src/CanvasItem.cpp
 E:/Rescate_Proyecto/src/PreferencesManager.cpp
-E:/Rescate_Proyecto/src/ProjectModel.cpp
 E:/Rescate_Proyecto/src/core/cpp/src/ColorPicker.cpp
+E:/Rescate_Proyecto/src/ProjectModel.cpp
 E:/Rescate_Proyecto/src/core/cpp/src/ColorPickerImpl.cpp
 E:/Rescate_Proyecto/src/core/cpp/src/brush_engine.cpp
 E:/Rescate_Proyecto/src/core/cpp/src/color_harmony.cpp

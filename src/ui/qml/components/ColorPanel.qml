@@ -9,7 +9,7 @@ Item {
     
     // --- PROPERTIES ---
     property var targetCanvas: null
-    property color accentColor: (typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#8E7CC3"
+    property color accentColor: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#8E7CC3"
     property color currentColor: targetCanvas ? targetCanvas.brushColor : "#8E7CC3"
     
     // --- DUAL COLOR SYSTEM ---

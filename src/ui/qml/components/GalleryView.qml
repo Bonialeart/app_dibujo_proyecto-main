@@ -27,7 +27,7 @@ Item {
     readonly property color colorTextSecondary: "#6e6e7a"
     readonly property color colorTextMuted: "#4a4a55"
 
-    readonly property string lang: (typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
+    readonly property string lang: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
     function iconPath(name) { return "image://icons/" + name; }
 

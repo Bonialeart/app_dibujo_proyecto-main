@@ -58,6 +58,10 @@
     <file>qml/components/SimpleAnimationBar.qml</file>
     <file>qml/components/AdvancedTimelineBar.qml</file>
     <file>qml/components/LiquifyBar.qml</file>
+    <file>qml/components/AssetsPage.qml</file>
+    <file>qml/components/LearnCenterPage.qml</file>
+    <file>qml/components/BrushStorePage.qml</file>
+    <file>qml/components/VideoPlayerView.qml</file>
     <file>qml/views/CanvasPage.qml</file>
 </qresource>
 </RCC>
