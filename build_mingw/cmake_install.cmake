@@ -1,4 +1,4 @@
-# Install script for directory: D:/Rescate_Proyecto
+# Install script for directory: E:/Rescate_Proyecto
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -52,6 +52,6 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-  file(WRITE "D:/Rescate_Proyecto/build_mingw/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "E:/Rescate_Proyecto/build_mingw/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

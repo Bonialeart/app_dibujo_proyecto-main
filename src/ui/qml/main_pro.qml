@@ -5142,7 +5142,7 @@ Window {
         z: 20000
     }
         
-    // === DIALOGO NUEVO PROYECTO (PREMIUM REDESIGN V2) ===
+        // === DIÁLOGO NUEVO PROYECTO (PREMIUM REDESIGN V2) ===
     Rectangle {
         id: newProjectDialog
         anchors.fill: parent
@@ -5156,6 +5156,9 @@ Window {
         property int inputDPI: 72
         property string colorMode: "RGB" 
         property color bgFill: "white"
+        // Proporción y orientación
+        property bool lockAspectRatio: true
+        property real aspectRatio: inputH > 0 ? inputW / inputH : 1.0
         
         // Unidades y Conversión
         property string currentUnit: "px"
@@ -5166,10 +5169,10 @@ Window {
         property int selectedCategoryIndex: 0
         
         property var categories: [
-            { name: "Illustration", icon: "brush.svg", desc: "Digital art & paintings" },
-            { name: "Manga", icon: "book.svg", desc: "B4/A4 Print Manga projects" },
-            { name: "Webtoon", icon: "smartphone.svg", desc: "Long strip vertical stories" },
-            { name: "Animation", icon: "video.svg", desc: "Frame-by-frame animation" }
+            { name: "Ilustración", icon: "brush.svg", desc: "Arte digital e ilustraciones" },
+            { name: "Manga", icon: "book.svg", desc: "Proyectos impresos B4/A4" },
+            { name: "Webtoon", icon: "smartphone.svg", desc: "Historias verticales largas" },
+            { name: "Animación", icon: "video.svg", desc: "Animación cuadro a cuadro" }
         ]
         
         // --- STORY SETTINGS ---
@@ -5188,35 +5191,35 @@ Window {
         property bool unitDropdownOpen: false
         
         property var templateData: [
-            // Illustration
+            // Ilustración
             [
                 { label: "Full HD", w: 1920, h: 1080, dpi: 72 },
                 { label: "4K UHD", w: 3840, h: 2160, dpi: 72 },
-                { label: "Square", w: 2000, h: 2000, dpi: 300 },
+                { label: "Cuadrado", w: 2000, h: 2000, dpi: 300 },
                 { label: "Concept Art", w: 5000, h: 2800, dpi: 300 },
-                { label: "Quick Sketch", w: 1500, h: 1000, dpi: 72 },
-                { label: "Portrait", w: 2000, h: 3000, dpi: 300 }
+                { label: "Boceto rápido", w: 1500, h: 1000, dpi: 72 },
+                { label: "Retrato", w: 2000, h: 3000, dpi: 300 }
             ],
-            // Manga (Print B4/A4)
+            // Manga (Impresión B4/A4)
             [
-                { label: "Manga B4 (Prof.)", w: 3035, h: 4299, dpi: 600 },
-                { label: "Manga A4 (Small)", w: 2480, h: 3508, dpi: 600 },
+                { label: "Manga B4 (Pro)", w: 3035, h: 4299, dpi: 600 },
+                { label: "Manga A4 (Pequeño)", w: 2480, h: 3508, dpi: 600 },
                 { label: "Doujinshi A5", w: 1748, h: 2480, dpi: 600 },
-                { label: "Comic US Letter", w: 2550, h: 3300, dpi: 300 }
+                { label: "Cómic US Letter", w: 2550, h: 3300, dpi: 300 }
             ],
-            // Webtoon (Long Strips)
+            // Webtoon (Tiras largas)
             [
-                { label: "Webtoon (Standard)", w: 800, h: 1280, dpi: 300 },
-                { label: "Webtoon (HD)", w: 1600, h: 2560, dpi: 300 },
-                { label: "Webtoon (Extra Long)", w: 800, h: 5000, dpi: 300 }
+                { label: "Webtoon estándar", w: 800, h: 1280, dpi: 300 },
+                { label: "Webtoon HD", w: 1600, h: 2560, dpi: 300 },
+                { label: "Webtoon extra largo", w: 800, h: 5000, dpi: 300 }
             ],
-            // Animation
+            // Animación
             [
-                { label: "1080p Animation", w: 1920, h: 1080, dpi: 72 },
-                { label: "720p Animation", w: 1280, h: 720, dpi: 72 },
-                { label: "Square Anim", w: 1080, h: 1080, dpi: 72 },
-                { label: "4K Animation", w: 3840, h: 2160, dpi: 72 },
-                { label: "GIF (Small)", w: 480, h: 480, dpi: 72 },
+                { label: "Animación 1080p", w: 1920, h: 1080, dpi: 72 },
+                { label: "Animación 720p", w: 1280, h: 720, dpi: 72 },
+                { label: "Animación cuadrada", w: 1080, h: 1080, dpi: 72 },
+                { label: "Animación 4K", w: 3840, h: 2160, dpi: 72 },
+                { label: "GIF pequeño", w: 480, h: 480, dpi: 72 },
                 { label: "Storyboard", w: 1920, h: 1080, dpi: 150 }
             ]
         ]
@@ -5249,8 +5252,20 @@ Window {
             if (currentUnit === "cm") px = val * (inputDPI/2.54)
             if (currentUnit === "mm") px = val * (inputDPI/25.4)
             
-            if (dim === "w") inputW = Math.round(px)
-            else inputH = Math.round(px)
+            if (!lockAspectRatio) {
+                if (dim === "w") inputW = Math.round(px)
+                else inputH = Math.round(px)
+            } else {
+                // Mantener relación de aspecto al editar
+                if (aspectRatio <= 0) aspectRatio = 1.0
+                if (dim === "w") {
+                    inputW = Math.round(px)
+                    inputH = Math.max(1, Math.round(px / aspectRatio))
+                } else {
+                    inputH = Math.round(px)
+                    inputW = Math.max(1, Math.round(px * aspectRatio))
+                }
+            }
         }
         
         function updateDPI(val) {
@@ -5263,8 +5278,14 @@ Window {
             }
         }
         
-        onInputWChanged: if (currentUnit === "px") displayW = inputW.toString(); else setUnit(currentUnit)
-        onInputHChanged: if (currentUnit === "px") displayH = inputH.toString(); else setUnit(currentUnit)
+        onInputWChanged: {
+            if (currentUnit === "px") displayW = inputW.toString(); else setUnit(currentUnit)
+            if (lockAspectRatio && inputH > 0) aspectRatio = inputW / inputH
+        }
+        onInputHChanged: {
+            if (currentUnit === "px") displayH = inputH.toString(); else setUnit(currentUnit)
+            if (lockAspectRatio && inputH > 0) aspectRatio = inputW / inputH
+        }
         
         function open() { visible = true; scale = 0.95; opacity = 0; animOpen.start() }
         function close() { animClose.start() }
@@ -5281,10 +5302,10 @@ Window {
         
         MouseArea { anchors.fill: parent; onClicked: newProjectDialog.close() }
         
-        // === MAIN CARD (Redesigned) ===
+        // === MAIN CARD (Redesigned, premium) ===
         Rectangle {
-            width: 980
-            height: Math.min(parent.height - 40, newProjectDialog.isAnimation ? 760 : 680)
+            width: Math.min(parent.width - 40, 1240)
+            height: Math.min(parent.height - 20, newProjectDialog.isAnimation ? 840 : 780)
             anchors.centerIn: parent
             color: "#0f0f11"
             radius: 24
@@ -5311,12 +5332,12 @@ Window {
                         Column {
                             Layout.alignment: Qt.AlignVCenter
                             spacing: 3
-                            Text { 
-                                text: "New Canvas"
+                            Text {
+                                text: "Nuevo Lienzo"
                                 color: "white"; font.pixelSize: 22; font.bold: true
                             }
-                            Text { 
-                                text: "Choose a preset or customize dimensions"
+                            Text {
+                                text: "Elige una plantilla profesional o personaliza las dimensiones"
                                 color: "#777"; font.pixelSize: 12
                             }
                         }
@@ -5401,151 +5422,168 @@ Window {
                 }
                 
                 // === MAIN CONTENT ===
-                RowLayout {
+                Column {
                     width: parent.width
                     height: parent.height - (130 * uiScale)  // Adjusted for compact header and tabs
                     spacing: 0
                     
-                    // === TEMPLATES GRID (LEFT - With Visual Canvas Previews) ===
+                    // === TEMPLATES GRID (CENTER - Full width) ===
                     Rectangle {
-                        Layout.fillHeight: true; Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        width: parent.width
+                        height: parent.height - 260
                         color: "transparent"
                         
-                        ScrollView {
+                        Column {
                             anchors.fill: parent
                             anchors.margins: 24 * uiScale
-                            clip: true
+                            spacing: 12 * uiScale
                             
-                            GridLayout {
-                                columns: 3
-                                rowSpacing: 20 * uiScale
-                                columnSpacing: 20 * uiScale
+                            
+                            Row {
                                 width: parent.width
+                                spacing: 8
                                 
-                                Repeater {
-                                    model: newProjectDialog.currentTemplates
+                                Text {
+                                    text: "Plantillas recomendadas"
+                                    color: "white"
+                                    font.pixelSize: 14
+                                    font.weight: Font.DemiBold
+                                }
+                                
+                                Text {
+                                    text: newProjectDialog.categories[newProjectDialog.selectedCategoryIndex].desc
+                                    color: "#777"
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                }
+                            }
+                            
+                            ScrollView {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.topMargin: 4 * uiScale
+                                clip: true
+                                
+                                GridLayout {
+                                    columns: 3
+                                    rowSpacing: 22 * uiScale
+                                    columnSpacing: 22 * uiScale
+                                    width: parent.width
                                     
-                                    Rectangle {
-                                        id: templateCard
-                                        Layout.preferredWidth: 165 * uiScale
-                                        Layout.preferredHeight: 160 * uiScale
-                                        radius: 16 * uiScale
-                                        color: templateMouse.containsMouse ? "#1a1a1e" : "#141416"
-                                        border.color: isSelected ? colorAccent : (templateMouse.containsMouse ? "#333" : "#1e1e22")
-                                        border.width: isSelected ? 2 : 1
+                                    Repeater {
+                                        model: newProjectDialog.currentTemplates
                                         
-                                        property bool isSelected: (newProjectDialog.inputW === modelData.w && newProjectDialog.inputH === modelData.h)
-                                        
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                        Behavior on border.color { ColorAnimation { duration: 150 } }
-                                        
-                                        Column {
-                                            anchors.fill: parent
-                                            anchors.margins: 14 * uiScale
-                                            spacing: 10
+                                        Rectangle {
+                                            id: templateCard
+                                            Layout.preferredWidth: 185 * uiScale
+                                            Layout.preferredHeight: 175 * uiScale
+                                            radius: 18 * uiScale
+                                            color: templateMouse.containsMouse ? "#131318" : "#0f1013"
+                                            border.color: isSelected ? colorAccent : (templateMouse.containsMouse ? "#2a2a30" : "#1a1a1e")
+                                            border.width: isSelected ? 1.8 : 1
                                             
-                                            // === VISUAL CANVAS SHAPE PREVIEW ===
-                                            Item {
-                                                width: parent.width
-                                                height: 85
+                                            property bool isSelected: (newProjectDialog.inputW === modelData.w && newProjectDialog.inputH === modelData.h)
+                                            
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                                            
+                                            Column {
+                                                anchors.fill: parent
+                                                anchors.margins: 16 * uiScale
+                                                spacing: 12
                                                 
-                                                // Canvas shape representation
-                                                Rectangle {
-                                                    id: canvasPreview
-                                                    anchors.centerIn: parent
+                                                // === VISUAL CANVAS SHAPE PREVIEW ===
+                                                Item {
+                                                    width: parent.width
+                                                    height: 85
                                                     
-                                                    // Calculate scaled dimensions to fit in preview area
-                                                    property real aspectRatio: modelData.w / modelData.h
-                                                    property real maxW: parent.width - 20
-                                                    property real maxH: parent.height - 10
-                                                    
-                                                    // Fit by aspect ratio (reduced to ~60% of max for breathing room)
-                                                    property real fitScale: Math.min((maxW * 0.75) / modelData.w, (maxH * 0.75) / modelData.h)
-                                                    
-                                                    width: Math.max(25, modelData.w * fitScale)
-                                                    height: Math.max(25, modelData.h * fitScale)
-                                                    
-                                                    color: templateCard.isSelected ? "#252530" : "#1c1c20"
-                                                    border.color: templateCard.isSelected ? colorAccent : "#333"
-                                                    border.width: 1
-                                                    radius: 3
-                                                    
-                                                    // Inner content simulation (subtle lines)
-                                                    Column {
+                                                    // Canvas shape representation
+                                                    Rectangle {
+                                                        id: canvasPreview
                                                         anchors.centerIn: parent
-                                                        spacing: 3
-                                                        opacity: 0.15
-                                                        visible: canvasPreview.width > 40 && canvasPreview.height > 30
                                                         
-                                                        Repeater {
-                                                            model: Math.min(4, Math.floor((canvasPreview.height - 10) / 8))
-                                                            Rectangle {
-                                                                width: canvasPreview.width * 0.6
-                                                                height: 2
-                                                                radius: 1
-                                                                color: "#fff"
+                                                        // Calculate scaled dimensions to fit in preview area
+                                                        property real aspectRatio: modelData.w / modelData.h
+                                                        property real maxW: parent.width - 20
+                                                        property real maxH: parent.height - 10
+                                                        
+                                                        // Fit by aspect ratio (reduced to ~60% of max for breathing room)
+                                                        property real fitScale: Math.min((maxW * 0.75) / modelData.w, (maxH * 0.75) / modelData.h)
+                                                        
+                                                        width: Math.max(25, modelData.w * fitScale)
+                                                        height: Math.max(25, modelData.h * fitScale)
+                                                        
+                                                        gradient: Gradient {
+                                                            orientation: Gradient.Vertical
+                                                            GradientStop { position: 0.0; color: templateCard.isSelected ? "#262634" : "#1b1b22" }
+                                                            GradientStop { position: 1.0; color: templateCard.isSelected ? "#14141e" : "#111118" }
+                                                        }
+                                                        border.color: templateCard.isSelected ? colorAccent : "#333"
+                                                        border.width: 1
+                                                        radius: 4
+                                                        
+                                                        // Inner content simulation (subtle lines)
+                                                        Column {
+                                                            anchors.centerIn: parent
+                                                            spacing: 3
+                                                            opacity: 0.15
+                                                            visible: canvasPreview.width > 40 && canvasPreview.height > 30
+                                                            
+                                                            Repeater {
+                                                                model: Math.min(4, Math.floor((canvasPreview.height - 10) / 8))
+                                                                Rectangle {
+                                                                    width: canvasPreview.width * 0.6
+                                                                    height: 2
+                                                                    radius: 1
+                                                                    color: "#fff"
+                                                                }
                                                             }
                                                         }
                                                     }
-                                                    
-                                                    // Corner markers for very small previews
-                                                    Rectangle {
-                                                        width: 4; height: 4; radius: 1
-                                                        color: templateCard.isSelected ? colorAccent : "#444"
-                                                        anchors.top: parent.top; anchors.left: parent.left
-                                                        anchors.margins: 2
-                                                        visible: canvasPreview.width < 50
-                                                    }
-                                                    Rectangle {
-                                                        width: 4; height: 4; radius: 1
-                                                        color: templateCard.isSelected ? colorAccent : "#444"
-                                                        anchors.bottom: parent.bottom; anchors.right: parent.right
-                                                        anchors.margins: 2
-                                                        visible: canvasPreview.width < 50
-                                                    }
                                                 }
-                                            }
-                                            
-                                            // Label & Info
-                                            Column {
-                                                width: parent.width
-                                                spacing: 2
                                                 
-                                                Text {
-                                                    text: modelData.label
-                                                    color: templateCard.isSelected ? "white" : "#ccc"
-                                                    font.pixelSize: 12
-                                                    font.weight: Font.Medium
-                                                    elide: Text.ElideRight
+                                                // Label & Info
+                                                Column {
                                                     width: parent.width
-                                                }
-                                                
-                                                Text {
-                                                    text: modelData.w + " × " + modelData.h + " • " + modelData.dpi + " DPI"
-                                                    color: "#555"
-                                                    font.pixelSize: 10
+                                                    spacing: 2
+                                                    
+                                                    Text {
+                                                        text: modelData.label
+                                                        color: templateCard.isSelected ? "white" : "#e5e5e5"
+                                                        font.pixelSize: 12
+                                                        font.weight: Font.Medium
+                                                        elide: Text.ElideRight
+                                                        width: parent.width
+                                                    }
+                                                    
+                                                    Text {
+                                                        text: modelData.w + " × " + modelData.h + " • " + modelData.dpi + " DPI"
+                                                        color: "#6b6b6b"
+                                                        font.pixelSize: 10
+                                                    }
                                                 }
                                             }
-                                        }
-                                        
-                                        // Selection indicator
-                                        Rectangle {
-                                            width: 18; height: 18; radius: 9
-                                            color: colorAccent
-                                            anchors.top: parent.top; anchors.right: parent.right
-                                            anchors.margins: 8
-                                            visible: templateCard.isSelected
                                             
-                                            Text { text: "✓"; color: "white"; font.pixelSize: 10; font.bold: true; anchors.centerIn: parent }
-                                        }
-                                        
-                                        MouseArea {
-                                            id: templateMouse
-                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                newProjectDialog.inputW = modelData.w
-                                                newProjectDialog.inputH = modelData.h
-                                                newProjectDialog.updateDPI(modelData.dpi)
+                                            // Selection indicator
+                                            Rectangle {
+                                                width: 18; height: 18; radius: 9
+                                                color: colorAccent
+                                                anchors.top: parent.top; anchors.right: parent.right
+                                                anchors.margins: 8
+                                                visible: templateCard.isSelected
+                                                
+                                                Text { text: "✓"; color: "white"; font.pixelSize: 10; font.bold: true; anchors.centerIn: parent }
+                                            }
+                                            
+                                            MouseArea {
+                                                id: templateMouse
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    newProjectDialog.inputW = modelData.w
+                                                    newProjectDialog.inputH = modelData.h
+                                                    newProjectDialog.updateDPI(modelData.dpi)
+                                                }
                                             }
                                         }
                                     }
@@ -5554,9 +5592,10 @@ Window {
                         }
                     }
                     
-                    // === SETTINGS PANEL (RIGHT - Scrollable) ===
+                    // === SETTINGS BAND (BOTTOM - Full width) ===
                     Rectangle {
-                        Layout.fillHeight: true; Layout.preferredWidth: 300
+                        width: parent.width
+                        height: 260
                         color: "#121214"
                         clip: true
                         
@@ -5576,10 +5615,19 @@ Window {
                             leftPadding: 24
                             spacing: 14
                             
+                            // Header for settings
+                            Column {
+                                spacing: 2
+                                Text { text: "Detalles del lienzo"; color: "white"; font.pixelSize: 14; font.weight: Font.DemiBold }
+                                Text { text: "Ajusta dimensiones, resolución y fondo antes de crear tu proyecto"; color: "#777"; font.pixelSize: 11; wrapMode: Text.WordWrap }
+                            }
+                            
+                            Item { height: 8 }
+                            
                             // === LIVE PREVIEW ===
                             Rectangle {
                                 width: parent.width
-                                height: 120
+                                height: 140
                                 color: "#0a0a0c"
                                 radius: 12
                                 border.color: "#222"
@@ -5622,13 +5670,16 @@ Window {
                                     
                                     Text {
                                         id: dimLabel
-                                        text: newProjectDialog.inputW + " × " + newProjectDialog.inputH
+                                        text: newProjectDialog.inputW + " × " + newProjectDialog.inputH + " • " + newProjectDialog.inputDPI + " DPI"
                                         color: "#888"
                                         font.pixelSize: 10
                                         anchors.centerIn: parent
                                     }
                                 }
                             }
+                            
+                            // === DIMENSIONES ===
+                            Text { text: "Dimensiones"; color: "#ccc"; font.pixelSize: 12; font.weight: Font.DemiBold }
                             
                             // === DIMENSION INPUTS ===
                             GridLayout {
@@ -5640,7 +5691,7 @@ Window {
                                 // Width
                                 Column {
                                     width: parent.width / 2 - 6; spacing: 8
-                                    Text { text: "Width"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
+                                    Text { text: "Ancho"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
                                     Rectangle {
                                         width: parent.width; height: 38; radius: 8
                                         color: "#1a1a1e"
@@ -5662,7 +5713,7 @@ Window {
                                 // Height
                                 Column {
                                     Layout.fillWidth: true; spacing: 8
-                                    Text { text: "Height"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
+                                    Text { text: "Alto"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
                                     Rectangle {
                                         width: parent.width; height: 38; radius: 8
                                         color: "#1a1a1e"
@@ -5684,7 +5735,7 @@ Window {
                                 // DPI
                                 Column {
                                     Layout.fillWidth: true; spacing: 8
-                                    Text { text: "Resolution"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
+                                    Text { text: "Resolución"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
                                     Rectangle {
                                         width: parent.width; height: 38; radius: 8
                                         color: "#1a1a1e"
@@ -5712,7 +5763,7 @@ Window {
                                     Layout.fillWidth: true; spacing: 6
                                     z: 100  // Ensure dropdown appears on top
                                     
-                                    Text { text: "Units"; color: "#666"; font.pixelSize: 11 }
+                                    Text { text: "Unidades"; color: "#666"; font.pixelSize: 11 }
                                     
                                     // Main selector button
                                     Rectangle {
@@ -5730,8 +5781,8 @@ Window {
                                             
                                             Text { 
                                                 text: {
-                                                    var labels = {"px": "Pixels (px)", "in": "Inches (in)", "cm": "Centimeters (cm)", "mm": "Millimeters (mm)"};
-                                                    return labels[newProjectDialog.currentUnit] || "Pixels (px)";
+                                                    var labels = {"px": "Píxeles (px)", "in": "Pulgadas (in)", "cm": "Centímetros (cm)", "mm": "Milímetros (mm)"};
+                                                    return labels[newProjectDialog.currentUnit] || "Píxeles (px)";
                                                 }
                                                 color: "white"; font.pixelSize: 13; font.weight: Font.Medium
                                             }
@@ -5825,23 +5876,134 @@ Window {
                                 }
                             }
                             
+                            // === ORIENTACIÓN Y BLOQUEO DE PROPORCIÓN ===
+                            Row {
+                                width: parent.width
+                                spacing: 12
+                                Layout.margins: 2
+                                
+                                // Orientación
+                                Column {
+                                    spacing: 6
+                                    Text { text: "Orientación"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
+                                    
+                                    Row {
+                                        spacing: 6
+                                        
+                                        // Horizontal
+                                        Rectangle {
+                                            id: horizBtn
+                                            width: 90; height: 30; radius: 16
+                                            property bool isSelected: newProjectDialog.inputW >= newProjectDialog.inputH
+                                            color: isSelected ? colorAccent : "#1a1a1e"
+                                            border.color: isSelected ? colorAccent : "#303035"
+                                            border.width: isSelected ? 1.5 : 1
+                                            
+                                            Behavior on color { ColorAnimation { duration: 160 } }
+                                            Behavior on border.color { ColorAnimation { duration: 160 } }
+                                            
+                                            Row {
+                                                anchors.centerIn: parent
+                                                spacing: 6
+                                                Text { text: "⟷"; color: isSelected ? "white" : "#888"; font.pixelSize: 12 }
+                                                Text { text: "Horizontal"; color: isSelected ? "white" : "#aaa"; font.pixelSize: 11 }
+                                            }
+                                            
+                                            MouseArea {
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (newProjectDialog.inputH > newProjectDialog.inputW) {
+                                                        var tmp = newProjectDialog.inputW
+                                                        newProjectDialog.inputW = newProjectDialog.inputH
+                                                        newProjectDialog.inputH = tmp
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Vertical
+                                        Rectangle {
+                                            id: vertBtn
+                                            width: 90; height: 30; radius: 16
+                                            property bool isSelected: newProjectDialog.inputH > newProjectDialog.inputW
+                                            color: isSelected ? colorAccent : "#1a1a1e"
+                                            border.color: isSelected ? colorAccent : "#303035"
+                                            border.width: isSelected ? 1.5 : 1
+                                            
+                                            Behavior on color { ColorAnimation { duration: 160 } }
+                                            Behavior on border.color { ColorAnimation { duration: 160 } }
+                                            
+                                            Row {
+                                                anchors.centerIn: parent
+                                                spacing: 6
+                                                Text { text: "⟷"; rotation: 90; color: isSelected ? "white" : "#888"; font.pixelSize: 12 }
+                                                Text { text: "Vertical"; color: isSelected ? "white" : "#aaa"; font.pixelSize: 11 }
+                                            }
+                                            
+                                            MouseArea {
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (newProjectDialog.inputW > newProjectDialog.inputH) {
+                                                        var tmp2 = newProjectDialog.inputW
+                                                        newProjectDialog.inputW = newProjectDialog.inputH
+                                                        newProjectDialog.inputH = tmp2
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                
+                                // Bloquear proporción
+                                Rectangle {
+                                    id: lockBtn
+                                    width: 150; height: 34; radius: 18
+                                    color: newProjectDialog.lockAspectRatio ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : "#1a1a1e"
+                                    border.color: newProjectDialog.lockAspectRatio ? colorAccent : "#303035"
+                                    border.width: newProjectDialog.lockAspectRatio ? 1.5 : 1
+                                    
+                                    Behavior on color { ColorAnimation { duration: 160 } }
+                                    Behavior on border.color { ColorAnimation { duration: 160 } }
+                                    
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 8
+                                        Text { text: newProjectDialog.lockAspectRatio ? "🔗" : "⛓"; font.pixelSize: 13; color: newProjectDialog.lockAspectRatio ? colorAccent : "#888" }
+                                        Text {
+                                            text: newProjectDialog.lockAspectRatio ? "Bloquear proporción" : "Proporción libre"
+                                            color: "white"; font.pixelSize: 11
+                                        }
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            newProjectDialog.lockAspectRatio = !newProjectDialog.lockAspectRatio
+                                            if (newProjectDialog.lockAspectRatio && newProjectDialog.inputH > 0) {
+                                                newProjectDialog.aspectRatio = newProjectDialog.inputW / newProjectDialog.inputH
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
                             // === BACKGROUND ===
                             Column {
                                 width: parent.width
                                 spacing: 8
                                 
-                                Text { text: "Background"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
+                                Text { text: "Fondo"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
                                 
                                 Row {
                                     spacing: 8
                                     
                                     Repeater {
                                         model: [
-                                            { c: "#ffffff", label: "White" },
-                                            { c: "#f5f5dc", label: "Cream" },
-                                            { c: "#e8e8e8", label: "Light Gray" },
-                                            { c: "#000000", label: "Black" },
-                                            { c: "transparent", label: "Transparent" }
+                                            { c: "#ffffff", label: "Blanco" },
+                                            { c: "#f5f5dc", label: "Crema" },
+                                            { c: "#e8e8e8", label: "Gris claro" },
+                                            { c: "#000000", label: "Negro" },
+                                            { c: "transparent", label: "Transparente" }
                                         ]
                                         
                                         Rectangle {
@@ -5913,7 +6075,7 @@ Window {
                                 
                                 Rectangle { width: parent.width; height: 1; color: "#1e1e22" }
                                 
-                                Text { text: "Story Options"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
+                                Text { text: "Opciones de historia"; color: "#ccc"; font.pixelSize: 12; font.weight: Font.DemiBold }
                                 
                                 RowLayout {
                                     width: parent.width; spacing: 10
@@ -5921,7 +6083,7 @@ Window {
                                     // Bleed Field
                                     Column {
                                         Layout.fillWidth: true; spacing: 6
-                                        Text { text: "Bleed (mm)"; color: "#555"; font.pixelSize: 10 }
+                                        Text { text: "Sangrado (mm)"; color: "#888"; font.pixelSize: 11 }
                                         Rectangle {
                                             width: parent.width; height: 34; radius: 6; color: "#1a1a1e"; border.color: "#303035"
                                             TextInput {
@@ -5935,7 +6097,7 @@ Window {
                                     // Initial Pages
                                     Column {
                                         Layout.fillWidth: true; spacing: 6
-                                        Text { text: "Initial Pages"; color: "#555"; font.pixelSize: 10 }
+                                        Text { text: "Páginas iniciales"; color: "#888"; font.pixelSize: 11 }
                                         Rectangle {
                                             width: parent.width; height: 34; radius: 6; color: "#1a1a1e"; border.color: "#303035"
                                             TextInput {
@@ -5960,7 +6122,7 @@ Window {
                                 Row {
                                     spacing: 8
                                     Rectangle { width: 3; height: 18; radius: 2; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
-                                    Text { text: "Animation Settings"; color: "#ccc"; font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
+                                    Text { text: "Opciones de animación"; color: "#ccc"; font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
                                 }
                                 
                                 // FPS Selector
@@ -6097,7 +6259,7 @@ Window {
                                     anchors.centerIn: parent; spacing: 10
                                     
                                     Text { text: "+"; color: "white"; font.pixelSize: 18; font.bold: true }
-                                    Text { text: "Create Project"; color: "white"; font.pixelSize: 14; font.bold: true }
+                                    Text { text: "Crear proyecto"; color: "white"; font.pixelSize: 14; font.bold: true }
                                 }
                                 
                                 MouseArea {
