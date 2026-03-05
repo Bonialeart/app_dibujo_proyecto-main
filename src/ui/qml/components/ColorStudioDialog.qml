@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Shapes
+import QtQuick.Dialogs
 import ArtFlow 1.0
 
 Popup {
@@ -10,7 +11,7 @@ Popup {
     
     // --- DIMENSIONS & POPUP CONFIG ---
     width: 340
-    height: viewStack.currentIndex === 2 ? 760 : 620
+    height: viewStack.currentIndex === 2 ? 760 : viewStack.currentIndex === 5 ? 680 : 620
     
     Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
     modal: false
@@ -912,8 +913,382 @@ Popup {
                 // VIEW 4: EYE DROPPER (Placeholder)
                 Item { Text { text: "Sampler coming soon"; anchors.centerIn: parent; color: "white" } }
                 
-                // VIEW 5: PALETTES
-                Item { Text { text: "Palettes coming soon"; anchors.centerIn: parent; color: "white" } }
+                // VIEW 5: PALETTES — Themed + Image Extraction
+                Item {
+                    id: palettesView
+
+                    property var paletteCategories: [
+                        { name: "🌅 Skies & Sunsets",
+                          colors: ["#FF6B35","#F7C59F","#FFBE0B","#FB5607","#FF006E",
+                                   "#E8D5B0","#FCA652","#C84B31","#6C4A4A","#2C1810",
+                                   "#FFDDB0","#FFA552","#FF7547","#CF4A3C","#8B2635"] },
+                        { name: "🌃 Cyberpunk",
+                          colors: ["#00F5FF","#FF00FF","#7B2FBE","#FF00A4","#00FF41",
+                                   "#1A1A2E","#16213E","#0F3460","#E94560","#533483",
+                                   "#FF6B6B","#4ECDC4","#FFE66D","#A8DADC","#264653"] },
+                        { name: "✨ Neon Dreams",
+                          colors: ["#FF4ECD","#9B5DE5","#F15BB5","#FEE440","#00BBF9",
+                                   "#00F5D4","#FF6B9D","#C77DFF","#E0AAFF","#7B2FBE",
+                                   "#3A0CA3","#4361EE","#4CC9F0","#F72585","#B5179E"] },
+                        { name: "🌿 Forest & Earth",
+                          colors: ["#2D6A4F","#40916C","#52B788","#74C69D","#95D5B2",
+                                   "#38270E","#603813","#8B5E3C","#C4A882","#DEB887",
+                                   "#1B4332","#081C15","#D4A847","#856A3E","#F1DFC4"] },
+                        { name: "🌊 Ocean Depths",
+                          colors: ["#03045E","#023E8A","#0077B6","#0096C7","#00B4D8",
+                                   "#48CAE4","#90E0EF","#ADE8F4","#CAF0F8","#FFFFFF",
+                                   "#006994","#0A7EA4","#1292B4","#22B0CB","#3DCFE3"] },
+                        { name: "❄️ Arctic",
+                          colors: ["#E8F4F8","#D1ECF5","#AED9E0","#7EC8D9","#5BA4CF",
+                                   "#B8D4E3","#9BC2D6","#7AAEC8","#5893B9","#3378A9",
+                                   "#D6EAF8","#EBF5FB","#F0F3FF","#C8D8E8","#A8C0D6"] }
+                    ]
+
+                    property int selectedCategory: 0
+                    property var extractedColors: []
+                    property bool showImagePanel: false
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 8
+
+                        // Category Tabs
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+
+                            Flickable {
+                                anchors.fill: parent
+                                contentWidth: tabRow.implicitWidth
+                                clip: true
+                                flickableDirection: Flickable.HorizontalFlick
+
+                                Row {
+                                    id: tabRow
+                                    spacing: 5
+
+                                    Repeater {
+                                        model: palettesView.paletteCategories.length + 1
+                                        Rectangle {
+                                            property bool isImg: index === palettesView.paletteCategories.length
+                                            property bool isActive: isImg ? palettesView.showImagePanel
+                                                                          : (!palettesView.showImagePanel && palettesView.selectedCategory === index)
+                                            height: 30
+                                            width: cl.implicitWidth + 18
+                                            radius: 15
+                                            color: isActive ? root.accentColor : "#252528"
+                                            border.color: isActive ? "transparent" : "#3A3A3C"
+                                            border.width: 1
+                                            Behavior on color { ColorAnimation { duration: 180 } }
+                                            scale: isActive ? 1.05 : 1.0
+                                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+                                            Text {
+                                                id: cl
+                                                text: isImg ? "🖼 Image" :
+                                                      index === 0 ? "Sunsets" :
+                                                      index === 1 ? "Cyberpunk" :
+                                                      index === 2 ? "Neons" :
+                                                      index === 3 ? "Forest" :
+                                                      index === 4 ? "Ocean" : "Arctic"
+                                                font.pixelSize: 10
+                                                font.weight: Font.Bold
+                                                color: "white"
+                                                anchors.centerIn: parent
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (isImg) {
+                                                        palettesView.showImagePanel = true
+                                                    } else {
+                                                        palettesView.showImagePanel = false
+                                                        palettesView.selectedCategory = index
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Swatch grid (themed palettes)
+                        Item {
+                            visible: !palettesView.showImagePanel
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                spacing: 6
+
+                                Text {
+                                    text: palettesView.paletteCategories[palettesView.selectedCategory].name
+                                    color: "#CCCCCC"
+                                    font.pixelSize: 11
+                                    font.weight: Font.Bold
+                                }
+
+                                GridView {
+                                    id: themedGrid
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    clip: true
+                                    model: palettesView.paletteCategories[palettesView.selectedCategory].colors
+
+                                    property int cols: 5
+                                    cellWidth: Math.floor(width / cols)
+                                    cellHeight: cellWidth
+
+                                    delegate: Item {
+                                        width: themedGrid.cellWidth
+                                        height: themedGrid.cellHeight
+
+                                        Rectangle {
+                                            id: tSwatchRect
+                                            anchors.fill: parent
+                                            anchors.margins: 4
+                                            radius: 10
+                                            color: modelData
+                                            border.color: "#25FFFFFF"
+                                            border.width: 1
+                                            layer.enabled: true
+                                            layer.effect: MultiEffect {
+                                                shadowEnabled: true
+                                                shadowBlur: 10
+                                                shadowColor: modelData
+                                                shadowOpacity: 0.5
+                                                shadowVerticalOffset: 3
+                                            }
+                                            Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutBack } }
+
+                                            Rectangle {
+                                                visible: {
+                                                    var rc = root.currentColor.toString().toUpperCase().substring(0,7)
+                                                    var mc = modelData.toUpperCase().substring(0,7)
+                                                    return rc === mc
+                                                }
+                                                anchors.fill: parent
+                                                anchors.margins: -3
+                                                radius: parent.radius + 3
+                                                color: "transparent"
+                                                border.color: "white"
+                                                border.width: 2
+                                            }
+
+                                            ToolTip {
+                                                id: tipThemed
+                                                text: modelData.toUpperCase()
+                                                visible: tsw.containsMouse
+                                                delay: 500
+                                                contentItem: Text { text: tipThemed.text; color: "white"; font.pixelSize: 10; font.family: "Monospace" }
+                                                background: Rectangle { color: "#2C2C2E"; radius: 5; border.color: "#444"; border.width: 1 }
+                                            }
+
+                                            MouseArea {
+                                                id: tsw
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onPressed: tSwatchRect.scale = 0.85
+                                                onReleased: tSwatchRect.scale = 1.0
+                                                onClicked: {
+                                                    var c = Qt.color(modelData)
+                                                    root.h = c.hsvHue
+                                                    root.s = c.hsvSaturation
+                                                    root.v = c.hsvValue
+                                                    root.updateColor()
+                                                    root.addToHistory()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Image extraction panel
+                        Item {
+                            visible: palettesView.showImagePanel
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                spacing: 8
+
+                                // Drop zone
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 150
+                                    radius: 14
+                                    color: "#1A1A1E"
+                                    border.color: dropMa.containsMouse ? root.accentColor : "#3A3A3C"
+                                    border.width: dropMa.containsMouse ? 2 : 1
+                                    clip: true
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                                    Column {
+                                        anchors.centerIn: parent
+                                        spacing: 6
+                                        visible: imgPreview.source == ""
+                                        Image { source: "image://icons/image.svg"; width: 32; height: 32; anchors.horizontalCenter: parent.horizontalCenter; opacity: 0.35 }
+                                        Text { text: "Tap to select image"; color: "#666"; font.pixelSize: 12; anchors.horizontalCenter: parent.horizontalCenter }
+                                        Text { text: "PNG · JPG · WEBP · BMP"; color: "#444"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
+                                    }
+
+                                    Image {
+                                        id: imgPreview
+                                        anchors.fill: parent
+                                        fillMode: Image.PreserveAspectCrop
+                                        source: ""
+                                        visible: source != ""
+                                        onStatusChanged: {
+                                            if (status === Image.Ready) {
+                                                palettesView.extractColors(source)
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        visible: imgPreview.source != ""
+                                        anchors.bottom: parent.bottom
+                                        width: parent.width
+                                        height: 36
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: "transparent" }
+                                            GradientStop { position: 1.0; color: "#CC000000" }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: dropMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: imgFileDlg.open()
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 34
+                                    radius: 10
+                                    color: root.accentColor
+                                    opacity: loadBtnMa.pressed ? 0.7 : 1.0
+                                    Behavior on opacity { NumberAnimation { duration: 100 } }
+
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 8
+                                        Image { source: "image://icons/upload.svg"; width: 14; height: 14; anchors.verticalCenter: parent.verticalCenter }
+                                        Text {
+                                            text: imgPreview.source != "" ? "Change Image" : "Browse Image…"
+                                            color: "white"; font.pixelSize: 12; font.weight: Font.Bold
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: loadBtnMa
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: imgFileDlg.open()
+                                    }
+                                }
+
+                                Text {
+                                    id: extractStatusLabel
+                                    text: palettesView.isExtracting ? "🔍 Analizando imagen…" :
+                                          palettesView.extractedColors.length > 0
+                                          ? "✅ Extracted Colors (" + palettesView.extractedColors.length + ")"
+                                          : "Load an image to extract its dominant colors"
+                                    color: palettesView.isExtracting ? root.accentColor :
+                                           palettesView.extractedColors.length > 0 ? "#AAAAAA" : "#555555"
+                                    font.pixelSize: 11
+                                    Layout.leftMargin: 2
+                                    Behavior on color { ColorAnimation { duration: 300 } }
+                                }
+
+                                GridView {
+                                    id: extractGrid
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    clip: true
+                                    visible: palettesView.extractedColors.length > 0
+                                    model: palettesView.extractedColors
+
+                                    property int cols: 5
+                                    cellWidth: Math.floor(width / cols)
+                                    cellHeight: cellWidth
+
+                                    delegate: Item {
+                                        width: extractGrid.cellWidth
+                                        height: extractGrid.cellHeight
+                                        Rectangle {
+                                            id: exRect
+                                            anchors.fill: parent; anchors.margins: 4
+                                            radius: 10; color: modelData
+                                            border.color: "#25FFFFFF"; border.width: 1
+                                            layer.enabled: true
+                                            layer.effect: MultiEffect {
+                                                shadowEnabled: true; shadowBlur: 8
+                                                shadowColor: modelData; shadowOpacity: 0.5
+                                                shadowVerticalOffset: 3
+                                            }
+                                            Behavior on scale { NumberAnimation { duration: 100 } }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onPressed: exRect.scale = 0.85
+                                                onReleased: exRect.scale = 1.0
+                                                onClicked: {
+                                                    var c = modelData
+                                                    root.h = c.hsvHue
+                                                    root.s = c.hsvSaturation
+                                                    root.v = c.hsvValue
+                                                    root.updateColor()
+                                                    root.addToHistory()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // File dialog
+                    FileDialog {
+                        id: imgFileDlg
+                        title: "Select Image"
+                        nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp *.gif)"]
+                        fileMode: FileDialog.OpenFile
+                        onAccepted: {
+                            palettesView.extractedColors = []
+                            imgPreview.source = ""
+                            imgPreview.source = selectedFile
+                        }
+                    }
+
+                    // (Canvas removed — now using C++ backend for real extraction)
+
+                    property bool isExtracting: false
+
+                    function extractColors(imgSource) {
+                        palettesView.isExtracting = true
+                        palettesView.extractedColors = []
+                        // Run on next frame so UI updates first
+                        Qt.callLater(function() {
+                            var src = imgSource || imgPreview.source
+                            var colors = backend.extractColorsFromImage(src.toString(), 15)
+                            palettesView.extractedColors = colors
+                            palettesView.isExtracting = false
+                        })
+                    }
+                }
             }
             
             // ------------------------------------------------------------------

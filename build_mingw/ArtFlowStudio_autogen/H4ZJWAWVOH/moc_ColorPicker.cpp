@@ -44,17 +44,18 @@ template <> constexpr inline auto ColorPicker::qt_create_metaobjectdata<qt_meta_
         "secondaryColorChanged",
         "historyChanged",
         "palettesChanged",
+        "imageColorsExtracted",
+        "QVariantList",
+        "colors",
         "addToHistory",
         "QColor",
         "color",
         "clearHistory",
         "generateShades",
-        "QVariantList",
         "count",
         "type",
         "addPalette",
         "name",
-        "colors",
         "removePalette",
         "colorToHSB",
         "colorToCMYK",
@@ -67,6 +68,8 @@ template <> constexpr inline auto ColorPicker::qt_create_metaobjectdata<qt_meta_
         "m",
         "y",
         "k",
+        "extractColorsFromImage",
+        "path",
         "activeColor",
         "secondaryColor",
         "history",
@@ -91,62 +94,74 @@ template <> constexpr inline auto ColorPicker::qt_create_metaobjectdata<qt_meta_
         QtMocHelpers::SignalData<void()>(4, 2, QMC::AccessPublic, QMetaType::Void),
         // Signal 'palettesChanged'
         QtMocHelpers::SignalData<void()>(5, 2, QMC::AccessPublic, QMetaType::Void),
-        // Method 'addToHistory'
-        QtMocHelpers::MethodData<void(const QColor &)>(6, 2, QMC::AccessPublic, QMetaType::Void, {{
+        // Signal 'imageColorsExtracted'
+        QtMocHelpers::SignalData<void(QVariantList)>(6, 2, QMC::AccessPublic, QMetaType::Void, {{
             { 0x80000000 | 7, 8 },
+        }}),
+        // Method 'addToHistory'
+        QtMocHelpers::MethodData<void(const QColor &)>(9, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 10, 11 },
         }}),
         // Method 'clearHistory'
-        QtMocHelpers::MethodData<void()>(9, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::MethodData<void()>(12, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'generateShades'
-        QtMocHelpers::MethodData<QVariantList(int, int, const QColor &)>(10, 2, QMC::AccessPublic, 0x80000000 | 11, {{
-            { QMetaType::Int, 12 }, { QMetaType::Int, 13 }, { 0x80000000 | 7, 8 },
+        QtMocHelpers::MethodData<QVariantList(int, int, const QColor &)>(13, 2, QMC::AccessPublic, 0x80000000 | 7, {{
+            { QMetaType::Int, 14 }, { QMetaType::Int, 15 }, { 0x80000000 | 10, 11 },
         }}),
         // Method 'addPalette'
-        QtMocHelpers::MethodData<void(const QString &, const QVariantList &)>(14, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 15 }, { 0x80000000 | 11, 16 },
+        QtMocHelpers::MethodData<void(const QString &, const QVariantList &)>(16, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 17 }, { 0x80000000 | 7, 8 },
         }}),
         // Method 'removePalette'
-        QtMocHelpers::MethodData<void(const QString &)>(17, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 15 },
+        QtMocHelpers::MethodData<void(const QString &)>(18, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 17 },
         }}),
         // Method 'colorToHSB'
-        QtMocHelpers::MethodData<QVariantList(const QColor &)>(18, 2, QMC::AccessPublic, 0x80000000 | 11, {{
-            { 0x80000000 | 7, 8 },
+        QtMocHelpers::MethodData<QVariantList(const QColor &)>(19, 2, QMC::AccessPublic, 0x80000000 | 7, {{
+            { 0x80000000 | 10, 11 },
         }}),
         // Method 'colorToCMYK'
-        QtMocHelpers::MethodData<QVariantList(const QColor &)>(19, 2, QMC::AccessPublic, 0x80000000 | 11, {{
-            { 0x80000000 | 7, 8 },
+        QtMocHelpers::MethodData<QVariantList(const QColor &)>(20, 2, QMC::AccessPublic, 0x80000000 | 7, {{
+            { 0x80000000 | 10, 11 },
         }}),
         // Method 'colorFromHSB'
-        QtMocHelpers::MethodData<QColor(float, float, float)>(20, 2, QMC::AccessPublic, 0x80000000 | 7, {{
-            { QMetaType::Float, 21 }, { QMetaType::Float, 22 }, { QMetaType::Float, 23 },
+        QtMocHelpers::MethodData<QColor(float, float, float)>(21, 2, QMC::AccessPublic, 0x80000000 | 10, {{
+            { QMetaType::Float, 22 }, { QMetaType::Float, 23 }, { QMetaType::Float, 24 },
         }}),
         // Method 'colorFromCMYK'
-        QtMocHelpers::MethodData<QColor(float, float, float, float)>(24, 2, QMC::AccessPublic, 0x80000000 | 7, {{
-            { QMetaType::Float, 25 }, { QMetaType::Float, 26 }, { QMetaType::Float, 27 }, { QMetaType::Float, 28 },
+        QtMocHelpers::MethodData<QColor(float, float, float, float)>(25, 2, QMC::AccessPublic, 0x80000000 | 10, {{
+            { QMetaType::Float, 26 }, { QMetaType::Float, 27 }, { QMetaType::Float, 28 }, { QMetaType::Float, 29 },
+        }}),
+        // Method 'extractColorsFromImage'
+        QtMocHelpers::MethodData<QVariantList(const QString &, int)>(30, 2, QMC::AccessPublic, 0x80000000 | 7, {{
+            { QMetaType::QString, 31 }, { QMetaType::Int, 14 },
+        }}),
+        // Method 'extractColorsFromImage'
+        QtMocHelpers::MethodData<QVariantList(const QString &)>(30, 2, QMC::AccessPublic | QMC::MethodCloned, 0x80000000 | 7, {{
+            { QMetaType::QString, 31 },
         }}),
     };
     QtMocHelpers::UintData qt_properties {
         // property 'activeColor'
-        QtMocHelpers::PropertyData<QColor>(29, 0x80000000 | 7, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<QColor>(32, 0x80000000 | 10, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 0),
         // property 'secondaryColor'
-        QtMocHelpers::PropertyData<QColor>(30, 0x80000000 | 7, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 1),
+        QtMocHelpers::PropertyData<QColor>(33, 0x80000000 | 10, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 1),
         // property 'history'
-        QtMocHelpers::PropertyData<QVariantList>(31, 0x80000000 | 11, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 2),
+        QtMocHelpers::PropertyData<QVariantList>(34, 0x80000000 | 7, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 2),
         // property 'palettes'
-        QtMocHelpers::PropertyData<QVariantList>(32, 0x80000000 | 11, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 3),
+        QtMocHelpers::PropertyData<QVariantList>(35, 0x80000000 | 7, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 3),
     };
     QtMocHelpers::UintData qt_enums {
         // enum 'ShadeType'
-        QtMocHelpers::EnumData<enum ShadeType>(33, 33, QMC::EnumFlags{}).add({
-            {   34, ShadeType::SHADE },
-            {   35, ShadeType::TINT },
-            {   36, ShadeType::TONE },
-            {   37, ShadeType::WARMER },
-            {   38, ShadeType::COOLER },
-            {   39, ShadeType::COMPLEMENTARY_TINT },
-            {   40, ShadeType::COMPLEMENTARY_SHADE },
-            {   41, ShadeType::ANALOGOUS },
+        QtMocHelpers::EnumData<enum ShadeType>(36, 36, QMC::EnumFlags{}).add({
+            {   37, ShadeType::SHADE },
+            {   38, ShadeType::TINT },
+            {   39, ShadeType::TONE },
+            {   40, ShadeType::WARMER },
+            {   41, ShadeType::COOLER },
+            {   42, ShadeType::COMPLEMENTARY_TINT },
+            {   43, ShadeType::COMPLEMENTARY_SHADE },
+            {   44, ShadeType::ANALOGOUS },
         }),
     };
     return QtMocHelpers::metaObjectData<ColorPicker, qt_meta_tag_ZN11ColorPickerE_t>(QMC::MetaObjectFlag{}, qt_stringData,
@@ -171,20 +186,25 @@ void ColorPicker::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id,
         case 1: _t->secondaryColorChanged(); break;
         case 2: _t->historyChanged(); break;
         case 3: _t->palettesChanged(); break;
-        case 4: _t->addToHistory((*reinterpret_cast<std::add_pointer_t<QColor>>(_a[1]))); break;
-        case 5: _t->clearHistory(); break;
-        case 6: { QVariantList _r = _t->generateShades((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QColor>>(_a[3])));
+        case 4: _t->imageColorsExtracted((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
+        case 5: _t->addToHistory((*reinterpret_cast<std::add_pointer_t<QColor>>(_a[1]))); break;
+        case 6: _t->clearHistory(); break;
+        case 7: { QVariantList _r = _t->generateShades((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QColor>>(_a[3])));
             if (_a[0]) *reinterpret_cast<QVariantList*>(_a[0]) = std::move(_r); }  break;
-        case 7: _t->addPalette((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[2]))); break;
-        case 8: _t->removePalette((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 9: { QVariantList _r = _t->colorToHSB((*reinterpret_cast<std::add_pointer_t<QColor>>(_a[1])));
+        case 8: _t->addPalette((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[2]))); break;
+        case 9: _t->removePalette((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 10: { QVariantList _r = _t->colorToHSB((*reinterpret_cast<std::add_pointer_t<QColor>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QVariantList*>(_a[0]) = std::move(_r); }  break;
-        case 10: { QVariantList _r = _t->colorToCMYK((*reinterpret_cast<std::add_pointer_t<QColor>>(_a[1])));
+        case 11: { QVariantList _r = _t->colorToCMYK((*reinterpret_cast<std::add_pointer_t<QColor>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QVariantList*>(_a[0]) = std::move(_r); }  break;
-        case 11: { QColor _r = _t->colorFromHSB((*reinterpret_cast<std::add_pointer_t<float>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[3])));
+        case 12: { QColor _r = _t->colorFromHSB((*reinterpret_cast<std::add_pointer_t<float>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[3])));
             if (_a[0]) *reinterpret_cast<QColor*>(_a[0]) = std::move(_r); }  break;
-        case 12: { QColor _r = _t->colorFromCMYK((*reinterpret_cast<std::add_pointer_t<float>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[4])));
+        case 13: { QColor _r = _t->colorFromCMYK((*reinterpret_cast<std::add_pointer_t<float>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[4])));
             if (_a[0]) *reinterpret_cast<QColor*>(_a[0]) = std::move(_r); }  break;
+        case 14: { QVariantList _r = _t->extractColorsFromImage((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])));
+            if (_a[0]) *reinterpret_cast<QVariantList*>(_a[0]) = std::move(_r); }  break;
+        case 15: { QVariantList _r = _t->extractColorsFromImage((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+            if (_a[0]) *reinterpret_cast<QVariantList*>(_a[0]) = std::move(_r); }  break;
         default: ;
         }
     }
@@ -196,6 +216,8 @@ void ColorPicker::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id,
         if (QtMocHelpers::indexOfMethod<void (ColorPicker::*)()>(_a, &ColorPicker::historyChanged, 2))
             return;
         if (QtMocHelpers::indexOfMethod<void (ColorPicker::*)()>(_a, &ColorPicker::palettesChanged, 3))
+            return;
+        if (QtMocHelpers::indexOfMethod<void (ColorPicker::*)(QVariantList )>(_a, &ColorPicker::imageColorsExtracted, 4))
             return;
     }
     if (_c == QMetaObject::ReadProperty) {
@@ -237,14 +259,14 @@ int ColorPicker::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 13)
+        if (_id < 16)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 13;
+        _id -= 16;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 13)
+        if (_id < 16)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 13;
+        _id -= 16;
     }
     if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty
@@ -277,5 +299,11 @@ void ColorPicker::historyChanged()
 void ColorPicker::palettesChanged()
 {
     QMetaObject::activate(this, &staticMetaObject, 3, nullptr);
+}
+
+// SIGNAL 4
+void ColorPicker::imageColorsExtracted(QVariantList _t1)
+{
+    QMetaObject::activate<void>(this, &staticMetaObject, 4, nullptr, _t1);
 }
 QT_WARNING_POP

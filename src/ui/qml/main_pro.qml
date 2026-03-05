@@ -5170,10 +5170,13 @@ Window {
         
         property var categories: [
             { name: "Ilustración", icon: "brush.svg", desc: "Arte digital e ilustraciones" },
-            { name: "Manga", icon: "book.svg", desc: "Proyectos impresos B4/A4" },
-            { name: "Webtoon", icon: "smartphone.svg", desc: "Historias verticales largas" },
-            { name: "Animación", icon: "video.svg", desc: "Animación cuadro a cuadro" }
+            { name: "Manga",       icon: "book.svg",  desc: "Proyectos impresos B4/A4" },
+            { name: "Webtoon",     icon: "smartphone.svg", desc: "Historias verticales largas" },
+            { name: "Animación",   icon: "video.svg",  desc: "Animación cuadro a cuadro" },
+            { name: "Redes",       icon: "share.svg",  desc: "Redes sociales y plataformas" }
         ]
+        
+        property var catIcons: ["🎨", "📖", "📱", "🎤", "📢"]
         
         // --- STORY SETTINGS ---
         property bool isMultiPage: (selectedCategoryIndex === 1 || selectedCategoryIndex === 2)
@@ -5184,8 +5187,11 @@ Window {
         // --- ANIMATION SETTINGS ---
         property int inputFPS: 12
         property int inputTotalFrames: 48
-        property bool inputLoopEnabled: true
-        property string inputPlaybackMode: "onion" // "onion" | "lighttable"
+        property string inputInterpolation: "Bicúbico" // "Bicúbico", "Bilineal", "Vecino cercano"
+        property string inputAnimTemplate: "Ninguna"   // "Ninguna", "Layout Anime", "Acción Segura", "Webtoon"
+        
+        property bool interpDropdownOpen: false
+        property bool templateDropdownOpen: false
         
         // Unit dropdown state
         property bool unitDropdownOpen: false
@@ -5193,38 +5199,77 @@ Window {
         property var templateData: [
             // Ilustración
             [
-                { label: "Full HD", w: 1920, h: 1080, dpi: 72 },
-                { label: "4K UHD", w: 3840, h: 2160, dpi: 72 },
-                { label: "Cuadrado", w: 2000, h: 2000, dpi: 300 },
-                { label: "Concept Art", w: 5000, h: 2800, dpi: 300 },
-                { label: "Boceto rápido", w: 1500, h: 1000, dpi: 72 },
-                { label: "Retrato", w: 2000, h: 3000, dpi: 300 }
+                { label: "Full HD",       w: 1920, h: 1080, dpi: 72,  tag: "POPULAR" },
+                { label: "4K UHD",        w: 3840, h: 2160, dpi: 72,  tag: "" },
+                { label: "Cuadrado HD",   w: 2000, h: 2000, dpi: 300, tag: "" },
+                { label: "Concept Art",   w: 5000, h: 2800, dpi: 300, tag: "PRO" },
+                { label: "Boceto rápido", w: 1500, h: 1000, dpi: 72,  tag: "" },
+                { label: "Retrato",       w: 2000, h: 3000, dpi: 300, tag: "" },
+                { label: "A4 (Impresión)",w: 2480, h: 3508, dpi: 300, tag: "PRINT" },
+                { label: "A3 (Impresión)",w: 3508, h: 4961, dpi: 300, tag: "PRINT" },
+                { label: "A5 Pequeño",   w: 1748, h: 2480, dpi: 300, tag: "PRINT" },
+                { label: "US Letter",     w: 2550, h: 3300, dpi: 300, tag: "PRINT" },
+                { label: "Tarjeta (CR80)",w: 1012, h: 638,  dpi: 300, tag: "" },
+                { label: "Panorama Wide", w: 7680, h: 2160, dpi: 72,  tag: "PRO" }
             ],
             // Manga (Impresión B4/A4)
             [
-                { label: "Manga B4 (Pro)", w: 3035, h: 4299, dpi: 600 },
-                { label: "Manga A4 (Pequeño)", w: 2480, h: 3508, dpi: 600 },
-                { label: "Doujinshi A5", w: 1748, h: 2480, dpi: 600 },
-                { label: "Cómic US Letter", w: 2550, h: 3300, dpi: 300 }
+                { label: "Manga B4 (Pro)",         w: 3035, h: 4299, dpi: 600, tag: "POPULAR" },
+                { label: "Manga A4",                w: 2480, h: 3508, dpi: 600, tag: "" },
+                { label: "Doujinshi A5",            w: 1748, h: 2480, dpi: 600, tag: "" },
+                { label: "Cómic US Letter",         w: 2550, h: 3300, dpi: 300, tag: "" },
+                { label: "Weekly Shounen",          w: 2976, h: 4299, dpi: 600, tag: "PRO" },
+                { label: "Monthly Manga",           w: 2480, h: 3508, dpi: 350, tag: "" },
+                { label: "Tankoubon (libro)",       w: 2756, h: 3937, dpi: 600, tag: "PRINT" },
+                { label: "Colección KiSS (YA)",    w: 2480, h: 3508, dpi: 400, tag: "" },
+                { label: "Cómic europeo A4",        w: 2835, h: 3969, dpi: 300, tag: "" }
             ],
             // Webtoon (Tiras largas)
             [
-                { label: "Webtoon estándar", w: 800, h: 1280, dpi: 300 },
-                { label: "Webtoon HD", w: 1600, h: 2560, dpi: 300 },
-                { label: "Webtoon extra largo", w: 800, h: 5000, dpi: 300 }
+                { label: "Webtoon estándar",   w: 800,  h: 1280, dpi: 300, tag: "POPULAR" },
+                { label: "Webtoon HD",          w: 1600, h: 2560, dpi: 300, tag: "" },
+                { label: "Webtoon ultra largo", w: 800,  h: 5000, dpi: 300, tag: "" },
+                { label: "LINE Webtoon",        w: 690,  h: 1080, dpi: 300, tag: "" },
+                { label: "Tapas.io",            w: 940,  h: 1360, dpi: 300, tag: "" },
+                { label: "Lezhin Comics",       w: 690,  h: 1500, dpi: 300, tag: "" },
+                { label: "Manhwa (Web)",        w: 900,  h: 2400, dpi: 300, tag: "" }
             ],
             // Animación
             [
-                { label: "Animación 1080p", w: 1920, h: 1080, dpi: 72 },
-                { label: "Animación 720p", w: 1280, h: 720, dpi: 72 },
-                { label: "Animación cuadrada", w: 1080, h: 1080, dpi: 72 },
-                { label: "Animación 4K", w: 3840, h: 2160, dpi: 72 },
-                { label: "GIF pequeño", w: 480, h: 480, dpi: 72 },
-                { label: "Storyboard", w: 1920, h: 1080, dpi: 150 }
+                { label: "Animación 1080p",    w: 1920, h: 1080, dpi: 72,  tag: "POPULAR" },
+                { label: "Animación 720p",     w: 1280, h: 720,  dpi: 72,  tag: "" },
+                { label: "Animación cuadrada", w: 1080, h: 1080, dpi: 72,  tag: "" },
+                { label: "Animación 4K",       w: 3840, h: 2160, dpi: 72,  tag: "PRO" },
+                { label: "GIF pequeño",        w: 480,  h: 480,  dpi: 72,  tag: "" },
+                { label: "Storyboard",          w: 1920, h: 1080, dpi: 150, tag: "" },
+                { label: "Stories (9:16)",      w: 1080, h: 1920, dpi: 72,  tag: "" },
+                { label: "Cine DCI 2K",         w: 2048, h: 1080, dpi: 72,  tag: "CINE" },
+                { label: "Cine DCI 4K",         w: 4096, h: 2160, dpi: 72,  tag: "CINE" }
+            ],
+            // Redes Sociales
+            [
+                { label: "TikTok (Vírtical)",   w: 1080, h: 1920, dpi: 72,  tag: "POPULAR" },
+                { label: "Instagram Post",       w: 1080, h: 1080, dpi: 72,  tag: "POPULAR" },
+                { label: "Instagram Story",      w: 1080, h: 1920, dpi: 72,  tag: "" },
+                { label: "Instagram Portrait",   w: 1080, h: 1350, dpi: 72,  tag: "" },
+                { label: "Instagram Paisaje",    w: 1080, h: 566,  dpi: 72,  tag: "" },
+                { label: "Instagram Carrusel",   w: 1080, h: 1080, dpi: 72,  tag: "" },
+                { label: "YouTube Banner",       w: 2560, h: 1440, dpi: 72,  tag: "" },
+                { label: "YouTube Thumbnail",    w: 1280, h: 720,  dpi: 72,  tag: "POPULAR" },
+                { label: "YouTube Shorts",       w: 1080, h: 1920, dpi: 72,  tag: "" },
+                { label: "Twitter (X) Post",     w: 1600, h: 900,  dpi: 72,  tag: "" },
+                { label: "Twitter (X) Banner",   w: 1500, h: 500,  dpi: 72,  tag: "" },
+                { label: "Facebook Post",        w: 1200, h: 630,  dpi: 72,  tag: "" },
+                { label: "Facebook Story",       w: 1080, h: 1920, dpi: 72,  tag: "" },
+                { label: "Pinterest Pin",        w: 1000, h: 1500, dpi: 72,  tag: "" },
+                { label: "LinkedIn Banner",      w: 1584, h: 396,  dpi: 72,  tag: "" },
+                { label: "Discord Banner",       w: 960,  h: 540,  dpi: 72,  tag: "" },
+                { label: "Twitch Banner",        w: 1920, h: 480,  dpi: 72,  tag: "" },
+                { label: "Twitch Panel",         w: 320,  h: 160,  dpi: 72,  tag: "" }
             ]
         ]
         
-        property var currentTemplates: templateData[selectedCategoryIndex]
+        property var currentTemplates: templateData[selectedCategoryIndex] || []
 
         function setUnit(u) {
             currentUnit = u
@@ -5302,18 +5347,22 @@ Window {
         
         MouseArea { anchors.fill: parent; onClicked: newProjectDialog.close() }
         
-        // === MAIN CARD (Redesigned, premium) ===
+        // === MAIN CARD (Premium 2-Column Layout) ===
         Rectangle {
-            width: Math.min(parent.width - 40, 1240)
-            height: Math.min(parent.height - 20, newProjectDialog.isAnimation ? 840 : 780)
+            id: mainCard
+            width: Math.min(parent.width - 40, 860)
+            height: Math.min(parent.height - 40, 680)
             anchors.centerIn: parent
             color: "#0f0f11"
-            radius: 24
+            radius: 20
             clip: true
-            border.color: "#222"
+            border.color: "#252530"
             border.width: 1
             
-            // Prevent click-through and close dropdown
+            // Subtle glow
+            Rectangle { z: -1; anchors.fill: parent; anchors.margins: -1; radius: 22; color: "transparent"; border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.08); border.width: 1 }
+            
+            // Prevent click-through
             MouseArea { anchors.fill: parent; onClicked: newProjectDialog.unitDropdownOpen = false }
             
             Column {
@@ -5322,37 +5371,39 @@ Window {
                 
                 // === HEADER ===
                 Rectangle {
-                    width: parent.width; height: 70
+                    width: parent.width; height: 56
                     color: "transparent"
                     
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 36; anchors.rightMargin: 28
+                        anchors.leftMargin: 24; anchors.rightMargin: 20
                         
-                        Column {
-                            Layout.alignment: Qt.AlignVCenter
-                            spacing: 3
-                            Text {
-                                text: "Nuevo Lienzo"
-                                color: "white"; font.pixelSize: 22; font.bold: true
-                            }
-                            Text {
-                                text: "Elige una plantilla profesional o personaliza las dimensiones"
-                                color: "#777"; font.pixelSize: 12
-                            }
+                        // Accent dot
+                        Rectangle { width: 6; height: 6; radius: 3; color: colorAccent; Layout.alignment: Qt.AlignVCenter }
+                        
+                        Text {
+                            text: "Nuevo Lienzo"
+                            color: "white"; font.pixelSize: 17; font.weight: Font.DemiBold
+                            Layout.leftMargin: 6
                         }
                         
                         Item { Layout.fillWidth: true }
                         
+                        // Keyboard shortcut hint
+                        Rectangle {
+                            width: escLabel.implicitWidth + 16; height: 24; radius: 6
+                            color: "#1a1a1e"; border.color: "#2a2a30"; border.width: 1
+                            Layout.alignment: Qt.AlignVCenter
+                            Text { id: escLabel; text: "ESC"; color: "#555"; font.pixelSize: 9; font.weight: Font.Bold; anchors.centerIn: parent }
+                        }
+                        
                         // Close Button
                         Rectangle {
-                            width: 40; height: 40; radius: 12
+                            width: 32; height: 32; radius: 10
                             color: closeHover.containsMouse ? "#252528" : "transparent"
-                            border.color: closeHover.containsMouse ? "#333" : "transparent"
-                            Layout.alignment: Qt.AlignVCenter
+                            Layout.alignment: Qt.AlignVCenter; Layout.leftMargin: 4
                             
-                            Text { text: "✕"; color: closeHover.containsMouse ? "#aaa" : "#666"; font.pixelSize: 18; anchors.centerIn: parent }
-                            
+                            Text { text: "✕"; color: closeHover.containsMouse ? "#ccc" : "#555"; font.pixelSize: 14; anchors.centerIn: parent }
                             Behavior on color { ColorAnimation { duration: 150 } }
                             
                             MouseArea {
@@ -5363,345 +5414,491 @@ Window {
                         }
                     }
                     
-                    // Separator
-                    Rectangle { width: parent.width; height: 1; color: "#1e1e22"; anchors.bottom: parent.bottom }
+                    Rectangle { width: parent.width; height: 1; color: "#1a1a1e"; anchors.bottom: parent.bottom }
                 }
                 
-                // === CATEGORY TABS (Premium Horizontal Pills) ===
-                Rectangle {
-                    width: parent.width; height: 60
-                    color: "transparent"
-                    
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 12
-                        
-                        Repeater {
-                            model: newProjectDialog.categories
-                            
-                            Rectangle {
-                                width: catContent.implicitWidth + 36; height: 40
-                                radius: 20
-                                color: newProjectDialog.selectedCategoryIndex === index ? "#1e1e24" : (catMouse.containsMouse ? "#181820" : "transparent")
-                                border.color: newProjectDialog.selectedCategoryIndex === index ? colorAccent : (catMouse.containsMouse ? "#2a2a30" : "transparent")
-                                border.width: newProjectDialog.selectedCategoryIndex === index ? 2 : 1
-                                
-                                Behavior on color { ColorAnimation { duration: 150 } }
-                                Behavior on border.color { ColorAnimation { duration: 150 } }
-                                
-                                Row {
-                                    id: catContent
-                                    anchors.centerIn: parent
-                                    spacing: 10
-                                    
-                                    Image {
-                                        source: iconPath(modelData.icon)
-                                        width: 18; height: 18
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        opacity: newProjectDialog.selectedCategoryIndex === index ? 1.0 : 0.5
-                                        Behavior on opacity { NumberAnimation { duration: 150 } }
-                                    }
-                                    
-                                    Text {
-                                        text: modelData.name
-                                        color: newProjectDialog.selectedCategoryIndex === index ? "white" : "#888"
-                                        font.pixelSize: 14
-                                        font.weight: newProjectDialog.selectedCategoryIndex === index ? Font.DemiBold : Font.Normal
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-                                
-                                MouseArea {
-                                    id: catMouse
-                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                    onClicked: newProjectDialog.selectedCategoryIndex = index
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // === MAIN CONTENT ===
-                Column {
+                // === 2-COLUMN BODY ===
+                RowLayout {
                     width: parent.width
-                    height: parent.height - (130 * uiScale)  // Adjusted for compact header and tabs
+                    height: parent.height - 56  // minus header
                     spacing: 0
                     
-                    // === TEMPLATES GRID (CENTER - Full width) ===
+                    // ========== LEFT SIDEBAR (Categories + Templates) ==========
                     Rectangle {
+                        Layout.preferredWidth: 310
                         Layout.fillHeight: true
-                        width: parent.width
-                        height: parent.height - 260
-                        color: "transparent"
+                        color: "#0b0b0d"
+                        radius: 20
+                        clip: true
                         
                         Column {
                             anchors.fill: parent
-                            anchors.margins: 24 * uiScale
-                            spacing: 12 * uiScale
+                            spacing: 0
                             
-                            
-                            Row {
+                            // ── SELECTOR DE CATEGORÍA — Lista vertical premium ──
+                            Column {
+                                id: catSelectorCol
                                 width: parent.width
-                                spacing: 8
+                                spacing: 0
+                                topPadding: 14
+                                bottomPadding: 6
+                                leftPadding: 10
+                                rightPadding: 10
                                 
+                                // Label de sección
                                 Text {
-                                    text: "Plantillas recomendadas"
-                                    color: "white"
-                                    font.pixelSize: 14
+                                    text: "TIPO DE PROYECTO"
+                                    color: "#505068"
+                                    font.pixelSize: 10
                                     font.weight: Font.DemiBold
+                                    font.letterSpacing: 1.0
+                                    bottomPadding: 8
+                                    width: parent.width - 20
                                 }
                                 
-                                Text {
-                                    text: newProjectDialog.categories[newProjectDialog.selectedCategoryIndex].desc
-                                    color: "#777"
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
+                                Repeater {
+                                    model: newProjectDialog.categories
+                                    
+                                    Rectangle {
+                                        width: catSelectorCol.width - catSelectorCol.leftPadding - catSelectorCol.rightPadding
+                                        height: 44
+                                        radius: 10
+                                        color: {
+                                            if (newProjectDialog.selectedCategoryIndex === index)
+                                                return Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.12)
+                                            return catHover.containsMouse ? "#161622" : "transparent"
+                                        }
+                                        border.color: newProjectDialog.selectedCategoryIndex === index
+                                            ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4)
+                                            : "transparent"
+                                        border.width: 1
+                                        
+                                        Behavior on color { ColorAnimation { duration: 140 } }
+                                        Behavior on border.color { ColorAnimation { duration: 140 } }
+                                        
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 10
+                                            anchors.rightMargin: 10
+                                            spacing: 12
+                                            
+                                            // Icono en cápsla
+                                            Rectangle {
+                                                width: 30; height: 30; radius: 8
+                                                color: newProjectDialog.selectedCategoryIndex === index
+                                                    ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.22)
+                                                    : "#18182a"
+                                                Layout.alignment: Qt.AlignVCenter
+                                                
+                                                Behavior on color { ColorAnimation { duration: 140 } }
+                                                
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: newProjectDialog.catIcons[index] || ""
+                                                    font.pixelSize: 15
+                                                }
+                                            }
+                                            
+                                            // Nombre
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: modelData.name
+                                                color: newProjectDialog.selectedCategoryIndex === index ? "white" : "#80809a"
+                                                font.pixelSize: 13
+                                                font.weight: newProjectDialog.selectedCategoryIndex === index ? Font.DemiBold : Font.Medium
+                                                Layout.alignment: Qt.AlignVCenter
+                                                
+                                                Behavior on color { ColorAnimation { duration: 140 } }
+                                            }
+                                            
+                                            // Barra indicadora activa
+                                            Rectangle {
+                                                width: 4; height: 20; radius: 2
+                                                color: colorAccent
+                                                visible: newProjectDialog.selectedCategoryIndex === index
+                                                Layout.alignment: Qt.AlignVCenter
+                                            }
+                                        }
+                                        
+                                        MouseArea {
+                                            id: catHover
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: newProjectDialog.selectedCategoryIndex = index
+                                        }
+                                    }
                                 }
                             }
                             
-                            ScrollView {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.topMargin: 4 * uiScale
-                                clip: true
+                            // Divisor con contador de tamaños
+                            Item {
+                                width: parent.width; height: 30
                                 
-                                GridLayout {
-                                    columns: 3
-                                    rowSpacing: 22 * uiScale
-                                    columnSpacing: 22 * uiScale
+                                Rectangle {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left; anchors.right: parent.right
+                                    anchors.leftMargin: 16; anchors.rightMargin: 16
+                                    height: 1; color: "#1e1e2c"
+                                }
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: sizeCountLbl.implicitWidth + 16; height: 20
+                                    radius: 10; color: "#0b0b0d"
+                                    border.color: "#2a2a3e"; border.width: 1
+                                    Text {
+                                        id: sizeCountLbl
+                                        anchors.centerIn: parent
+                                        text: (newProjectDialog.currentTemplates ? newProjectDialog.currentTemplates.length : 0) + " PLANTILLAS"
+                                        color: "#606080"; font.pixelSize: 9; font.weight: Font.DemiBold; font.letterSpacing: 0.5
+                                    }
+                                }
+                            }
+                            
+                            // Templates List (scrollable)
+                            ScrollView {
+                                id: templateListScroll
+                                width: parent.width
+                                height: parent.height - catSelectorCol.implicitHeight - 30
+                                clip: true
+                                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                                ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+                                
+                        Column {
+                            width: templateListScroll.availableWidth - 28
+                            x: 14
+                            spacing: 10
+                            topPadding: 12
+                            bottomPadding: 24
+                            
+                            Repeater {
+                                model: newProjectDialog.currentTemplates
+                                
+                                Rectangle {
+                                    id: tCard
                                     width: parent.width
+                                    height: 80
+                                    radius: 14
                                     
-                                    Repeater {
-                                        model: newProjectDialog.currentTemplates
+                                    property bool isSelected: (newProjectDialog.inputW === modelData.w && newProjectDialog.inputH === modelData.h)
+                                    property string tTag: (modelData.tag !== undefined) ? modelData.tag : ""
+                                    
+                                    color: {
+                                        if (isSelected) return Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.12)
+                                        return tCardHov.containsMouse ? "#161620" : "transparent"
+                                    }
+                                    border.color: isSelected
+                                        ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.5)
+                                        : (tCardHov.containsMouse ? "#2a2a3a" : "transparent")
+                                    border.width: 1
+                                    
+                                    Behavior on color { ColorAnimation { duration: 130 } }
+                                    Behavior on border.color { ColorAnimation { duration: 130 } }
+                                    
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 16
+                                        anchors.rightMargin: 16
+                                        spacing: 14
                                         
-                                        Rectangle {
-                                            id: templateCard
-                                            Layout.preferredWidth: 185 * uiScale
-                                            Layout.preferredHeight: 175 * uiScale
-                                            radius: 18 * uiScale
-                                            color: templateMouse.containsMouse ? "#131318" : "#0f1013"
-                                            border.color: isSelected ? colorAccent : (templateMouse.containsMouse ? "#2a2a30" : "#1a1a1e")
-                                            border.width: isSelected ? 1.8 : 1
+                                        // ── Miniatura proporcional ──
+                                        Item {
+                                            Layout.preferredWidth: 42
+                                            Layout.preferredHeight: 42
+                                            Layout.alignment: Qt.AlignVCenter
                                             
-                                            property bool isSelected: (newProjectDialog.inputW === modelData.w && newProjectDialog.inputH === modelData.h)
-                                            
-                                            Behavior on color { ColorAnimation { duration: 150 } }
-                                            Behavior on border.color { ColorAnimation { duration: 150 } }
-                                            
-                                            Column {
-                                                anchors.fill: parent
-                                                anchors.margins: 16 * uiScale
-                                                spacing: 12
-                                                
-                                                // === VISUAL CANVAS SHAPE PREVIEW ===
-                                                Item {
-                                                    width: parent.width
-                                                    height: 85
-                                                    
-                                                    // Canvas shape representation
-                                                    Rectangle {
-                                                        id: canvasPreview
-                                                        anchors.centerIn: parent
-                                                        
-                                                        // Calculate scaled dimensions to fit in preview area
-                                                        property real aspectRatio: modelData.w / modelData.h
-                                                        property real maxW: parent.width - 20
-                                                        property real maxH: parent.height - 10
-                                                        
-                                                        // Fit by aspect ratio (reduced to ~60% of max for breathing room)
-                                                        property real fitScale: Math.min((maxW * 0.75) / modelData.w, (maxH * 0.75) / modelData.h)
-                                                        
-                                                        width: Math.max(25, modelData.w * fitScale)
-                                                        height: Math.max(25, modelData.h * fitScale)
-                                                        
-                                                        gradient: Gradient {
-                                                            orientation: Gradient.Vertical
-                                                            GradientStop { position: 0.0; color: templateCard.isSelected ? "#262634" : "#1b1b22" }
-                                                            GradientStop { position: 1.0; color: templateCard.isSelected ? "#14141e" : "#111118" }
-                                                        }
-                                                        border.color: templateCard.isSelected ? colorAccent : "#333"
-                                                        border.width: 1
-                                                        radius: 4
-                                                        
-                                                        // Inner content simulation (subtle lines)
-                                                        Column {
-                                                            anchors.centerIn: parent
-                                                            spacing: 3
-                                                            opacity: 0.15
-                                                            visible: canvasPreview.width > 40 && canvasPreview.height > 30
-                                                            
-                                                            Repeater {
-                                                                model: Math.min(4, Math.floor((canvasPreview.height - 10) / 8))
-                                                                Rectangle {
-                                                                    width: canvasPreview.width * 0.6
-                                                                    height: 2
-                                                                    radius: 1
-                                                                    color: "#fff"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                
-                                                // Label & Info
-                                                Column {
-                                                    width: parent.width
-                                                    spacing: 2
-                                                    
-                                                    Text {
-                                                        text: modelData.label
-                                                        color: templateCard.isSelected ? "white" : "#e5e5e5"
-                                                        font.pixelSize: 12
-                                                        font.weight: Font.Medium
-                                                        elide: Text.ElideRight
-                                                        width: parent.width
-                                                    }
-                                                    
-                                                    Text {
-                                                        text: modelData.w + " × " + modelData.h + " • " + modelData.dpi + " DPI"
-                                                        color: "#6b6b6b"
-                                                        font.pixelSize: 10
-                                                    }
-                                                }
-                                            }
-                                            
-                                            // Selection indicator
                                             Rectangle {
-                                                width: 18; height: 18; radius: 9
-                                                color: colorAccent
-                                                anchors.top: parent.top; anchors.right: parent.right
-                                                anchors.margins: 8
-                                                visible: templateCard.isSelected
+                                                anchors.centerIn: parent
+                                                property real fitS: Math.min(36 / modelData.w, 36 / modelData.h)
+                                                width:  Math.round(Math.max(14, Math.min(36, modelData.w * fitS)))
+                                                height: Math.round(Math.max(14, Math.min(36, modelData.h * fitS)))
+                                                radius: 4
+                                                color: tCard.isSelected
+                                                    ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.22)
+                                                    : "#1a1a24"
+                                                border.color: tCard.isSelected
+                                                    ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.7)
+                                                    : "#3a3a4e"
+                                                border.width: 1
                                                 
-                                                Text { text: "✓"; color: "white"; font.pixelSize: 10; font.bold: true; anchors.centerIn: parent }
+                                                Behavior on color { ColorAnimation { duration: 130 } }
+                                                Behavior on border.color { ColorAnimation { duration: 130 } }
+                                            }
+                                        }
+                                        
+                                        // ── Texto: nombre + dimensiones ──
+                                        Column {
+                                            Layout.fillWidth: true
+                                            Layout.alignment: Qt.AlignVCenter
+                                            spacing: 6
+                                            
+                                            // Nombre — ancho completo
+                                            Text {
+                                                width: parent.width
+                                                text: modelData.label
+                                                color: tCard.isSelected ? "white" : "#e0e0ea"
+                                                font.pixelSize: 14
+                                                font.weight: tCard.isSelected ? Font.DemiBold : Font.Medium
+                                                elide: Text.ElideRight
+                                                
+                                                Behavior on color { ColorAnimation { duration: 130 } }
                                             }
                                             
-                                            MouseArea {
-                                                id: templateMouse
-                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    newProjectDialog.inputW = modelData.w
-                                                    newProjectDialog.inputH = modelData.h
-                                                    newProjectDialog.updateDPI(modelData.dpi)
+                                            // Dimensiones + DPI + badge en la misma fila
+                                            Row {
+                                                spacing: 8
+                                                
+                                                Text {
+                                                    text: modelData.w + " × " + modelData.h
+                                                    color: tCard.isSelected ? "#8a8abd" : "#707086"
+                                                    font.pixelSize: 11
+                                                    font.weight: Font.DemiBold
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                }
+                                                Text {
+                                                    text: "·"
+                                                    color: "#404050"
+                                                    font.pixelSize: 11
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                }
+                                                Text {
+                                                    text: modelData.dpi + " DPI"
+                                                    color: "#606076"
+                                                    font.pixelSize: 11
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    font.weight: Font.Medium
+                                                }
+                                                
+                                                // Badge de tag
+                                                Rectangle {
+                                                    visible: tCard.tTag !== ""
+                                                    height: 18
+                                                    width: tBadgeTxt.implicitWidth + 12
+                                                    radius: 6
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    color: {
+                                                        if (tCard.tTag === "POPULAR") return Qt.rgba(0.0,  0.85, 0.5,  0.15)
+                                                        if (tCard.tTag === "PRO")     return Qt.rgba(0.6,  0.3,  1.0,  0.18)
+                                                        if (tCard.tTag === "PRINT")   return Qt.rgba(1.0,  0.6,  0.1,  0.15)
+                                                        if (tCard.tTag === "CINE")    return Qt.rgba(0.2,  0.6,  1.0,  0.18)
+                                                        return "transparent"
+                                                    }
+                                                    border.width: 1
+                                                    border.color: {
+                                                        if (tCard.tTag === "POPULAR") return Qt.rgba(0.0,  0.85, 0.5,  0.40)
+                                                        if (tCard.tTag === "PRO")     return Qt.rgba(0.6,  0.3,  1.0,  0.45)
+                                                        if (tCard.tTag === "PRINT")   return Qt.rgba(1.0,  0.6,  0.1,  0.40)
+                                                        if (tCard.tTag === "CINE")    return Qt.rgba(0.2,  0.6,  1.0,  0.45)
+                                                        return "transparent"
+                                                    }
+                                                    
+                                                    Text {
+                                                        id: tBadgeTxt
+                                                        anchors.centerIn: parent
+                                                        text: tCard.tTag
+                                                        font.pixelSize: 9
+                                                        font.weight: Font.Bold
+                                                        font.letterSpacing: 0.6
+                                                        color: {
+                                                            if (tCard.tTag === "POPULAR") return "#30ffa0"
+                                                            if (tCard.tTag === "PRO")     return "#d4aaff"
+                                                            if (tCard.tTag === "PRINT")   return "#ffbb55"
+                                                            if (tCard.tTag === "CINE")    return "#66bbff"
+                                                            return "#bbb"
+                                                        }
+                                                    }
                                                 }
                                             }
+                                        }
+                                        
+                                        // ── Checkmark ──
+                                        Rectangle {
+                                            Layout.preferredWidth: 24
+                                            Layout.preferredHeight: 24
+                                            Layout.alignment: Qt.AlignVCenter
+                                            radius: 12
+                                            color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15)
+                                            border.color: colorAccent; border.width: 1.5
+                                            visible: tCard.isSelected
+                                            
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "✓"
+                                                color: colorAccent
+                                                font.pixelSize: 13; font.bold: true
+                                            }
+                                        }
+                                    }
+                                    
+                                    MouseArea {
+                                        id: tCardHov
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            newProjectDialog.inputW = modelData.w
+                                            newProjectDialog.inputH = modelData.h
+                                            newProjectDialog.inputDPI = modelData.dpi
                                         }
                                     }
                                 }
                             }
                         }
-                    }
+                    }  // end ScrollView
+                }  // end Column
+                
+                // Sidebar right border
+                Rectangle { width: 1; height: parent.height; color: "#1c1c28"; anchors.right: parent.right }
+            }  // end LEFT SIDEBAR
+            
+            // ========== RIGHT PANEL (Preview + Settings + Create) ==========
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                color: "#101012"
+                // Redondear esquinas inferiores derechas para coincidir con mainCard
+                radius: 20
+                clip: true
+                
+                ScrollView {
+                    id: settingsScroll
+                    anchors.fill: parent
+                    clip: true
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+                
+                Item {
+                    width: settingsScroll.width
+                    implicitHeight: settingsCol.height + 60
                     
-                    // === SETTINGS BAND (BOTTOM - Full width) ===
+                    Column {
+                        id: settingsCol
+                        width: parent.width - 52
+                        x: 28
+                        y: 24
+                        spacing: 16
+                    
+                    // === LIVE PREVIEW (Premium) ===
                     Rectangle {
-                        width: parent.width
-                        height: 260
-                        color: "#121214"
-                        clip: true
+                        width: parent.width - 24
+                        height: 220
+                        color: "#0a0a0c"
+                        radius: 20
+                        border.color: "#1e1e24"
                         
-                        Rectangle { width: 1; height: parent.height; color: "#1e1e22"; anchors.left: parent.left }
-                        
-                        ScrollView {
-                            id: settingsScroll
-                            anchors.fill: parent
-                            anchors.margins: 0
-                            clip: true
-                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                            ScrollBar.vertical.policy: ScrollBar.AsNeeded
-                        
-                        Column {
-                            width: settingsScroll.width - 8
-                            padding: 20
-                            leftPadding: 24
-                            spacing: 14
-                            
-                            // Header for settings
-                            Column {
-                                spacing: 2
-                                Text { text: "Detalles del lienzo"; color: "white"; font.pixelSize: 14; font.weight: Font.DemiBold }
-                                Text { text: "Ajusta dimensiones, resolución y fondo antes de crear tu proyecto"; color: "#777"; font.pixelSize: 11; wrapMode: Text.WordWrap }
-                            }
-                            
-                            Item { height: 8 }
-                            
-                            // === LIVE PREVIEW ===
-                            Rectangle {
-                                width: parent.width
-                                height: 140
-                                color: "#0a0a0c"
-                                radius: 12
-                                border.color: "#222"
-                                
-                                Item {
-                                    anchors.fill: parent
-                                    anchors.margins: 15
-                                    
-                                    // Canvas shape preview (live)
-                                    Rectangle {
-                                        id: livePreview
-                                        anchors.centerIn: parent
-                                        
-                                        property real aspectRatio: newProjectDialog.inputW / newProjectDialog.inputH
-                                        property real maxW: parent.width - 10
-                                        property real maxH: parent.height - 10
-                                        property real fitScale: Math.min(maxW / newProjectDialog.inputW, maxH / newProjectDialog.inputH)
-                                        
-                                        width: Math.max(20, newProjectDialog.inputW * fitScale)
-                                        height: Math.max(20, newProjectDialog.inputH * fitScale)
-                                        
-                                        color: newProjectDialog.bgFill
-                                        border.color: "#444"
-                                        border.width: 1
-                                        radius: 2
-                                        
-                                        Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                                        Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                                    }
-                                }
-                                
-                                // Dimensions label
+                        // Checkerboard hint for transparent bg
+                        Grid {
+                            anchors.fill: parent; anchors.margins: 2
+                            columns: Math.ceil(width / 12); rows: Math.ceil(height / 12)
+                            clip: true; visible: newProjectDialog.bgFill === "transparent"
+                            opacity: 0.08
+                            Repeater {
+                                model: parent.columns * parent.rows
                                 Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    anchors.bottomMargin: 8
-                                    width: dimLabel.implicitWidth + 16; height: 20
-                                    radius: 10
-                                    color: "#1a1a1e"
-                                    
-                                    Text {
-                                        id: dimLabel
-                                        text: newProjectDialog.inputW + " × " + newProjectDialog.inputH + " • " + newProjectDialog.inputDPI + " DPI"
-                                        color: "#888"
-                                        font.pixelSize: 10
-                                        anchors.centerIn: parent
+                                    width: 12; height: 12
+                                    color: index % 2 === (Math.floor(index / parent.parent.columns) % 2) ? "#fff" : "transparent"
+                                }
+                            }
+                        }
+                        
+                        Item {
+                            anchors.fill: parent
+                            anchors.margins: 24
+                            
+                            Rectangle {
+                                id: livePreview
+                                anchors.centerIn: parent
+                                
+                                property real maxW: parent.width - 20
+                                property real maxH: parent.height - 20
+                                property real fitScale: Math.min(maxW / newProjectDialog.inputW, maxH / newProjectDialog.inputH)
+                                
+                                width: Math.max(20, newProjectDialog.inputW * fitScale)
+                                height: Math.max(20, newProjectDialog.inputH * fitScale)
+                                
+                                color: newProjectDialog.bgFill === "transparent" ? "#1a1a22" : newProjectDialog.bgFill
+                                border.color: "#303035"
+                                border.width: 1
+                                radius: 4
+                                
+                                Behavior on width { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                                Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                                
+                                // Subtle content lines inside preview layout
+                                Column {
+                                    anchors.centerIn: parent; spacing: 4; opacity: 0.06
+                                    visible: livePreview.width > 40 && livePreview.height > 30
+                                    Repeater {
+                                        model: Math.min(3, Math.floor((livePreview.height - 20) / 10))
+                                        Rectangle { width: livePreview.width * 0.6; height: 2; radius: 1; color: "#fff" }
                                     }
                                 }
                             }
+                        }
+                        
+                        // Info badges
+                        Row {
+                            anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottomMargin: 14; spacing: 8
+                            
+                            Rectangle {
+                                width: dimBadge.implicitWidth + 20; height: 24; radius: 12
+                                color: "#16161a"; border.color: "#2a2a32"; border.width: 1
+                                Text {
+                                    id: dimBadge
+                                    text: newProjectDialog.inputW + " × " + newProjectDialog.inputH
+                                    color: "#a0a0b0"; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent
+                                }
+                            }
+                            Rectangle {
+                                width: dpiBadge.implicitWidth + 20; height: 24; radius: 12
+                                color: "#16161a"; border.color: "#2a2a32"; border.width: 1
+                                Text {
+                                    id: dpiBadge
+                                    text: newProjectDialog.inputDPI + " DPI"
+                                    color: "#9090a0"; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent
+                                }
+                            }
+                            Rectangle {
+                                width: sizeBadge.implicitWidth + 20; height: 24; radius: 12
+                                color: "#16161a"; border.color: "#2a2a32"; border.width: 1
+                                Text {
+                                    id: sizeBadge
+                                    property real estimMB: (newProjectDialog.inputW * newProjectDialog.inputH * 4) / (1024 * 1024)
+                                    text: "~" + estimMB.toFixed(1) + " MB"
+                                    color: "#808090"; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent
+                                }
+                            }
+                        }
+                    }
+                            
+                            Item { height: 4 }
                             
                             // === DIMENSIONES ===
-                            Text { text: "Dimensiones"; color: "#ccc"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                            Text { text: "Dimensiones y Resolución"; color: "#e0e0ea"; font.pixelSize: 14; font.weight: Font.DemiBold }
                             
                             // === DIMENSION INPUTS ===
                             GridLayout {
                                 width: parent.width
                                 columns: 2
-                                rowSpacing: 12
-                                columnSpacing: 12
+                                rowSpacing: 16
+                                columnSpacing: 16
                                 
                                 // Width
                                 Column {
-                                    width: parent.width / 2 - 6; spacing: 8
-                                    Text { text: "Ancho"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
+                                    Layout.preferredWidth: parent.width / 2 - 8
+                                    Layout.fillWidth: true; spacing: 8
+                                    Text { text: "Ancho"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                     Rectangle {
-                                        width: parent.width; height: 38; radius: 8
-                                        color: "#1a1a1e"
-                                        border.color: wInput.activeFocus ? colorAccent : "#303035"
+                                        width: parent.width; height: 42; radius: 10
+                                        color: "#16161a"
+                                        border.color: wInput.activeFocus ? colorAccent : "#2a2a32"
                                         border.width: wInput.activeFocus ? 1.5 : 1
                                         
                                         TextInput {
                                             id: wInput
-                                            anchors.fill: parent; anchors.margins: 10
-                                            color: "white"; font.pixelSize: 13
+                                            anchors.fill: parent; anchors.margins: 12
+                                            color: "white"; font.pixelSize: 14; font.weight: Font.Medium
                                             text: newProjectDialog.displayW
                                             verticalAlignment: Text.AlignVCenter
                                             selectByMouse: true
@@ -5712,18 +5909,19 @@ Window {
                                 
                                 // Height
                                 Column {
+                                    Layout.preferredWidth: parent.width / 2 - 8
                                     Layout.fillWidth: true; spacing: 8
-                                    Text { text: "Alto"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
+                                    Text { text: "Alto"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                     Rectangle {
-                                        width: parent.width; height: 38; radius: 8
-                                        color: "#1a1a1e"
-                                        border.color: hInput.activeFocus ? colorAccent : "#303035"
+                                        width: parent.width; height: 42; radius: 10
+                                        color: "#16161a"
+                                        border.color: hInput.activeFocus ? colorAccent : "#2a2a32"
                                         border.width: hInput.activeFocus ? 1.5 : 1
                                         
                                         TextInput {
                                             id: hInput
-                                            anchors.fill: parent; anchors.margins: 10
-                                            color: "white"; font.pixelSize: 13
+                                            anchors.fill: parent; anchors.margins: 12
+                                            color: "white"; font.pixelSize: 14; font.weight: Font.Medium
                                             text: newProjectDialog.displayH
                                             verticalAlignment: Text.AlignVCenter
                                             selectByMouse: true
@@ -5734,64 +5932,65 @@ Window {
                                 
                                 // DPI
                                 Column {
+                                    Layout.preferredWidth: parent.width / 2 - 8
                                     Layout.fillWidth: true; spacing: 8
-                                    Text { text: "Resolución"; color: "#888"; font.pixelSize: 12; font.weight: Font.Medium }
+                                    Text { text: "Resolución"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                     Rectangle {
-                                        width: parent.width; height: 38; radius: 8
-                                        color: "#1a1a1e"
-                                        border.color: dpiInput.activeFocus ? colorAccent : "#303035"
+                                        width: parent.width; height: 42; radius: 10
+                                        color: "#16161a"
+                                        border.color: dpiInput.activeFocus ? colorAccent : "#2a2a32"
                                         border.width: dpiInput.activeFocus ? 1.5 : 1
                                         
                                         RowLayout {
-                                            anchors.fill: parent; anchors.margins: 10
+                                            anchors.fill: parent; anchors.margins: 12
                                             TextInput {
                                                 id: dpiInput
                                                 Layout.fillWidth: true
-                                                color: "white"; font.pixelSize: 13
+                                                color: "white"; font.pixelSize: 14; font.weight: Font.Medium
                                                 text: newProjectDialog.inputDPI
                                                 verticalAlignment: Text.AlignVCenter
                                                 selectByMouse: true
                                                 onEditingFinished: newProjectDialog.updateDPI(text)
                                             }
-                                            Text { text: "DPI"; color: "#555"; font.pixelSize: 11 }
+                                            Text { text: "DPI"; color: "#606076"; font.pixelSize: 11; font.weight: Font.DemiBold }
                                         }
                                     }
                                 }
                                 
                                 // Unit Selector (Premium Dropdown)
                                 Column {
-                                    Layout.fillWidth: true; spacing: 6
+                                    Layout.preferredWidth: parent.width / 2 - 8
+                                    Layout.fillWidth: true; spacing: 8
                                     z: 100  // Ensure dropdown appears on top
                                     
-                                    Text { text: "Unidades"; color: "#666"; font.pixelSize: 11 }
+                                    Text { text: "Unidades"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                     
                                     // Main selector button
                                     Rectangle {
                                         id: unitSelectorBtn
-                                        width: parent.width; height: 38; radius: 8
-                                        color: unitBtnMouse.containsMouse || newProjectDialog.unitDropdownOpen ? "#252528" : "#1a1a1e"
-                                        border.color: newProjectDialog.unitDropdownOpen ? colorAccent : "#303035"
+                                        width: parent.width; height: 42; radius: 10
+                                        color: unitBtnMouse.containsMouse || newProjectDialog.unitDropdownOpen ? "#202028" : "#16161a"
+                                        border.color: newProjectDialog.unitDropdownOpen ? colorAccent : "#2a2a32"
                                         border.width: newProjectDialog.unitDropdownOpen ? 1.5 : 1
                                         
                                         Behavior on color { ColorAnimation { duration: 150 } }
                                         Behavior on border.color { ColorAnimation { duration: 150 } }
                                         
                                         RowLayout {
-                                            anchors.fill: parent; anchors.margins: 12
+                                            anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
                                             
                                             Text { 
                                                 text: {
                                                     var labels = {"px": "Píxeles (px)", "in": "Pulgadas (in)", "cm": "Centímetros (cm)", "mm": "Milímetros (mm)"};
                                                     return labels[newProjectDialog.currentUnit] || "Píxeles (px)";
                                                 }
-                                                color: "white"; font.pixelSize: 13; font.weight: Font.Medium
+                                                color: "white"; font.pixelSize: 14; font.weight: Font.Medium
+                                                Layout.fillWidth: true
                                             }
-                                            
-                                            Item { Layout.fillWidth: true }
                                             
                                             Text { 
                                                 text: newProjectDialog.unitDropdownOpen ? "▲" : "▼"
-                                                color: "#888"; font.pixelSize: 10
+                                                color: "#606076"; font.pixelSize: 10
                                             }
                                         }
                                         
@@ -5809,8 +6008,9 @@ Window {
                                         height: newProjectDialog.unitDropdownOpen ? unitDropdownCol.implicitHeight + 12 : 0
                                         clip: true
                                         radius: 10
-                                        color: "#1a1a1e"
-                                        border.color: "#303035"
+                                        color: "#16161a"
+                                        border.color: "#2a2a32"
+                                        border.width: 1
                                         visible: height > 0
                                         
                                         Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -5823,17 +6023,17 @@ Window {
                                             
                                             Repeater {
                                                 model: [
-                                                    { code: "px", label: "Pixels", desc: "Screen resolution" },
-                                                    { code: "in", label: "Inches", desc: "Imperial system" },
-                                                    { code: "cm", label: "Centimeters", desc: "Metric system" },
-                                                    { code: "mm", label: "Millimeters", desc: "Precise metric" }
+                                                    { code: "px", label: "Píxeles", desc: "Monitores y web" },
+                                                    { code: "in", label: "Pulgadas", desc: "Impresión en USA" },
+                                                    { code: "cm", label: "Centímetros", desc: "Sistema Métrico" },
+                                                    { code: "mm", label: "Milímetros", desc: "Precisión" }
                                                 ]
                                                 
                                                 Rectangle {
                                                     width: parent.width; height: 44; radius: 8
                                                     color: {
-                                                        if (newProjectDialog.currentUnit === modelData.code) return Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2);
-                                                        return unitItemMouse.containsMouse ? "#252528" : "transparent";
+                                                        if (newProjectDialog.currentUnit === modelData.code) return Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15);
+                                                        return unitItemMouse.containsMouse ? "#202028" : "transparent";
                                                     }
                                                     
                                                     RowLayout {
@@ -5845,13 +6045,14 @@ Window {
                                                             
                                                             Text { 
                                                                 text: modelData.label + " (" + modelData.code + ")"
-                                                                color: newProjectDialog.currentUnit === modelData.code ? colorAccent : "white"
-                                                                font.pixelSize: 12
-                                                                font.weight: newProjectDialog.currentUnit === modelData.code ? Font.Bold : Font.Normal
+                                                                color: newProjectDialog.currentUnit === modelData.code ? "white" : "#d0d0da"
+                                                                font.pixelSize: 13
+                                                                font.weight: newProjectDialog.currentUnit === modelData.code ? Font.DemiBold : Font.Medium
                                                             }
                                                             Text { 
                                                                 text: modelData.desc
-                                                                color: "#666"; font.pixelSize: 10
+                                                                color: newProjectDialog.currentUnit === modelData.code ? colorAccent : "#707086"
+                                                                font.pixelSize: 11
                                                             }
                                                         }
                                                         
@@ -5876,126 +6077,129 @@ Window {
                                 }
                             }
                             
+                            Item { height: 6 }
+                            
                             // === ORIENTACIÓN Y BLOQUEO DE PROPORCIÓN ===
-                            Row {
+                            Column {
                                 width: parent.width
-                                spacing: 12
-                                Layout.margins: 2
+                                spacing: 10
                                 
-                                // Orientación
-                                Column {
-                                    spacing: 6
-                                    Text { text: "Orientación"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
+                                Text { text: "Orientación y Proporción"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
+                                
+                                RowLayout {
+                                    width: parent.width
+                                    spacing: 12
                                     
-                                    Row {
-                                        spacing: 6
+                                    // Horizontal
+                                    Rectangle {
+                                        id: horizBtn
+                                        Layout.preferredWidth: 105; Layout.preferredHeight: 40; radius: 20
+                                        property bool isSelected: newProjectDialog.inputW >= newProjectDialog.inputH
+                                        color: isSelected ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : "#16161a"
+                                        border.color: isSelected ? colorAccent : "#2a2a32"
+                                        border.width: isSelected ? 1.5 : 1
                                         
-                                        // Horizontal
-                                        Rectangle {
-                                            id: horizBtn
-                                            width: 90; height: 30; radius: 16
-                                            property bool isSelected: newProjectDialog.inputW >= newProjectDialog.inputH
-                                            color: isSelected ? colorAccent : "#1a1a1e"
-                                            border.color: isSelected ? colorAccent : "#303035"
-                                            border.width: isSelected ? 1.5 : 1
-                                            
-                                            Behavior on color { ColorAnimation { duration: 160 } }
-                                            Behavior on border.color { ColorAnimation { duration: 160 } }
-                                            
-                                            Row {
-                                                anchors.centerIn: parent
-                                                spacing: 6
-                                                Text { text: "⟷"; color: isSelected ? "white" : "#888"; font.pixelSize: 12 }
-                                                Text { text: "Horizontal"; color: isSelected ? "white" : "#aaa"; font.pixelSize: 11 }
-                                            }
-                                            
-                                            MouseArea {
-                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    if (newProjectDialog.inputH > newProjectDialog.inputW) {
-                                                        var tmp = newProjectDialog.inputW
-                                                        newProjectDialog.inputW = newProjectDialog.inputH
-                                                        newProjectDialog.inputH = tmp
-                                                    }
-                                                }
-                                            }
+                                        Behavior on color { ColorAnimation { duration: 160 } }
+                                        Behavior on border.color { ColorAnimation { duration: 160 } }
+                                        
+                                        Row {
+                                            anchors.centerIn: parent
+                                            spacing: 8
+                                            Text { text: "⟷"; color: horizBtn.isSelected ? colorAccent : "#606076"; font.pixelSize: 14; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                            Text { text: "Horizontal"; color: horizBtn.isSelected ? "white" : "#a0a0b0"; font.pixelSize: 12; font.weight: horizBtn.isSelected ? Font.DemiBold : Font.Medium; anchors.verticalCenter: parent.verticalCenter }
                                         }
                                         
-                                        // Vertical
-                                        Rectangle {
-                                            id: vertBtn
-                                            width: 90; height: 30; radius: 16
-                                            property bool isSelected: newProjectDialog.inputH > newProjectDialog.inputW
-                                            color: isSelected ? colorAccent : "#1a1a1e"
-                                            border.color: isSelected ? colorAccent : "#303035"
-                                            border.width: isSelected ? 1.5 : 1
-                                            
-                                            Behavior on color { ColorAnimation { duration: 160 } }
-                                            Behavior on border.color { ColorAnimation { duration: 160 } }
-                                            
-                                            Row {
-                                                anchors.centerIn: parent
-                                                spacing: 6
-                                                Text { text: "⟷"; rotation: 90; color: isSelected ? "white" : "#888"; font.pixelSize: 12 }
-                                                Text { text: "Vertical"; color: isSelected ? "white" : "#aaa"; font.pixelSize: 11 }
-                                            }
-                                            
-                                            MouseArea {
-                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    if (newProjectDialog.inputW > newProjectDialog.inputH) {
-                                                        var tmp2 = newProjectDialog.inputW
-                                                        newProjectDialog.inputW = newProjectDialog.inputH
-                                                        newProjectDialog.inputH = tmp2
-                                                    }
+                                        MouseArea {
+                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (newProjectDialog.inputH > newProjectDialog.inputW) {
+                                                    var tmp = newProjectDialog.inputW
+                                                    newProjectDialog.inputW = newProjectDialog.inputH
+                                                    newProjectDialog.inputH = tmp
                                                 }
                                             }
                                         }
                                     }
-                                }
-                                
-                                // Bloquear proporción
-                                Rectangle {
-                                    id: lockBtn
-                                    width: 150; height: 34; radius: 18
-                                    color: newProjectDialog.lockAspectRatio ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : "#1a1a1e"
-                                    border.color: newProjectDialog.lockAspectRatio ? colorAccent : "#303035"
-                                    border.width: newProjectDialog.lockAspectRatio ? 1.5 : 1
                                     
-                                    Behavior on color { ColorAnimation { duration: 160 } }
-                                    Behavior on border.color { ColorAnimation { duration: 160 } }
-                                    
-                                    Row {
-                                        anchors.centerIn: parent
-                                        spacing: 8
-                                        Text { text: newProjectDialog.lockAspectRatio ? "🔗" : "⛓"; font.pixelSize: 13; color: newProjectDialog.lockAspectRatio ? colorAccent : "#888" }
-                                        Text {
-                                            text: newProjectDialog.lockAspectRatio ? "Bloquear proporción" : "Proporción libre"
-                                            color: "white"; font.pixelSize: 11
+                                    // Vertical
+                                    Rectangle {
+                                        id: vertBtn
+                                        Layout.preferredWidth: 100; Layout.preferredHeight: 40; radius: 20
+                                        property bool isSelected: newProjectDialog.inputH > newProjectDialog.inputW
+                                        color: isSelected ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : "#16161a"
+                                        border.color: isSelected ? colorAccent : "#2a2a32"
+                                        border.width: isSelected ? 1.5 : 1
+                                        
+                                        Behavior on color { ColorAnimation { duration: 160 } }
+                                        Behavior on border.color { ColorAnimation { duration: 160 } }
+                                        
+                                        Row {
+                                            anchors.centerIn: parent
+                                            spacing: 8
+                                            Text { text: "↕"; color: vertBtn.isSelected ? colorAccent : "#606076"; font.pixelSize: 14; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                            Text { text: "Vertical"; color: vertBtn.isSelected ? "white" : "#a0a0b0"; font.pixelSize: 12; font.weight: vertBtn.isSelected ? Font.DemiBold : Font.Medium; anchors.verticalCenter: parent.verticalCenter }
+                                        }
+                                        
+                                        MouseArea {
+                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (newProjectDialog.inputW > newProjectDialog.inputH) {
+                                                    var tmp2 = newProjectDialog.inputW
+                                                    newProjectDialog.inputW = newProjectDialog.inputH
+                                                    newProjectDialog.inputH = tmp2
+                                                }
+                                            }
                                         }
                                     }
                                     
-                                    MouseArea {
-                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            newProjectDialog.lockAspectRatio = !newProjectDialog.lockAspectRatio
-                                            if (newProjectDialog.lockAspectRatio && newProjectDialog.inputH > 0) {
-                                                newProjectDialog.aspectRatio = newProjectDialog.inputW / newProjectDialog.inputH
+                                    Item { Layout.fillWidth: true } // Spacer pushes everything to sides
+                                    
+                                    // Bloquear proporción
+                                    Rectangle {
+                                        id: lockBtn
+                                        Layout.preferredWidth: 170; Layout.preferredHeight: 40; radius: 20
+                                        color: newProjectDialog.lockAspectRatio ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : "#16161a"
+                                        border.color: newProjectDialog.lockAspectRatio ? colorAccent : "#2a2a32"
+                                        border.width: newProjectDialog.lockAspectRatio ? 1.5 : 1
+                                        
+                                        Behavior on color { ColorAnimation { duration: 160 } }
+                                        Behavior on border.color { ColorAnimation { duration: 160 } }
+                                        
+                                        Row {
+                                            anchors.centerIn: parent
+                                            spacing: 8
+                                            Text { text: newProjectDialog.lockAspectRatio ? "🔗" : "⛓"; font.pixelSize: 13; color: newProjectDialog.lockAspectRatio ? colorAccent : "#606076"; anchors.verticalCenter: parent.verticalCenter  }
+                                            Text {
+                                                text: newProjectDialog.lockAspectRatio ? "Proporción Ligada" : "Proporción Libre"
+                                                color: newProjectDialog.lockAspectRatio ? "white" : "#a0a0b0"
+                                                font.pixelSize: 12; font.weight: newProjectDialog.lockAspectRatio ? Font.DemiBold : Font.Medium; anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
+                                        
+                                        MouseArea {
+                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                newProjectDialog.lockAspectRatio = !newProjectDialog.lockAspectRatio
+                                                if (newProjectDialog.lockAspectRatio && newProjectDialog.inputH > 0) {
+                                                    newProjectDialog.aspectRatio = newProjectDialog.inputW / newProjectDialog.inputH
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                             
+                            Item { height: 6 }
+                            
                             // === BACKGROUND ===
                             Column {
                                 width: parent.width
-                                spacing: 8
+                                spacing: 10
                                 
-                                Text { text: "Fondo"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
+                                Text { text: "Fondo"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                 
                                 Row {
-                                    spacing: 8
+                                    spacing: 12
                                     
                                     Repeater {
                                         model: [
@@ -6007,20 +6211,20 @@ Window {
                                         ]
                                         
                                         Rectangle {
-                                            width: 36; height: 36; radius: 8
-                                            color: modelData.c === "transparent" ? "#1a1a1e" : modelData.c
-                                            border.color: newProjectDialog.bgFill == modelData.c ? colorAccent : "#333"
+                                            width: 42; height: 42; radius: 10
+                                            color: modelData.c === "transparent" ? "#16161a" : modelData.c
+                                            border.color: newProjectDialog.bgFill == modelData.c ? colorAccent : "#2a2a32"
                                             border.width: newProjectDialog.bgFill == modelData.c ? 2 : 1
                                             
                                             Grid {
                                                 visible: modelData.c === "transparent"
-                                                anchors.fill: parent; anchors.margins: 5
+                                                anchors.fill: parent; anchors.margins: 4
                                                 columns: 4; rows: 4
                                                 Repeater {
                                                     model: 16
                                                     Rectangle {
-                                                        width: 8; height: 8
-                                                        color: index % 2 === (Math.floor(index / 4) % 2) ? "#333" : "#222"
+                                                        width: (parent.width / 4); height: (parent.height / 4)
+                                                        color: index % 2 === (Math.floor(index / 4) % 2) ? "#30303a" : "#1a1a20"
                                                     }
                                                 }
                                             }
@@ -6040,11 +6244,11 @@ Window {
                                     // Custom Color Button
                                     Rectangle {
                                         id: customBgBtn
-                                        width: 36; height: 36; radius: 8
-                                        color: "#2a2a2e"
-                                        border.color: customBgHover.containsMouse ? colorAccent : "#333"
+                                        width: 42; height: 42; radius: 10
+                                        color: "#202028"
+                                        border.color: customBgHover.containsMouse ? colorAccent : "#30303a"
                                         border.width: 1
-                                        Text { text: "+"; color: "#888"; anchors.centerIn: parent; font.pixelSize: 18 }
+                                        Text { text: "+"; color: "#a0a0b0"; anchors.centerIn: parent; font.pixelSize: 20; font.weight: Font.Light }
                                         MouseArea { 
                                             id: customBgHover
                                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -6070,25 +6274,25 @@ Window {
                             // === STORY SETTINGS (Visible for Manga/Webtoon) ===
                             Column {
                                 width: parent.width
-                                spacing: 10
+                                spacing: 14
                                 visible: newProjectDialog.isMultiPage
                                 
-                                Rectangle { width: parent.width; height: 1; color: "#1e1e22" }
+                                Item { width: parent.width; height: 12 }
                                 
-                                Text { text: "Opciones de historia"; color: "#ccc"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                                Text { text: "Opciones de historia"; color: "#e0e0ea"; font.pixelSize: 14; font.weight: Font.DemiBold }
                                 
                                 RowLayout {
-                                    width: parent.width; spacing: 10
+                                    width: parent.width; spacing: 16
                                     
                                     // Bleed Field
                                     Column {
-                                        Layout.fillWidth: true; spacing: 6
-                                        Text { text: "Sangrado (mm)"; color: "#888"; font.pixelSize: 11 }
+                                        Layout.fillWidth: true; spacing: 8
+                                        Text { text: "Sangrado (mm)"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                         Rectangle {
-                                            width: parent.width; height: 34; radius: 6; color: "#1a1a1e"; border.color: "#303035"
+                                            width: parent.width; height: 42; radius: 10; color: "#16161a"; border.color: "#2a2a32"; border.width: 1
                                             TextInput {
-                                                anchors.fill: parent; anchors.margins: 8; verticalAlignment: Text.AlignVCenter
-                                                color: "white"; font.pixelSize: 12; text: newProjectDialog.bleedSize.toString()
+                                                anchors.fill: parent; anchors.margins: 12; verticalAlignment: Text.AlignVCenter
+                                                color: "white"; font.pixelSize: 14; font.weight: Font.Medium; text: newProjectDialog.bleedSize.toString()
                                                 onEditingFinished: newProjectDialog.bleedSize = parseInt(text) || 0
                                             }
                                         }
@@ -6096,13 +6300,13 @@ Window {
                                     
                                     // Initial Pages
                                     Column {
-                                        Layout.fillWidth: true; spacing: 6
-                                        Text { text: "Páginas iniciales"; color: "#888"; font.pixelSize: 11 }
+                                        Layout.fillWidth: true; spacing: 8
+                                        Text { text: "Páginas iniciales"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                         Rectangle {
-                                            width: parent.width; height: 34; radius: 6; color: "#1a1a1e"; border.color: "#303035"
+                                            width: parent.width; height: 42; radius: 10; color: "#16161a"; border.color: "#2a2a32"; border.width: 1
                                             TextInput {
-                                                anchors.fill: parent; anchors.margins: 8; verticalAlignment: Text.AlignVCenter
-                                                color: "white"; font.pixelSize: 12; text: "1"
+                                                anchors.fill: parent; anchors.margins: 12; verticalAlignment: Text.AlignVCenter
+                                                color: "white"; font.pixelSize: 14; font.weight: Font.Medium; text: "1"
                                                 onEditingFinished: newProjectDialog.pageCount = parseInt(text) || 1
                                             }
                                         }
@@ -6113,40 +6317,37 @@ Window {
                             // === ANIMATION SETTINGS (Visible for Animation category) ===
                             Column {
                                 width: parent.width
-                                spacing: 14
+                                spacing: 16
                                 visible: newProjectDialog.isAnimation
+                                z: 90
                                 
-                                Rectangle { width: parent.width; height: 1; color: "#1e1e22" }
+                                Item { width: parent.width; height: 12 }
                                 
                                 // Section header
-                                Row {
-                                    spacing: 8
-                                    Rectangle { width: 3; height: 18; radius: 2; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
-                                    Text { text: "Opciones de animación"; color: "#ccc"; font.pixelSize: 12; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter }
-                                }
+                                Text { text: "Opciones de animación"; color: "#e0e0ea"; font.pixelSize: 14; font.weight: Font.DemiBold }
                                 
                                 // FPS Selector
                                 Column {
                                     width: parent.width; spacing: 8
-                                    Text { text: "Frames per Second (FPS)"; color: "#888"; font.pixelSize: 11; font.weight: Font.Medium }
+                                    Text { text: "Frames per Second (FPS)"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                     
                                     Row {
-                                        spacing: 6
+                                        spacing: 12
                                         Repeater {
                                             model: [8, 12, 15, 24, 30]
                                             Rectangle {
-                                                width: 42; height: 34; radius: 8
+                                                width: 50; height: 42; radius: 10
                                                 property bool isSel: newProjectDialog.inputFPS === modelData
-                                                color: isSel ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2) : (fpsHov.containsMouse ? "#222" : "#1a1a1e")
-                                                border.color: isSel ? colorAccent : "#303035"
+                                                color: isSel ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2) : (fpsHov.containsMouse ? "#202028" : "#16161a")
+                                                border.color: isSel ? colorAccent : "#2a2a32"
                                                 border.width: isSel ? 1.5 : 1
                                                 
                                                 Behavior on color { ColorAnimation { duration: 120 } }
                                                 
                                                 Column {
-                                                    anchors.centerIn: parent; spacing: 0
-                                                    Text { text: modelData; color: parent.parent.isSel ? "white" : "#aaa"; font.pixelSize: 13; font.weight: Font.DemiBold; anchors.horizontalCenter: parent.horizontalCenter }
-                                                    Text { text: "fps"; color: "#555"; font.pixelSize: 8; anchors.horizontalCenter: parent.horizontalCenter }
+                                                    anchors.centerIn: parent; spacing: 2
+                                                    Text { text: modelData; color: parent.parent.isSel ? "white" : "#d0d0da"; font.pixelSize: 14; font.weight: Font.DemiBold; anchors.horizontalCenter: parent.horizontalCenter }
+                                                    Text { text: "FPS"; color: parent.parent.isSel ? colorAccent : "#606076"; font.pixelSize: 9; font.weight: Font.DemiBold; anchors.horizontalCenter: parent.horizontalCenter }
                                                 }
                                                 MouseArea { id: fpsHov; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: newProjectDialog.inputFPS = modelData }
                                             }
@@ -6156,22 +6357,22 @@ Window {
                                 
                                 // Total Frames + Duration preview
                                 RowLayout {
-                                    width: parent.width; spacing: 10
+                                    width: parent.width; spacing: 16
                                     
                                     Column {
-                                        Layout.fillWidth: true; spacing: 6
-                                        Text { text: "Total Frames"; color: "#888"; font.pixelSize: 11 }
+                                        Layout.fillWidth: true; spacing: 8
+                                        Text { text: "Total Frames"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                         Rectangle {
-                                            width: parent.width; height: 36; radius: 8
-                                            color: "#1a1a1e"
-                                            border.color: totalFInput.activeFocus ? colorAccent : "#303035"
+                                            width: parent.width; height: 42; radius: 10
+                                            color: "#16161a"
+                                            border.color: totalFInput.activeFocus ? colorAccent : "#2a2a32"
                                             border.width: totalFInput.activeFocus ? 1.5 : 1
                                             RowLayout {
-                                                anchors.fill: parent; anchors.margins: 8
+                                                anchors.fill: parent; anchors.margins: 12
                                                 TextInput {
                                                     id: totalFInput
                                                     Layout.fillWidth: true
-                                                    color: "white"; font.pixelSize: 13
+                                                    color: "white"; font.pixelSize: 14; font.weight: Font.Medium
                                                     text: newProjectDialog.inputTotalFrames.toString()
                                                     verticalAlignment: Text.AlignVCenter
                                                     selectByMouse: true
@@ -6183,12 +6384,13 @@ Window {
                                     
                                     // Duration display
                                     Column {
-                                        Layout.preferredWidth: 80; spacing: 6
-                                        Text { text: "Duration"; color: "#888"; font.pixelSize: 11 }
+                                        Layout.preferredWidth: 90; spacing: 8
+                                        Text { text: "Duración"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
                                         Rectangle {
-                                            width: parent.width; height: 36; radius: 8
-                                            color: "#0d0d10"
+                                            width: parent.width; height: 42; radius: 10
+                                            color: "#0c0c10"
                                             border.color: "#1e1e24"
+                                            border.width: 1
                                             
                                             Text {
                                                 anchors.centerIn: parent
@@ -6199,67 +6401,132 @@ Window {
                                                     return m > 0 ? m + "m " + s + "s" : s + "s"
                                                 }
                                                 color: colorAccent
-                                                font.pixelSize: 12
+                                                font.pixelSize: 13
                                                 font.weight: Font.DemiBold
                                             }
                                         }
                                     }
                                 }
                                 
-                                // Options row: Loop + Onion Skin preset
-                                Row {
-                                    width: parent.width; spacing: 8
+                                // Options row: Interpolation + Template
+                                RowLayout {
+                                    width: parent.width; spacing: 16
+                                    z: 90 // Elevate z-index for dropdowns
                                     
-                                    // Loop Toggle
-                                    Rectangle {
-                                        height: 34; width: (parent.width - 8) / 2; radius: 8
-                                        color: newProjectDialog.inputLoopEnabled ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : "#1a1a1e"
-                                        border.color: newProjectDialog.inputLoopEnabled ? colorAccent : "#303035"
-                                        border.width: 1
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                        RowLayout {
-                                            anchors.fill: parent; anchors.margins: 8; spacing: 6
-                                            Text { text: "🔁"; font.pixelSize: 14 }
-                                            Text { text: "Loop"; color: newProjectDialog.inputLoopEnabled ? "white" : "#777"; font.pixelSize: 12; font.weight: Font.Medium }
+                                    // Interpolation mode
+                                    Column {
+                                        Layout.fillWidth: true; spacing: 8
+                                        z: 90
+                                        Text { text: "Interpolación"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
+                                        
+                                        Rectangle {
+                                            width: parent.width; height: 42; radius: 10
+                                            color: interpBtnMouse.containsMouse || newProjectDialog.interpDropdownOpen ? "#202028" : "#16161a"
+                                            border.color: newProjectDialog.interpDropdownOpen ? colorAccent : "#2a2a32"
+                                            border.width: newProjectDialog.interpDropdownOpen ? 1.5 : 1
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                            
+                                            RowLayout {
+                                                anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
+                                                Text { text: newProjectDialog.inputInterpolation; color: "white"; font.pixelSize: 13; font.weight: Font.Medium; Layout.fillWidth: true }
+                                                Text { text: newProjectDialog.interpDropdownOpen ? "▲" : "▼"; color: "#606076"; font.pixelSize: 10 }
+                                            }
+                                            MouseArea {
+                                                id: interpBtnMouse
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: { newProjectDialog.interpDropdownOpen = !newProjectDialog.interpDropdownOpen; newProjectDialog.templateDropdownOpen = false }
+                                            }
+                                            
+                                            // Dropdown panel
+                                            Rectangle {
+                                                width: parent.width; height: newProjectDialog.interpDropdownOpen ? interpCol.implicitHeight + 8 : 0
+                                                anchors.top: parent.bottom; anchors.topMargin: 4
+                                                color: "#16161a"; radius: 10; border.color: "#2a2a32"; border.width: 1
+                                                clip: true; visible: height > 0
+                                                Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                                                Column {
+                                                    id: interpCol; width: parent.width; anchors.top: parent.top; anchors.topMargin: 4
+                                                    Repeater {
+                                                        model: ["Bicúbico", "Bilineal", "Vecino cercano"]
+                                                        Rectangle {
+                                                            width: parent.width - 8; height: 36; x: 4; radius: 6
+                                                            color: newProjectDialog.inputInterpolation === modelData ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : (interpHover.containsMouse ? "#202028" : "transparent")
+                                                            Text { text: modelData; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; color: newProjectDialog.inputInterpolation === modelData ? "white" : "#d0d0da"; font.pixelSize: 13; font.weight: newProjectDialog.inputInterpolation === modelData ? Font.DemiBold : Font.Medium }
+                                                            Text { visible: newProjectDialog.inputInterpolation === modelData; text: "✓"; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 12; color: colorAccent; font.pixelSize: 14 }
+                                                            MouseArea { id: interpHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { newProjectDialog.inputInterpolation = modelData; newProjectDialog.interpDropdownOpen = false } }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
-                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: newProjectDialog.inputLoopEnabled = !newProjectDialog.inputLoopEnabled }
                                     }
                                     
-                                    // Onion Skin preset
-                                    Rectangle {
-                                        height: 34; width: (parent.width - 8) / 2; radius: 8
-                                        property bool onionOn: newProjectDialog.inputPlaybackMode === "onion"
-                                        color: onionOn ? Qt.rgba(1, 0.85, 0, 0.1) : "#1a1a1e"
-                                        border.color: onionOn ? "#f0d060" : "#303035"
-                                        border.width: 1
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                        RowLayout {
-                                            anchors.fill: parent; anchors.margins: 8; spacing: 6
-                                            Text { text: "🧅"; font.pixelSize: 14 }
-                                            Text { text: "Onion"; color: parent.parent.onionOn ? "#f0d060" : "#777"; font.pixelSize: 12; font.weight: Font.Medium }
+                                    // Template mode
+                                    Column {
+                                        Layout.fillWidth: true; spacing: 8
+                                        z: 80
+                                        Text { text: "Plantilla Guía"; color: "#a0a0b0"; font.pixelSize: 12; font.weight: Font.Medium }
+                                        
+                                        Rectangle {
+                                            width: parent.width; height: 42; radius: 10
+                                            color: tplBtnMouse.containsMouse || newProjectDialog.templateDropdownOpen ? "#202028" : "#16161a"
+                                            border.color: newProjectDialog.templateDropdownOpen ? colorAccent : "#2a2a32"
+                                            border.width: newProjectDialog.templateDropdownOpen ? 1.5 : 1
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+                                            
+                                            RowLayout {
+                                                anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
+                                                Text { text: newProjectDialog.inputAnimTemplate; color: "white"; font.pixelSize: 13; font.weight: Font.Medium; Layout.fillWidth: true }
+                                                Text { text: newProjectDialog.templateDropdownOpen ? "▲" : "▼"; color: "#606076"; font.pixelSize: 10 }
+                                            }
+                                            MouseArea {
+                                                id: tplBtnMouse
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: { newProjectDialog.templateDropdownOpen = !newProjectDialog.templateDropdownOpen; newProjectDialog.interpDropdownOpen = false }
+                                            }
+                                            
+                                            // Dropdown panel
+                                            Rectangle {
+                                                width: parent.width; height: newProjectDialog.templateDropdownOpen ? tplCol.implicitHeight + 8 : 0
+                                                anchors.top: parent.bottom; anchors.topMargin: 4
+                                                color: "#16161a"; radius: 10; border.color: "#2a2a32"; border.width: 1
+                                                clip: true; visible: height > 0
+                                                Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                                                Column {
+                                                    id: tplCol; width: parent.width; anchors.top: parent.top; anchors.topMargin: 4
+                                                    Repeater {
+                                                        model: ["Ninguna", "Layout Anime", "Acción Segura", "Webtoon"]
+                                                        Rectangle {
+                                                            width: parent.width - 8; height: 36; x: 4; radius: 6
+                                                            color: newProjectDialog.inputAnimTemplate === modelData ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : (tplHover.containsMouse ? "#202028" : "transparent")
+                                                            Text { text: modelData; anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; color: newProjectDialog.inputAnimTemplate === modelData ? "white" : "#d0d0da"; font.pixelSize: 13; font.weight: newProjectDialog.inputAnimTemplate === modelData ? Font.DemiBold : Font.Medium }
+                                                            Text { visible: newProjectDialog.inputAnimTemplate === modelData; text: "✓"; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 12; color: colorAccent; font.pixelSize: 14 }
+                                                            MouseArea { id: tplHover; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { newProjectDialog.inputAnimTemplate = modelData; newProjectDialog.templateDropdownOpen = false } }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
-                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: newProjectDialog.inputPlaybackMode = newProjectDialog.inputPlaybackMode === "onion" ? "" : "onion" }
                                     }
                                 }
                             }
 
-                            Item { height: 16 }
+                            Item { height: 20 }
                             
                             // === CREATE BUTTON ===
                             Rectangle {
-                                width: parent.width - 4; height: 48; radius: 12
+                                width: parent.width; height: 50; radius: 25
                                 
                                 gradient: Gradient {
                                     orientation: Gradient.Horizontal
                                     GradientStop { position: 0.0; color: colorAccent }
-                                    GradientStop { position: 1.0; color: Qt.lighter(colorAccent, 1.15) }
+                                    GradientStop { position: 1.0; color: Qt.lighter(colorAccent, 1.25) }
                                 }
                                 
                                 Row {
-                                    anchors.centerIn: parent; spacing: 10
-                                    
-                                    Text { text: "+"; color: "white"; font.pixelSize: 18; font.bold: true }
-                                    Text { text: "Crear proyecto"; color: "white"; font.pixelSize: 14; font.bold: true }
+                                    anchors.centerIn: parent; spacing: 12
+                                    Text { text: "+"; color: "white"; font.pixelSize: 22; font.weight: Font.Light; anchors.verticalCenter: parent.verticalCenter }
+                                    Text { text: "Crear Proyecto"; color: "white"; font.pixelSize: 15; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter; font.letterSpacing: 0.5 }
                                 }
                                 
                                 MouseArea {
@@ -6305,10 +6572,10 @@ Window {
                                             showAnimationBar = true
                                             // Apply settings — frames are user-created one by one, not pre-populated
                                             simpleAnimationBar.projectFPS  = newProjectDialog.inputFPS
-                                            simpleAnimationBar.projectLoop = newProjectDialog.inputLoopEnabled
+                                            simpleAnimationBar.projectLoop = true
                                             simpleAnimationBar.fps         = newProjectDialog.inputFPS
-                                            simpleAnimationBar.loopEnabled = newProjectDialog.inputLoopEnabled
-                                            simpleAnimationBar.onionEnabled = newProjectDialog.inputPlaybackMode === "onion"
+                                            simpleAnimationBar.loopEnabled = true
+                                            simpleAnimationBar.onionEnabled = false
                                             if (isStudioMode) {
                                                 studioCanvasLayout.loadWorkspace("Animación")
                                             }
@@ -6325,14 +6592,15 @@ Window {
                                 scale: createBtnMouse.containsMouse ? 1.02 : 1.0
                                 Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
                             }
-                            Item { height: 20 }  // bottom padding in scroll
+                            Item { height: 32 }  // bottom padding in scroll — espacio extra al final
                         }  // end Column
-                        }  // end ScrollView
-                    }
-                }
-            }
-        }
-    }
+                    }  // end Item wrapper
+                }  // end ScrollView
+            }  // end RIGHT PANEL Rectangle
+                }  // end RowLayout (2-column body)
+            }  // end main Column
+        }  // end mainCard Rectangle
+    }  // end newProjectDialog
 
 
 

@@ -1,5 +1,5 @@
-E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker.cpp: E:/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h \
-  E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
+D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker.cpp: D:/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h \
+  D:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/moc_predefs.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QList \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QObject \
   C:/Qt/6.10.2/mingw_64/include/QtCore/QString \
@@ -7,6 +7,7 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker
   C:/Qt/6.10.2/mingw_64/include/QtCore/QVector \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q17memory.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20functional.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/q20iterator.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20memory.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20type_traits.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/q20utility.h \
@@ -28,6 +29,7 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearraylist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qbytearrayview.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qchar.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qcheckedint_impl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcompare_impl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qcomparehelpers.h \
@@ -56,10 +58,12 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterable.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qiterator.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlatin1stringview.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qline.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlist.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qlogging.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmalloc.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmap.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qmargins.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmath.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmetacontainer.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qmetatype.h \
@@ -72,7 +76,9 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker
   C:/Qt/6.10.2/mingw_64/include/QtCore/qobjectdefs_impl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qoverload.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qpair.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qpoint.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qprocessordetection.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qrect.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qrefcount.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qscopedpointer.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qscopeguard.h \
@@ -81,6 +87,8 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker
   C:/Qt/6.10.2/mingw_64/include/QtCore/qshareddata_impl.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qsharedpointer.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qsharedpointer_impl.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qsize.h \
+  C:/Qt/6.10.2/mingw_64/include/QtCore/qspan.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qstdlibdetection.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qstring.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qstringalgorithms.h \
@@ -125,12 +133,21 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker
   C:/Qt/6.10.2/mingw_64/include/QtCore/qxptype_traits.h \
   C:/Qt/6.10.2/mingw_64/include/QtCore/qyieldcpu.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/QColor \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/QImage \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qcolor.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qimage.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qpaintdevice.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qpixelformat.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qpolygon.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qregion.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qrgb.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qrgba64.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qtgui-config.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiexports.h \
   C:/Qt/6.10.2/mingw_64/include/QtGui/qtguiglobal.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qtransform.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qwindowdefs.h \
+  C:/Qt/6.10.2/mingw_64/include/QtGui/qwindowdefs_win.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/algorithm \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/array \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/atomic \
@@ -224,6 +241,7 @@ E:/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/H4ZJWAWVOH/moc_ColorPicker
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/uses_allocator_args.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/utility.h \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/bits/vector.tcc \
+  C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cassert \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cctype \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/cerrno \
   C:/Qt/Tools/mingw1310_64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/c++/chrono \

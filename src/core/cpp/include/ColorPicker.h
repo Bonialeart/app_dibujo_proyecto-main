@@ -7,6 +7,7 @@
 #include <QString>
 #include <QVariant>
 #include <QVector>
+#include <QImage>
 
 
 // Forward declare implementation class to avoid exposing implementation details
@@ -65,11 +66,16 @@ public:
   Q_INVOKABLE QColor colorFromHSB(float h, float s, float b);
   Q_INVOKABLE QColor colorFromCMYK(float c, float m, float y, float k);
 
+  // Image-based palette extraction (real pixel sampling + k-means clustering)
+  // path: local file path (can be a QUrl string). count: number of colors (default 15)
+  Q_INVOKABLE QVariantList extractColorsFromImage(const QString &path, int count = 15);
+
 signals:
   void activeColorChanged();
   void secondaryColorChanged();
   void historyChanged();
   void palettesChanged();
+  void imageColorsExtracted(QVariantList colors);
 
 private:
   ColorPickerUI::ColorPickerModal *m_impl;
