@@ -50,13 +50,15 @@ void BrushEngine::generateRoundTip(int diameter, float hardness) {
             
             float value = 0.0f;
             if (dist <= 1.0f) {
-                // Apply hardness falloff
-                float edge = 1.0f - hardness;
+                // Cosine falloff — igual al shader avanzado, borde orgánico natural
+                float edge = std::max(1.0f - hardness, 0.001f);
                 if (dist < hardness) {
                     value = 1.0f;
                 } else {
                     float t = (dist - hardness) / edge;
-                    value = 1.0f - t;
+                    t = std::min(t, 1.0f);
+                    // Curva cóseno: suave en el centro, desvanece naturalmente al borde
+                    value = 0.5f * (1.0f + std::cos(t * 3.14159265f));
                 }
             }
             
@@ -149,13 +151,23 @@ void BrushEngine::dabAt(Layer& layer, float x, float y, float pressure, float si
             
             if (px < 0 || px >= layerWidth || py < 0 || py >= layerHeight) continue;
             
-            // Sample from tip mask with scaling
+            // Sample from tip mask with bilinear interpolation (eliminates pixelation when scaling)
             float tipX = (dx / (float)dabSize) * m_tip.width;
             float tipY = (dy / (float)dabSize) * m_tip.height;
-            int tx = std::clamp((int)tipX, 0, m_tip.width - 1);
-            int ty = std::clamp((int)tipY, 0, m_tip.height - 1);
             
-            float maskValue = m_tip.mask[ty * m_tip.width + tx];
+            float bx = tipX - std::floor(tipX);
+            float by = tipY - std::floor(tipY);
+            int x0 = std::clamp((int)tipX,     0, m_tip.width  - 2);
+            int y0 = std::clamp((int)tipY,     0, m_tip.height - 2);
+            int x1 = std::min(x0 + 1, m_tip.width  - 1);
+            int y1 = std::min(y0 + 1, m_tip.height - 1);
+            
+            float s00 = m_tip.mask[y0 * m_tip.width + x0];
+            float s10 = m_tip.mask[y0 * m_tip.width + x1];
+            float s01 = m_tip.mask[y1 * m_tip.width + x0];
+            float s11 = m_tip.mask[y1 * m_tip.width + x1];
+            float maskValue = s00*(1.0f-bx)*(1.0f-by) + s10*bx*(1.0f-by)
+                            + s01*(1.0f-bx)*by         + s11*bx*by;
             float alpha = maskValue * opacity * m_settings.flow;
             
             if (alpha < 0.001f) continue;

@@ -8,6 +8,7 @@
 #include "core/cpp/include/stroke_renderer.h"
 #include "core/cpp/include/stroke_undo_command.h"
 #include "core/cpp/include/undo_manager.h"
+#include "core/cpp/include/watercolor_engine.h"
 #include <QColor>
 #include <QImage>
 #include <QMap>
@@ -767,6 +768,28 @@ private:
   QImage m_liquifyPreviewCache;
   void handleLiquifyDraw(const QPointF &canvasPos, float pressure);
   void renderLiquifyPreview(QPainter *painter, const QRectF &paperRect);
+
+  // ── Watercolor Engine ──
+  // Motor de acuarela profesional con WetMap, difusión y secado progresivo.
+  // Se instancia bajo demanda cuando se detecta un pincel de acuarela.
+  WatercolorEngine *m_watercolorEngine = nullptr;
+  bool m_watercolorActive = false;  // true = pincel actual es acuarela
+
+  // ── Water Blender (Smudge Color) ──
+  // Igual que Krita Color Smudge: el pincel "carga" el color del canvas en cada dab
+  // y lo deposita en el siguiente, creando un arrastre/fusion de colores real.
+  QVector4D m_smudgeColor;          // Color cargado actualmente (RGBA sin premultiplicar)
+  bool m_smudgeColorValid = false;  // true = se inicializó en este trazo
+  float m_smudgePersistence = 0.82f; // Cuanto se mantiene el color entre dabs (0-1)
+
+  // Samplea el color del canvas en una posición dada y lo mezcla al m_smudgeColor
+  void sampleAndUpdateSmudgeColor(const QPointF &canvasPos, float brushSize, float blendRatio);
+
+  // Detecta si el preset activo es de tipo acuarela (por categoria o por wetness)
+  bool isWatercolorBrush() const;
+
+  // Convierte los parámetros del preset activo al formato WatercolorParams
+  WatercolorEngine::WatercolorParams buildWatercolorParams() const;
 };
 
 #endif // CANVASITEM_H

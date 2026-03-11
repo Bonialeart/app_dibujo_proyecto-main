@@ -7,142 +7,141 @@
                 "uuid": "wc-classic-001",
                 "name": "Watercolor Classic",
                 "category": "Watercolor",
-                "description": "Traditional watercolor with natural blooming"
+                "description": "Acuarela clasica — forma de charco, borde oscuro tipo tide-mark"
+            },
+            "shape": {
+                "tip_texture": "",
+                "follow_stroke": false,
+                "roundness": 0.92,
+                "scatter": 0.0,
+                "contrast": 1.0,
+                "count": 1
             },
             "grain": {
                 "texture": "grain_watercolor_paper.png",
                 "scale": 80.0,
-                "intensity": 0.5,
-                "blend_mode": "multiply"
+                "intensity": 0.28,
+                "blend_mode": "multiply",
+                "rolling": true
             },
             "stroke": {
-                "spacing": 0.05,
-                "streamline": 0.35,
-                "taper_start": 0.2,
-                "taper_end": 0.3
+                "spacing": 0.04,
+                "streamline": 0.42,
+                "taper_start": 12.0,
+                "taper_end": 22.0,
+                "jitter_lateral": 0.005,
+                "jitter_linear": 0.010
             },
             "dynamics": {
                 "size": {
                     "base_value": 1.0,
-                    "min_limit": 0.1,
+                    "min_limit": 0.08,
                     "pressure_curve": "soft",
-                    "velocity_influence": 0.15,
-                    "jitter": 0.08
+                    "velocity_influence": 0.12
                 },
                 "opacity": {
-                    "pressure_influence": 0.6,
-                    "velocity_influence": 0.2
-                },
-                "color": {
-                    "hue_jitter": 0.02,
-                    "saturation_jitter": 0.05,
-                    "brightness_jitter": 0.08
+                    "base_value": 1.0,
+                    "min_limit": 0.05,
+                    "pressure_curve": "ease_out"
                 }
             },
             "wet_mix": {
-                "wetness": 0.65,
-                "dilution": 0.5,
-                "bleed": 0.45,
-                "absorption_rate": 0.3,
-                "drying_time": 2.0
+                "wetness": 0.78,
+                "dilution": 0.18,
+                "bleed": 0.65,
+                "absorption_rate": 0.28,
+                "drying_time": 2.5
             },
             "pigment": {
                 "granulation": 0.35,
-                "flow": 0.6,
-                "staining": 0.4
+                "flow": 0.70,
+                "staining": 0.38
             },
-            "bloom": {
-                "enabled": true,
-                "intensity": 0.5,
-                "radius": 15.0,
-                "threshold": 0.3
-            },
-            "edge_darkening": {
-                "enabled": true,
-                "intensity": 0.4,
-                "width": 0.15
-            },
+            "bloom": { "enabled": true, "intensity": 0.50, "radius": 16.0 },
+            "edge_darkening": { "enabled": true, "intensity": 0.55, "width": 0.18 },
             "customize": {
-                "default_size": 50,
-                "default_opacity": 0.35,
-                "default_hardness": 0.1,
-                "default_flow": 0.7
+                "default_size": 60,
+                "default_opacity": 0.88,
+                "default_hardness": 0.12,
+                "default_flow": 0.95
             }
         },
         {
             "meta": {
-                "uuid": "wc-wet-001",
-                "name": "Watercolor Wet Blooming",
+                "uuid": "wc-pull-001",
+                "name": "Watercolor Pull (Water Only)",
                 "category": "Watercolor",
-                "description": "Extra wet with strong blooming effects"
+                "description": "Agua pura — no pinta, solo arrastra y fusiona colores existentes"
+            },
+            "shape": {
+                "tip_texture": "",
+                "follow_stroke": false,
+                "roundness": 1.0,
+                "scatter": 0.0,
+                "count": 1
             },
             "grain": {
                 "texture": "grain_watercolor_paper.png",
                 "scale": 60.0,
-                "intensity": 0.45,
-                "blend_mode": "multiply",
-                "rotation_jitter": 0.1
+                "intensity": 0.15,
+                "rolling": true
             },
             "stroke": {
-                "spacing": 0.08,
-                "streamline": 0.4,
-                "taper_start": 0.15,
-                "taper_end": 0.25
-            },
-            "dynamics": {
-                "size": {
-                    "base_value": 1.0,
-                    "min_limit": 0.15,
-                    "pressure_curve": "ease_out",
-                    "velocity_influence": 0.2,
-                    "jitter": 0.12
-                },
-                "opacity": {
-                    "pressure_influence": 0.5,
-                    "velocity_influence": 0.15
-                },
-                "color": {
-                    "hue_jitter": 0.03,
-                    "saturation_jitter": 0.08,
-                    "brightness_jitter": 0.1
-                }
+                "spacing": 0.035,
+                "streamline": 0.60
             },
             "wet_mix": {
                 "wetness": 0.95,
-                "dilution": 0.7,
-                "bleed": 0.75,
+                "dilution": 0.95,
+                "bleed": 0.85,
+                "absorption_rate": 0.05,
+                "drying_time": 4.0
+            },
+            "pigment": { "granulation": 0.20, "flow": 0.0, "staining": 0.0 },
+            "bloom": { "enabled": true, "intensity": 0.30, "radius": 22.0 },
+            "edge_darkening": { "enabled": false, "intensity": 0.0, "width": 0.0 },
+            "customize": {
+                "default_size": 75,
+                "default_opacity": 0.0,
+                "default_hardness": 0.02,
+                "default_flow": 0.98
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-wetwet-001",
+                "name": "Watercolor Water Mixer",
+                "category": "Watercolor",
+                "description": "Mezcla suave — añade poco pigmento y fusiona fuerte los colores"
+            },
+            "shape": {
+                "tip_texture": "",
+                "follow_stroke": false,
+                "roundness": 1.0,
+                "count": 1
+            },
+            "grain": {
+                "texture": "grain_watercolor_paper.png",
+                "scale": 92.0,
+                "intensity": 0.22,
+                "blend_mode": "multiply"
+            },
+            "stroke": { "spacing": 0.05, "streamline": 0.52 },
+            "wet_mix": {
+                "wetness": 0.90,
+                "dilution": 0.88,
+                "bleed": 0.80,
                 "absorption_rate": 0.15,
-                "drying_time": 3.5,
-                "wet_on_wet_multiplier": 2.0
+                "drying_time": 3.2
             },
-            "pigment": {
-                "granulation": 0.5,
-                "flow": 0.85,
-                "staining": 0.3,
-                "separation": 0.4
-            },
-            "bloom": {
-                "enabled": true,
-                "intensity": 0.8,
-                "radius": 25.0,
-                "threshold": 0.2,
-                "random_variation": 0.3
-            },
-            "edge_darkening": {
-                "enabled": true,
-                "intensity": 0.6,
-                "width": 0.2
-            },
-            "backrun": {
-                "enabled": true,
-                "probability": 0.4,
-                "intensity": 0.5
-            },
+            "pigment": { "granulation": 0.30, "flow": 0.10 },
+            "bloom": { "enabled": false, "intensity": 0.0 },
+            "edge_darkening": { "enabled": false, "intensity": 0.0, "width": 0.0 },
             "customize": {
                 "default_size": 65,
-                "default_opacity": 0.28,
-                "default_hardness": 0.05,
-                "default_flow": 0.8
+                "default_opacity": 0.0,
+                "default_hardness": 0.03,
+                "default_flow": 0.90
             }
         },
         {
@@ -150,131 +149,31 @@
                 "uuid": "wc-dry-001",
                 "name": "Watercolor Dry Brush",
                 "category": "Watercolor",
-                "description": "Low water, high texture visibility"
+                "description": "Pincel seco — cerdas visibles, alta textura"
+            },
+            "shape": {
+                "tip_texture": "wc_dry_brush.png",
+                "follow_stroke": true,
+                "roundness": 0.25,
+                "contrast": 1.35,
+                "count": 1
             },
             "grain": {
                 "texture": "grain_watercolor_paper.png",
-                "scale": 100.0,
-                "intensity": 0.75,
-                "blend_mode": "overlay"
+                "scale": 110.0,
+                "intensity": 0.45,
+                "blend_mode": "multiply"
             },
-            "stroke": {
-                "spacing": 0.03,
-                "streamline": 0.25,
-                "taper_start": 0.4,
-                "taper_end": 0.5
-            },
-            "dynamics": {
-                "size": {
-                    "base_value": 1.0,
-                    "min_limit": 0.2,
-                    "pressure_curve": "linear",
-                    "velocity_influence": 0.3,
-                    "jitter": 0.15
-                },
-                "opacity": {
-                    "pressure_influence": 0.8,
-                    "velocity_influence": 0.3,
-                    "jitter": 0.1
-                },
-                "color": {
-                    "hue_jitter": 0.01,
-                    "saturation_jitter": 0.1,
-                    "brightness_jitter": 0.15
-                }
-            },
-            "wet_mix": {
-                "wetness": 0.2,
-                "dilution": 0.15,
-                "bleed": 0.1,
-                "absorption_rate": 0.8,
-                "drying_time": 0.5
-            },
-            "pigment": {
-                "granulation": 0.7,
-                "flow": 0.3,
-                "staining": 0.7
-            },
-            "bloom": {
-                "enabled": false
-            },
-            "edge_darkening": {
-                "enabled": true,
-                "intensity": 0.3,
-                "width": 0.1
-            },
-            "texture_reveal": {
-                "enabled": true,
-                "intensity": 0.8,
-                "pressure_influence": 0.6
-            },
+            "stroke": { "spacing": 0.06, "streamline": 0.30 },
+            "wet_mix": { "wetness": 0.22, "dilution": 0.10, "bleed": 0.10 },
+            "pigment": { "granulation": 0.65, "flow": 0.80, "staining": 0.45 },
+            "bloom": { "enabled": false, "intensity": 0.0 },
+            "edge_darkening": { "enabled": true, "intensity": 0.30, "width": 0.12 },
             "customize": {
-                "default_size": 40,
-                "default_opacity": 0.5,
-                "default_hardness": 0.3,
-                "default_flow": 0.4
-            }
-        },
-        {
-            "meta": {
-                "uuid": "wc-flat-001",
-                "name": "Watercolor Flat Wash",
-                "category": "Watercolor",
-                "description": "Even coverage for backgrounds and washes"
-            },
-            "grain": {
-                "texture": "grain_watercolor_paper.png",
-                "scale": 70.0,
-                "intensity": 0.3
-            },
-            "stroke": {
-                "spacing": 0.02,
-                "streamline": 0.6
-            },
-            "dynamics": {
-                "size": {
-                    "base_value": 1.0,
-                    "min_limit": 0.8,
-                    "pressure_curve": "linear",
-                    "jitter": 0.03
-                },
-                "opacity": {
-                    "pressure_influence": 0.3
-                },
-                "color": {
-                    "hue_jitter": 0.01,
-                    "saturation_jitter": 0.02,
-                    "brightness_jitter": 0.03
-                }
-            },
-            "wet_mix": {
-                "wetness": 0.7,
-                "dilution": 0.6,
-                "bleed": 0.3,
-                "absorption_rate": 0.4,
-                "drying_time": 2.5
-            },
-            "pigment": {
-                "granulation": 0.2,
-                "flow": 0.7,
-                "staining": 0.5
-            },
-            "bloom": {
-                "enabled": true,
-                "intensity": 0.3,
-                "radius": 10.0,
-                "threshold": 0.4
-            },
-            "edge_darkening": {
-                "enabled": true,
-                "intensity": 0.25,
-                "width": 0.12
-            },
-            "customize": {
-                "default_size": 80,
-                "default_opacity": 0.3,
-                "default_hardness": 0.05,
-                "default_flow": 0.9
+                "default_size": 45,
+                "default_opacity": 0.80,
+                "default_hardness": 0.30,
+                "default_flow": 0.90
             }
         }
     ]

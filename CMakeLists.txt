@@ -40,6 +40,7 @@ set(CORE_SOURCES
     src/core/cpp/src/color_harmony.cpp
     src/core/cpp/src/drag_zone_calculator.cpp
     src/core/cpp/src/liquify_engine.cpp
+    src/core/cpp/src/watercolor_engine.cpp
     src/core/cpp/include/ColorPicker.h
     src/core/cpp/include/ColorPickerImpl.h
     src/core/cpp/include/panel_manager.h
@@ -47,6 +48,7 @@ set(CORE_SOURCES
     src/core/cpp/include/color_harmony.h
     src/core/cpp/include/drag_zone_calculator.h
     src/core/cpp/include/liquify_engine.h
+    src/core/cpp/include/watercolor_engine.h
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)
@@ -86,11 +88,18 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     opengl32
 )
 
-# Copy assets to build directory
+# Copiar assets al directorio de build
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/assets
     $<TARGET_FILE_DIR:${PROJECT_NAME}>/assets
+)
+
+# Copiar shaders al directorio de build (para que sean accesibles en runtime)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/src/core/shaders
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders
 )
 
 # Configuración de despliegue para Windows (Copia DLLs automáticamente)

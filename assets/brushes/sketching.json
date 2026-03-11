@@ -8,7 +8,7 @@
         "name": "HB Pencil",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -17,52 +17,54 @@
       "shape": {
         "tip_texture": "pencil_hb.png",
         "roundness": 0.8,
-        "contrast": 1.0,
+        "contrast": 1.1,
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.08,
+        "streamline": 0.15,
+        "jitter_lateral": 0.01,
+        "jitter_linear": 0.03
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
+          "min_limit": 0.04,
           "pressure_curve": "ease_in"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.2,
-          "pressure_curve": "linear"
+          "min_limit": 0.06,
+          "pressure_curve": [0.0, 0.0, 0.6, 0.85]
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.92,
+          "min_limit": 0.25,
+          "pressure_curve": "ease_in"
         }
       },
       "grain": {
         "scale": 0.5,
-        "intensity": 0.7,
-        "contrast": 1.0,
+        "intensity": 0.72,
+        "contrast": 1.1,
         "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "opacity_jitter": 0.08,
+        "size_jitter": 0.04
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 15.0,
         "default_opacity": 1.0
       },
-      "spacing": 0.15
+      "spacing": 0.08
     },
     {
       "meta": {
@@ -70,7 +72,7 @@
         "name": "6B Real Pencil",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -81,51 +83,56 @@
         "roundness": 0.6,
         "contrast": 1.0,
         "count": 1,
-        "scatter": 0.1
+        "scatter": 0.08
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.07,
+        "streamline": 0.1,
+        "jitter_lateral": 0.015,
+        "jitter_linear": 0.04
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
+          "min_limit": 0.02,
           "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
+          "min_limit": 0.03,
           "pressure_curve": "soft"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.85,
+          "min_limit": 0.15,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.9,
-        "contrast": 1.0,
-        "texture": "graphite.png"
+        "scale": 0.85,
+        "intensity": 0.92,
+        "contrast": 1.15,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 8.0,
+        "opacity_jitter": 0.1,
+        "size_jitter": 0.06
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.04
+      },
       "customize": {
         "default_size": 25.0,
         "default_opacity": 1.0
       },
-      "spacing": 0.12
+      "spacing": 0.07
     },
     {
       "meta": {
@@ -133,7 +140,7 @@
         "name": "Peppermint Graphite",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "multiply",
@@ -142,51 +149,53 @@
       "shape": {
         "tip_texture": "peppermint_graphite.png",
         "roundness": 1.0,
-        "contrast": 1.0,
+        "contrast": 1.05,
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.08,
+        "streamline": 0.12,
+        "jitter_lateral": 0.01,
+        "jitter_linear": 0.02
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": [0.2, 0.0, 0.8, 1.0]
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.08,
+          "pressure_curve": [0.1, 0.0, 0.7, 0.9]
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
+          "base_value": 0.88,
+          "min_limit": 0.3,
           "pressure_curve": "linear"
         }
       },
       "grain": {
         "scale": 0.4,
-        "intensity": 0.8,
-        "contrast": 1.0
+        "intensity": 0.82,
+        "contrast": 1.1
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "opacity_jitter": 0.06,
+        "size_jitter": 0.03
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 18.0,
         "default_opacity": 1.0
       },
-      "spacing": 0.1
+      "spacing": 0.08
     },
     {
       "meta": {
@@ -194,7 +203,7 @@
         "name": "Derwent Pencil",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -207,48 +216,50 @@
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.08,
+        "streamline": 0.1,
+        "jitter_lateral": 0.01,
+        "jitter_linear": 0.03
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "ease_in"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.06,
+          "pressure_curve": "ease_in"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
+          "min_limit": 0.05,
           "pressure_curve": "linear"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
+          "base_value": 0.9,
+          "min_limit": 0.2,
           "pressure_curve": "linear"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0,
-        "texture": "rough_paper.png"
+        "scale": 0.9,
+        "intensity": 0.55,
+        "contrast": 1.05,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "opacity_jitter": 0.05,
+        "size_jitter": 0.03
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 30.0,
         "default_opacity": 1.0
       },
-      "spacing": 0.2
+      "spacing": 0.08
     },
     {
       "meta": {
@@ -256,7 +267,7 @@
         "name": "Mechanical 0.5",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -265,51 +276,48 @@
       "shape": {
         "tip_texture": "mechanical_0_5.png",
         "roundness": 1.0,
-        "contrast": 1.0,
+        "contrast": 1.2,
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.04,
+        "streamline": 0.5
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.9,
+          "min_limit": 0.95,
           "pressure_curve": "linear"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.7,
+          "pressure_curve": [0.5, 0.0, 1.0, 1.0]
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
+          "min_limit": 0.6,
           "pressure_curve": "linear"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
+          "base_value": 0.99,
+          "min_limit": 0.95,
           "pressure_curve": "linear"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.6,
+        "intensity": 0.15,
         "contrast": 1.0
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
-      },
-      "color_dynamics": {},
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {},
+      "color_dynamics": {},
       "customize": {
         "default_size": 5.0,
         "default_opacity": 1.0
       },
-      "spacing": 0.05
+      "spacing": 0.04
     },
     {
       "meta": {
@@ -317,7 +325,7 @@
         "name": "Carpenter Pencil",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -328,45 +336,49 @@
         "roundness": 0.2,
         "contrast": 1.0,
         "count": 1,
-        "rotation": 45.0
+        "rotation": 45.0,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.08,
+        "streamline": 0.2,
+        "jitter_lateral": 0.008,
+        "jitter_linear": 0.02
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.1,
+          "pressure_curve": [0.3, 0.0, 0.9, 1.0]
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.1,
+          "pressure_curve": "ease_out"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
+          "min_limit": 0.08,
           "pressure_curve": "linear"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
+          "base_value": 0.88,
+          "min_limit": 0.2,
           "pressure_curve": "linear"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0
+        "scale": 0.9,
+        "intensity": 0.55,
+        "contrast": 1.0,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "opacity_jitter": 0.06,
+        "size_jitter": 0.04
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 40.0,
         "default_opacity": 1.0
@@ -378,7 +390,7 @@
         "name": "Pro Sketch",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -387,46 +399,51 @@
       "shape": {
         "tip_texture": "pro_sketch.png",
         "roundness": 1.0,
-        "contrast": 1.0,
+        "contrast": 1.05,
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.2
+        "spacing": 0.07,
+        "streamline": 0.25,
+        "jitter_lateral": 0.01,
+        "jitter_linear": 0.03,
+        "taper_start": 15.0,
+        "taper_end": 10.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.03,
+          "pressure_curve": [0.15, 0.0, 0.75, 0.95]
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": [0.1, 0.0, 0.65, 0.9]
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.9,
+          "min_limit": 0.2,
+          "pressure_curve": "ease_in"
         }
       },
       "grain": {
-        "scale": 1.0,
+        "scale": 0.8,
         "intensity": 0.5,
-        "contrast": 1.0
+        "contrast": 1.05,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "opacity_jitter": 0.07,
+        "size_jitter": 0.04
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 20.0,
         "default_opacity": 1.0
@@ -438,7 +455,7 @@
         "name": "Artistic Graphite",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -451,43 +468,47 @@
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0,
-        "taper_start": 20.0
+        "spacing": 0.08,
+        "streamline": 0.15,
+        "taper_start": 20.0,
+        "jitter_lateral": 0.012,
+        "jitter_linear": 0.03
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "soft"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.82,
+          "min_limit": 0.15,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.6,
-        "contrast": 1.0
+        "scale": 0.85,
+        "intensity": 0.62,
+        "contrast": 1.05,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 5.0,
+        "opacity_jitter": 0.08,
+        "size_jitter": 0.05
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 35.0,
         "default_opacity": 1.0
@@ -499,7 +520,7 @@
         "name": "Wax Color Pencil",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "multiply",
@@ -512,42 +533,47 @@
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.07,
+        "streamline": 0.1,
+        "jitter_lateral": 0.012,
+        "jitter_linear": 0.03
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.08,
+          "pressure_curve": [0.25, 0.0, 0.85, 1.0]
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.1,
+          "pressure_curve": "ease_out"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
+          "min_limit": 0.1,
           "pressure_curve": "linear"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
+          "base_value": 0.85,
+          "min_limit": 0.3,
           "pressure_curve": "linear"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.9,
-        "contrast": 1.2
+        "scale": 0.9,
+        "intensity": 0.92,
+        "contrast": 1.2,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "opacity_jitter": 0.07,
+        "size_jitter": 0.04
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.03
+      },
       "customize": {
         "default_size": 22.0,
         "default_opacity": 1.0
@@ -559,7 +585,7 @@
         "name": "Graphite Smudge",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -572,43 +598,48 @@
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.06,
+        "streamline": 0.3,
+        "jitter_lateral": 0.008,
+        "jitter_linear": 0.02
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.1,
+          "pressure_curve": "ease_out"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.15,
+          "pressure_curve": "ease_out"
         },
         "flow": {
-          "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.8,
+          "min_limit": 0.1,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.5,
+          "min_limit": 0.1,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
+        "scale": 0.9,
         "intensity": 0.5,
-        "contrast": 1.0
+        "contrast": 1.0,
+        "texture": "grain_paper_standard.png"
       },
       "wet_mix": {
         "wet_mix": 0.8,
         "pigment": 1.0,
         "smudge": 0.7
       },
+      "randomize": {
+        "opacity_jitter": 0.05
+      },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 45.0,
         "default_opacity": 1.0
@@ -620,7 +651,7 @@
         "name": "Evolution",
         "category": "Sketching",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -633,42 +664,48 @@
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.4
+        "spacing": 0.08,
+        "streamline": 0.4,
+        "jitter_lateral": 0.01,
+        "jitter_linear": 0.03,
+        "taper_start": 12.0,
+        "taper_end": 8.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.03,
+          "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "soft"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.85,
+          "min_limit": 0.2,
+          "pressure_curve": "ease_in"
         }
       },
       "grain": {
-        "scale": 1.0,
+        "scale": 0.8,
         "intensity": 0.5,
-        "contrast": 1.0
+        "contrast": 1.0,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 6.0,
+        "opacity_jitter": 0.07,
+        "size_jitter": 0.04
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 12.0,
         "default_opacity": 1.0

@@ -7,3 +7,4 @@
 #include "H4ZJWAWVOH/moc_drag_zone_calculator.cpp"
 #include "H4ZJWAWVOH/moc_panel_list_model.cpp"
 #include "H4ZJWAWVOH/moc_panel_manager.cpp"
+#include "H4ZJWAWVOH/moc_watercolor_engine.cpp"

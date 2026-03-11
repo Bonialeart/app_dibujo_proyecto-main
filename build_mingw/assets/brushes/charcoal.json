@@ -8,7 +8,7 @@
         "name": "6B Charcoal",
         "category": "Charcoal",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -17,47 +17,53 @@
       "shape": {
         "tip_texture": "6b_charcoal.png",
         "roundness": 1.0,
-        "contrast": 1.0,
-        "count": 1
+        "contrast": 1.05,
+        "count": 1,
+        "scatter": 0.05
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.07,
+        "streamline": 0.08,
+        "jitter_lateral": 0.025,
+        "jitter_linear": 0.05
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "soft"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.7,
+          "min_limit": 0.1,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0,
-        "texture": "charcoal_grain.png"
+        "scale": 0.9,
+        "intensity": 0.78,
+        "contrast": 1.1,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 18.0,
+        "opacity_jitter": 0.14,
+        "size_jitter": 0.08
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.06
+      },
       "customize": {
         "default_size": 35.0,
         "default_opacity": 1.0
@@ -69,7 +75,7 @@
         "name": "Willow Stick",
         "category": "Charcoal",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -77,47 +83,55 @@
       },
       "shape": {
         "tip_texture": "willow_stick.png",
-        "roundness": 0.7,
+        "roundness": 0.65,
         "contrast": 1.0,
-        "count": 1
+        "count": 1,
+        "scatter": 0.06,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.06,
+        "streamline": 0.12,
+        "jitter_lateral": 0.03,
+        "jitter_linear": 0.06
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.06,
+          "pressure_curve": [0.2, 0.0, 0.7, 0.95]
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "soft"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.06,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.65,
+          "min_limit": 0.1,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
         "scale": 1.0,
-        "intensity": 0.6,
-        "contrast": 1.0
+        "intensity": 0.82,
+        "contrast": 1.1,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 20.0,
+        "opacity_jitter": 0.15,
+        "size_jitter": 0.08
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.07
+      },
       "customize": {
         "default_size": 40.0,
         "default_opacity": 1.0
@@ -129,7 +143,7 @@
         "name": "Compressed Stick",
         "category": "Charcoal",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -138,46 +152,53 @@
       "shape": {
         "tip_texture": "compressed_stick.png",
         "roundness": 0.4,
-        "contrast": 1.0,
-        "count": 1
+        "contrast": 1.1,
+        "count": 1,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.06,
+        "streamline": 0.08,
+        "jitter_lateral": 0.02,
+        "jitter_linear": 0.04
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.08,
+          "pressure_curve": "ease_out"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.06,
+          "pressure_curve": [0.15, 0.0, 0.7, 0.95]
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.08,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
+          "base_value": 0.75,
+          "min_limit": 0.2,
           "pressure_curve": "linear"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0
+        "scale": 0.85,
+        "intensity": 0.7,
+        "contrast": 1.1,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 12.0,
+        "opacity_jitter": 0.12,
+        "size_jitter": 0.06
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.05
+      },
       "customize": {
         "default_size": 45.0,
         "default_opacity": 1.0
@@ -189,56 +210,63 @@
         "name": "Burnt Charcoal",
         "category": "Charcoal",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
-        "blend_mode": "normal",
+        "blend_mode": "multiply",
         "anti_aliasing": true
       },
       "shape": {
         "tip_texture": "burnt_charcoal.png",
         "roundness": 1.0,
-        "contrast": 1.0,
-        "count": 1
+        "contrast": 1.05,
+        "count": 1,
+        "scatter": 0.08
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.08,
+        "streamline": 0.05,
+        "jitter_lateral": 0.03,
+        "jitter_linear": 0.07
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "soft"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.72,
+          "min_limit": 0.1,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0,
-        "texture": "burnt.png"
+        "scale": 0.95,
+        "intensity": 0.75,
+        "contrast": 1.1,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 22.0,
+        "opacity_jitter": 0.16,
+        "size_jitter": 0.09
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.07,
+        "saturation_jitter": 0.04
+      },
       "customize": {
         "default_size": 38.0,
         "default_opacity": 1.0
@@ -250,7 +278,7 @@
         "name": "Charcoal Shader",
         "category": "Charcoal",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -261,45 +289,50 @@
         "roundness": 0.2,
         "contrast": 1.0,
         "count": 1,
-        "rotation": 90.0
+        "rotation": 90.0,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.04,
+        "streamline": 0.3,
+        "jitter_lateral": 0.01,
+        "jitter_linear": 0.02
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.15,
+          "pressure_curve": [0.3, 0.0, 0.9, 1.0]
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.06,
+          "pressure_curve": "ease_out"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.08,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.6,
+          "min_limit": 0.1,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0
+        "scale": 0.8,
+        "intensity": 0.65,
+        "contrast": 1.05,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 8.0,
+        "opacity_jitter": 0.1,
+        "size_jitter": 0.05
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 60.0,
         "default_opacity": 1.0
@@ -311,7 +344,7 @@
         "name": "Charcoal Pencil",
         "category": "Charcoal",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -320,46 +353,54 @@
       "shape": {
         "tip_texture": "charcoal_pencil.png",
         "roundness": 1.0,
-        "contrast": 1.0,
+        "contrast": 1.05,
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.07,
+        "streamline": 0.1,
+        "jitter_lateral": 0.015,
+        "jitter_linear": 0.04,
+        "taper_start": 10.0,
+        "taper_end": 8.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": "soft"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.78,
+          "min_limit": 0.15,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0
+        "scale": 0.75,
+        "intensity": 0.7,
+        "contrast": 1.1,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 10.0,
+        "opacity_jitter": 0.1,
+        "size_jitter": 0.05
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.04
+      },
       "customize": {
         "default_size": 15.0,
         "default_opacity": 1.0
@@ -371,7 +412,7 @@
         "name": "Charcoal Dust",
         "category": "Charcoal",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -381,50 +422,56 @@
         "tip_texture": "charcoal_dust.png",
         "roundness": 1.0,
         "contrast": 1.0,
-        "count": 1,
-        "scatter": 0.4,
-        "blur": 10.0
+        "count": 3,
+        "scatter": 0.5,
+        "blur": 6.0
       },
       "stroke": {
         "spacing": 0.1,
-        "streamline": 0.0
+        "streamline": 0.0,
+        "jitter_lateral": 0.08,
+        "jitter_linear": 0.1
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.1,
+          "pressure_curve": "ease_out"
         },
         "opacity": {
-          "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.6,
+          "min_limit": 0.05,
+          "pressure_curve": "soft"
         },
         "flow": {
-          "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.7,
+          "min_limit": 0.05,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.4,
+          "min_limit": 0.05,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0
+        "scale": 0.9,
+        "intensity": 0.6,
+        "contrast": 1.0,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 360.0,
+        "opacity_jitter": 0.2,
+        "size_jitter": 0.25
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.1
+      },
       "customize": {
         "default_size": 55.0,
-        "default_opacity": 1.0
+        "default_opacity": 0.8
       }
     }
   ]

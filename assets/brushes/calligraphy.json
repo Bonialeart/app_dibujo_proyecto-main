@@ -8,7 +8,7 @@
         "name": "Monoline Calligraphy",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -17,12 +17,12 @@
       "shape": {
         "tip_texture": "monoline_calligraphy.png",
         "roundness": 1.0,
-        "contrast": 1.0,
+        "contrast": 1.2,
         "count": 1
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.8
+        "spacing": 0.04,
+        "streamline": 0.85
       },
       "dynamics": {
         "size": {
@@ -41,22 +41,19 @@
           "pressure_curve": "linear"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
+          "base_value": 0.99,
+          "min_limit": 0.95,
           "pressure_curve": "linear"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.5,
+        "intensity": 0.12,
         "contrast": 1.0
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
-      },
-      "color_dynamics": {},
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {},
+      "color_dynamics": {},
       "customize": {
         "default_size": 25.0,
         "default_opacity": 1.0
@@ -68,7 +65,7 @@
         "name": "Script",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -76,47 +73,47 @@
       },
       "shape": {
         "tip_texture": "script.png",
-        "roundness": 0.6,
-        "contrast": 1.0,
-        "count": 1
+        "roundness": 0.55,
+        "contrast": 1.1,
+        "count": 1,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.7
+        "spacing": 0.05,
+        "streamline": 0.75,
+        "taper_start": 20.0,
+        "taper_end": 15.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.02,
+          "pressure_curve": [0.1, 0.0, 0.6, 0.95]
         },
         "opacity": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_in"
         },
         "flow": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.95,
+          "min_limit": 0.7,
+          "pressure_curve": "ease_in"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.3,
+        "intensity": 0.1,
         "contrast": 1.0
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
-      },
-      "color_dynamics": {},
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {},
+      "color_dynamics": {},
       "customize": {
         "default_size": 30.0,
         "default_opacity": 1.0
@@ -128,7 +125,7 @@
         "name": "Brush Pen",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -136,49 +133,49 @@
       },
       "shape": {
         "tip_texture": "brush_pen.png",
-        "roundness": 1.0,
-        "contrast": 1.0,
-        "count": 1
+        "roundness": 0.9,
+        "contrast": 1.1,
+        "count": 1,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0,
-        "taper_start": 30.0,
+        "spacing": 0.05,
+        "streamline": 0.3,
+        "taper_start": 35.0,
         "taper_end": 30.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
+          "min_limit": 0.02,
           "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_in"
         },
         "flow": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.92,
+          "min_limit": 0.5,
+          "pressure_curve": "ease_in"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.3,
+        "intensity": 0.08,
         "contrast": 1.0
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "opacity_jitter": 0.04
       },
       "color_dynamics": {},
-      "randomize": {},
       "customize": {
         "default_size": 35.0,
         "default_opacity": 1.0
@@ -190,7 +187,7 @@
         "name": "Chalk Lettering",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -200,46 +197,52 @@
         "tip_texture": "chalk_lettering.png",
         "roundness": 1.0,
         "contrast": 1.0,
-        "count": 1
+        "count": 1,
+        "scatter": 0.04
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.06,
+        "streamline": 0.25,
+        "jitter_lateral": 0.01,
+        "jitter_linear": 0.02
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.06,
+          "pressure_curve": "ease_out"
         },
         "opacity": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": "ease_out"
         },
         "flow": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.06,
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.75,
+          "min_limit": 0.2,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
-        "contrast": 1.0,
-        "texture": "chalk.png"
+        "scale": 0.9,
+        "intensity": 0.65,
+        "contrast": 1.1,
+        "texture": "grain_paper_standard.png"
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
+      "randomize": {
+        "rotation_jitter": 8.0,
+        "opacity_jitter": 0.1,
+        "size_jitter": 0.06
       },
-      "color_dynamics": {},
-      "randomize": {},
+      "color_dynamics": {
+        "brightness_jitter": 0.05
+      },
       "customize": {
         "default_size": 40.0,
         "default_opacity": 1.0
@@ -251,7 +254,7 @@
         "name": "Streaker",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -259,47 +262,48 @@
       },
       "shape": {
         "tip_texture": "streaker.png",
-        "roundness": 1.0,
-        "contrast": 1.0,
-        "count": 1
+        "roundness": 0.3,
+        "contrast": 1.1,
+        "count": 1,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.04,
+        "streamline": 0.4,
+        "jitter_lateral": 0.005,
+        "taper_start": 15.0,
+        "taper_end": 10.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.05,
+          "pressure_curve": [0.2, 0.0, 0.8, 1.0]
         },
         "opacity": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_in"
         },
         "flow": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.95,
+          "min_limit": 0.6,
+          "pressure_curve": "ease_in"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.4,
+        "intensity": 0.1,
         "contrast": 1.0
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
-      },
-      "color_dynamics": {},
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {},
+      "color_dynamics": {},
       "customize": {
         "default_size": 45.0,
         "default_opacity": 1.0
@@ -311,7 +315,7 @@
         "name": "Shale",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -319,48 +323,49 @@
       },
       "shape": {
         "tip_texture": "shale.png",
-        "roundness": 1.0,
-        "contrast": 1.0,
+        "roundness": 0.3,
+        "contrast": 1.1,
         "count": 1,
-        "rotation": 30.0
+        "rotation": 30.0,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.05,
+        "streamline": 0.35,
+        "jitter_lateral": 0.005,
+        "taper_start": 12.0,
+        "taper_end": 8.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.04,
+          "pressure_curve": [0.15, 0.0, 0.7, 0.98]
         },
         "opacity": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_in"
         },
         "flow": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.97,
+          "min_limit": 0.75,
+          "pressure_curve": "ease_in"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.4,
+        "intensity": 0.12,
         "contrast": 1.0
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
-      },
-      "color_dynamics": {},
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {},
+      "color_dynamics": {},
       "customize": {
         "default_size": 38.0,
         "default_opacity": 1.0
@@ -372,7 +377,7 @@
         "name": "Water Pen",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -382,46 +387,50 @@
         "tip_texture": "water_pen.png",
         "roundness": 1.0,
         "contrast": 1.0,
-        "count": 1
+        "count": 1,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.05,
+        "streamline": 0.3,
+        "taper_start": 25.0,
+        "taper_end": 20.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.03,
+          "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_out"
         },
         "flow": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.9,
+          "min_limit": 0.4,
+          "pressure_curve": "ease_in"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.5,
+        "intensity": 0.12,
         "contrast": 1.0
       },
       "wet_mix": {
         "wet_mix": 0.7,
         "pigment": 1.0,
-        "dilution": 0.4
+        "dilution": 0.45,
+        "bleed": 0.2
       },
-      "color_dynamics": {},
       "randomize": {},
+      "color_dynamics": {},
       "customize": {
         "default_size": 40.0,
         "default_opacity": 1.0
@@ -433,7 +442,7 @@
         "name": "Gothic Pen",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "normal",
@@ -441,48 +450,48 @@
       },
       "shape": {
         "tip_texture": "gothic_pen.png",
-        "roundness": 0.2,
-        "contrast": 1.0,
+        "roundness": 0.15,
+        "contrast": 1.2,
         "count": 1,
-        "rotation": 45.0
+        "rotation": 45.0,
+        "follow_stroke": true
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.04,
+        "streamline": 0.5,
+        "taper_start": 8.0,
+        "taper_end": 6.0
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.01,
+          "pressure_curve": [0.05, 0.0, 0.5, 0.99]
         },
         "opacity": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_in"
         },
         "flow": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_in"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
+          "base_value": 0.99,
+          "min_limit": 0.9,
           "pressure_curve": "linear"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.3,
+        "intensity": 0.08,
         "contrast": 1.0
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
-      },
-      "color_dynamics": {},
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {},
+      "color_dynamics": {},
       "customize": {
         "default_size": 30.0,
         "default_opacity": 1.0
@@ -494,7 +503,7 @@
         "name": "Neon Line",
         "category": "Calligraphy",
         "author": "ArtFlow Studio",
-        "version": 1
+        "version": 2
       },
       "rendering": {
         "blend_mode": "add",
@@ -508,42 +517,39 @@
         "blur": 5.0
       },
       "stroke": {
-        "spacing": 0.1,
-        "streamline": 0.0
+        "spacing": 0.04,
+        "streamline": 0.5
       },
       "dynamics": {
         "size": {
           "base_value": 1.0,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "min_limit": 0.02,
+          "pressure_curve": "soft"
         },
         "opacity": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_out"
         },
         "flow": {
           "base_value": 1.0,
           "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "pressure_curve": "ease_out"
         },
         "hardness": {
-          "base_value": 0.8,
-          "min_limit": 0.0,
-          "pressure_curve": "linear"
+          "base_value": 0.3,
+          "min_limit": 0.05,
+          "pressure_curve": "soft"
         }
       },
       "grain": {
-        "scale": 1.0,
-        "intensity": 0.5,
+        "scale": 0.5,
+        "intensity": 0.0,
         "contrast": 1.0
       },
-      "wet_mix": {
-        "wet_mix": 0.0,
-        "pigment": 1.0
-      },
-      "color_dynamics": {},
+      "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {},
+      "color_dynamics": {},
       "customize": {
         "default_size": 20.0,
         "default_opacity": 1.0

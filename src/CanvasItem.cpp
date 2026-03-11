@@ -1674,10 +1674,83 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceOver);
     }
 
+    // ─── WATER BLENDER: Krita-style Color Smudge ───────────────────────
+    // Lee desde la capa CPU (img) - RAPIDO, sin GPU readback.
+    // Muestrea el color existente bajo el pincel y lo usa como el color
+    // que "carga" el pincel, creando el efecto de arrastrar y fusionar.
+    bool isWaterBlend = (settings.dilution > 0.85f);
+    if (isWaterBlend) {
+        int sampleRadius = std::max(4, (int)(settings.size * 0.40f));
+        int cx = (int)canvasPos.x();
+        int cy = (int)canvasPos.y();
+
+        // Usar img (capa CPU) — rápido, correcto para workflow watercolor
+        float rSum = 0, gSum = 0, bSum = 0, aSum = 0;
+        int count = 0;
+        for (int sy = std::max(0, cy - sampleRadius);
+             sy <= std::min(img.height() - 1, cy + sampleRadius); sy++) {
+            for (int sx = std::max(0, cx - sampleRadius);
+                 sx <= std::min(img.width() - 1, cx + sampleRadius); sx++) {
+                float dx = (float)(sx - cx) / sampleRadius;
+                float dy = (float)(sy - cy) / sampleRadius;
+                if (dx*dx + dy*dy > 1.0f) continue;
+
+                // img es RGBA8888_Premultiplied — despremutiplicar para colores reales
+                QRgb px = img.pixel(sx, sy);
+                float a  = qAlpha(px) / 255.0f;
+                if (a > 0.03f) {
+                    float invA = 1.0f / a;  // Despremutiplicar
+                    rSum += (qRed(px)   / 255.0f) * invA;
+                    gSum += (qGreen(px) / 255.0f) * invA;
+                    bSum += (qBlue(px)  / 255.0f) * invA;
+                    aSum += a;
+                    count++;
+                }
+            }
+        }
+
+        if (count > 0 && aSum > 0.05f) {
+            float invC = 1.0f / count;
+            float sR = std::clamp(rSum * invC, 0.0f, 1.0f);
+            float sG = std::clamp(gSum * invC, 0.0f, 1.0f);
+            float sB = std::clamp(bSum * invC, 0.0f, 1.0f);
+            float sA = std::clamp(aSum * invC, 0.0f, 1.0f);
+
+            // Smudge persistente: mezcla entre dabs (igual a Krita Color Smudge)
+            if (!m_smudgeColorValid) {
+                m_smudgeColor = QVector4D(sR, sG, sB, sA);
+                m_smudgeColorValid = true;
+            } else {
+                float p = m_smudgePersistence; // 0.82 default
+                m_smudgeColor.setX(m_smudgeColor.x() * p + sR * (1.0f - p));
+                m_smudgeColor.setY(m_smudgeColor.y() * p + sG * (1.0f - p));
+                m_smudgeColor.setZ(m_smudgeColor.z() * p + sB * (1.0f - p));
+                m_smudgeColor.setW(m_smudgeColor.w() * p + sA * (1.0f - p));
+            }
+
+            // Pintar el smudge color con opacidad proporcional al pigmento del canvas
+            settings.color = QColor::fromRgbF(
+                m_smudgeColor.x(), m_smudgeColor.y(), m_smudgeColor.z());
+            settings.opacity = std::clamp(sA * settings.bleed * 0.90f, 0.0f, 0.92f);
+            settings.hardness = 0.05f;  // Muy suave para difuminar bien
+
+            // CRUCIAL: resetear dilution para que el shader NO entre en modo agua
+            // (el modo agua del shader sobreescribia el color calculado aqui)
+            settings.dilution = 0.05f;
+            settings.wetness  = 0.10f;
+        } else {
+            // Sin pigmento bajo el pincel: no pintar nada
+            settings.opacity = 0.0f;
+            settings.dilution = 0.0f;
+        }
+    }
+    // ─── FIN WATER BLENDER ───────────────────────────────────────
+
     m_brushEngine->paintStroke(
         &fboPainter2, m_lastPos, canvasPos, effectivePressure, settings, tilt,
         velocityFactor, m_pingFBO->texture(), settings.wetness,
         settings.dilution, settings.smudge);
+
 
     if (m_symmetryEnabled && !m_symmetryEngines.empty()) {
       QPointF center(m_canvasWidth / 2.0f, m_canvasHeight / 2.0f);
@@ -1705,6 +1778,47 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
     layer->markDirty(canvasRect.toAlignedRect());
     std::swap(m_pingFBO, m_pongFBO);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // WATERCOLOR ENGINE — Motor de acuarela profesional
+    // Se activa automáticamente si el pincel pertenece a la categoría Watercolor
+    // o tiene wetness > 0.3 en su preset.
+    // ─────────────────────────────────────────────────────────────────────
+    if (isWatercolorBrush() && settings.type != BrushSettings::Type::Eraser) {
+        // Inicializar el motor bajo demanda (primera vez o si cambió el tamaño)
+        if (!m_watercolorEngine) {
+            m_watercolorEngine = new WatercolorEngine(this);
+            // Conectar la señal de actualización del wetmap al repintado del canvas
+            connect(m_watercolorEngine, &WatercolorEngine::wetMapUpdated,
+                    this, [this]() { requestUpdate(); });
+        }
+
+        QOpenGLFunctions *gl = QOpenGLContext::currentContext()->functions();
+        if (!m_watercolorEngine->hasActiveWetAreas() ||
+            m_pingFBO->width() != m_canvasWidth ||
+            m_pingFBO->height() != m_canvasHeight) {
+            m_watercolorEngine->beginSession(m_canvasWidth, m_canvasHeight, gl,
+                                             0 /* grain tex id */); // TODO: pasar grano
+        }
+
+        // El dab ya fue pintado en m_pingFBO por el motor normal.
+        // Ahora pasamos ese resultado por el pipeline de acuarela:
+        // el WatercolorEngine aplica la acumulación, wet-on-wet y
+        // deposita agua en el WetMap.
+        auto wcParams = buildWatercolorParams();
+        m_watercolorEngine->paintDab(
+            m_pingFBO->texture(),     // Dab tex (lo que se acaba de pintar)
+            m_pongFBO->texture(),     // Canvas anterior (antes del dab)
+            m_pingFBO,                // Salida: canvas con acuarela aplicada
+            m_brushColor,
+            wcParams,
+            effectivePressure,
+            settings.flow
+        );
+    } else if (m_watercolorEngine && !isWatercolorBrush()) {
+        // Si el usuario cambió a un pincel que no es acuarela, finalizar la sesión
+        m_watercolorEngine->endSession();
+    }
 
     // --- INPUT PREDICTION ---
     // Maintain history
@@ -2618,6 +2732,8 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
       m_isHoldingForShape = false;
       m_quickShapeType = QuickShapeType::None;
       m_hasPrediction = false;
+      // Resetear el smudge color — el siguiente trazo empieza fresco
+      m_smudgeColorValid = false;
 
       if (m_pingFBO) {
         if (!wasHolding) {
@@ -5282,6 +5398,13 @@ void CanvasItem::resizeCanvas(int w, int h) {
   m_canvasWidth = w;
   m_canvasHeight = h;
 
+  // Invalidar el motor de acuarela al cambiar el tamaño del canvas.
+  // Los FBOs del WetMap son del tamaño anterior y ya no son válidos.
+  if (m_watercolorEngine) {
+      m_watercolorEngine->endSession();
+      // beginSession() se llamará automáticamente al próximo dab.
+  }
+
   delete m_layerManager;
   clearRenderCaches();
   m_layerManager = new LayerManager(w, h);
@@ -5296,6 +5419,7 @@ void CanvasItem::resizeCanvas(int w, int h) {
   fitToView();
   update();
 }
+
 
 void CanvasItem::setProjectDpi(int dpi) { qDebug() << "DPI set to" << dpi; }
 
@@ -7798,3 +7922,60 @@ void CanvasItem::renderLiquifyPreview(QPainter *painter,
   painter->drawImage(paperRect, m_liquifyPreviewCache);
   painter->restore();
 }
+
+// =============================================================================
+// WATERCOLOR ENGINE — Métodos auxiliares de CanvasItem
+// =============================================================================
+
+bool CanvasItem::isWatercolorBrush() const {
+    auto *bpm = artflow::BrushPresetManager::instance();
+    const auto *preset = bpm->findByName(m_activeBrushName);
+    if (!preset) return false;
+
+    // Verificación por categoría
+    QString cat = preset->category.toLower();
+    if (cat.contains("watercolor") || cat.contains("acuarela") ||
+        cat.contains("aquarela")   || cat.contains("water")) {
+        return true;
+    }
+
+    // Verificación por wetness — umbral 0.30
+    if (preset->wetMix.wetness > 0.30f) {
+        return true;
+    }
+
+    return false;
+}
+
+WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
+    WatercolorEngine::WatercolorParams params;
+
+    auto *bpm = artflow::BrushPresetManager::instance();
+    const auto *preset = bpm->findByName(m_activeBrushName);
+    if (!preset) return params;
+
+    // WetMixSettings
+    params.wetness    = preset->wetMix.wetness;
+    params.pigment    = std::max(0.1f, preset->wetMix.pigment);
+    params.bleed      = preset->wetMix.bleed;
+    params.dilution   = preset->wetMix.dilution;
+    params.absorption = std::max(0.1f, preset->wetMix.absorptionRate);
+    params.dryingRate = std::max(0.1f, preset->wetMix.dryingTime > 0.0f
+                                       ? (1.0f / preset->wetMix.dryingTime)
+                                       : 0.4f);
+
+    // PigmentSettings
+    params.granulation = preset->pigment.granulation;
+
+    // EdgeDarkeningSettings
+    params.edgeDarkening = preset->edgeDarkening.enabled
+                           ? preset->edgeDarkening.intensity
+                           : 0.0f;
+
+    // Grain intensity
+    params.grainIntensity = preset->grain.intensity;
+
+    return params;
+}
+
+
