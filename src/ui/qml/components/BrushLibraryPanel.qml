@@ -126,15 +126,16 @@ Item {
 
             delegate: Rectangle {
                 width: studioBrushListView.width; height: 44; radius: 8
-                property bool isActive: mainCanvas && mainCanvas.activeBrushName === modelData
+                property string brushName: modelData
+                property bool isActive: mainCanvas && mainCanvas.activeBrushName === brushName
                 color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.12) : (brushItemMa.containsMouse ? "#141418" : "transparent")
                 border.color: isActive ? accentColor : "transparent"
                 border.width: isActive ? 1 : 0
                 property string previewSource: ""
 
-                onModelDataChanged: {
-                    if (mainCanvas && modelData) {
-                        previewSource = mainCanvas.get_brush_preview(modelData)
+                onBrushNameChanged: {
+                    if (mainCanvas && brushName) {
+                        previewSource = mainCanvas.get_brush_preview(brushName)
                     } else {
                         previewSource = ""
                     }
@@ -155,7 +156,7 @@ Item {
                     }
 
                     Text {
-                        Layout.fillWidth: true; text: modelData
+                        Layout.fillWidth: true; text: brushName
                         color: isActive ? "#fff" : (brushItemMa.containsMouse ? "#bbb" : "#777")
                         font.pixelSize: 12; elide: Text.ElideRight
                         font.weight: isActive ? Font.DemiBold : Font.Normal
@@ -165,7 +166,7 @@ Item {
                 MouseArea {
                     id: brushItemMa; anchors.fill: parent; hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: { if (mainCanvas) mainCanvas.usePreset(modelData) }
+                    onClicked: { if (mainCanvas) mainCanvas.usePreset(brushName) }
                 }
             }
         }

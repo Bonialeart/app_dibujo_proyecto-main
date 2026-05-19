@@ -293,12 +293,13 @@ Rectangle {
                     width: ListView.view.width - ListView.view.leftMargin - ListView.view.rightMargin
                     height: 86 * root.uiScale
                     
-                    property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData
+                    property string brushName: modelData
+                    property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === brushName
                     property string previewSource: ""
 
-                    onModelDataChanged: {
-                        if (root.targetCanvas && modelData) {
-                            previewSource = root.targetCanvas.get_brush_preview(modelData)
+                    onBrushNameChanged: {
+                        if (root.targetCanvas && brushName) {
+                            previewSource = root.targetCanvas.get_brush_preview(brushName)
                         } else {
                             previewSource = ""
                         }
@@ -340,7 +341,7 @@ Rectangle {
                             anchors.right: parent.right
                             anchors.rightMargin: 16 * root.uiScale
                             
-                            text: modelData
+                            text: brushName
                             color: brushCard.isSelected ? "#ffffff" : (brushItemMa.containsMouse ? "#f3f4f6" : "#a1a1aa")
                             font.pixelSize: 11.5 * root.uiScale
                             font.weight: brushCard.isSelected ? Font.DemiBold : Font.Medium
@@ -390,16 +391,16 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: (mouse) => {
                             if (mouse.button === Qt.RightButton) {
-                                brushContextMenu.brushTarget = modelData
+                                brushContextMenu.brushTarget = brushName
                                 brushContextMenu.popup()
                             } else {
-                                if(root.targetCanvas) root.targetCanvas.usePreset(modelData)
+                                if(root.targetCanvas) root.targetCanvas.usePreset(brushName)
                             }
                         }
                         onDoubleClicked: {
                             if(root.targetCanvas) {
-                                root.targetCanvas.usePreset(modelData)
-                                root.editBrushRequested(modelData)
+                                root.targetCanvas.usePreset(brushName)
+                                root.editBrushRequested(brushName)
                             }
                         }
                     }
