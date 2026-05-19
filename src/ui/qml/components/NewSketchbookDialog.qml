@@ -154,11 +154,8 @@ Dialog {
                         console.log("Attempting to create sketchbook: " + titleInput.text)
                         var newPath = mainCanvas.create_new_sketchbook(titleInput.text, root.selectedColor.toString())
                         if (newPath !== "") {
-                            // Auto-open logic
-                            mainCanvas.enter_folder(newPath)
-                            mainWindow.currentPage = 3 // Go to Assets page
-                            
-                            // mainWindow.refreshGallery() // enter_folder already triggers refresh
+                            // projectListChanged is already emitted by create_new_sketchbook,
+                            // so Dashboard/Gallery will auto-refresh via Connections.
                             toastManager.show("Sketchbook created!", "success")
                             root.close()
                         } else {

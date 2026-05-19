@@ -754,9 +754,20 @@ Item {
             Rectangle {
                 id: card
                 anchors.fill: parent
-                color: "#14141a"
+                color: "#16161a"
                 radius: 20
 
+                // 1. Premium Shadow
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowColor: "#99000000"
+                    shadowBlur: 1.0
+                    shadowVerticalOffset: 8
+                    shadowOpacity: 0.6
+                }
+
+                // 2. Thumbnail Image
                 Image {
                     id: imgPreviewGal
                     anchors.fill: parent
@@ -765,6 +776,7 @@ Item {
                     mipmap: true
                     asynchronous: true
 
+                    // Masking for rounded corners
                     layer.enabled: true
                     layer.effect: MultiEffect {
                         maskEnabled: true
@@ -772,33 +784,62 @@ Item {
                     }
                 }
 
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    shadowEnabled: true
-                    shadowColor: "#80000000"
-                    shadowBlur: 1.0
-                    shadowVerticalOffset: 8
-                    shadowOpacity: 0.5
-                }
-
+                // 3. Mask Rectangle (Hidden)
                 Rectangle {
                     id: maskRect
                     anchors.fill: parent; radius: 20
                     visible: false; layer.enabled: true
                 }
+                
+                // 4. Subtle Gradient Overlay for depth
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 20
+                    visible: imgPreviewGal.status === Image.Ready
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.03) }
+                        GradientStop { position: 0.5; color: "transparent" }
+                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.4) }
+                    }
+                }
+
+                // 5. Inner Glass Border
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 20
+                    color: "transparent"
+                    border.color: Qt.rgba(1, 1, 1, 0.06)
+                    border.width: 1
+                }
             }
 
-            // Placeholder
-            Column {
-                anchors.centerIn: parent; spacing: 8
+            // 6. Premium Placeholder
+            Rectangle {
+                anchors.fill: parent
+                radius: 20
                 visible: imgPreviewGal.status !== Image.Ready && imgPreviewGal.source == ""
-
-                Image {
-                    source: iconPath("image.svg")
-                    width: 28; height: 28; opacity: 0.3
-                    anchors.horizontalCenter: parent.horizontalCenter
+                
+                gradient: Gradient {
+                    orientation: Gradient.Vertical
+                    GradientStop { position: 0.0; color: "#1c1c22" }
+                    GradientStop { position: 1.0; color: "#121216" }
                 }
-                Text { anchors.horizontalCenter: parent.horizontalCenter; text: "No preview"; color: "#555"; font.pixelSize: 10 }
+
+                Column {
+                    anchors.centerIn: parent; spacing: 12
+                    
+                    Rectangle {
+                        width: 50; height: 50; radius: 25
+                        color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.08)
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15)
+                        border.width: 1
+                        
+                        Text { anchors.centerIn: parent; text: "🖌️"; font.pixelSize: 22; opacity: 0.7 }
+                    }
+                    
+                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Blank Canvas"; color: "#666"; font.pixelSize: 12; font.weight: Font.Medium }
+                }
             }
         }
     }

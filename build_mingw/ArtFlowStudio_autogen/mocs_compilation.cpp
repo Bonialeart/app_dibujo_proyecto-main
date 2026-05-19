@@ -2,6 +2,7 @@
 #include "UVLADIE3JM/moc_CanvasItem.cpp"
 #include "UVLADIE3JM/moc_PreferencesManager.cpp"
 #include "UVLADIE3JM/moc_ProjectModel.cpp"
+#include "UVLADIE3JM/moc_WintabManager.cpp"
 #include "H4ZJWAWVOH/moc_ColorPicker.cpp"
 #include "H4ZJWAWVOH/moc_color_harmony.cpp"
 #include "H4ZJWAWVOH/moc_drag_zone_calculator.cpp"

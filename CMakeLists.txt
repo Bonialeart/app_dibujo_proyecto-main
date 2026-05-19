@@ -57,6 +57,8 @@ set(UI_SOURCES
     src/CanvasItem.cpp
     src/ProjectModel.cpp
     src/PreferencesManager.cpp
+    src/WintabManager.cpp
+    src/WintabManager.h
 )
 
 # 5. Recursos QML

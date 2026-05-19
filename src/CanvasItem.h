@@ -301,6 +301,7 @@ public:
   Q_INVOKABLE void updateTransformCorners(const QVariantList &corners);
 
   Q_INVOKABLE void resizeCanvas(int w, int h);
+  Q_INVOKABLE void clearProjectPath();
   Q_INVOKABLE void setProjectDpi(int dpi);
   // Comic Panel Layout Drawing
   Q_INVOKABLE void drawPanelLayout(const QString &layoutType, int gutterPx,
@@ -529,6 +530,7 @@ protected:
   void hoverEnterEvent(QHoverEvent *event) override;
   void hoverLeaveEvent(QHoverEvent *event) override;
   void tabletEvent(QTabletEvent *event);
+  void onWintabEvent(float x, float y, float pressure, float tiltX, float tiltY);
   void touchEventOverride(QTouchEvent *event);
   void nativeGestureEvent(QNativeGestureEvent *event);
   bool event(QEvent *event) override;
@@ -596,6 +598,12 @@ private:
   int m_symmetrySegments = 6;
   QString m_currentProjectPath;
   QString m_currentProjectName;
+
+  // Wintab integration state
+  float m_wintabPressure = 1.0f;
+  float m_wintabTiltX = 0.0f;
+  float m_wintabTiltY = 0.0f;
+  bool m_wintabActive = false;
   QString m_brushTip;
   QVariantList m_availableBrushes;
   QString m_activeBrushName;

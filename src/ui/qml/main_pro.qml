@@ -6556,6 +6556,7 @@ Window {
                                             }
                                         } else {
                                             // Standard Project
+                                            mainCanvas.clearProjectPath()
                                             mainCanvas.resizeCanvas(newProjectDialog.inputW, newProjectDialog.inputH)
                                             mainCanvas.setBackgroundColor(newProjectDialog.bgFill)
                                             mainCanvas.setProjectDpi(newProjectDialog.inputDPI)

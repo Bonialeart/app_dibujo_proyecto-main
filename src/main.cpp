@@ -15,6 +15,9 @@
 #include <QStandardPaths>
 #include <fstream>
 #include <iostream>
+#include <QWindow>
+#include <windows.h>
+#include "WintabManager.h"
 
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
                      const QString &msg) {
@@ -70,8 +73,15 @@ int main(int argc, char *argv[]) {
   QObject::connect(
       &engine, &QQmlApplicationEngine::objectCreated, &app,
       [url](QObject *obj, const QUrl &objUrl) {
-        if (!obj && url == objUrl)
+        if (!obj && url == objUrl) {
           QCoreApplication::exit(-1);
+        } else if (obj) {
+          QWindow *window = qobject_cast<QWindow *>(obj);
+          if (window) {
+            HWND hwnd = (HWND)window->winId();
+            WintabManager::instance()->init(hwnd);
+          }
+        }
       },
       Qt::QueuedConnection);
 

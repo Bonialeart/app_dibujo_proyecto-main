@@ -1,6 +1,7 @@
 // Re-verify includes
 #include "CanvasItem.h"
 #include "PreferencesManager.h"
+#include "WintabManager.h"
 #include "core/cpp/include/brush_preset_manager.h"
 #include <QBuffer>
 #include <QCoreApplication>
@@ -126,6 +127,9 @@ CanvasItem::CanvasItem(QQuickItem *parent)
     globalCursorFilter = new CursorOverrideFilter(qApp);
     qApp->installEventFilter(globalCursorFilter);
   }
+
+  // Wintab integration
+  connect(WintabManager::instance(), &WintabManager::wintabEvent, this, &CanvasItem::onWintabEvent);
   // ---------------------------------
 
   setAcceptHoverEvents(true);
@@ -2612,7 +2616,18 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 
   if (m_isDrawing) {
     float pressure = 1.0f;
-    if (!event->points().isEmpty()) {
+    float tiltFactor = 0.0f;
+    
+    if (event->source() == Qt::MouseEventNotSynthesized) {
+        m_wintabActive = false; // It's a real mouse, stop using old Wintab data
+    }
+    
+    if (m_wintabActive) {
+      pressure = m_wintabPressure;
+      // Convert Wintab tilts to a single tiltFactor like Qt does
+      float tiltDist = std::sqrt(m_wintabTiltX*m_wintabTiltX + m_wintabTiltY*m_wintabTiltY);
+      tiltFactor = std::min(1.0f, tiltDist / 60.0f); 
+    } else if (!event->points().isEmpty()) {
       float p = event->points().first().pressure();
       if (p > 0.0f)
         pressure = p;
@@ -2662,7 +2677,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
         if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser)
           m_quickShapeTimer->start(500);
       }
-      handleDraw(event->position(), pressure);
+      handleDraw(event->position(), pressure, tiltFactor);
     }
   }
 
@@ -2851,6 +2866,13 @@ void CanvasItem::mouseDoubleClickEvent(QMouseEvent *event) {
   }
 }
 
+void CanvasItem::onWintabEvent(float x, float y, float pressure, float tiltX, float tiltY) {
+    m_wintabPressure = pressure;
+    m_wintabTiltX = tiltX;
+    m_wintabTiltY = tiltY;
+    m_wintabActive = true;
+}
+
 void CanvasItem::tabletEvent(QTabletEvent *event) {
   float pressure = event->pressure();
   // Normalizar presión
@@ -2862,6 +2884,13 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
   // Obtenemos un factor de 0.0 (vertical) a 1.0 (máxima inclinación)
   float tiltX = event->xTilt();
   float tiltY = event->yTilt();
+  
+  if (m_wintabActive) {
+      pressure = m_wintabPressure;
+      tiltX = m_wintabTiltX;
+      tiltY = m_wintabTiltY;
+  }
+  
   float tiltFactor =
       std::max(std::abs((float)tiltX), std::abs((float)tiltY)) / 60.0f;
   tiltFactor = std::max(0.0f, std::min(1.0f, tiltFactor));
@@ -5651,6 +5680,12 @@ void CanvasItem::resizeCanvas(int w, int h) {
   update();
 }
 
+void CanvasItem::clearProjectPath() {
+  m_currentProjectPath = "";
+  m_currentProjectName = "Untitled";
+  emit currentProjectPathChanged();
+  emit currentProjectNameChanged();
+}
 
 void CanvasItem::setProjectDpi(int dpi) { qDebug() << "DPI set to" << dpi; }
 
