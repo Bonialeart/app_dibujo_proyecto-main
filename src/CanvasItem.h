@@ -147,6 +147,7 @@ public:
                  setSelectionThreshold NOTIFY selectionThresholdChanged)
   Q_PROPERTY(bool isSelectionModeActive READ isSelectionModeActive WRITE
                  setIsSelectionModeActive NOTIFY isSelectionModeActiveChanged)
+  Q_PROPERTY(int lassoMode READ lassoMode WRITE setLassoMode NOTIFY lassoModeChanged)
   Q_PROPERTY(bool isImporting READ isImporting NOTIFY isImportingChanged)
   Q_PROPERTY(
       float importProgress READ importProgress NOTIFY importProgressChanged)
@@ -338,6 +339,9 @@ public:
   void setSelectionAddMode(int mode);
   void setSelectionThreshold(float threshold);
   void setIsSelectionModeActive(bool active);
+  int lassoMode() const { return m_lassoMode; }
+  void setLassoMode(int mode);
+  Q_INVOKABLE void closeLasso();     // close lasso path on demand (polygonal mode)
 
   // Color Utilities (HCL support for Pro Sliders)
   Q_INVOKABLE QString hclToHex(float h, float c, float l);
@@ -495,6 +499,7 @@ signals:
   void selectionAddModeChanged();
   void selectionThresholdChanged();
   void isSelectionModeActiveChanged();
+  void lassoModeChanged();
   void projectListChanged();
   void brushCategoriesChanged();
   void isImportingChanged();
@@ -673,10 +678,15 @@ private:
   void drawCircle(const QPointF &center, float radius);
   void redrawQuickShape(); // Re-render shape at current size during resize
 
+  // Lasso helpers
+  void _commitLassoPath();                                // commit m_activeLassoPath
+  void _commitNewShapePath(const QPainterPath &newPath);  // commit rect/ellipse path
+
   QVariantList _scanSync();
   void updateLayersList();
   // Selection and Transform state
   QPainterPath m_selectionPath;
+  QPainterPath m_activeLassoPath;
   bool m_hasSelection = false;
   QImage m_selectionBuffer;
   QTransform m_transformMatrix;
@@ -700,8 +710,10 @@ private:
   // Advanced Selection State
   QPointF m_lastSelectionPoint;
   QPointF m_selectionStartPos;
-  bool m_isLassoDragging = false;
-  bool m_isMagneticLassoActive = false;
+  bool m_isLassoDragging = false;         // true while mouse is held in freehand mode
+  bool m_isMagneticLassoActive = false;  // polygonal lasso: waiting for next click
+  int  m_lassoMode = 0;                  // 0=freehand, 1=polygonal
+  QPointF m_lassoCursorPos;              // current cursor pos in canvas space (for rubber-band preview)
 
   // Panel Cut State
   QPointF m_panelCutStartPos;

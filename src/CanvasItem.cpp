@@ -542,6 +542,9 @@ void CanvasItem::resetTransformState() {
   m_initialMatrix = QTransform();
   m_transformBox = QRectF();
   m_selectionPath = QPainterPath();
+  m_activeLassoPath = QPainterPath();
+  m_isLassoDragging = false;
+  m_isMagneticLassoActive = false;
   m_hasSelection = false;
 
   if (m_marchingAntsTimer)
@@ -1070,59 +1073,104 @@ void CanvasItem::paint(QPainter *painter) {
     painter->restore();
   }
 
-  // 5. Selección (Lasso) Feedback (Professional Marching Ants)
+  // 5. Selection (Lasso) Feedback — Marching Ants on committed path
   if (!m_selectionPath.isEmpty()) {
     painter->save();
-    // Transformar de Canvas a Pantalla para el feedback
     painter->translate(m_viewOffset.x() * m_zoomLevel,
                        m_viewOffset.y() * m_zoomLevel);
     painter->scale(m_zoomLevel, m_zoomLevel);
 
-    // Calculate animation offset based on time
     static float dashOffset = 0;
     dashOffset += 0.2f;
-    if (dashOffset > 20)
-      dashOffset = 0;
+    if (dashOffset > 20) dashOffset = 0;
 
-    // Base Solid White (Visibility)
+    // Solid white base
     QPen whitePen(Qt::white, 1.5f / m_zoomLevel, Qt::SolidLine);
     painter->setPen(whitePen);
     painter->drawPath(m_selectionPath);
 
-    // Dashed Accent/Black (Marching Effect)
+    // Dashed marching ants accent
     QColor lassoColor = m_accentColor;
-    if (lassoColor.value() < 50)
-      lassoColor = Qt::black;
-
+    if (lassoColor.value() < 50) lassoColor = QColor(80, 160, 255);
     QPen dashPen(lassoColor, 1.5f / m_zoomLevel, Qt::CustomDashLine);
     dashPen.setDashPattern({4, 4});
     dashPen.setDashOffset(dashOffset);
     painter->setPen(dashPen);
     painter->drawPath(m_selectionPath);
 
+    // Tinted fill overlay for the committed selection
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(lassoColor.red(), lassoColor.green(), lassoColor.blue(), 25));
+    painter->drawPath(m_selectionPath);
+
     painter->restore();
 
-    // Arrancar el timer persistente si no está corriendo ya
     if (!m_marchingAntsTimer->isActive())
       m_marchingAntsTimer->start();
   }
 
-  // 4.1 Predictive line for Magnetic/Polygonal Lasso
-  if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive &&
-      !m_selectionPath.isEmpty()) {
+  // 5.1 In-progress lasso path (while drawing / polygonal)
+  if (!m_activeLassoPath.isEmpty()) {
     painter->save();
-    // Transformar de Canvas a Pantalla para el feedback
     painter->translate(m_viewOffset.x() * m_zoomLevel,
                        m_viewOffset.y() * m_zoomLevel);
     painter->scale(m_zoomLevel, m_zoomLevel);
 
-    QPointF lastPoint = m_selectionPath.currentPosition();
-    QPointF canvasCursorPos =
-        (m_cursorPos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QColor lassoColor = m_accentColor;
+    if (lassoColor.value() < 50) lassoColor = QColor(80, 160, 255);
 
-    QPen predictPen(m_accentColor, 1.2f / m_zoomLevel, Qt::DashLine);
-    painter->setPen(predictPen);
-    painter->drawLine(lastPoint, canvasCursorPos);
+    // Draw completed segments so far
+    QPen activePen(lassoColor, 1.5f / m_zoomLevel, Qt::SolidLine);
+    painter->setPen(activePen);
+    painter->setBrush(Qt::NoBrush);
+    painter->drawPath(m_activeLassoPath);
+
+    // Rubber-band line from last point to cursor
+    if ((m_tool == ToolType::Lasso && m_lassoMode == 1) ||
+        m_tool == ToolType::MagneticLasso) {
+      QPointF lastPt = m_activeLassoPath.currentPosition();
+      QPen rubberPen(lassoColor, 1.2f / m_zoomLevel, Qt::DashLine);
+      rubberPen.setDashPattern({3, 3});
+      painter->setPen(rubberPen);
+      painter->drawLine(lastPt, m_lassoCursorPos);
+
+      // Closing rubber-band to start
+      QPointF startPt = m_activeLassoPath.elementAt(0);
+      const float snapRadius = 12.0f / m_zoomLevel;
+      if (QLineF(m_lassoCursorPos, startPt).length() < snapRadius) {
+        // Snap circle: highlight first vertex when near
+        painter->setPen(QPen(Qt::white, 2.0f / m_zoomLevel));
+        painter->setBrush(QColor(lassoColor.red(), lassoColor.green(), lassoColor.blue(), 180));
+        painter->drawEllipse(startPt, snapRadius, snapRadius);
+      } else {
+        // First vertex marker
+        painter->setPen(QPen(Qt::white, 1.5f / m_zoomLevel));
+        painter->setBrush(lassoColor);
+        float markerR = 4.0f / m_zoomLevel;
+        painter->drawEllipse(startPt, markerR, markerR);
+      }
+    } else if (m_tool == ToolType::Lasso && m_lassoMode == 0 && m_isLassoDragging) {
+      // Freehand: dashed closing rubber-band to start
+      QPointF startPt = m_activeLassoPath.elementAt(0);
+      QPen closingPen(lassoColor, 1.0f / m_zoomLevel, Qt::DotLine);
+      painter->setPen(closingPen);
+      painter->drawLine(m_activeLassoPath.currentPosition(), startPt);
+    }
+
+    // Live rect preview
+    if ((m_tool == ToolType::RectSelect || m_tool == ToolType::EllipseSelect)
+         && m_isLassoDragging) {
+      QRectF previewRect = QRectF(m_selectionStartPos, m_lassoCursorPos).normalized();
+      QPen previewPen(lassoColor, 1.5f / m_zoomLevel, Qt::DashLine);
+      previewPen.setDashPattern({4, 4});
+      painter->setPen(previewPen);
+      painter->setBrush(QColor(lassoColor.red(), lassoColor.green(), lassoColor.blue(), 18));
+      if (m_tool == ToolType::RectSelect)
+        painter->drawRect(previewRect);
+      else
+        painter->drawEllipse(previewRect);
+    }
+
     painter->restore();
   }
 
@@ -2311,46 +2359,52 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
   if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
       m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
     QPointF canvasPos = screenToCanvas(event->position());
+    m_lassoCursorPos = canvasPos;
 
-    // New Selection Mode logic
-    if (m_selectionAddMode == 0) { // New
-      if (m_tool == ToolType::Lasso) {
-        // Poly-Lasso logic: if near start, close it
-        if (!m_selectionPath.isEmpty() &&
-            QLineF(canvasPos, m_selectionPath.elementAt(0)).length() <
-                10.0f / m_zoomLevel) {
-          m_selectionPath.closeSubpath();
-          m_hasSelection = true;
-          emit hasSelectionChanged();
-        } else {
-          if (m_selectionPath.isEmpty())
-            m_selectionPath.moveTo(canvasPos);
-          else
-            m_selectionPath.lineTo(canvasPos);
-        }
-      } else if (m_tool == ToolType::MagneticLasso) {
-        // Polygonal behavior: add point and don't close yet
-        if (!m_isMagneticLassoActive) {
-          if (m_selectionAddMode == 0)
-            m_selectionPath = QPainterPath();
-          m_selectionPath.moveTo(canvasPos);
-          m_isMagneticLassoActive = true;
-        } else {
-          m_selectionPath.lineTo(canvasPos);
-        }
+    if (m_tool == ToolType::Lasso) {
+      if (m_lassoMode == 0) {
+        // ── FREEHAND mode: start a new stroke on press ──
+        m_activeLassoPath = QPainterPath();
+        m_activeLassoPath.moveTo(canvasPos);
+        m_isLassoDragging = true;
       } else {
-        // Rect/Ellipse: Clear previous path if starting a NEW selection
-        m_selectionPath = QPainterPath();
-        m_selectionPath.moveTo(canvasPos);
+        // ── POLYGONAL mode: add vertices on each click ──
+        const float snapRadius = 12.0f / m_zoomLevel;
+        if (!m_activeLassoPath.isEmpty() &&
+            QLineF(canvasPos, m_activeLassoPath.elementAt(0)).length() < snapRadius) {
+          // Clicked near the first point → close and commit
+          m_activeLassoPath.closeSubpath();
+          _commitLassoPath();
+        } else {
+          if (m_activeLassoPath.isEmpty())
+            m_activeLassoPath.moveTo(canvasPos);
+          else
+            m_activeLassoPath.lineTo(canvasPos);
+        }
+      }
+    } else if (m_tool == ToolType::MagneticLasso) {
+      // Polygonal/Magnetic: add vertices on click
+      const float snapRadius = 12.0f / m_zoomLevel;
+      if (!m_activeLassoPath.isEmpty() &&
+          QLineF(canvasPos, m_activeLassoPath.elementAt(0)).length() < snapRadius) {
+        m_activeLassoPath.closeSubpath();
+        _commitLassoPath();
+      } else {
+        if (m_activeLassoPath.isEmpty())
+          m_activeLassoPath.moveTo(canvasPos);
+        else
+          m_activeLassoPath.lineTo(canvasPos);
+        m_isMagneticLassoActive = true;
       }
     } else {
-      // Add/Subtract modes: start a new contour in the same path
-      m_selectionPath.moveTo(canvasPos);
+      // RectSelect / EllipseSelect: start drag
+      m_activeLassoPath = QPainterPath();
+      m_activeLassoPath.moveTo(canvasPos);
+      m_isLassoDragging = true;
     }
 
     m_selectionStartPos = canvasPos;
     m_lastSelectionPoint = canvasPos;
-    m_isLassoDragging = false;
     update();
     return;
   }
@@ -2586,23 +2640,32 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
        m_tool == ToolType::MagneticLasso) &&
       (event->buttons() & Qt::LeftButton)) {
     QPointF canvasPos = screenToCanvas(event->position());
+    m_lassoCursorPos = canvasPos;
 
-    if (m_tool == ToolType::Lasso) {
-      m_selectionPath.lineTo(canvasPos);
-      m_isLassoDragging = true;
-    } else if (m_tool == ToolType::MagneticLasso) {
-      // Dragging in magnetic lasso is optional, but for now we follow the
-      // cursor
-      m_selectionPath.lineTo(canvasPos);
-      m_isLassoDragging = true;
-    } else if (m_tool == ToolType::RectSelect) {
-      // Temporary feedback: we'll clear and add rect on release or maintain
-      // a temp path For simplicity in this turn, many apps show a
-      // "tentative" shape
+    if (m_tool == ToolType::Lasso && m_lassoMode == 0 && m_isLassoDragging) {
+      // Freehand: keep extending the active path
+      float dist = QLineF(m_lastSelectionPoint, canvasPos).length();
+      if (dist >= 2.0f) { // min spacing to avoid thousands of micro-segments
+        m_activeLassoPath.lineTo(canvasPos);
+        m_lastSelectionPoint = canvasPos;
+      }
+    } else if (m_tool == ToolType::Lasso && m_lassoMode == 1) {
+      // Polygonal: just update cursor position for rubber-band
+    } else if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive) {
+      // Magnetic: cursor pos drives the rubber-band line
+    } else if ((m_tool == ToolType::RectSelect ||
+                m_tool == ToolType::EllipseSelect) && m_isLassoDragging) {
+      // Rect/Ellipse: show live preview via cursor pos update
     }
 
     update();
     return;
+  }
+
+  // Update cursor pos for all lasso tools even without button held (rubber-band)
+  if (m_tool == ToolType::Lasso || m_tool == ToolType::MagneticLasso) {
+    m_lassoCursorPos = screenToCanvas(event->position());
+    if (!m_activeLassoPath.isEmpty()) update();
   }
 
   if (m_isDrawing) {
@@ -2712,54 +2775,34 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
   if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
       m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
     QPointF canvasPos = screenToCanvas(event->position());
+    m_lassoCursorPos = canvasPos;
 
-    if (m_tool == ToolType::MagneticLasso) {
-      // In polygonal mode, release doesn't close.
-      // We only close on double click or manual "Close" action.
-      update();
-      return;
-    }
-
-    if (m_tool == ToolType::RectSelect) {
-      if (!m_selectionStartPos.isNull() &&
-          (canvasPos - m_selectionStartPos).manhattanLength() > 2.0) {
+    if (m_tool == ToolType::Lasso && m_lassoMode == 0 && m_isLassoDragging) {
+      // Freehand: close on release
+      m_isLassoDragging = false;
+      if (m_activeLassoPath.elementCount() >= 3) {
+        m_activeLassoPath.closeSubpath();
+        _commitLassoPath();
+      } else {
+        m_activeLassoPath = QPainterPath(); // too few points, discard
+      }
+    } else if (m_tool == ToolType::MagneticLasso) {
+      // Polygonal: release doesn't close (handled by doubleclick or closeLasso)
+    } else if (m_tool == ToolType::RectSelect) {
+      m_isLassoDragging = false;
+      if ((canvasPos - m_selectionStartPos).manhattanLength() > 4.0) {
         QRectF rect = QRectF(m_selectionStartPos, canvasPos).normalized();
         QPainterPath newPath;
         newPath.addRect(rect);
-
-        if (m_selectionAddMode == 0)
-          m_selectionPath = newPath;
-        else if (m_selectionAddMode == 1)
-          m_selectionPath = m_selectionPath.united(newPath);
-        else if (m_selectionAddMode == 2)
-          m_selectionPath = m_selectionPath.subtracted(newPath);
-
-        m_hasSelection = true;
+        _commitNewShapePath(newPath);
       }
     } else if (m_tool == ToolType::EllipseSelect) {
-      if (!m_selectionStartPos.isNull() &&
-          (canvasPos - m_selectionStartPos).manhattanLength() > 2.0) {
+      m_isLassoDragging = false;
+      if ((canvasPos - m_selectionStartPos).manhattanLength() > 4.0) {
         QRectF rect = QRectF(m_selectionStartPos, canvasPos).normalized();
         QPainterPath newPath;
         newPath.addEllipse(rect);
-
-        if (m_selectionAddMode == 0)
-          m_selectionPath = newPath;
-        else if (m_selectionAddMode == 1)
-          m_selectionPath = m_selectionPath.united(newPath);
-        else if (m_selectionAddMode == 2)
-          m_selectionPath = m_selectionPath.subtracted(newPath);
-
-        m_hasSelection = true;
-      }
-    } else if (m_tool == ToolType::Lasso) {
-      if (m_isLassoDragging) {
-        m_selectionPath.closeSubpath();
-        // If it was a subtraction, we need specialized logic for the last
-        // part But QPainterPath handles multiple contours. For true
-        // subtraction, common practice is united/subtracted on the
-        // resulting closed shape.
-        m_hasSelection = true;
+        _commitNewShapePath(newPath);
       }
     }
 
@@ -2848,12 +2891,12 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::mouseDoubleClickEvent(QMouseEvent *event) {
-  if (m_tool == ToolType::MagneticLasso) {
-    m_selectionPath.closeSubpath();
-    m_isMagneticLassoActive = false; // STOP creating segments
-    m_hasSelection = true;
-    emit hasSelectionChanged();
-    update();
+  if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive) {
+    // Double-click closes the polygonal / magnetic lasso
+    closeLasso();
+  } else if (m_tool == ToolType::Lasso && m_lassoMode == 1) {
+    // Double-click also closes polygonal free lasso
+    closeLasso();
   }
 }
 
@@ -3458,6 +3501,71 @@ void CanvasItem::setIsSelectionModeActive(bool active) {
   }
 }
 
+void CanvasItem::setLassoMode(int mode) {
+  if (m_lassoMode == mode)
+    return;
+  // Cancel current in-progress selection when switching modes
+  m_activeLassoPath = QPainterPath();
+  m_isLassoDragging = false;
+  m_isMagneticLassoActive = false;
+  m_lassoMode = mode;
+  emit lassoModeChanged();
+  update();
+}
+
+void CanvasItem::closeLasso() {
+  if (m_activeLassoPath.elementCount() < 3)
+    return;
+  m_activeLassoPath.closeSubpath();
+  _commitLassoPath();
+}
+
+// Internal: commit m_activeLassoPath into m_selectionPath with add/subtract mode
+void CanvasItem::_commitLassoPath() {
+  QPainterPath closed = m_activeLassoPath;
+  m_activeLassoPath = QPainterPath();
+  m_isMagneticLassoActive = false;
+  m_isLassoDragging = false;
+
+  if (closed.elementCount() < 3)
+    return;
+
+  if (m_selectionAddMode == 0) {
+    m_selectionPath = closed;
+  } else if (m_selectionAddMode == 1) {
+    m_selectionPath = m_selectionPath.united(closed);
+  } else if (m_selectionAddMode == 2) {
+    m_selectionPath = m_selectionPath.subtracted(closed);
+  }
+
+  m_hasSelection = !m_selectionPath.isEmpty();
+  emit hasSelectionChanged();
+
+  if (m_hasSelection && !m_marchingAntsTimer->isActive())
+    m_marchingAntsTimer->start();
+
+  update();
+}
+
+// Internal: commit a shape path (rect/ellipse) with add/subtract mode
+void CanvasItem::_commitNewShapePath(const QPainterPath &newPath) {
+  if (m_selectionAddMode == 0) {
+    m_selectionPath = newPath;
+  } else if (m_selectionAddMode == 1) {
+    m_selectionPath = m_selectionPath.united(newPath);
+  } else if (m_selectionAddMode == 2) {
+    m_selectionPath = m_selectionPath.subtracted(newPath);
+  }
+
+  m_hasSelection = !m_selectionPath.isEmpty();
+  emit hasSelectionChanged();
+
+  if (m_hasSelection && !m_marchingAntsTimer->isActive())
+    m_marchingAntsTimer->start();
+
+  update();
+}
+
 void CanvasItem::invertSelection() {
   QPainterPath full;
   full.addRect(0, 0, m_canvasWidth, m_canvasHeight);
@@ -3612,8 +3720,12 @@ void CanvasItem::clearSelectionContent() {
 
 void CanvasItem::deselect() {
   m_selectionPath = QPainterPath();
+  m_activeLassoPath = QPainterPath();
+  m_isLassoDragging = false;
+  m_isMagneticLassoActive = false;
   m_hasSelection = false;
   emit hasSelectionChanged();
+  if (m_marchingAntsTimer) m_marchingAntsTimer->stop();
   update();
 }
 
