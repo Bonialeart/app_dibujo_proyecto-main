@@ -129,13 +129,7 @@ Item {
                 border.color: isActive ? accentColor : "transparent"
                 border.width: isActive ? 1 : 0
 
-                property string previewSource: ""
-                onModelDataChanged: {
-                    previewSource = mainCanvas ? mainCanvas.get_brush_preview(modelData) : ""
-                }
-                Component.onCompleted: {
-                    previewSource = mainCanvas ? mainCanvas.get_brush_preview(modelData) : ""
-                }
+                property string previewSource: (mainCanvas && modelData) ? mainCanvas.get_brush_preview(modelData) : ""
 
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 10

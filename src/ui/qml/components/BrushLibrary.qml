@@ -290,14 +290,7 @@ Rectangle {
                     height: 86 * root.uiScale
                     
                     property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData
-                    property string previewSource: ""
-                    
-                    onModelDataChanged: {
-                        previewSource = root.targetCanvas ? root.targetCanvas.get_brush_preview(modelData) : ""
-                    }
-                    Component.onCompleted: {
-                        previewSource = root.targetCanvas ? root.targetCanvas.get_brush_preview(modelData) : ""
-                    }
+                    property string previewSource: (root.targetCanvas && modelData) ? root.targetCanvas.get_brush_preview(modelData) : ""
                     
                     Rectangle {
                         id: cardRect
