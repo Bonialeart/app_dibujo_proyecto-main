@@ -671,6 +671,14 @@ void CanvasItem::paint(QPainter *painter) {
   // 2. Fondo Base (Workspace - Theme Based)
   painter->fillRect(0, 0, width(), height(), m_workspaceColor);
 
+  // ═══ Apply Canvas Rotation (Krita-style free rotation) ═══
+  painter->save();
+  if (!qFuzzyIsNull(m_canvasRotation)) {
+    painter->translate(width() / 2.0, height() / 2.0);
+    painter->rotate(m_canvasRotation);
+    painter->translate(-width() / 2.0, -height() / 2.0);
+  }
+
   // Calculate generic target rect for background
   QRectF paperRect(m_viewOffset.x() * m_zoomLevel,
                    m_viewOffset.y() * m_zoomLevel, m_canvasWidth * m_zoomLevel,
@@ -1221,27 +1229,25 @@ void CanvasItem::paint(QPainter *painter) {
       m_quickShapeType != QuickShapeType::None) {
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing);
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
 
     QColor dotColor(255, 255, 255, 180);
     QColor dotOutline(0, 0, 0, 120);
+    float dotRadius = 3.5f / m_zoomLevel;
 
     if (m_quickShapeType == QuickShapeType::Circle) {
-      // Small center dot
-      QPointF centerScreen =
-          m_quickShapeCenter * m_zoomLevel + m_viewOffset * m_zoomLevel;
-      painter->setPen(QPen(dotOutline, 2.0f));
+      // Small center dot (canvas coords)
+      painter->setPen(QPen(dotOutline, 2.0f / m_zoomLevel));
       painter->setBrush(dotColor);
-      painter->drawEllipse(centerScreen, 3.5, 3.5);
+      painter->drawEllipse(m_quickShapeCenter, dotRadius, dotRadius);
     } else if (m_quickShapeType == QuickShapeType::Line) {
-      // Small endpoint dots
-      QPointF p1Screen =
-          m_quickShapeLineP1 * m_zoomLevel + m_viewOffset * m_zoomLevel;
-      QPointF p2Screen =
-          m_quickShapeLineP2 * m_zoomLevel + m_viewOffset * m_zoomLevel;
-      painter->setPen(QPen(dotOutline, 1.5f));
+      // Small endpoint dots (canvas coords)
+      painter->setPen(QPen(dotOutline, 1.5f / m_zoomLevel));
       painter->setBrush(dotColor);
-      painter->drawEllipse(p1Screen, 3, 3);
-      painter->drawEllipse(p2Screen, 3, 3);
+      painter->drawEllipse(m_quickShapeLineP1, dotRadius, dotRadius);
+      painter->drawEllipse(m_quickShapeLineP2, dotRadius, dotRadius);
     }
 
     painter->restore();
@@ -1255,8 +1261,13 @@ void CanvasItem::paint(QPainter *painter) {
         m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
         m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
     renderLiquifyPreview(painter, lPaperRect);
+  }
 
-    // Draw Liquify cursor (radius circle)
+  // ═══ End Canvas Rotation context — cursor draws are in screen space ═══
+  painter->restore();
+
+  // Draw Liquify cursor (screen space — after rotation restore)
+  if (m_isLiquifying && !m_liquifyPreviewCache.isNull()) {
     if (m_cursorVisible && m_liquifyEngine) {
       float liqRadius = m_liquifyEngine->radius() * m_zoomLevel;
       painter->save();
@@ -1280,7 +1291,7 @@ void CanvasItem::paint(QPainter *painter) {
   // 🎯 CURSOR PERSONALIZADO AL FINAL (ENCIMA DE TODO)
   // ══════════════════════════════════════════════════════════════
 
-  if (m_cursorVisible && !m_spacePressed &&
+  if (m_cursorVisible && !m_spacePressed && !m_isRotatingCanvas &&
       (m_tool == ToolType::Pen || m_tool == ToolType::Eraser)) {
 
     // Obtener valores actuales del pincel
@@ -1453,17 +1464,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
   QPointF lastCanvasPos = m_lastPos;
 
-  // Convertir posición de pantalla a canvas
-  // Aplicar transformación inversa: (Screen - Offset*Zoom) / Zoom
-  QPointF canvasPos = (targetPos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
-
-  // FIX: Coordinate synchronization for flipped canvas
-  if (m_isFlippedH) {
-    canvasPos.setX(m_canvasWidth - canvasPos.x());
-  }
-  if (m_isFlippedV) {
-    canvasPos.setY(m_canvasHeight - canvasPos.y());
-  }
+  // Convertir posición de pantalla a canvas (rotation-aware)
+  QPointF canvasPos = screenToCanvas(targetPos);
 
   BrushSettings settings = m_brushEngine->getBrush();
 
@@ -2248,6 +2250,16 @@ void CanvasItem::drawCircle(const QPointF &center, float radius) {
 void CanvasItem::mousePressEvent(QMouseEvent *event) {
   m_lastMousePos = event->position();
 
+  // ═══ Canvas Rotation Gesture: Shift+Space+Drag ═══
+  if (m_spacePressed && m_shiftPressed) {
+    m_isRotatingCanvas = true;
+    m_rotateStartPos = event->position();
+    m_rotateStartAngle = m_canvasRotation;
+    setCursor(Qt::CrossCursor);
+    event->accept();
+    return;
+  }
+
   if (m_tool == ToolType::Hand || m_spacePressed) {
     event->accept();
     // Change the existing override cursor instead of pushing a new one
@@ -2260,8 +2272,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
   // Liquify Tool — Start stroke
   if (m_tool == ToolType::Liquify && m_isLiquifying) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
     m_liquifyLastPos = QPointF(-1, -1); // Reset for new gesture
     handleLiquifyDraw(canvasPos, 0.5f);
     event->accept();
@@ -2276,8 +2287,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
   }
 
   if (m_tool == ToolType::PanelCut) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
     m_panelCutStartPos = canvasPos;
     m_panelCutEndPos = canvasPos;
     m_isPanelCutting = true;
@@ -2287,8 +2297,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
   if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
       m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
 
     // New Selection Mode logic
     if (m_selectionAddMode == 0) { // New
@@ -2334,8 +2343,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
   }
 
   if (m_tool == ToolType::MagicWand) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
     // In a real app, we'd start the circular threshold UI here if held,
     // or just pick color on click.
     emit notificationRequested("Auto Select at " +
@@ -2350,8 +2358,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
   }
 
   if (m_tool == ToolType::Transform) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
 
     // Si ya estamos transformando, ver si clicamos dentro para mover
     if (m_isTransforming) {
@@ -2419,8 +2426,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       return;
     }
 
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
     if (m_tool == ToolType::Fill) {
       apply_color_drop(static_cast<int>(event->position().x()),
                        static_cast<int>(event->position().y()), m_brushColor);
@@ -2500,9 +2506,30 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 
   emit cursorPosChanged(event->position().x(), event->position().y());
 
+  // ═══ Canvas Rotation Gesture: Shift+Space+Drag ═══
+  if (m_isRotatingCanvas && (event->buttons() & Qt::LeftButton)) {
+    QPointF viewCenter(width() / 2.0, height() / 2.0);
+    QPointF startVec = m_rotateStartPos - viewCenter;
+    QPointF currentVec = event->position() - viewCenter;
+    float startAngle = std::atan2(startVec.y(), startVec.x());
+    float currentAngle = std::atan2(currentVec.y(), currentVec.x());
+    float deltaAngle = qRadiansToDegrees(currentAngle - startAngle);
+    setCanvasRotation(m_rotateStartAngle + deltaAngle);
+    m_lastMousePos = event->position();
+    return;
+  }
+
   if ((m_tool == ToolType::Hand || m_spacePressed) &&
       (event->buttons() & Qt::LeftButton)) {
-    QPointF delta = (event->position() - m_lastMousePos) / m_zoomLevel;
+    // Rotation-aware pan: rotate the screen-space delta by the inverse
+    // of the canvas rotation so dragging always moves in the expected direction
+    QPointF screenDelta = event->position() - m_lastMousePos;
+    float rad = qDegreesToRadians(-m_canvasRotation);
+    float cosA = std::cos(rad);
+    float sinA = std::sin(rad);
+    QPointF rotatedDelta(screenDelta.x() * cosA - screenDelta.y() * sinA,
+                         screenDelta.x() * sinA + screenDelta.y() * cosA);
+    QPointF delta = rotatedDelta / m_zoomLevel;
     m_viewOffset += delta;
     m_lastMousePos = event->position();
     emit viewOffsetChanged();
@@ -2511,8 +2538,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   }
 
   if (m_tool == ToolType::PanelCut && m_isPanelCutting) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
     m_panelCutEndPos = canvasPos;
     update();
     return;
@@ -2521,8 +2547,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   // Liquify Tool — Continuous deformation
   if (m_tool == ToolType::Liquify && m_isLiquifying &&
       (event->buttons() & Qt::LeftButton)) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
     handleLiquifyDraw(canvasPos, 0.5f);
     return;
   }
@@ -2535,8 +2560,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   }
 
   if (m_tool == ToolType::Transform && m_transformMode == TransformMode::Move) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
     QPointF delta = canvasPos - m_transformStartPos;
     m_transformMatrix = m_initialMatrix;
     m_transformMatrix.translate(delta.x(), delta.y());
@@ -2548,8 +2572,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
        m_tool == ToolType::EllipseSelect ||
        m_tool == ToolType::MagneticLasso) &&
       (event->buttons() & Qt::LeftButton)) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
 
     if (m_tool == ToolType::Lasso) {
       m_selectionPath.lineTo(canvasPos);
@@ -2631,6 +2654,16 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
+  // End rotation gesture on mouse release
+  if (m_isRotatingCanvas) {
+    m_isRotatingCanvas = false;
+    if (m_spacePressed)
+      QGuiApplication::changeOverrideCursor(Qt::OpenHandCursor);
+    else
+      setCursor(Qt::BlankCursor);
+    return;
+  }
+
   if (m_tool == ToolType::Hand || m_spacePressed) {
     if (m_spacePressed) {
       QGuiApplication::changeOverrideCursor(Qt::OpenHandCursor);
@@ -2639,8 +2672,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
     }
   }
   if (m_tool == ToolType::PanelCut && m_isPanelCutting) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
     m_panelCutEndPos = canvasPos;
     m_isPanelCutting = false;
 
@@ -2655,8 +2687,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
 
   if (m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
       m_tool == ToolType::EllipseSelect || m_tool == ToolType::MagneticLasso) {
-    QPointF canvasPos =
-        (event->position() - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(event->position());
 
     if (m_tool == ToolType::MagneticLasso) {
       // In polygonal mode, release doesn't close.
@@ -2820,7 +2851,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     m_stabPosQueue.clear(); // Reset stabilizer buffer for new stroke
     m_stabPresQueue.clear();
     QPointF p = event->position();
-    QPointF canvasPos = (p - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+    QPointF canvasPos = screenToCanvas(p);
     m_lastPos = canvasPos;
 
     // Reset history for prediction
@@ -3556,6 +3587,94 @@ void CanvasItem::setViewOffset(const QPointF &offset) {
   emit viewOffsetChanged();
   update();
 }
+
+// ══════════════════════════════════════════════════════════════
+// Canvas Rotation — Krita-style free rotation
+// ══════════════════════════════════════════════════════════════
+
+void CanvasItem::setCanvasRotation(float degrees) {
+  // Normalize to -180..180
+  while (degrees > 180.0f) degrees -= 360.0f;
+  while (degrees < -180.0f) degrees += 360.0f;
+  if (qFuzzyCompare(m_canvasRotation, degrees))
+    return;
+  m_canvasRotation = degrees;
+  invalidateCursorCache();
+  emit canvasRotationChanged();
+  update();
+}
+
+void CanvasItem::resetCanvasRotation() {
+  setCanvasRotation(0.0f);
+}
+
+void CanvasItem::rotateCanvasBy(float deltaDegrees) {
+  setCanvasRotation(m_canvasRotation + deltaDegrees);
+}
+
+QPointF CanvasItem::screenToCanvas(const QPointF &screenPos) const {
+  // Full inverse transform: Screen → Canvas
+  // Forward transform chain (canvas → screen):
+  //   1. Translate by viewOffset
+  //   2. Scale by zoomLevel
+  //   3. Rotate around view center by canvasRotation
+  //
+  // Inverse (screen → canvas):
+  //   1. Un-rotate around view center
+  //   2. Un-scale
+  //   3. Un-translate
+
+  QPointF viewCenter(width() / 2.0, height() / 2.0);
+
+  // Step 1: Un-rotate around view center
+  float rad = qDegreesToRadians(-m_canvasRotation);
+  float cosA = std::cos(rad);
+  float sinA = std::sin(rad);
+  QPointF p = screenPos - viewCenter;
+  QPointF unrotated(p.x() * cosA - p.y() * sinA,
+                    p.x() * sinA + p.y() * cosA);
+  QPointF afterRotation = unrotated + viewCenter;
+
+  // Step 2: Un-scale and un-translate (standard zoom/pan inverse)
+  QPointF canvasPos = (afterRotation - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+
+  // Step 3: Apply flip corrections
+  if (m_isFlippedH) {
+    canvasPos.setX(m_canvasWidth - canvasPos.x());
+  }
+  if (m_isFlippedV) {
+    canvasPos.setY(m_canvasHeight - canvasPos.y());
+  }
+
+  return canvasPos;
+}
+
+QPointF CanvasItem::canvasToScreen(const QPointF &canvasPos) const {
+  // Forward transform: Canvas → Screen
+  QPointF pos = canvasPos;
+
+  // Apply flip
+  if (m_isFlippedH) {
+    pos.setX(m_canvasWidth - pos.x());
+  }
+  if (m_isFlippedV) {
+    pos.setY(m_canvasHeight - pos.y());
+  }
+
+  // Scale and translate
+  QPointF screenPos = pos * m_zoomLevel + m_viewOffset * m_zoomLevel;
+
+  // Rotate around view center
+  QPointF viewCenter(width() / 2.0, height() / 2.0);
+  float rad = qDegreesToRadians(m_canvasRotation);
+  float cosA = std::cos(rad);
+  float sinA = std::sin(rad);
+  QPointF p = screenPos - viewCenter;
+  QPointF rotated(p.x() * cosA - p.y() * sinA,
+                  p.x() * sinA + p.y() * cosA);
+
+  return rotated + viewCenter;
+}
 void CanvasItem::setIsEraser(bool eraser) {
   if (m_isEraser == eraser)
     return;
@@ -4091,8 +4210,8 @@ void CanvasItem::adjustBrushOpacity(float deltaPercent) {
 void CanvasItem::wheelEvent(QWheelEvent *event) {
   QPointF pos = event->position();
 
-  // Unproject to canvas space
-  QPointF canvasPosBefore = (pos - m_viewOffset * m_zoomLevel) / m_zoomLevel;
+  // Unproject to canvas space (rotation-aware)
+  QPointF canvasPosBefore = screenToCanvas(pos);
 
   float factor = (event->angleDelta().y() > 0) ? 1.1f : 0.9f;
   float newZoom = m_zoomLevel * factor;
@@ -4105,8 +4224,24 @@ void CanvasItem::wheelEvent(QWheelEvent *event) {
   m_zoomLevel = newZoom;
 
   // Adjust viewOffset to keep canvasPosBefore under the cursor
-  m_viewOffset = (pos / m_zoomLevel) - canvasPosBefore;
+  // Un-rotate the screen position first to get the non-rotated screen pos
+  QPointF viewCenter(width() / 2.0, height() / 2.0);
+  float rad = qDegreesToRadians(-m_canvasRotation);
+  float cosA = std::cos(rad);
+  float sinA = std::sin(rad);
+  QPointF p = pos - viewCenter;
+  QPointF unrotatedPos(p.x() * cosA - p.y() * sinA,
+                       p.x() * sinA + p.y() * cosA);
+  QPointF afterRotation = unrotatedPos + viewCenter;
 
+  // Flip-correct canvasPosBefore for offset calculation
+  QPointF flipCorrected = canvasPosBefore;
+  if (m_isFlippedH) flipCorrected.setX(m_canvasWidth - flipCorrected.x());
+  if (m_isFlippedV) flipCorrected.setY(m_canvasHeight - flipCorrected.y());
+
+  m_viewOffset = (afterRotation / m_zoomLevel) - flipCorrected;
+
+  invalidateCursorCache();
   emit zoomLevelChanged();
   emit viewOffsetChanged();
   update();
@@ -4182,6 +4317,14 @@ bool CanvasItem::create_folder_from_merge(const QString &sourcePath,
 
 void CanvasItem::load_file_path(const QString &path) { loadProject(path); }
 void CanvasItem::handle_shortcuts(int key, int modifiers) {
+  // Track modifier keys
+  if (key == Qt::Key_Shift) {
+    m_shiftPressed = true;
+  }
+  if (key == Qt::Key_Space) {
+    m_spacePressed = true;
+  }
+
   // Brush Size/Opacity are left here as they are fine-grained
   if (key == Qt::Key_BracketLeft)
     adjustBrushSize(-0.1f);
@@ -4191,11 +4334,19 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
     adjustBrushOpacity(-0.1f);
   else if (key == Qt::Key_P) // Optional: Opacity increase
     adjustBrushOpacity(0.1f);
+  // Canvas Rotation shortcuts (Krita-style: 4=CCW, 5=Reset, 6=CW)
+  else if (key == Qt::Key_4)
+    rotateCanvasBy(-15.0f);
+  else if (key == Qt::Key_5)
+    resetCanvasRotation();
+  else if (key == Qt::Key_6)
+    rotateCanvasBy(15.0f);
 }
 
 void CanvasItem::handle_key_release(int key) {
   if (key == Qt::Key_Space) {
     m_spacePressed = false;
+    m_isRotatingCanvas = false;
 
     // Restaurar cursor correcto al soltar espacio
     if (m_tool != ToolType::Hand && m_tool != ToolType::Transform) {
@@ -4207,6 +4358,10 @@ void CanvasItem::handle_key_release(int key) {
     }
 
     update();
+  }
+  if (key == Qt::Key_Shift) {
+    m_shiftPressed = false;
+    m_isRotatingCanvas = false;
   }
 }
 void CanvasItem::fitToView() {
@@ -5683,8 +5838,9 @@ QString CanvasItem::sampleColor(int x, int y, int mode) {
     return "#000000";
 
   uint8_t r, g, b, a;
-  float cx = (x - m_viewOffset.x() * m_zoomLevel) / m_zoomLevel;
-  float cy = (y - m_viewOffset.y() * m_zoomLevel) / m_zoomLevel;
+  QPointF canvasPos = screenToCanvas(QPointF(x, y));
+  float cx = canvasPos.x();
+  float cy = canvasPos.y();
 
   m_layerManager->sampleColor(static_cast<int>(cx), static_cast<int>(cy), &r,
                               &g, &b, &a, mode);

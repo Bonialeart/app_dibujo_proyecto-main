@@ -10,6 +10,7 @@ Item {
     property color accentColor: "#6366f1"
 
     readonly property real currentZoom: targetCanvas ? (targetCanvas.zoomLevel || 1.0) : 1.0
+    readonly property real currentRotation: targetCanvas ? (targetCanvas.canvasRotation || 0.0) : 0.0
     readonly property bool isFlippedH: targetCanvas ? (targetCanvas.isFlippedH || false) : false
     readonly property bool isFlippedV: targetCanvas ? (targetCanvas.isFlippedV || false) : false
 
@@ -107,6 +108,13 @@ Item {
                     border.color: root.accentColor
                     border.width: 1.5
                     radius: 1
+
+                    // Apply canvas rotation to viewport indicator
+                    transform: Rotation {
+                        origin.x: _viewportRect.width / 2
+                        origin.y: _viewportRect.height / 2
+                        angle: root.currentRotation
+                    }
 
                     // Crosshair
                     Rectangle { width: 10; height: 1; color: root.accentColor; anchors.centerIn: parent; opacity: 0.5 }
@@ -261,6 +269,98 @@ Item {
                         onClicked: if(targetCanvas) targetCanvas.zoomLevel = 1.0
                     }
                     ToolTip.visible: _zoomPctMa.containsMouse; ToolTip.text: "Restablecer zoom (100%)"; ToolTip.delay: 400
+                }
+            }
+        }
+
+        // ── 2.5 ROTATION CONTROL ─────────────────────────────
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 36
+            color: "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 10; anchors.rightMargin: 10
+                spacing: 6
+
+                // Rotate CCW button
+                Rectangle {
+                    width: 22; height: 22; radius: 6
+                    color: _rotCcwMa.containsMouse ? "#252530" : "transparent"
+                    Text { text: "↺"; color: _rotCcwMa.containsMouse ? "#ddd" : "#666"; font.pixelSize: 14; font.weight: Font.Bold; anchors.centerIn: parent }
+                    MouseArea {
+                        id: _rotCcwMa; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if(targetCanvas) targetCanvas.rotateCanvasBy(-15.0)
+                    }
+                    ToolTip.visible: _rotCcwMa.containsMouse; ToolTip.text: "Rotar Izquierda (-15°)"; ToolTip.delay: 400
+                }
+
+                // Rotation slider
+                Slider {
+                    id: _rotSlider
+                    Layout.fillWidth: true
+                    from: -180.0; to: 180.0
+                    value: root.currentRotation
+                    onMoved: if(targetCanvas) targetCanvas.canvasRotation = value
+
+                    background: Rectangle {
+                        x: _rotSlider.leftPadding
+                        y: _rotSlider.topPadding + _rotSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 200; implicitHeight: 3; radius: 1.5
+                        color: "#1c1c1e"
+
+                        // Center tick (0°)
+                        Rectangle {
+                            x: parent.width / 2 - 0.5
+                            y: -2; width: 1; height: 7; color: "#444"
+                        }
+                    }
+
+                    handle: Rectangle {
+                        x: _rotSlider.leftPadding + _rotSlider.visualPosition * (_rotSlider.availableWidth - width)
+                        y: _rotSlider.topPadding + _rotSlider.availableHeight / 2 - height / 2
+                        implicitWidth: 12; implicitHeight: 12; radius: 6
+                        color: _rotSlider.pressed ? "#fff" : "#ccc"
+                        border.color: "#444"; border.width: 0.5
+
+                        Behavior on scale { NumberAnimation { duration: 80 } }
+                        scale: _rotSlider.pressed ? 1.15 : 1.0
+                    }
+                }
+
+                // Rotate CW button
+                Rectangle {
+                    width: 22; height: 22; radius: 6
+                    color: _rotCwMa.containsMouse ? "#252530" : "transparent"
+                    Text { text: "↻"; color: _rotCwMa.containsMouse ? "#ddd" : "#666"; font.pixelSize: 14; font.weight: Font.Bold; anchors.centerIn: parent }
+                    MouseArea {
+                        id: _rotCwMa; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if(targetCanvas) targetCanvas.rotateCanvasBy(15.0)
+                    }
+                    ToolTip.visible: _rotCwMa.containsMouse; ToolTip.text: "Rotar Derecha (+15°)"; ToolTip.delay: 400
+                }
+
+                // Rotation degree (clickable to reset)
+                Rectangle {
+                    width: 42; height: 20; radius: 4
+                    color: _rotDegMa.containsMouse ? "#252530" : "transparent"
+                    border.color: _rotDegMa.containsMouse ? "#333" : "transparent"
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: Math.round(root.currentRotation) + "°"
+                        color: "#aaa"; font.pixelSize: 10; font.weight: Font.Medium
+                        font.family: "monospace"
+                    }
+                    MouseArea {
+                        id: _rotDegMa; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: if(targetCanvas) targetCanvas.resetCanvasRotation()
+                    }
+                    ToolTip.visible: _rotDegMa.containsMouse; ToolTip.text: "Restablecer rotación (0°)"; ToolTip.delay: 400
                 }
             }
         }

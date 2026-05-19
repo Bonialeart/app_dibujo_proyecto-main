@@ -95,143 +95,47 @@ Item {
         spacing: 0
 
         // ═══════════════════════════════════════════════════════
-        // HEADER — STAGGERED ENTRY
+        // HEADER — COMPACT PREMIUM
         // ═══════════════════════════════════════════════════════
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 160
+            Layout.preferredHeight: 82
+            opacity: _entered ? 1.0 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
 
-            // Title group
-            Column {
-                id: headerCol
-                anchors.left: parent.left
-                anchors.leftMargin: 48
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 10
-                opacity: _entered ? 1.0 : 0.0
-                transform: Translate { y: _entered ? 0 : 18 }
-                Behavior on opacity { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
-
-                Row {
-                    spacing: 14
-                    // Glowing icon
-                    Rectangle {
-                        width: 46; height: 46; radius: 14
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.20) }
-                            GradientStop { position: 1.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.08) }
-                        }
-                        border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.30)
-                        border.width: 1
-                        Text {
-                            text: "🎓"
-                            font.pixelSize: 22
-                            anchors.centerIn: parent
-                        }
-                        // Icon pulse
-                        SequentialAnimation on scale {
-                            loops: Animation.Infinite
-                            NumberAnimation { to: 1.06; duration: 2000; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 1.0; duration: 2000; easing.type: Easing.InOutSine }
-                        }
-                    }
-
-                    Column {
-                        spacing: 4
-                        anchors.verticalCenter: parent.verticalCenter
-                        Text {
-                            text: "Centro de Aprendizaje"
-                            color: colorText
-                            font.pixelSize: 30
-                            font.weight: Font.Bold
-                            font.letterSpacing: -0.8
-                        }
-                        Text {
-                            text: "Mejora tus habilidades con recursos profesionales y consejos de maestría"
-                            color: colorMuted
-                            font.pixelSize: 14
-                            font.letterSpacing: 0.2
-                        }
-                    }
-                }
-            }
-
-            // Decorative stats badges (top-right)
             Row {
-                anchors.right: parent.right
-                anchors.rightMargin: 48
+                anchors.left: parent.left; anchors.leftMargin: 40
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 12
-                opacity: _entered ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutCubic } }
-
-                Repeater {
-                    model: [
-                        { label: "Videos", value: "6", ic: "🎬" },
-                        { label: "Tips", value: "5", ic: "💡" },
-                        { label: "Maestros", value: "5", ic: "🏛" }
-                    ]
-                    delegate: Rectangle {
-                        width: 100; height: 56; radius: 14
-                        color: statMa.containsMouse ? colorSurfaceHover : colorSurface
-                        border.color: statMa.containsMouse ? colorBorderHover : colorBorder
-                        border.width: 1
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
-
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 2
-                            Text {
-                                text: modelData.ic + " " + modelData.value
-                                color: colorText
-                                font.pixelSize: 16
-                                font.weight: Font.Bold
-                                horizontalAlignment: Text.AlignHCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                            }
-                            Text {
-                                text: modelData.label
-                                color: colorDimmed
-                                font.pixelSize: 10
-                                font.weight: Font.DemiBold
-                                font.capitalization: Font.AllUppercase
-                                font.letterSpacing: 1.0
-                                horizontalAlignment: Text.AlignHCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                            }
-                        }
-                        MouseArea { id: statMa; anchors.fill: parent; hoverEnabled: true }
+                spacing: 14
+                Rectangle {
+                    width: 40; height: 40; radius: 12
+                    anchors.verticalCenter: parent.verticalCenter
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r,colorAccent.g,colorAccent.b,0.22) }
+                        GradientStop { position: 1.0; color: Qt.rgba(colorAccent.r,colorAccent.g,colorAccent.b,0.08) }
+                    }
+                    border.color: Qt.rgba(colorAccent.r,colorAccent.g,colorAccent.b,0.30); border.width: 1
+                    Text { text: "🎓"; font.pixelSize: 19; anchors.centerIn: parent }
+                    SequentialAnimation on scale {
+                        loops: Animation.Infinite
+                        NumberAnimation { to: 1.05; duration: 2200; easing.type: Easing.InOutSine }
+                        NumberAnimation { to: 1.0;  duration: 2200; easing.type: Easing.InOutSine }
                     }
                 }
-            }
-
-            // Bottom separator with fading edges
-            Rectangle {
-                width: parent.width; height: 1
-                anchors.bottom: parent.bottom
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop { position: 0.15; color: colorBorder }
-                    GradientStop { position: 0.85; color: colorBorder }
-                    GradientStop { position: 1.0; color: "transparent" }
+                Column {
+                    spacing: 3; anchors.verticalCenter: parent.verticalCenter
+                    Text { text: "Centro de Aprendizaje"; color: colorText; font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: -0.6 }
+                    Text { text: "Mejora tus habilidades con recursos profesionales"; color: colorMuted; font.pixelSize: 12 }
                 }
             }
-        }
 
-        // ═══════════════════════════════════════════════════════
-        // PREMIUM TAB BAR — Floating pill with animated indicator
-        // ═══════════════════════════════════════════════════════
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 72
-
-            // Tab bar container
+            // ═══════════════════════════════════════════════════════
+            // PREMIUM TAB BAR — Floating pill moved to top-right
+            // ═══════════════════════════════════════════════════════
             Rectangle {
                 id: tabBarBg
-                anchors.left: parent.left
-                anchors.leftMargin: 48
+                anchors.right: parent.right
+                anchors.rightMargin: 48
                 anchors.verticalCenter: parent.verticalCenter
                 width: tabRow.width + 8
                 height: 48
@@ -280,8 +184,9 @@ Item {
 
                     Repeater {
                         model: [
-                            { label: "Video Tutoriales", emoji: "🎬" },
-                            { label: "Tips de Artistas", emoji: "💡" },
+                            { label: "Video Tutoriales",    emoji: "🎬" },
+                            { label: "Artista del Mes",     emoji: "🌟" },
+                            { label: "Tips de Artistas",    emoji: "💡" },
                             { label: "Consejos de Maestros", emoji: "🏛" }
                         ]
                         delegate: Item {
@@ -320,6 +225,17 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            Rectangle {
+                width: parent.width; height: 1; anchors.bottom: parent.bottom
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "transparent" }
+                    GradientStop { position: 0.15; color: colorBorder }
+                    GradientStop { position: 0.85; color: colorBorder }
+                    GradientStop { position: 1.0; color: "transparent" }
                 }
             }
         }
@@ -603,7 +519,495 @@ Item {
             }
 
             // ═══════════════════════════════════════════════════
-            // TAB 2: TIPS DE ARTISTAS
+            // TAB 2: ARTISTA DEL MES
+            // ═══════════════════════════════════════════════════
+            Item {
+                id: artistOfMonthTab
+                
+                // Propiedades dinámicas en lugar de estáticas
+                property bool isLoading: false
+                property string artistName:    "Cargando..."
+                property string artistWebsite: "..."
+                property string artistBio:     "..."
+                property string artistInfo:    "..."
+                property string artistAvatar:  ""
+                property var artworks: []
+                
+                // Modelo de datos para la galería a pantalla completa
+                property ListModel galleryModel: ListModel {}
+
+                // Función nativa para llamar al JSON hospedado (Firebase)
+                function fetchArtistData() {
+                    isLoading = true;
+                    var xhr = new XMLHttpRequest();
+                    // 👇 REEMPLAZA ESTA URL CON LA DE TU FIREBASE REALTIME DATABASE 👇
+                    var url = "https://TU-PROYECTO.firebaseio.com/artistOfMonth.json";
+                    
+                    xhr.open("GET", url);
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === XMLHttpRequest.DONE) {
+                            isLoading = false;
+                            if (xhr.status === 200 && xhr.responseText !== "null") {
+                                try {
+                                    var data = JSON.parse(xhr.responseText);
+                                    artistOfMonthTab.artistName = data.artistName || "Sin Nombre";
+                                    artistOfMonthTab.artistWebsite = data.artistWebsite || "";
+                                    artistOfMonthTab.artistBio = data.artistBio || "";
+                                    artistOfMonthTab.artistInfo = data.artistInfo || "";
+                                    artistOfMonthTab.artistAvatar = data.artistAvatar || "";
+                                    
+                                    var arts = data.artworks || [];
+                                    var newArtworks = [];
+                                    galleryModel.clear();
+                                    for (var i = 0; i < arts.length; i++) {
+                                        newArtworks.push(arts[i].src); // para la cascada pequeña
+                                        galleryModel.append(arts[i]);  // para la galería grande
+                                    }
+                                    if(newArtworks.length > 0) {
+                                        artistOfMonthTab.artworks = newArtworks;
+                                    }
+                                } catch(e) {
+                                    console.error("Error parseando JSON de Firebase:", e);
+                                    loadFallbackData();
+                                }
+                            } else {
+                                console.warn("No se detectó servidor Firebase o no hay datos (usando datos locales fallback)");
+                                loadFallbackData();
+                            }
+                        }
+                    }
+                    xhr.send();
+                }
+
+                function loadFallbackData() {
+                    artistOfMonthTab.artistName = "Rossdraws (Ross Tran)";
+                    artistOfMonthTab.artistWebsite = "www.rossdraws.com";
+                    artistOfMonthTab.artistBio = "\"El arte no es lo que ves, sino lo que haces que otros vean. Cada trazo es una historia, cada color una emoción que conecta almas a través del lienzo digital.\"";
+                    artistOfMonthTab.artistInfo = "Ross Tran, conocido como Rossdraws, es un ilustrador digital autodidacta de Los Ángeles. Reconocido por su estilo vibrante y expresivo, ha trabajado con Netflix, Disney y Sony. Su contenido educativo en YouTube ha inspirado a millones de artistas en todo el mundo a encontrar su propio estilo artístico.";
+                    artistOfMonthTab.artistAvatar = ""; // Usa el perrito si está vacío
+                    artistOfMonthTab.artworks = [
+                        "https://img.youtube.com/vi/mKP9M0Fgrvk/maxresdefault.jpg",
+                        "https://img.youtube.com/vi/YHjuiakQ-Kk/maxresdefault.jpg",
+                        "https://img.youtube.com/vi/67LGQpr3Y6A/maxresdefault.jpg"
+                    ]
+                    galleryModel.clear();
+                    galleryModel.append({ title: "Spiderverse", cat: "Animación", src: "https://img.youtube.com/vi/mKP9M0Fgrvk/maxresdefault.jpg", isVideo: false, bg: true });
+                    galleryModel.append({ title: "Painter", cat: "Ilustración", src: "https://img.youtube.com/vi/YHjuiakQ-Kk/maxresdefault.jpg", isVideo: false, bg: false });
+                    galleryModel.append({ title: "Hollow", cat: "Diseño", src: "https://img.youtube.com/vi/67LGQpr3Y6A/maxresdefault.jpg", isVideo: true, bg: false });
+                    galleryModel.append({ title: "Depths", cat: "Ilustración", src: "https://img.youtube.com/vi/a_6HrdK4Ovs/maxresdefault.jpg", isVideo: false, bg: false });
+                }
+
+                Component.onCompleted: fetchArtistData()
+
+                ScrollView {
+                    id: amSV
+                    anchors.fill: parent
+                    clip: true
+                    ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                    // Plain Item child → ScrollView auto-wraps in Flickable.
+                    // width explicitly bound to ScrollView id so binding resolves
+                    // immediately. height is fixed → no circular dependency.
+                    Item {
+                        id: amRootContent
+                        width: amSV.width
+                        height: 720
+
+                        property bool showGallery: false
+
+                        Item {
+                            id: dashboardCont
+                            width: parent.width; height: parent.height
+                            x: amRootContent.showGallery ? -width * 0.3 : 0
+                            opacity: amRootContent.showGallery ? 0.0 : 1.0
+                            visible: opacity > 0
+                            Behavior on x { NumberAnimation { duration: 550; easing.type: Easing.OutQuint } }
+                            Behavior on opacity { NumberAnimation { duration: 450; easing.type: Easing.OutQuint } }
+
+                        // ── Section title row ──
+                        Row {
+                            id: amHdr; x: 40; y: 22; spacing: 12
+                            Rectangle {
+                                width: 4; height: 26; radius: 2
+                                anchors.verticalCenter: parent.verticalCenter
+                                gradient: Gradient {
+                                    GradientStop { position: 0.0; color: "#ffd43b" }
+                                    GradientStop { position: 1.0; color: "#f76707" }
+                                }
+                            }
+                            Text {
+                                text: "🌟  Artista del Mes"
+                                color: colorText; font.pixelSize: 20; font.weight: Font.Bold
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                        Rectangle {
+                            anchors.right: parent.right; anchors.rightMargin: 40; y: 24
+                            width: _mLbl.implicitWidth + 22; height: 28; radius: 14
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: Qt.rgba(1,0.83,0.24,0.18) }
+                                GradientStop { position: 1.0; color: Qt.rgba(0.97,0.40,0.03,0.18) }
+                            }
+                            border.color: Qt.rgba(1,0.83,0.24,0.40); border.width: 1
+                            Text { id: _mLbl; text: "Marzo 2026"; color: "#ffd43b"; font.pixelSize: 11; font.weight: Font.Bold; anchors.centerIn: parent }
+                        }
+
+                        // ── LEFT ARTIST CARD ──
+                        // Sombra brutalista
+                        Rectangle {
+                            x: amLC.x + 12; y: amLC.y + 12; width: amLC.width; height: amLC.height
+                            radius: 40; color: "#000000"
+                        }
+                        Rectangle {
+                            id: amLC; x: 40; y: 70; width: 360; height: 600  // Mucho más ancho y alto
+                            radius: 40; color: "#acb6e7"
+                            border.color: "#000000"; border.width: 1
+
+                            // Avatar + Name
+                            Item {
+                                id: amAv
+                                anchors.top: parent.top; anchors.topMargin: 40
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: parent.width; height: 120
+
+                                Row {
+                                    anchors.centerIn: parent; spacing: 20
+                                    Item {
+                                        width: 100; height: 100
+                                        Rectangle {
+                                            width: 100; height: 100; radius: 50; color: "white"
+                                            border.color: "#000000"; border.width: 1
+                                            clip: true
+                                            Image {
+                                                anchors.fill: parent; source: artistOfMonthTab.artistAvatar
+                                                fillMode: Image.PreserveAspectCrop; visible: artistOfMonthTab.artistAvatar !== ""
+                                            }
+                                            Text { 
+                                                text: "🐶"; font.pixelSize: 50; anchors.centerIn: parent 
+                                                visible: artistOfMonthTab.artistAvatar === ""
+                                            } 
+                                        }
+                                    }
+                                    Column {
+                                        anchors.verticalCenter: parent.verticalCenter; spacing: 8
+                                        Text { text: artistOfMonthTab.artistName; color: "#111111"; font.pixelSize: 18; font.weight: Font.Black }
+                                        Text { text: "Página web: " + artistOfMonthTab.artistWebsite; color: "#333333"; font.pixelSize: 10; font.weight: Font.Bold }
+                                    }
+                                }
+                            }
+
+                            // Bio
+                            Text {
+                                id: amBio
+                                anchors.top: amAv.bottom; anchors.topMargin: 30
+                                anchors.left: parent.left; anchors.right: parent.right
+                                anchors.leftMargin: 36; anchors.rightMargin: 36
+                                text: artistOfMonthTab.artistBio
+                                color: "#1a1a1a"; font.pixelSize: 17; lineHeight: 1.4
+                                wrapMode: Text.WordWrap
+                            }
+
+                            // Socials
+                            Text {
+                                id: amSocLbl
+                                anchors.bottom: amSocRow.top; anchors.bottomMargin: 20
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "Redes sociales"; color: "#111111"; font.pixelSize: 22; font.weight: Font.Black
+                            }
+                            Row {
+                                id: amSocRow
+                                anchors.bottom: parent.bottom; anchors.bottomMargin: 40
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 18
+                                Repeater {
+                                    model: ["✕", "▶", "A"]
+                                    delegate: Rectangle {
+                                        width: 50; height: 50; radius: 25; color: "#000000"
+                                        Text { text: modelData; color: "white"; font.pixelSize: 20; font.weight: Font.Bold; anchors.centerIn: parent }
+                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ── GALLERY – CASCADA FLOTANTE ──
+                        Item {
+                            id: amGC
+                            x: amLC.x + amLC.width + 50; y: amLC.y  // Alineado exactamente en la parte superior ('y' al ras)
+                            width: parent.width - x - 50; height: 320 // Más "aplastada" o landscape
+
+                            // Tamaño de imagen responsiva para que solapen bien al centro
+                            property real cardW: width * 0.48
+                            property real spacingX: (width - cardW - 60) / 2
+
+                            // Card 3 (fondo derecha)
+                            Rectangle {
+                                x: amGC.spacingX * 2; y: 20
+                                width: amGC.cardW; height: amGC.height - 40
+                                radius: 40; clip: true; color: "#1c1c38"
+                                border.color: "#33000000"; border.width: 1
+                                Image {
+                                    anchors.fill: parent
+                                    source: artistOfMonthTab.artworks.length > 2 ? artistOfMonthTab.artworks[2] : ""
+                                    fillMode: Image.PreserveAspectCrop; asynchronous: true
+                                    opacity: status === Image.Ready ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 500 } }
+                                }
+                            }
+
+                            // Card 2 (medio)
+                            Rectangle {
+                                x: amGC.spacingX; y: 10
+                                width: amGC.cardW; height: amGC.height - 20
+                                radius: 40; clip: true; color: "#1e1e40"
+                                border.color: "#33000000"; border.width: 1
+                                Image {
+                                    anchors.fill: parent
+                                    source: artistOfMonthTab.artworks.length > 1 ? artistOfMonthTab.artworks[1] : ""
+                                    fillMode: Image.PreserveAspectCrop; asynchronous: true
+                                    opacity: status === Image.Ready ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 500 } }
+                                }
+                                Rectangle { anchors.fill: parent; color: Qt.rgba(0,0,0,0.2) }
+                            }
+
+                            // Card 1 (frente izquierda)
+                            Rectangle {
+                                x: 0; y: 0
+                                width: amGC.cardW; height: amGC.height
+                                radius: 40; clip: true; color: "#22224a"
+                                border.color: "#33ffffff"; border.width: 1
+                                Image {
+                                    anchors.fill: parent
+                                    source: artistOfMonthTab.artworks.length > 0 ? artistOfMonthTab.artworks[0] : ""
+                                    fillMode: Image.PreserveAspectCrop; asynchronous: true
+                                    opacity: status === Image.Ready ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 500 } }
+                                }
+                            }
+
+                            // Flecha lateral
+                            Rectangle {
+                                id: galleryArrow
+                                width: 44; height: 44; radius: 22; color: "#ffffff"
+                                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                border.color: "#000000"; border.width: 1
+                                scale: gaMa.pressed ? 0.9 : (gaMa.containsMouse ? 1.1 : 1.0)
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                Text { text: "→"; color: "#000000"; font.pixelSize: 20; font.weight: Font.Black; anchors.centerIn: parent }
+                                MouseArea { id: gaMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: amRootContent.showGallery = true }
+                            }
+                        }
+
+                        // ── INFO CARD ──
+                        // Sombra bruta
+                        Rectangle {
+                            x: amInfo.x + 12; y: amInfo.y + 12; width: amInfo.width; height: amInfo.height
+                            radius: 40; color: "#000000"
+                        }
+                        Rectangle {
+                            id: amInfo
+                            x: amGC.x; y: amLC.y + amLC.height - height // Alineado exactamente con la base de la tarjeta izquierda
+                            width: amGC.width; height: 240 // Altura llenando el vacío, amGC=320, gap=40, amInfo=240 -> Total 600 (= amLC.height)
+                            radius: 40; color: "#acb6e7"
+                            border.color: "#000000"; border.width: 1
+
+                            Text {
+                                id: amInfoLbl
+                                anchors.top: parent.top; anchors.topMargin: 36
+                                anchors.left: parent.left; anchors.leftMargin: 36
+                                text: "Información del Artista"
+                                color: "#111111"; font.pixelSize: 24; font.weight: Font.Black
+                            }
+
+                            Text {
+                                anchors.top: amInfoLbl.bottom; anchors.topMargin: 20
+                                anchors.left: parent.left; anchors.leftMargin: 36
+                                anchors.right: parent.right; anchors.rightMargin: 80
+                                text: artistOfMonthTab.artistInfo
+                                color: "#1a1a1a"; font.pixelSize: 18; lineHeight: 1.4; wrapMode: Text.WordWrap
+                            }
+
+                            // Flecha
+                            Rectangle {
+                                width: 44; height: 44; radius: 22; color: "#ffffff"
+                                anchors.right: parent.right; anchors.rightMargin: -22
+                                anchors.verticalCenter: parent.verticalCenter
+                                border.color: "#000000"; border.width: 1
+                                scale: iaMa.pressed ? 0.9 : (iaMa.containsMouse ? 1.1 : 1.0)
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                Text { text: "→"; color: "#000000"; font.pixelSize: 20; font.weight: Font.Black; anchors.centerIn: parent }
+                                MouseArea { id: iaMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: amRootContent.showGallery = true }
+                            }
+                        }
+                        } // End dashboardCont
+
+                        // ── FULL GALLERY VIEW ("Ultimas Obras") ──
+                        Item {
+                            id: fullGalleryView
+                            width: parent.width; height: parent.height
+                            x: amRootContent.showGallery ? 0 : width * 0.3
+                            opacity: amRootContent.showGallery ? 1.0 : 0.0
+                            visible: opacity > 0
+                            Behavior on x { NumberAnimation { duration: 550; easing.type: Easing.OutQuint } }
+                            Behavior on opacity { NumberAnimation { duration: 450; easing.type: Easing.OutQuint } }
+
+                            // ── Botón Atrás glassmorphic ──
+                            Rectangle {
+                                id: backBtn
+                                width: 48; height: 48; radius: 24
+                                color: Qt.rgba(1,1,1,0.08)
+                                anchors.left: parent.left; anchors.leftMargin: 40
+                                anchors.top: parent.top; anchors.topMargin: 24
+                                border.color: Qt.rgba(1,1,1,0.15); border.width: 1
+                                scale: backMa.pressed ? 0.9 : (backMa.containsMouse ? 1.08 : 1.0)
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                Text { text: "←"; color: "#ffffff"; font.pixelSize: 24; font.weight: Font.Bold; anchors.centerIn: parent }
+                                MouseArea {
+                                    id: backMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: amRootContent.showGallery = false
+                                }
+                            }
+
+                            // ── Título "Últimas Obras" Premium ──
+                            Column {
+                                anchors.top: parent.top; anchors.topMargin: 18
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 4
+
+                                Text {
+                                    id: uoTitle
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "Últimas Obras"
+                                    color: "#ffffff"; font.pixelSize: 42; font.weight: Font.Black
+                                    font.letterSpacing: -1.5
+                                }
+                                // Línea decorativa degradada debajo del título
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: uoTitle.implicitWidth * 0.5; height: 3; radius: 2
+                                    gradient: Gradient {
+                                        orientation: Gradient.Horizontal
+                                        GradientStop { position: 0.0; color: "#ffd43b" }
+                                        GradientStop { position: 1.0; color: "#f76707" }
+                                    }
+                                }
+                            }
+
+                            // ── Grid de obras – 4 columnas premium ──
+                            Row {
+                                anchors.top: parent.top; anchors.topMargin: 100
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 28
+
+                                Repeater {
+                                    model: artistOfMonthTab.galleryModel
+                                    delegate: Item {
+                                        id: artCard
+                                        width: 220; height: 380
+
+                                        property bool hovered: artMa.containsMouse
+
+                                        // Sombra suave detrás
+                                        Rectangle {
+                                            x: 6; y: 8; width: parent.width; height: 320
+                                            radius: 24; color: Qt.rgba(0,0,0,0.35)
+                                            visible: artCard.hovered
+                                        }
+
+                                        // Tarjeta principal
+                                        Rectangle {
+                                            id: artImg
+                                            width: parent.width; height: 320
+                                            radius: 24; color: "#1a1a28"; clip: true
+                                            border.color: artCard.hovered ? Qt.rgba(1,1,1,0.25) : Qt.rgba(1,1,1,0.06)
+                                            border.width: 1
+                                            scale: artMa.pressed ? 0.97 : (artCard.hovered ? 1.03 : 1.0)
+                                            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                            Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                                            Image {
+                                                anchors.fill: parent; source: model.src
+                                                fillMode: Image.PreserveAspectCrop; asynchronous: true
+                                                opacity: status === Image.Ready ? 1.0 : 0.0
+                                                Behavior on opacity { NumberAnimation { duration: 600 } }
+                                            }
+
+                                            // Gradient overlay abajo para legibilidad
+                                            Rectangle {
+                                                anchors.bottom: parent.bottom; width: parent.width; height: 100
+                                                radius: 24
+                                                gradient: Gradient {
+                                                    GradientStop { position: 0.0; color: "transparent" }
+                                                    GradientStop { position: 0.5; color: Qt.rgba(0,0,0,0.3) }
+                                                    GradientStop { position: 1.0; color: Qt.rgba(0,0,0,0.75) }
+                                                }
+                                            }
+
+                                            // Categoría pill interna
+                                            Rectangle {
+                                                anchors.top: parent.top; anchors.topMargin: 14
+                                                anchors.left: parent.left; anchors.leftMargin: 14
+                                                width: catLbl.implicitWidth + 18; height: 24; radius: 12
+                                                color: Qt.rgba(0,0,0,0.55)
+                                                border.color: Qt.rgba(1,1,1,0.12); border.width: 1
+                                                Text {
+                                                    id: catLbl; anchors.centerIn: parent
+                                                    text: model.cat; color: "#d0d0e0"; font.pixelSize: 10; font.weight: Font.Medium
+                                                }
+                                            }
+
+                                            // Icono de video
+                                            Rectangle {
+                                                visible: model.isVideo === true
+                                                anchors.top: parent.top; anchors.topMargin: 14
+                                                anchors.right: parent.right; anchors.rightMargin: 14
+                                                width: 32; height: 32; radius: 16
+                                                color: Qt.rgba(0,0,0,0.6)
+                                                border.color: Qt.rgba(1,1,1,0.2); border.width: 1
+                                                Text { text: "▶"; color: "white"; font.pixelSize: 12; anchors.centerIn: parent }
+                                            }
+                                        }
+
+                                        // Nombre de la obra
+                                        Text {
+                                            anchors.top: artImg.bottom; anchors.topMargin: 14
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: model.title; color: "#ffffff"
+                                            font.pixelSize: 16; font.weight: Font.Bold; font.letterSpacing: 0.3
+                                        }
+                                        // Categoría subtexto
+                                        Text {
+                                            anchors.top: artImg.bottom; anchors.topMargin: 36
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: model.cat; color: colorMuted
+                                            font.pixelSize: 11; font.weight: Font.Medium
+                                        }
+
+                                        MouseArea {
+                                            id: artMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── Pie de galería ──
+                            Text {
+                                anchors.bottom: parent.bottom; anchors.bottomMargin: 20
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "Mostrando 4 de 12 obras  ·  Desliza para ver más →"
+                                color: colorDimmed; font.pixelSize: 12; font.weight: Font.Medium
+                            }
+                        }
+                    } // end of amRootContent
+                }
+            }
+
+            // ═══════════════════════════════════════════════════
+            // TAB 3: TIPS DE ARTISTAS
+
             // ═══════════════════════════════════════════════════
             Item {
                 ScrollView {

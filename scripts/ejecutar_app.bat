@@ -5,7 +5,7 @@ echo =========================================
 echo.
 
 echo 1. Comprobando entorno...
-set QT_DIR=C:\Qt\6.10.2\mingw_64
+set QT_DIR=C:\Qt\6.11.1\mingw_64
 set MINGW_DIR=C:\Qt\Tools\mingw1310_64
 set NINJA_DIR=C:\Qt\Tools\Ninja
 set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin

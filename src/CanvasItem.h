@@ -115,6 +115,8 @@ public:
                  isFlippedHChanged)
   Q_PROPERTY(bool isFlippedV READ isFlippedV WRITE setIsFlippedV NOTIFY
                  isFlippedVChanged)
+  Q_PROPERTY(float canvasRotation READ canvasRotation WRITE setCanvasRotation
+                 NOTIFY canvasRotationChanged)
 
   // Aliases for QML compatibility
   Q_PROPERTY(float canvasScale READ zoomLevel WRITE setZoomLevel NOTIFY
@@ -216,6 +218,7 @@ public:
   bool isFlippedH() const { return m_isFlippedH; }
   bool isFlippedV() const { return m_isFlippedV; }
   bool isEraser() const { return m_isEraser; }
+  float canvasRotation() const { return m_canvasRotation; }
   QVariantList availableBrushes() const { return m_availableBrushes; }
   QString activeBrushName() const { return m_activeBrushName; }
   QString brushTipImage() const { return m_brushTipImage; }
@@ -260,6 +263,9 @@ public:
   void setIsFlippedH(bool flip);
   void setIsFlippedV(bool flip);
   void setIsEraser(bool eraser);
+  void setCanvasRotation(float degrees);
+  Q_INVOKABLE void resetCanvasRotation();
+  Q_INVOKABLE void rotateCanvasBy(float deltaDegrees);
   Q_INVOKABLE void setBackgroundColor(const QString &color);
   Q_INVOKABLE void setUseCustomCursor(bool use);
   void setUseTexture(bool v);
@@ -368,6 +374,11 @@ public:
   Q_INVOKABLE void handle_shortcuts(int key, int modifiers);
   Q_INVOKABLE void handle_key_release(int key);
   Q_INVOKABLE void fitToView();
+
+  // ── Coordinate Transform Helpers (Rotation-Aware) ──
+  QPointF screenToCanvas(const QPointF &screenPos) const;
+  QPointF canvasToScreen(const QPointF &canvasPos) const;
+
   Q_INVOKABLE void addLayer();
   Q_INVOKABLE void addGroup();
   Q_INVOKABLE void moveLayerToGroup(int layerId, int groupId);
@@ -477,6 +488,7 @@ signals:
   void brushTipImageChanged();
   void isFlippedHChanged();
   void isFlippedVChanged();
+  void canvasRotationChanged();
 
   void hasSelectionChanged();
   void selectionAddModeChanged();
@@ -575,6 +587,10 @@ private:
   bool m_isFlippedH = false;
   bool m_isFlippedV = false;
   bool m_isEraser = false;
+  float m_canvasRotation = 0.0f; // Canvas rotation in degrees (Krita-style)
+  bool m_isRotatingCanvas = false; // True during Shift+Space rotation gesture
+  QPointF m_rotateStartPos; // Screen position when rotation gesture started
+  float m_rotateStartAngle = 0.0f; // Canvas rotation when gesture started
   bool m_symmetryEnabled = false;
   int m_symmetryMode = 0; // 0=Vertical, 1=Horizontal, 2=Quad, 3=Radial
   int m_symmetrySegments = 6;
@@ -710,6 +726,7 @@ private:
   QPointF m_cursorPos;
   bool m_cursorVisible = false;
   bool m_spacePressed = false;
+  bool m_shiftPressed = false; // Track Shift key for rotation gesture
 
   // Composition Shader
   QOpenGLShaderProgram *m_compositionShader = nullptr;
