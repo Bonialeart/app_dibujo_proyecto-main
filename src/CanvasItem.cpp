@@ -185,7 +185,10 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_layerManager->addLayer("Layer 1");
 
   // Cargar curva de presión guardada (Persistencia)
-  setCurvePoints(PreferencesManager::instance()->pressureCurve());
+  QVariantList savedCurve = PreferencesManager::instance()->pressureCurve();
+  qDebug() << "[PressureCurve] Loaded from preferences:" << savedCurve
+           << "count:" << savedCurve.size();
+  setCurvePoints(savedCurve);
 
   // Sincronizar niveles de deshacer (Undo Levels)
   m_undoManager->setMaxLevels(PreferencesManager::instance()->undoLevels());
@@ -265,6 +268,12 @@ CanvasItem::CanvasItem(QQuickItem *parent)
             m_undoManager->setMaxLevels(
                 PreferencesManager::instance()->undoLevels());
             updateTheme();
+          });
+
+  // Connect pressure curve changes from PreferencesManager -> reload LUT
+  connect(PreferencesManager::instance(),
+          &PreferencesManager::pressureCurveChanged, this, [this]() {
+            setCurvePoints(PreferencesManager::instance()->pressureCurve());
           });
 
   // Apply initial

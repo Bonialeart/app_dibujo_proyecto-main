@@ -305,14 +305,16 @@ Window {
                 var p = projects[i]
                 if (!p.name) p.name = p.title || "Untitled"
                 
-                // ✅ ARREGLO: Mapeo de miniaturas para que la pila funcione en el Home
-                if (p.thumbnails) {
-                    var th = []
-                    for(var j=0; j<p.thumbnails.length; j++) {
-                        th.push({ "modelData": p.thumbnails[j] })
-                    }
-                    p.thumbnails = th
-                }
+                // FIX: ListModel.append() cannot store nested JS arrays.
+                // Instead, we flatten thumbnails into individual indexed string properties
+                // so the stackComp can read them reliably from the ListModel delegate.
+                var thumbArr = p.thumbnails || []
+                p.thumb0 = thumbArr.length > 0 ? (thumbArr[0].modelData || thumbArr[0] || "") : ""
+                p.thumb1 = thumbArr.length > 1 ? (thumbArr[1].modelData || thumbArr[1] || "") : ""
+                p.thumb2 = thumbArr.length > 2 ? (thumbArr[2].modelData || thumbArr[2] || "") : ""
+                p.thumbCount = thumbArr.length
+                // Remove the nested array (ListModel can't handle it)
+                delete p.thumbnails
                 
                 recentProjectsModel.append(p)
             }
@@ -348,29 +350,28 @@ Window {
             if (mainCanvas.currentProjectPath && mainCanvas.currentProjectPath !== "") {
                 name = mainCanvas.currentProjectPath
             }
-            // Second Priority: Use Name (might rely on legacy folder logic if path is empty)
+            // Second Priority: Use Name
             else if (mainCanvas.currentProjectName && mainCanvas.currentProjectName !== "Untitled") {
                 name = mainCanvas.currentProjectName
-            } 
-            // Fallback: New Project
+            }
+            // Fallback: New Project with timestamp
             else {
                 name = "Project_" + Date.now()
             }
         }
-        
-        // Save using the determined name/path
-        if (mainCanvas.saveProject(name)) {
-            toastManager.show("Project saved successfully", "success")
-            // Delay refresh to ensure file system is ready
-            refreshTimer.restart()
-        } else {
+
+        // C++ saveProject already emits projectListChanged which triggers
+        // onProjectListChanged -> loadRecentProjects() automatically.
+        // We only show an error toast if it fails; success is handled by C++.
+        if (!mainCanvas.saveProject(name)) {
             toastManager.show("Failed to save project", "error")
         }
     }
 
+    // Keep refreshTimer for backward compatibility but only use it for manual Gallery refresh
     Timer {
         id: refreshTimer
-        interval: 500
+        interval: 600
         repeat: false
         onTriggered: loadRecentProjects()
     }
@@ -582,61 +583,6 @@ Window {
                     }
                 }
 
-                // TOP BAR ICONS: Return to Gallery & Settings
-                Item { width: 4 } // Spacer
-                
-                // Return to Gallery (Home)
-                Rectangle {
-                    width: 32; height: 32
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: galleryBtnMa.containsMouse ? "#25ffffff" : "transparent"
-                    radius: 6
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: iconPath("home.svg") 
-                        sourceSize.width: 20; sourceSize.height: 20
-                        opacity: 1.0
-                    }
-                    MouseArea {
-                        id: galleryBtnMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: currentPage = 0
-                    }
-                    ToolTip { visible: galleryBtnMa.containsMouse; delay: 800; text: "Return to Gallery" }
-                }
-                
-                Item { width: 8 }
-
-                // Settings Button
-                Rectangle {
-                    width: 32; height: 32
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: setBtnMa.containsMouse ? "#25ffffff" : "transparent"
-                    radius: 6
-                    
-                    Image {
-                        anchors.centerIn: parent
-                        source: iconPath("settings.svg") 
-                        sourceSize.width: 20; sourceSize.height: 20
-                        opacity: 1.0
-                    }
-                    MouseArea {
-                        id: setBtnMa
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onClicked: settingsMenu.open()
-                    }
-                    ToolTip { visible: setBtnMa.containsMouse; delay: 800; text: "Settings" }
-                }
-                
-                Rectangle { 
-                    width: 1; height: 20
-                    color: "#33ffffff"
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.margins: 6
-                }
 
                 // FILE MENU
                 MenuButton {
@@ -735,152 +681,105 @@ Window {
             Layout.fillWidth: true; Layout.fillHeight: true
             spacing: 0
 
-        // NAVBAR IZQUIERDA (PREMIUM v2 - Glassmorphism Sidebar)
+        // NAVBAR IZQUIERDA — Professional Sidebar
         Rectangle {
             id: leftNavbar
-            Layout.preferredWidth: (showSidebar && !isZenMode) ? 84 * uiScale : 0
+            Layout.preferredWidth: (showSidebar && !isZenMode) ? 80 * uiScale : 0
             Layout.fillHeight: true
             z: 80
             clip: true
             color: "transparent"
             Behavior on Layout.preferredWidth { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
-            // ── Layer 1: Deep Dark Base ──
+            // ── Background gradient ──
             Rectangle {
                 anchors.fill: parent
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#0e0e12" }
-                    GradientStop { position: 0.35; color: "#0b0b0f" }
-                    GradientStop { position: 0.7; color: "#09090d" }
-                    GradientStop { position: 1.0; color: "#07070b" }
+                    GradientStop { position: 0.0; color: "#0d0d13" }
+                    GradientStop { position: 1.0; color: "#08080c" }
                 }
             }
 
-            // ── Layer 2: Frosted Glass Overlay ──
-            Rectangle {
-                anchors.fill: parent
-                color: Qt.rgba(1, 1, 1, 0.02)
-                Rectangle {
-                    anchors.fill: parent
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.03) }
-                        GradientStop { position: 0.3; color: "transparent" }
-                        GradientStop { position: 1.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.02) }
-                    }
-                }
-            }
-
-            // ── Right edge: Accent gradient line ──
+            // ── Right edge with soft accent ──
             Rectangle {
                 width: 1; height: parent.height; anchors.right: parent.right
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "transparent" }
-                    GradientStop { position: 0.25; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) }
-                    GradientStop { position: 0.5; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) }
-                    GradientStop { position: 0.75; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) }
-                    GradientStop { position: 1.0; color: "transparent" }
+                    GradientStop { position: 0.0; color: "#15151d" }
+                    GradientStop { position: 0.5; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.12) }
+                    GradientStop { position: 1.0; color: "#15151d" }
                 }
             }
-            
+
             ColumnLayout {
-                anchors.fill: parent; anchors.margins: 12; spacing: 6
-                
-                // ── Premium Logo with Ambient Glow ──
-                Item { 
-                    Layout.preferredWidth: 48; Layout.preferredHeight: 48; Layout.alignment: Qt.AlignHCenter
-                    Layout.topMargin: 8; Layout.bottomMargin: 12
+                anchors.fill: parent
+                anchors.topMargin: 12
+                anchors.bottomMargin: 12
+                anchors.leftMargin: 6
+                anchors.rightMargin: 6
+                spacing: 4
 
-                    // Animated ambient glow
+                // ── Logo ──
+                Item {
+                    Layout.preferredWidth: 42 * uiScale
+                    Layout.preferredHeight: 42 * uiScale
+                    Layout.alignment: Qt.AlignHCenter
+                    Layout.bottomMargin: 14
+
                     Rectangle {
-                        id: logoGlow
-                        anchors.fill: parent; anchors.margins: -10
-                        radius: 24
-                        color: colorAccent
-                        opacity: 0.06
-
-                        SequentialAnimation on opacity {
-                            loops: Animation.Infinite
-                            NumberAnimation { to: 0.1; duration: 2500; easing.type: Easing.InOutSine }
-                            NumberAnimation { to: 0.06; duration: 2500; easing.type: Easing.InOutSine }
-                        }
-                    }
-
-                    // Logo button
-                    Rectangle { 
-                        anchors.fill: parent; radius: 15
+                        anchors.fill: parent; radius: 13
                         gradient: Gradient {
-                            orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.2) }
+                            GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.15) }
                             GradientStop { position: 1.0; color: Qt.darker(colorAccent, 1.1) }
                         }
-                        
-                        // Inner highlight (top shine)
-                        Rectangle {
-                            width: parent.width - 6; height: parent.height / 2
-                            anchors.top: parent.top; anchors.topMargin: 2
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            radius: 13
-                            gradient: Gradient {
-                                GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.22) }
-                                GradientStop { position: 1.0; color: "transparent" }
-                            }
-                        }
 
-                        // Border ring
-                        Rectangle {
-                            anchors.fill: parent; anchors.margins: 1; radius: 14
-                            color: "transparent"
-                            border.color: Qt.rgba(1, 1, 1, 0.15); border.width: 1
-                        }
-
-                        Text { 
+                        Text {
                             text: "A"; anchors.centerIn: parent; color: "white"
-                            font.bold: true; font.pixelSize: 22; font.letterSpacing: -0.5
-                            style: Text.Raised; styleColor: Qt.rgba(0,0,0,0.3)
+                            font.bold: true; font.pixelSize: 20; font.letterSpacing: -0.5
                         }
                     }
-                    
-                    scale: logoMouse.pressed ? 0.88 : (logoMouse.containsMouse ? 1.1 : 1.0)
-                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                    
+
+                    scale: logoMouse.pressed ? 0.90 : (logoMouse.containsMouse ? 1.05 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+
                     MouseArea { id: logoMouse; anchors.fill: parent; hoverEnabled: true; onClicked: currentPage = 0; cursorShape: Qt.PointingHandCursor }
                 }
 
                 // ── Navigation Buttons ──
-                SidebarButton { 
-                    iconName: "home.svg"; label: "Home"; active: currentPage === 0 && homeNavigator.stack.depth === 1; 
+                SidebarButton {
+                    iconName: "home.svg"; label: "Home"; active: currentPage === 0 && homeNavigator.stack.depth === 1;
                     onClicked: {
                         currentPage = 0
                         while(homeNavigator.stack.depth > 1) homeNavigator.stack.pop()
-                    } 
+                    }
                 }
                 SidebarButton { iconName: "brush.svg"; label: "Draw"; active: currentPage === 1; onClicked: currentPage = 1 }
                 SidebarButton { iconName: "video.svg"; label: "Learn"; active: currentPage === 2; onClicked: currentPage = 2 }
-                SidebarButton { 
-                    iconName: "web.svg"; label: "Library"; active: currentPage === 0 && homeNavigator.stack.depth > 1; 
+                SidebarButton {
+                    iconName: "web.svg"; label: "Library"; active: currentPage === 0 && homeNavigator.stack.depth > 1;
                     onClicked: {
                         currentPage = 0
                         homeNavigator.pushGallery()
-                    } 
+                    }
                 }
 
                 Item { Layout.fillHeight: true }
 
-                // ── Premium Separator ──
+                // ── Separator ──
                 Rectangle {
-                    width: 32; height: 1; Layout.alignment: Qt.AlignHCenter
+                    width: 30; height: 1; Layout.alignment: Qt.AlignHCenter
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop { position: 0.0; color: "transparent" }
-                        GradientStop { position: 0.5; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) }
+                        GradientStop { position: 0.5; color: "#2a2a38" }
                         GradientStop { position: 1.0; color: "transparent" }
                     }
                 }
-                Item { height: 2 }
+
+                Item { height: 4 }
 
                 SidebarButton { iconName: "settings.svg"; label: "Setup"; active: currentPage === 4; onClicked: currentPage = 4 }
 
-                Item { height: 8 }
+                Item { height: 6 }
             }
         }
 
@@ -7267,7 +7166,12 @@ Window {
 
     PreferencesDialog {
         id: preferencesDialog
-        // Connect signals if needed, e.g. onSettingsChanged
+        onSettingsChanged: {
+            // Force rebind theme properties from preferencesManager
+            mainWindow.themeMode = preferencesManager.themeMode
+            mainWindow.themeAccent = preferencesManager.themeAccent
+            mainWindow.uiScale = preferencesManager.uiScale
+        }
     }
 
     // Main Settings Menu

@@ -125,9 +125,62 @@ public:
   }
 
   QVariantList pressureCurve() const {
-    QVariantList defaultCurve;
-    defaultCurve << 0.0 << 0.0 << 1.0 << 1.0;
-    return m_settings->value("pressure_curve", defaultCurve).toList();
+    QVariant val = m_settings->value("pressure_curve");
+    QVariantList result;
+    QStringList parts;
+    if (val.userType() == QMetaType::QString) {
+        parts = val.toString().remove("\"").split(",");
+    } else {
+        parts = val.toStringList();
+    }
+    
+    // DEBUG LOGGING TO FILE
+    QFile debugFile("e:/Programacion/Rescate_Proyecto/debug_curve.txt");
+    if(debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        QTextStream out(&debugFile);
+        out << "GETTER: Raw QVariant type: " << val.typeName() << " - value: " << val.toString() << "\n";
+        out << "GETTER: Parsed parts: " << parts.join("|") << "\n";
+        debugFile.close();
+    }
+    
+    for (const auto &s : parts) {
+      bool ok;
+      double v = s.trimmed().toDouble(&ok);
+      if (ok) {
+        result << v;
+      } else {
+        // DEBUG: LOG PARSE FAILURE
+        QFile debugFile("e:/Programacion/Rescate_Proyecto/debug_curve.txt");
+        if(debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+            QTextStream out(&debugFile);
+            out << "GETTER: FAILED to parse double from: " << s << "\n";
+            debugFile.close();
+        }
+      }
+    }
+    
+    // Fallback if parsing failed or curve is too short (needs at least 2 points / 4 values)
+    if (result.size() < 4) {
+      QFile debugFile("e:/Programacion/Rescate_Proyecto/debug_curve.txt");
+      if(debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+          QTextStream out(&debugFile);
+          out << "GETTER: FALLBACK TRIGGERED. Result size is: " << result.size() << "\n";
+          debugFile.close();
+      }
+      
+      QVariantList defaultCurve;
+      defaultCurve << 0.0 << 0.0 << 0.5 << 0.5 << 1.0 << 1.0;
+      return defaultCurve;
+    }
+    
+    QFile debugFile2("e:/Programacion/Rescate_Proyecto/debug_curve.txt");
+    if(debugFile2.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        QTextStream out(&debugFile2);
+        out << "GETTER: SUCCESS! Parsed " << result.size() << " doubles.\n";
+        debugFile2.close();
+    }
+    
+    return result;
   }
 
   QVariantMap shortcuts() const {
@@ -256,7 +309,21 @@ public slots:
     }
   }
   void setPressureCurve(const QVariantList &curve) {
-    m_settings->setValue("pressure_curve", curve);
+    QStringList parts;
+    for (const auto &v : curve) {
+      parts << QString::number(v.toDouble(), 'f', 6);
+    }
+    QString strToSave = parts.join(",");
+    
+    // DEBUG LOGGING TO FILE
+    QFile debugFile("e:/Programacion/Rescate_Proyecto/debug_curve.txt");
+    if(debugFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        QTextStream out(&debugFile);
+        out << "SETTER: Saving string: " << strToSave << "\n";
+        debugFile.close();
+    }
+    
+    m_settings->setValue("pressure_curve", strToSave);
     emit pressureCurveChanged();
   }
 
@@ -277,7 +344,7 @@ public slots:
     m_settings->clear();
     emit settingsChanged();
     QVariantList defCurve;
-    defCurve << 0.0 << 0.0 << 1.0 << 1.0;
+    defCurve << 0.0 << 0.0 << 0.5 << 0.5 << 1.0 << 1.0;
     setPressureCurve(defCurve);
   }
 

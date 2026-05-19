@@ -187,14 +187,16 @@ Popup {
                 }
             }
             
-            // Área de Interacción Global (Crear puntos)
+            // Área de Interacción Global (Crear puntos con doble clic)
             MouseArea {
                 anchors.fill: parent
-                // Solo doble click para crear
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onDoubleClicked: (mouse) => {
-                    var nx = mouse.x / width
-                    var ny = 1.0 - (mouse.y / height)
-                    addPoint(nx, ny)
+                    if (mouse.button === Qt.LeftButton) {
+                        var nx = mouse.x / width
+                        var ny = 1.0 - (mouse.y / height)
+                        addPoint(nx, ny)
+                    }
                 }
             }
             
@@ -267,35 +269,145 @@ Popup {
             }
         }
         
-        // --- TEST AREA (Derecha) ---
+        // --- TEST PAD (Derecha) ---
         ColumnLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
             spacing: 12
-            
+
+            // Label
+            Text {
+                text: "Zona de prueba"
+                color: "#888"
+                font.pixelSize: 11
+                font.weight: Font.Medium
+                Layout.alignment: Qt.AlignHCenter
+            }
+
             Rectangle {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 color: "#121214"
                 radius: 8
                 border.color: "#333"
                 clip: true
-                
-                Item {
-                    id: testCanvas
+
+                // Drawing canvas
+                Canvas {
+                    id: testPadCanvas
                     anchors.fill: parent
-                    function setCurvePoints(pts) {}
-                    function clear() {}
+
+                    property var strokes: []  // Array of stroke arrays
+
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        var w = width; var h = height
+                        ctx.clearRect(0, 0, w, h)
+
+                        // Draw all strokes
+                        for (var s = 0; s < strokes.length; s++) {
+                            var stroke = strokes[s]
+                            if (stroke.length < 2) continue
+
+                            for (var i = 1; i < stroke.length; i++) {
+                                var p0 = stroke[i-1]
+                                var p1 = stroke[i]
+
+                                ctx.strokeStyle = Qt.rgba(0, 0.83, 0.67, p1.opacity)
+                                ctx.lineWidth = p1.width
+                                ctx.lineCap = "round"
+                                ctx.lineJoin = "round"
+                                ctx.beginPath()
+                                ctx.moveTo(p0.x, p0.y)
+                                ctx.lineTo(p1.x, p1.y)
+                                ctx.stroke()
+                            }
+                        }
+                    }
+
+                    function clearPad() {
+                        strokes = []
+                        requestPaint()
+                    }
                 }
-                
+
+                // Drawing interaction
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+
+                    property real lastX: -1
+                    property real lastY: -1
+                    property bool isDrawing: false
+
+                    onPressed: (mouse) => {
+                        lastX = mouse.x
+                        lastY = mouse.y
+                        isDrawing = true
+                        // Start new stroke
+                        var newStrokes = testPadCanvas.strokes.slice()
+                        newStrokes.push([{x: mouse.x, y: mouse.y, width: 3, opacity: 1.0}])
+                        testPadCanvas.strokes = newStrokes
+                    }
+
+                    onPositionChanged: (mouse) => {
+                        if (!isDrawing) return
+                        var dx = mouse.x - lastX
+                        var dy = mouse.y - lastY
+                        var dist = Math.sqrt(dx*dx + dy*dy)
+                        if (dist < 1) return
+
+                        // Speed-based pseudo-pressure (slow = heavy, fast = light)
+                        var speed = Math.min(dist / 15.0, 1.0)
+                        var rawPressure = Math.max(0.05, 1.0 - speed * 0.8)
+
+                        // Apply the current pressure curve
+                        var mappedPressure = root.evaluateCurve(rawPressure)
+
+                        // Map to stroke width (2px min, 14px max)
+                        var strokeWidth = 2 + mappedPressure * 12
+
+                        // Add point to current stroke
+                        var allStrokes = testPadCanvas.strokes.slice()
+                        var currentStroke = allStrokes[allStrokes.length - 1].slice()
+                        currentStroke.push({
+                            x: mouse.x,
+                            y: mouse.y,
+                            width: strokeWidth,
+                            opacity: 0.4 + mappedPressure * 0.6
+                        })
+                        allStrokes[allStrokes.length - 1] = currentStroke
+                        testPadCanvas.strokes = allStrokes
+                        testPadCanvas.requestPaint()
+
+                        lastX = mouse.x
+                        lastY = mouse.y
+                    }
+
+                    onReleased: {
+                        isDrawing = false
+                        lastX = -1
+                        lastY = -1
+                    }
+                }
+
                 Button {
-                     text: "Limpiar"
-                     anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 10
-                     background: Rectangle { color: "#333"; radius: 4 }
-                     contentItem: Text { text: "Limpiar"; color: "white"; font.pixelSize: 12; anchors.centerIn: parent }
-                     width: 60; height: 24
-                     onClicked: testCanvas.clear()
+                    text: "Limpiar"
+                    anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 10
+                    background: Rectangle { color: "#333"; radius: 4 }
+                    contentItem: Text { text: "Limpiar"; color: "white"; font.pixelSize: 12; anchors.centerIn: parent }
+                    width: 60; height: 24
+                    onClicked: testPadCanvas.clearPad()
+                }
+
+                // Placeholder text when empty
+                Text {
+                    anchors.centerIn: parent
+                    text: "Dibuja aquí para probar"
+                    color: "#444"
+                    font.pixelSize: 13
+                    visible: testPadCanvas.strokes.length === 0
                 }
             }
-            
+
             RowLayout {
                 spacing: 10
                 Button {
@@ -304,7 +416,7 @@ Popup {
                     background: Rectangle { color: "#333"; radius: 4 }
                     contentItem: Text { text: parent.text; color: "white"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     onClicked: {
-                        var def = [0.0, 0.0, 1.0, 1.0]
+                        var def = [0.0, 0.0, 0.5, 0.5, 1.0, 1.0]
                         root._visualPoints = def
                         savePoints()
                     }
@@ -314,14 +426,18 @@ Popup {
                     Layout.fillWidth: true
                     background: Rectangle { color: "#00d4aa"; radius: 4 }
                     contentItem: Text { text: parent.text; color: "black"; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                    onClicked: root.close()
+                    onClicked: {
+                        savePoints()
+                        root.close()
+                    }
                 }
             }
         }
     }
     
     // Propiedad local puramente para visualización UI (Rápida y síncrona)
-    property var _visualPoints: [0,0, 1,1]
+    property var _visualPoints: [0,0, 0.5,0.5, 1,1]
+    property bool _isReadyForSync: false
     
     // Al abrir, copiamos del backend a local
     onOpened: {
@@ -329,18 +445,27 @@ Popup {
             var backendPts = canvasItem.pressureCurvePoints
             var copy = []
             for(var i=0; i<backendPts.length; i++) copy.push(backendPts[i])
+            // If saved curve only has 2 points (legacy), add center
+            if (copy.length === 4) {
+                copy = [copy[0], copy[1], 0.5, 0.5, copy[2], copy[3]]
+            }
+            
+            _isReadyForSync = false
             _visualPoints = copy
+            _isReadyForSync = true
         }
         editorCanvas.requestPaint()
+        testPadCanvas.clearPad()
     }
     
     // Cuando cambia LOCAL (por interacción usuario) -> Actualizamos Backend y Canvas
     on_VisualPointsChanged: {
         editorCanvas.requestPaint()
         
-        // Sincronizar con backend de forma segura
-        if (canvasItem) canvasItem.setCurvePoints(_visualPoints)
-        if (testCanvas) testCanvas.setCurvePoints(_visualPoints)
+        // Solo sincronizar si el usuario está interactuando, NO durante la creación del componente
+        if (_isReadyForSync && canvasItem) {
+            canvasItem.setCurvePoints(_visualPoints)
+        }
     }
 
     // --- LÓGICA JS ---
@@ -409,5 +534,59 @@ Popup {
         var newPts = []
         for(var i=0; i<pairs.length; i++) { newPts.push(pairs[i].x); newPts.push(pairs[i].y); }
         return newPts
+    }
+
+    // Evaluate the current pressure curve at a given input [0..1]
+    // Mirrors the monotone cubic Hermite spline used in the editor canvas
+    function evaluateCurve(input) {
+        var rawPts = _visualPoints
+        if (!rawPts || rawPts.length < 4) return input
+
+        // Parse & sort
+        var pts = []
+        for (var i = 0; i < rawPts.length; i += 2) {
+            pts.push({x: rawPts[i], y: rawPts[i+1]})
+        }
+        pts.sort(function(a,b){ return a.x - b.x })
+        var n = pts.length
+        if (n < 2) return input
+
+        // Clamp input
+        var x = Math.max(0, Math.min(1, input))
+        if (x <= pts[0].x) return pts[0].y
+        if (x >= pts[n-1].x) return pts[n-1].y
+
+        // Calculate tangents (monotone cubic Hermite)
+        var d = []
+        var m = []
+        for (var i = 0; i < n-1; i++) {
+            var dx = pts[i+1].x - pts[i].x
+            d[i] = (dx < 0.0001) ? 0 : (pts[i+1].y - pts[i].y) / dx
+        }
+        m[0] = d[0]
+        m[n-1] = d[n-2]
+        for (var i = 1; i < n-1; i++) {
+            if (d[i-1] * d[i] <= 0) m[i] = 0
+            else m[i] = (d[i-1] + d[i]) * 0.5
+        }
+
+        // Find segment
+        var seg = 0
+        for (var k = 0; k < n-1; k++) {
+            if (x >= pts[k].x && x <= pts[k+1].x) { seg = k; break }
+        }
+
+        var h = pts[seg+1].x - pts[seg].x
+        if (h < 0.0001) return pts[seg].y
+
+        var t = (x - pts[seg].x) / h
+        var t2 = t*t
+        var t3 = t2*t
+        var h00 = 2*t3 - 3*t2 + 1
+        var h10 = t3 - 2*t2 + t
+        var h01 = -2*t3 + 3*t2
+        var h11 = t3 - t2
+        var result = h00*pts[seg].y + h10*h*m[seg] + h01*pts[seg+1].y + h11*h*m[seg+1]
+        return Math.max(0, Math.min(1, result))
     }
 }
