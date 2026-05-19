@@ -1182,6 +1182,12 @@
 			null
 		],
 		[
+			"E:/Programacion/Rescate_Proyecto/src/core/brushes/abr_parser.h",
+			"MU",
+			"BBAANJR52U/moc_abr_parser.cpp",
+			null
+		],
+		[
 			"E:/Programacion/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h",
 			"MU",
 			"H4ZJWAWVOH/moc_ColorPicker.cpp",
@@ -1268,6 +1274,7 @@
 	[
 		"E:/Programacion/Rescate_Proyecto/src",
 		"E:/Programacion/Rescate_Proyecto/src/core/cpp/include",
+		"E:/Programacion/Rescate_Proyecto/src/core/brushes",
 		"C:/Qt/6.11.1/mingw_64/include/QtCore",
 		"C:/Qt/6.11.1/mingw_64/include",
 		"C:/Qt/6.11.1/mingw_64/mkspecs/win32-g++",
@@ -1331,6 +1338,11 @@
 		],
 		[ "E:/Programacion/Rescate_Proyecto/src/ProjectModel.cpp", "MU", null ],
 		[ "E:/Programacion/Rescate_Proyecto/src/WintabManager.cpp", "MU", null ],
+		[
+			"E:/Programacion/Rescate_Proyecto/src/core/brushes/abr_parser.cpp",
+			"MU",
+			null
+		],
 		[
 			"E:/Programacion/Rescate_Proyecto/src/core/cpp/src/ColorPicker.cpp",
 			"MU",

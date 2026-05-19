@@ -19,6 +19,7 @@ set(CMAKE_AUTOUIC ON)
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/cpp/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core/brushes
 )
 
 # 3. Fuentes del Core (Ya existentes)
@@ -41,6 +42,8 @@ set(CORE_SOURCES
     src/core/cpp/src/drag_zone_calculator.cpp
     src/core/cpp/src/liquify_engine.cpp
     src/core/cpp/src/watercolor_engine.cpp
+    # ABR Parser (brush pack importer)
+    src/core/brushes/abr_parser.cpp
     src/core/cpp/include/ColorPicker.h
     src/core/cpp/include/ColorPickerImpl.h
     src/core/cpp/include/panel_manager.h

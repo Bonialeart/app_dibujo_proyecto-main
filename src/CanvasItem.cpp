@@ -3,6 +3,7 @@
 #include "PreferencesManager.h"
 #include "WintabManager.h"
 #include "core/cpp/include/brush_preset_manager.h"
+#include "core/brushes/abr_parser.h"
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QCursor>
@@ -43,6 +44,7 @@
 #include <QtConcurrent>
 #include <QtMath>
 #include <algorithm>
+#include <tuple>
 
 using namespace artflow;
 
@@ -82,25 +84,7 @@ static QCursor getModernCursor() {
   return modernCursor;
 }
 
-// 2. AÑADE ESTA CLASE MAESTRA AQUÍ:
-class CursorOverrideFilter : public QObject {
-public:
-  CursorOverrideFilter(QObject *parent = nullptr) : QObject(parent) {}
 
-  bool eventFilter(QObject *obj, QEvent *event) override {
-    // Detectamos cada vez que la ventana intenta cambiar de cursor
-    if (event->type() == QEvent::CursorChange) {
-      QWindow *window = qobject_cast<QWindow *>(obj);
-      // Si QML intenta poner la flecha fea de Windows (ArrowCursor)...
-      if (window && window->cursor().shape() == Qt::ArrowCursor) {
-        // ...¡La secuestramos y ponemos la tuya Premium!
-        window->setCursor(getModernCursor());
-        return false;
-      }
-    }
-    return QObject::eventFilter(obj, event);
-  }
-};
 
 CanvasItem::CanvasItem(QQuickItem *parent)
     : QQuickPaintedItem(parent), m_brushSize(20), m_brushColor(Qt::black),
@@ -120,13 +104,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_transformShader(nullptr), m_transformStaticTex(nullptr),
       m_selectionTex(nullptr) {
 
-  // ---> AÑADE ESTAS LÍNEAS AQUÍ <---
-  // Instalar el vigilante global de cursores
-  static CursorOverrideFilter *globalCursorFilter = nullptr;
-  if (!globalCursorFilter) {
-    globalCursorFilter = new CursorOverrideFilter(qApp);
-    qApp->installEventFilter(globalCursorFilter);
-  }
+
 
   // Wintab integration
   connect(WintabManager::instance(), &WintabManager::wintabEvent, this, &CanvasItem::onWintabEvent);
@@ -582,15 +560,9 @@ void CanvasItem::paint(QPainter *painter) {
   // context)
   cleanupGlResources();
 
-  // --- APLICACIÓN INICIAL DEL CURSOR ---
-  static bool windowCursorSet = false;
-  if (!windowCursorSet && window()) {
-    if (window()->cursor().shape() == Qt::ArrowCursor) {
-      window()->setCursor(getModernCursor());
-    }
-    windowCursorSet = true;
-  }
-  // -------------------------------------
+  // --- El cursor global ya no se fuerza en paint() para permitir que
+  // setCursor(Qt::BlankCursor) del CanvasItem funcione y oculte la flecha
+  // nativa mientras el usuario dibuja. ---
 
   // 0. Initialize Composition Shader
   if (!m_compositionShader) {
@@ -5428,9 +5400,144 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
 }
 
 bool CanvasItem::importABR(const QString &path) {
-  emit notificationRequested(
-      "La importación de ABR está deshabilitada temporalmente.", "error");
-  return false;
+  // ── Resolve local path ─────────────────────────────────────────────────────
+  QString localPath = path;
+  if (localPath.startsWith("file:///"))
+    localPath = QUrl(path).toLocalFile();
+  if (localPath.isEmpty() || !QFile::exists(localPath)) {
+    emit notificationRequested("Archivo ABR no encontrado: " + localPath, "error");
+    return false;
+  }
+
+  // ── Quick validation (magic bytes) ─────────────────────────────────────────
+  if (!ABRParser::isValidABR(localPath)) {
+    emit notificationRequested("El archivo no es un ABR válido.", "error");
+    return false;
+  }
+
+  // ── Start async import ────────────────────────────────────────────────────
+  m_isImporting    = true;
+  m_importProgress = 0.0f;
+  emit isImportingChanged();
+  emit importProgressChanged();
+
+  // Cache directory: <AppData>/ArtFlow/brush_cache/<pack_name>/
+  QString packName  = QFileInfo(localPath).completeBaseName();
+  QString cacheBase = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                      + "/brush_cache/" + packName;
+
+  // Run the heavy work off the UI thread
+  QFutureWatcher<ABRFile> *watcher = new QFutureWatcher<ABRFile>(this);
+
+  connect(watcher, &QFutureWatcher<ABRFile>::finished, this,
+      [this, watcher, packName, cacheBase, localPath]() {
+        ABRFile result = watcher->result();
+        watcher->deleteLater();
+
+        if (result.brushes.empty()) {
+          m_isImporting = false;
+          emit isImportingChanged();
+          emit notificationRequested("No se encontraron pinceles en el archivo ABR.", "warning");
+          return;
+        }
+
+        // ── Export tips to cache (still on UI thread but fast — tips already decoded) ──
+        int exported = ABRParser::exportToCache(result, cacheBase,
+            [this, &result](int done, int total) {
+              m_importProgress = total > 0 ? static_cast<float>(done) / total : 1.0f;
+              emit importProgressChanged();
+              QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+            });
+
+        // ── Register with BrushPresetManager ──────────────────────────────────
+        auto *bpm = artflow::BrushPresetManager::instance();
+        QString category = packName; // group name = file name
+
+        for (const ABRBrush &abr : result.brushes) {
+          artflow::BrushPreset preset;
+          preset.uuid     = artflow::BrushPreset::generateUUID();
+          preset.name     = (abr.name.isEmpty()
+                              ? QString("Brush %1×%2").arg(abr.patternWidth).arg(abr.patternHeight)
+                              : abr.name);
+          preset.category = category;
+          preset.author   = "Imported (ABR)";
+          preset.version  = 1;
+
+          // Dimensions: Use a standard comfortable default size (40px) so the brush isn't giant/random on start.
+          // The native resolution serves as the maximum brush limit.
+          preset.defaultSize = 40.0f;
+          preset.maxSize     = std::max(static_cast<float>(std::max(abr.patternWidth, abr.patternHeight)), 150.0f);
+
+          // Shape: use cached PNG as tip texture
+          if (!abr.cachePath.isEmpty())
+            preset.shape.tipTexture = abr.cachePath;
+
+          // Stroke properties from ABR metadata - clamp spacing to artist-friendly ranges (5% to 15%)
+          // for continuous organic lines instead of blocky isolated stamps.
+          preset.stroke.spacing   = std::clamp(abr.spacing, 0.03f, 0.15f);
+          preset.shape.roundness  = std::max(0.05f, abr.roundness);
+          preset.shape.rotation   = abr.angle;
+
+          // Auto-detect directional brushes (Angle Jitter / Follow Stroke)
+          // Many Photoshop brushes are designed to follow the stroke direction if they aren't round.
+          float aspectRatio = static_cast<float>(std::min(abr.patternWidth, abr.patternHeight)) / 
+                              static_cast<float>(std::max(abr.patternWidth, abr.patternHeight));
+          
+          if (abr.roundness < 0.9f || aspectRatio < 0.9f) {
+              preset.shape.followStroke = true;
+          }
+
+          // Enable rich dynamics (Pressure Sensitivity) out of the box
+          // 1. Size Dynamics: brush shrinks on light pressure
+          preset.sizeDynamics.baseValue = 1.0f;
+          preset.sizeDynamics.minLimit  = 0.15f; // min 15% size on light touch
+          preset.sizeDynamics.pressureCurve = artflow::ResponseCurve::easeIn();
+
+          // 2. Opacity/Flow Dynamics: brush gets lighter on soft touch
+          preset.flowDynamics.baseValue = 1.0f;
+          preset.flowDynamics.minLimit  = 0.20f; // min 20% flow on light touch
+          preset.flowDynamics.pressureCurve = artflow::ResponseCurve::linear();
+
+          preset.opacityDynamics.baseValue = 1.0f;
+          preset.opacityDynamics.minLimit  = 0.50f;
+          preset.opacityDynamics.pressureCurve = artflow::ResponseCurve::linear();
+
+          bpm->addPreset(preset);
+        }
+
+        // ── Persist new presets to user's brush directory ──────────────────────
+        QString brushDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                           + "/brushes/" + packName;
+        QDir().mkpath(brushDir);
+        for (const auto *p : bpm->presetsInCategory(category)) {
+          bpm->savePreset(*p, brushDir);
+        }
+
+        m_isImporting    = false;
+        m_importProgress = 1.0f;
+        emit isImportingChanged();
+        emit importProgressChanged();
+        emit availableBrushesChanged();
+        emit brushCategoriesChanged();
+
+        emit notificationRequested(
+            QString("✓ %1 pinceles importados de \"%2\"")
+                .arg(result.brushes.size())
+                .arg(packName),
+            "success");
+
+        qDebug() << "[importABR] Imported" << result.brushes.size()
+                 << "brushes from" << localPath
+                 << "| cached:" << exported << "tips to" << cacheBase;
+      });
+
+  // Parse on background thread (non-blocking)
+  QFuture<ABRFile> future = QtConcurrent::run([localPath]() {
+    return ABRParser::parse(localPath);
+  });
+  watcher->setFuture(future);
+
+  return true;
 }
 
 void CanvasItem::updateTransformProperties(float x, float y, float scale,
@@ -7243,7 +7350,7 @@ void CanvasItem::capture_timelapse_frame() {
   m_layerManager->compositeAll(*composite, true); // skipPrivate = true
 
   // Guardar a disco de forma asíncrona para no congelar la UI
-  QtConcurrent::run([composite, cw = m_canvasWidth, ch = m_canvasHeight]() {
+  std::ignore = QtConcurrent::run([composite, cw = m_canvasWidth, ch = m_canvasHeight]() {
     static int frameCount = 0;
     QString path =
         QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) +
@@ -7554,21 +7661,21 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
     original = original.convertToFormat(QImage::Format_ARGB32);
   }
 
-  // 🔥 PROCESAR: Convertir fondo blanco/gris a transparente
-  // y usar solo el canal alfa para el contorno
+  // 🔥 PROCESAR: Calculate true alpha based on shader logic
+  // (Luminance * Alpha) - where white/opaque is solid ink
   for (int y = 0; y < original.height(); y++) {
     for (int x = 0; x < original.width(); x++) {
       QColor pixel = original.pixelColor(x, y);
 
       // Obtener luminosidad (0-255)
       int luminance = qGray(pixel.red(), pixel.green(), pixel.blue());
-
-      // Invertir: blanco = transparente, negro = opaco
-      int alpha = 255 - luminance;
+      
+      // Multiplicar por canal alfa real
+      int finalAlpha = (luminance * pixel.alpha()) / 255;
 
       // Establecer como blanco con alpha variable
-      if (alpha > 10) { // Threshold para ruido
-        original.setPixelColor(x, y, QColor(255, 255, 255, alpha));
+      if (finalAlpha > 10) { // Threshold para ruido
+        original.setPixelColor(x, y, QColor(255, 255, 255, finalAlpha));
       } else {
         original.setPixelColor(x, y, QColor(0, 0, 0, 0));
       }

@@ -124,8 +124,8 @@ Item {
                 }
                 Column {
                     spacing: 3; anchors.verticalCenter: parent.verticalCenter
-                    Text { text: "Centro de Aprendizaje"; color: colorText; font.pixelSize: 22; font.weight: Font.Bold; font.letterSpacing: -0.6 }
-                    Text { text: "Mejora tus habilidades con recursos profesionales"; color: colorMuted; font.pixelSize: 12 }
+                    Text { text: "Aprende"; color: colorText; font.pixelSize: 24; font.weight: Font.Bold; font.letterSpacing: -0.8 }
+                    Text { text: "Recursos y tutoriales profesionales"; color: colorMuted; font.pixelSize: 12 }
                 }
             }
 
@@ -289,225 +289,265 @@ Item {
                                 }
                                 Item { Layout.fillWidth: true }
                                 Text {
-                                    text: "6 videos disponibles"
+                                    text: "9 videos disponibles"
                                     color: colorDimmed
                                     font.pixelSize: 12
                                     font.weight: Font.Medium
                                 }
                             }
 
-                            // Video grid (Flow/GridView)
+                            // Video grid
                             GridView {
                                 id: videoGrid
                                 Layout.fillWidth: true
-                                Layout.leftMargin: 48; Layout.rightMargin: 48
-                                Layout.preferredHeight: Math.ceil(count / Math.max(1, Math.floor(width / 330))) * 300
-                                cellWidth: 330; cellHeight: 300
+                                Layout.leftMargin: 40; Layout.rightMargin: 40
+                                Layout.preferredHeight: Math.ceil(count / Math.max(1, Math.floor(width / 310))) * 360
+                                cellWidth: Math.floor(width / Math.max(1, Math.floor(width / 310)))
+                                cellHeight: 360
                                 clip: true
                                 interactive: false
                                 model: ListModel {
-                                    ListElement { title: "Línea, Forma y Proporción"; channel: "Proko"; duration: "14:22"; videoId: "SU3_doNYOdk"; icon: "📐"; thumb: "https://img.youtube.com/vi/SU3_doNYOdk/mqdefault.jpg"; difficulty: "Intermedio"; color_tag: "#ff6b6b" }
-                                    ListElement { title: "Luces y Sombras"; channel: "Ctrl+Paint"; duration: "11:45"; videoId: "YHjuiakQ-Kk"; icon: "🌗"; thumb: "https://img.youtube.com/vi/YHjuiakQ-Kk/mqdefault.jpg"; difficulty: "Básico"; color_tag: "#51cf66" }
-                                    ListElement { title: "Teoría del Color"; channel: "Marco Bucci"; duration: "20:05"; videoId: "67LGQpr3Y6A"; icon: "🎨"; thumb: "https://img.youtube.com/vi/67LGQpr3Y6A/mqdefault.jpg"; difficulty: "Intermedio"; color_tag: "#ff6b6b" }
-                                    ListElement { title: "Perspectiva de Puntos"; channel: "DrawABox"; duration: "18:30"; videoId: "Y5PTd3rVO78"; icon: "🏛"; thumb: "https://img.youtube.com/vi/Y5PTd3rVO78/mqdefault.jpg"; difficulty: "Avanzado"; color_tag: "#ffd43b" }
-                                    ListElement { title: "Anatomía Básica"; channel: "Proko"; duration: "22:10"; videoId: "74HR59yFZ7Y"; icon: "🧍"; thumb: "https://img.youtube.com/vi/74HR59yFZ7Y/mqdefault.jpg"; difficulty: "Básico"; color_tag: "#51cf66" }
-                                    ListElement { title: "Pintura de Fondos"; channel: "Ty Carter"; duration: "24:00"; videoId: "3aFxBWiLkiM"; icon: "🌄"; thumb: "https://img.youtube.com/vi/3aFxBWiLkiM/mqdefault.jpg"; difficulty: "Avanzado"; color_tag: "#ffd43b" }
+                                    // ── Existentes ──
+                                    ListElement { title: "Línea, Forma y Proporción"; channel: "Proko"; duration: "14:22"; videoId: "SU3_doNYOdk"; icon: "📐"; thumb: "https://img.youtube.com/vi/SU3_doNYOdk/mqdefault.jpg"; difficulty: "Intermedio"; color_tag: "#ff6b6b"; grad1: "#2d1b3d"; grad2: "#1a1028" }
+                                    ListElement { title: "Luces y Sombras"; channel: "Ctrl+Paint"; duration: "11:45"; videoId: "YHjuiakQ-Kk"; icon: "🌗"; thumb: "https://img.youtube.com/vi/YHjuiakQ-Kk/mqdefault.jpg"; difficulty: "Básico"; color_tag: "#51cf66"; grad1: "#1b2d24"; grad2: "#101a14" }
+                                    ListElement { title: "Teoría del Color"; channel: "Marco Bucci"; duration: "20:05"; videoId: "67LGQpr3Y6A"; icon: "🎨"; thumb: "https://img.youtube.com/vi/67LGQpr3Y6A/mqdefault.jpg"; difficulty: "Intermedio"; color_tag: "#ff6b6b"; grad1: "#2d1b1b"; grad2: "#1a1014" }
+                                    ListElement { title: "Perspectiva de Puntos"; channel: "DrawABox"; duration: "18:30"; videoId: "Y5PTd3rVO78"; icon: "🏛"; thumb: "https://img.youtube.com/vi/Y5PTd3rVO78/mqdefault.jpg"; difficulty: "Avanzado"; color_tag: "#ffd43b"; grad1: "#2d2a1b"; grad2: "#1a1810" }
+                                    ListElement { title: "Anatomía Básica"; channel: "Proko"; duration: "22:10"; videoId: "74HR59yFZ7Y"; icon: "🧍"; thumb: "https://img.youtube.com/vi/74HR59yFZ7Y/mqdefault.jpg"; difficulty: "Básico"; color_tag: "#51cf66"; grad1: "#1b2d2d"; grad2: "#101a1a" }
+                                    ListElement { title: "Pintura de Fondos"; channel: "Ty Carter"; duration: "24:00"; videoId: "3aFxBWiLkiM"; icon: "🌄"; thumb: "https://img.youtube.com/vi/3aFxBWiLkiM/mqdefault.jpg"; difficulty: "Avanzado"; color_tag: "#ffd43b"; grad1: "#1b1b2d"; grad2: "#10101a" }
+                                    // ── Nuevos (solicitados) ──
+                                    ListElement { title: "Método de los 16 Trazos de Gesto"; channel: "Proko"; duration: "18:47"; videoId: "tSyGOZjTs5A"; icon: "✍️"; thumb: "https://img.youtube.com/vi/tSyGOZjTs5A/mqdefault.jpg"; difficulty: "Básico"; color_tag: "#51cf66"; grad1: "#1d2b1d"; grad2: "#111811" }
+                                    ListElement { title: "Cómo Dibujar Fondos"; channel: "pikat"; duration: "32:15"; videoId: "Md70-o6Iy-Q"; icon: "🌿"; thumb: "https://img.youtube.com/vi/Md70-o6Iy-Q/mqdefault.jpg"; difficulty: "Intermedio"; color_tag: "#20c997"; grad1: "#132820"; grad2: "#0c1a14" }
+                                    ListElement { title: "Arte Digital Conceptual"; channel: "Canal Arte"; duration: "25:30"; videoId: "gyPJnMpr7_M"; icon: "💡"; thumb: "https://img.youtube.com/vi/gyPJnMpr7_M/mqdefault.jpg"; difficulty: "Avanzado"; color_tag: "#4dabf7"; grad1: "#141e2d"; grad2: "#0c121c" }
                                 }
                                 delegate: Item {
-                                    width: 330; height: 300
-                                    // Staggered entry
+                                    width: videoGrid.cellWidth
+                                    height: 360
                                     property bool _show: false
                                     Component.onCompleted: _showTimer.start()
                                     Timer { id: _showTimer; interval: 60 + index * 80; onTriggered: _show = true }
 
-                                    Rectangle {
-                                        id: vCard
-                                        width: 310; height: 280
+                                    Item {
+                                        width: parent.width - 16
+                                        height: 340
                                         anchors.centerIn: parent
-                                        radius: cardRadius
-                                        color: vcMa.containsMouse ? colorCardHover : colorCard
-                                        border.color: vcMa.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.45) : colorBorder
-                                        border.width: 1
-                                        clip: true
                                         opacity: _show ? 1.0 : 0.0
-                                        scale: vcMa.pressed ? 0.97 : (_show ? 1.0 : 0.92)
+                                        scale: vcMa.pressed ? 0.97 : (_show ? 1.0 : 0.94)
                                         Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
-                                        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                                        Behavior on color { ColorAnimation { duration: animDuration } }
-                                        Behavior on border.color { ColorAnimation { duration: animDuration } }
+                                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
 
-                                        // Hover glow effect
+                                        // Drop shadow
                                         Rectangle {
-                                            anchors.fill: parent
-                                            radius: parent.radius
-                                            color: "transparent"
-                                            border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, vcMa.containsMouse ? 0.08 : 0)
-                                            border.width: 30
-                                            opacity: vcMa.containsMouse ? 1 : 0
-                                            Behavior on opacity { NumberAnimation { duration: 300 } }
+                                            anchors.fill: vCard
+                                            anchors.margins: -2
+                                            radius: cardRadius + 2
+                                            color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, vcMa.containsMouse ? 0.18 : 0.0)
+                                            Behavior on color { ColorAnimation { duration: 300 } }
+                                            layer.enabled: true
+                                            layer.effect: MultiEffect { blurEnabled: true; blur: 0.6 }
                                         }
 
-                                        Column {
+                                        Rectangle {
+                                            id: vCard
                                             anchors.fill: parent
+                                            radius: cardRadius
+                                            clip: true
+                                            color: vcMa.containsMouse ? colorCardHover : colorCard
+                                            border.color: vcMa.containsMouse
+                                                ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.55)
+                                                : Qt.rgba(1, 1, 1, 0.06)
+                                            border.width: 1
+                                            Behavior on color { ColorAnimation { duration: animDuration } }
+                                            Behavior on border.color { ColorAnimation { duration: animDuration } }
 
-                                            // Thumbnail
-                                            Item {
-                                                width: parent.width; height: 170
-                                                clip: true
+                                            Column {
+                                                anchors.fill: parent
 
-                                                Rectangle {
-                                                    anchors.fill: parent
-                                                    color: "#0a0a0f"
-                                                    // Top rounded only
-                                                    radius: cardRadius
+                                                // ── Thumbnail ──
+                                                Item {
+                                                    width: parent.width; height: 200
+                                                    clip: true
+
+                                                    // Gradient fallback
                                                     Rectangle {
-                                                        anchors.bottom: parent.bottom
-                                                        width: parent.width; height: cardRadius
-                                                        color: parent.color
+                                                        anchors.fill: parent
+                                                        gradient: Gradient {
+                                                            GradientStop { position: 0.0; color: grad1 }
+                                                            GradientStop { position: 1.0; color: grad2 }
+                                                        }
                                                     }
-                                                }
 
-                                                Image {
-                                                    anchors.fill: parent
-                                                    source: thumb
-                                                    fillMode: Image.PreserveAspectCrop
-                                                    asynchronous: true
-                                                    opacity: status === Image.Ready ? 1.0 : 0.0
-                                                    Behavior on opacity { NumberAnimation { duration: 300 } }
-                                                }
-
-                                                // Hover overlay
-                                                Rectangle {
-                                                    anchors.fill: parent
-                                                    color: "#000000"
-                                                    opacity: vcMa.containsMouse ? 0.15 : 0.40
-                                                    Behavior on opacity { NumberAnimation { duration: 250 } }
-                                                }
-
-                                                // Gradient bottom fade
-                                                Rectangle {
-                                                    anchors.bottom: parent.bottom
-                                                    width: parent.width; height: 60
-                                                    gradient: Gradient {
-                                                        GradientStop { position: 0.0; color: "transparent" }
-                                                        GradientStop { position: 1.0; color: colorCard }
-                                                    }
-                                                }
-
-                                                // Play button
-                                                Rectangle {
-                                                    id: playBtn
-                                                    width: 52; height: 52; radius: 26
-                                                    anchors.centerIn: parent
-                                                    color: "#e60000"
-                                                    border.color: Qt.rgba(1, 1, 1, 0.15)
-                                                    border.width: 1
-                                                    scale: vcMa.containsMouse ? 1.12 : 0.92
-                                                    opacity: vcMa.containsMouse ? 1.0 : 0.8
-                                                    Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutBack } }
-                                                    Behavior on opacity { NumberAnimation { duration: 250 } }
-
+                                                    // Emoji placeholder
                                                     Text {
-                                                        text: "▶"
-                                                        color: "white"
                                                         anchors.centerIn: parent
-                                                        anchors.horizontalCenterOffset: 2
-                                                        font.pixelSize: 18
+                                                        anchors.verticalCenterOffset: -8
+                                                        text: icon
+                                                        font.pixelSize: 52
+                                                        opacity: thumbImg.status === Image.Ready ? 0.0 : 0.4
+                                                        Behavior on opacity { NumberAnimation { duration: 350 } }
                                                     }
 
-                                                    // Play button glow
+                                                    // Real thumbnail
+                                                    Image {
+                                                        id: thumbImg
+                                                        anchors.fill: parent
+                                                        source: thumb
+                                                        fillMode: Image.PreserveAspectCrop
+                                                        asynchronous: true
+                                                        opacity: status === Image.Ready ? 1.0 : 0.0
+                                                        Behavior on opacity { NumberAnimation { duration: 350 } }
+                                                    }
+
+                                                    // Scrim overlay
                                                     Rectangle {
-                                                        anchors.fill: parent; anchors.margins: -6
-                                                        radius: 32; z: -1
-                                                        color: "#e60000"
-                                                        opacity: vcMa.containsMouse ? 0.3 : 0
+                                                        anchors.fill: parent
+                                                        color: "#000000"
+                                                        opacity: vcMa.containsMouse ? 0.08 : 0.28
                                                         Behavior on opacity { NumberAnimation { duration: 250 } }
                                                     }
-                                                }
 
-                                                // Duration badge
-                                                Rectangle {
-                                                    anchors.bottom: parent.bottom
-                                                    anchors.right: parent.right
-                                                    anchors.margins: 12
-                                                    width: durT.width + 14; height: 24
-                                                    radius: 8
-                                                    color: "#cc000000"
-                                                    border.color: Qt.rgba(1, 1, 1, 0.08)
-                                                    border.width: 1
-                                                    Text {
-                                                        id: durT; text: duration; color: "#ffffff"
-                                                        font.pixelSize: 11; font.weight: Font.Bold
-                                                        font.letterSpacing: 0.5
-                                                        anchors.centerIn: parent
-                                                    }
-                                                }
-
-                                                // Difficulty badge
-                                                Rectangle {
-                                                    anchors.top: parent.top
-                                                    anchors.left: parent.left
-                                                    anchors.margins: 12
-                                                    width: diffT.width + 16; height: 24
-                                                    radius: 8
-                                                    color: Qt.rgba(0, 0, 0, 0.65)
-                                                    border.color: color_tag
-                                                    border.width: 1
-                                                    Row {
-                                                        anchors.centerIn: parent
-                                                        spacing: 4
-                                                        Rectangle { width: 6; height: 6; radius: 3; color: color_tag; anchors.verticalCenter: parent.verticalCenter }
-                                                        Text { id: diffT; text: difficulty; color: color_tag; font.pixelSize: 10; font.weight: Font.Bold; font.capitalization: Font.AllUppercase; font.letterSpacing: 0.8 }
-                                                    }
-                                                }
-                                            }
-
-                                            // Info area
-                                            Item {
-                                                width: parent.width; height: 110
-                                                Column {
-                                                    anchors.left: parent.left; anchors.right: parent.right
-                                                    anchors.top: parent.top; anchors.topMargin: 12
-                                                    anchors.leftMargin: 18; anchors.rightMargin: 18
-                                                    spacing: 8
-
-                                                    Text {
-                                                        text: title
-                                                        color: colorText
-                                                        font.pixelSize: 15
-                                                        font.weight: Font.Bold
-                                                        font.letterSpacing: -0.3
-                                                        elide: Text.ElideRight
-                                                        width: parent.width
-                                                        maximumLineCount: 2
-                                                        wrapMode: Text.WordWrap
-                                                    }
-
-                                                    Row {
-                                                        spacing: 8
-                                                        // Channel avatar
-                                                        Rectangle {
-                                                            width: 22; height: 22; radius: 11
-                                                            gradient: Gradient {
-                                                                GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) }
-                                                                GradientStop { position: 1.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.1) }
-                                                            }
-                                                            Text { text: icon; font.pixelSize: 12; anchors.centerIn: parent }
+                                                    // Bottom fade into card
+                                                    Rectangle {
+                                                        anchors.bottom: parent.bottom
+                                                        width: parent.width; height: 72
+                                                        gradient: Gradient {
+                                                            GradientStop { position: 0.0; color: "transparent" }
+                                                            GradientStop { position: 1.0; color: vcMa.containsMouse ? colorCardHover : colorCard }
                                                         }
+                                                    }
+
+                                                    // ── Play button ──
+                                                    Rectangle {
+                                                        id: playBtn
+                                                        width: 52; height: 52; radius: 26
+                                                        anchors.centerIn: parent
+                                                        color: Qt.rgba(1, 1, 1, vcMa.containsMouse ? 0.22 : 0.08)
+                                                        border.color: Qt.rgba(1, 1, 1, vcMa.containsMouse ? 0.55 : 0.18)
+                                                        border.width: 1.5
+                                                        scale: vcMa.containsMouse ? 1.12 : 1.0
+                                                        opacity: vcMa.containsMouse ? 1.0 : 0.75
+                                                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                                        Behavior on opacity { NumberAnimation { duration: 250 } }
+                                                        Behavior on color { ColorAnimation { duration: 250 } }
+
                                                         Text {
-                                                            text: channel
-                                                            color: colorMuted
-                                                            font.pixelSize: 13
-                                                            font.weight: Font.Medium
-                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            text: "▶"; color: "white"
+                                                            anchors.centerIn: parent
+                                                            anchors.horizontalCenterOffset: 2
+                                                            font.pixelSize: 18; font.weight: Font.Bold
+                                                        }
+
+                                                        // Glow ring
+                                                        Rectangle {
+                                                            anchors.centerIn: parent
+                                                            width: 72; height: 72; radius: 36; z: -1
+                                                            color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3)
+                                                            opacity: vcMa.containsMouse ? 0.6 : 0.0
+                                                            Behavior on opacity { NumberAnimation { duration: 300 } }
+                                                            layer.enabled: true
+                                                            layer.effect: MultiEffect { blurEnabled: true; blur: 0.7 }
+                                                        }
+                                                    }
+
+                                                    // Duration badge
+                                                    Rectangle {
+                                                        anchors.bottom: parent.bottom
+                                                        anchors.right: parent.right
+                                                        anchors.margins: 10
+                                                        width: durT.width + 16; height: 26; radius: 8
+                                                        color: "#dd000000"
+                                                        border.color: Qt.rgba(1,1,1,0.10); border.width: 1
+                                                        Text {
+                                                            id: durT; text: duration
+                                                            color: "#ffffff"
+                                                            font.pixelSize: 11; font.weight: Font.Bold
+                                                            font.letterSpacing: 0.6
+                                                            anchors.centerIn: parent
+                                                        }
+                                                    }
+
+                                                    // Difficulty badge
+                                                    Rectangle {
+                                                        anchors.top: parent.top
+                                                        anchors.left: parent.left
+                                                        anchors.margins: 10
+                                                        width: diffRow.implicitWidth + 18; height: 26; radius: 13
+                                                        color: Qt.rgba(0,0,0,0.70)
+                                                        border.color: color_tag; border.width: 1
+                                                        Row {
+                                                            id: diffRow
+                                                            anchors.centerIn: parent; spacing: 5
+                                                            Rectangle {
+                                                                width: 7; height: 7; radius: 4
+                                                                color: color_tag
+                                                                anchors.verticalCenter: parent.verticalCenter
+                                                            }
+                                                            Text {
+                                                                id: diffT; text: difficulty
+                                                                color: color_tag
+                                                                font.pixelSize: 10; font.weight: Font.Bold
+                                                                font.capitalization: Font.AllUppercase
+                                                                font.letterSpacing: 0.9
+                                                            }
+                                                        }
+                                                    }
+                                                } // end thumbnail
+
+                                                // ── Info area ──
+                                                Item {
+                                                    width: parent.width
+                                                    height: 140
+
+                                                    Column {
+                                                        anchors {
+                                                            left: parent.left; right: parent.right
+                                                            top: parent.top; topMargin: 16
+                                                            leftMargin: 18; rightMargin: 18
+                                                        }
+                                                        spacing: 10
+
+                                                        Text {
+                                                            text: title; color: colorText
+                                                            font.pixelSize: 15; font.weight: Font.Bold
+                                                            font.letterSpacing: -0.4
+                                                            width: parent.width
+                                                            maximumLineCount: 2
+                                                            wrapMode: Text.WordWrap
+                                                            elide: Text.ElideRight
+                                                        }
+
+                                                        // Separator
+                                                        Rectangle {
+                                                            width: parent.width; height: 1
+                                                            color: Qt.rgba(1,1,1, vcMa.containsMouse ? 0.08 : 0.04)
+                                                            Behavior on color { ColorAnimation { duration: 250 } }
+                                                        }
+
+                                                        Row {
+                                                            spacing: 8
+                                                            Rectangle {
+                                                                width: 28; height: 28; radius: 9
+                                                                anchors.verticalCenter: parent.verticalCenter
+                                                                gradient: Gradient {
+                                                                    GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.22) }
+                                                                    GradientStop { position: 1.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.07) }
+                                                                }
+                                                                border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2); border.width: 1
+                                                                Text { text: icon; font.pixelSize: 14; anchors.centerIn: parent }
+                                                            }
+                                                            Text {
+                                                                text: channel; color: colorMuted
+                                                                font.pixelSize: 13; font.weight: Font.Medium
+                                                                anchors.verticalCenter: parent.verticalCenter
+                                                            }
                                                         }
                                                     }
                                                 }
-                                            }
-                                        }
+                                            } // end Column
+                                        } // end vCard Rectangle
 
                                         MouseArea {
-                                            id: vcMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            id: vcMa; anchors.fill: parent
+                                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                             onClicked: Qt.openUrlExternally("https://www.youtube.com/watch?v=" + videoId)
                                         }
                                     }
@@ -654,16 +694,24 @@ Item {
                             Text { id: _mLbl; text: "Marzo 2026"; color: "#ffd43b"; font.pixelSize: 11; font.weight: Font.Bold; anchors.centerIn: parent }
                         }
 
-                        // ── LEFT ARTIST CARD ──
-                        // Sombra brutalista
+                        // ── LEFT ARTIST CARD ── (Premium Glassmorphic)
                         Rectangle {
-                            x: amLC.x + 12; y: amLC.y + 12; width: amLC.width; height: amLC.height
-                            radius: 40; color: "#000000"
-                        }
-                        Rectangle {
-                            id: amLC; x: 40; y: 70; width: 360; height: 600  // Mucho más ancho y alto
-                            radius: 40; color: "#acb6e7"
-                            border.color: "#000000"; border.width: 1
+                            id: amLC; x: 40; y: 70; width: 360; height: 600
+                            radius: 28; clip: true
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: "#141422" }
+                                GradientStop { position: 0.5; color: "#111120" }
+                                GradientStop { position: 1.0; color: "#0d0d1a" }
+                            }
+                            border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25)
+                            border.width: 1
+
+                            // Subtle corner glow
+                            Rectangle {
+                                width: 200; height: 200; radius: 100
+                                x: -60; y: -60
+                                color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.06)
+                            }
 
                             // Avatar + Name
                             Item {
@@ -675,170 +723,307 @@ Item {
                                 Row {
                                     anchors.centerIn: parent; spacing: 20
                                     Item {
-                                        width: 100; height: 100
+                                        width: 90; height: 90
                                         Rectangle {
-                                            width: 100; height: 100; radius: 50; color: "white"
-                                            border.color: "#000000"; border.width: 1
+                                            width: 90; height: 90; radius: 45
+                                            gradient: Gradient {
+                                                GradientStop { position: 0.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) }
+                                                GradientStop { position: 1.0; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.1) }
+                                            }
+                                            border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4); border.width: 1.5
                                             clip: true
                                             Image {
                                                 anchors.fill: parent; source: artistOfMonthTab.artistAvatar
                                                 fillMode: Image.PreserveAspectCrop; visible: artistOfMonthTab.artistAvatar !== ""
                                             }
-                                            Text { 
-                                                text: "🐶"; font.pixelSize: 50; anchors.centerIn: parent 
+                                            Text {
+                                                text: "🎨"; font.pixelSize: 40; anchors.centerIn: parent
                                                 visible: artistOfMonthTab.artistAvatar === ""
-                                            } 
+                                            }
                                         }
                                     }
                                     Column {
-                                        anchors.verticalCenter: parent.verticalCenter; spacing: 8
-                                        Text { text: artistOfMonthTab.artistName; color: "#111111"; font.pixelSize: 18; font.weight: Font.Black }
-                                        Text { text: "Página web: " + artistOfMonthTab.artistWebsite; color: "#333333"; font.pixelSize: 10; font.weight: Font.Bold }
+                                        anchors.verticalCenter: parent.verticalCenter; spacing: 6
+                                        Text { text: artistOfMonthTab.artistName; color: colorText; font.pixelSize: 18; font.weight: Font.Bold; font.letterSpacing: -0.3 }
+                                        Text { text: artistOfMonthTab.artistWebsite; color: colorMuted; font.pixelSize: 11; font.weight: Font.Medium }
                                     }
                                 }
                             }
 
-                            // Bio
-                            Text {
-                                id: amBio
-                                anchors.top: amAv.bottom; anchors.topMargin: 30
-                                anchors.left: parent.left; anchors.right: parent.right
-                                anchors.leftMargin: 36; anchors.rightMargin: 36
-                                text: artistOfMonthTab.artistBio
-                                color: "#1a1a1a"; font.pixelSize: 17; lineHeight: 1.4
-                                wrapMode: Text.WordWrap
+                            // Separator
+                            Rectangle {
+                                id: amSep
+                                anchors.top: amAv.bottom; anchors.topMargin: 10
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: parent.width - 60; height: 1
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0.0; color: "transparent" }
+                                    GradientStop { position: 0.5; color: colorBorder }
+                                    GradientStop { position: 1.0; color: "transparent" }
+                                }
                             }
 
-                            // Socials
+                            // Bio quote
+                            Text {
+                                id: amBio
+                                anchors.top: amSep.bottom; anchors.topMargin: 24
+                                anchors.left: parent.left; anchors.right: parent.right
+                                anchors.leftMargin: 32; anchors.rightMargin: 32
+                                text: artistOfMonthTab.artistBio
+                                color: colorTextSecondary; font.pixelSize: 14; font.italic: true
+                                lineHeight: 1.5; wrapMode: Text.WordWrap
+                            }
+
+                            // Socials label
                             Text {
                                 id: amSocLbl
-                                anchors.bottom: amSocRow.top; anchors.bottomMargin: 20
+                                anchors.bottom: amSocRow.top; anchors.bottomMargin: 16
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: "Redes sociales"; color: "#111111"; font.pixelSize: 22; font.weight: Font.Black
+                                text: "Redes sociales"; color: colorMuted; font.pixelSize: 13; font.weight: Font.Bold
+                                font.letterSpacing: 1.5; font.capitalization: Font.AllUppercase
                             }
                             Row {
                                 id: amSocRow
-                                anchors.bottom: parent.bottom; anchors.bottomMargin: 40
+                                anchors.bottom: parent.bottom; anchors.bottomMargin: 36
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 18
+                                spacing: 14
                                 Repeater {
-                                    model: ["✕", "▶", "A"]
+                                    model: [
+                                        { icon: "✕", label: "X" },
+                                        { icon: "▶", label: "YouTube" },
+                                        { icon: "🎨", label: "Portfolio" }
+                                    ]
                                     delegate: Rectangle {
-                                        width: 50; height: 50; radius: 25; color: "#000000"
-                                        Text { text: modelData; color: "white"; font.pixelSize: 20; font.weight: Font.Bold; anchors.centerIn: parent }
-                                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor }
+                                        width: 46; height: 46; radius: 14
+                                        color: socMa.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : Qt.rgba(1,1,1,0.05)
+                                        border.color: socMa.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4) : Qt.rgba(1,1,1,0.08)
+                                        border.width: 1
+                                        scale: socMa.pressed ? 0.92 : (socMa.containsMouse ? 1.08 : 1.0)
+                                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                                        Behavior on color { ColorAnimation { duration: 200 } }
+                                        Behavior on border.color { ColorAnimation { duration: 200 } }
+                                        Text { text: modelData.icon; color: socMa.containsMouse ? colorText : colorMuted; font.pixelSize: 18; anchors.centerIn: parent; Behavior on color { ColorAnimation { duration: 200 } } }
+                                        MouseArea { id: socMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor }
                                     }
                                 }
                             }
                         }
 
-                        // ── GALLERY – CASCADA FLOTANTE ──
+                        // ── GALLERY – CAROUSEL SLIDER ──
                         Item {
                             id: amGC
-                            x: amLC.x + amLC.width + 50; y: amLC.y  // Alineado exactamente en la parte superior ('y' al ras)
-                            width: parent.width - x - 50; height: 320 // Más "aplastada" o landscape
+                            x: amLC.x + amLC.width + 28; y: amLC.y
+                            width: parent.width - x - 28; height: 320
 
-                            // Tamaño de imagen responsiva para que solapen bien al centro
-                            property real cardW: width * 0.48
-                            property real spacingX: (width - cardW - 60) / 2
+                            property int currentSlide: 0
+                            property int totalSlides: artistOfMonthTab.artworks.length
 
-                            // Card 3 (fondo derecha)
+                            // Auto-advance timer
+                            Timer {
+                                id: slideTimer
+                                interval: 4000; running: amGC.totalSlides > 1; repeat: true
+                                onTriggered: amGC.currentSlide = (amGC.currentSlide + 1) % Math.max(1, amGC.totalSlides)
+                            }
+
+                            // Slide viewport
                             Rectangle {
-                                x: amGC.spacingX * 2; y: 20
-                                width: amGC.cardW; height: amGC.height - 40
-                                radius: 40; clip: true; color: "#1c1c38"
-                                border.color: "#33000000"; border.width: 1
-                                Image {
-                                    anchors.fill: parent
-                                    source: artistOfMonthTab.artworks.length > 2 ? artistOfMonthTab.artworks[2] : ""
-                                    fillMode: Image.PreserveAspectCrop; asynchronous: true
-                                    opacity: status === Image.Ready ? 1.0 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 500 } }
+                                id: slideViewport
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.rightMargin: 0
+                                height: parent.height - 48
+                                radius: 24; clip: true
+                                color: "#161628"
+                                border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2)
+                                border.width: 1
+
+                                // Slides strip
+                                Row {
+                                    id: slidesRow
+                                    height: parent.height
+                                    width: parent.width * Math.max(1, amGC.totalSlides)
+                                    x: -amGC.currentSlide * slideViewport.width
+                                    Behavior on x { NumberAnimation { duration: 480; easing.type: Easing.OutQuint } }
+
+                                    Repeater {
+                                        model: artistOfMonthTab.artworks
+                                        delegate: Item {
+                                            width: slideViewport.width
+                                            height: slideViewport.height
+
+                                            // Placeholder gradient
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                gradient: Gradient {
+                                                    GradientStop { position: 0.0; color: Qt.hsla((index * 0.28) % 1.0, 0.4, 0.12, 1.0) }
+                                                    GradientStop { position: 1.0; color: "#0d0d18" }
+                                                }
+                                            }
+
+                                            Image {
+                                                anchors.fill: parent
+                                                source: modelData
+                                                fillMode: Image.PreserveAspectCrop
+                                                asynchronous: true
+                                                opacity: status === Image.Ready ? 1.0 : 0.0
+                                                Behavior on opacity { NumberAnimation { duration: 600 } }
+                                            }
+
+                                            // Subtle vignette
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                gradient: Gradient {
+                                                    GradientStop { position: 0.0; color: "transparent" }
+                                                    GradientStop { position: 0.7; color: "transparent" }
+                                                    GradientStop { position: 1.0; color: Qt.rgba(0,0,0,0.55) }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Slide counter top-right
+                                Rectangle {
+                                    anchors.top: parent.top; anchors.right: parent.right
+                                    anchors.margins: 12
+                                    width: cntLbl.implicitWidth + 18; height: 26; radius: 13
+                                    color: Qt.rgba(0,0,0,0.60)
+                                    border.color: Qt.rgba(1,1,1,0.12); border.width: 1
+                                    Text {
+                                        id: cntLbl
+                                        anchors.centerIn: parent
+                                        text: (amGC.currentSlide + 1) + " / " + Math.max(1, amGC.totalSlides)
+                                        color: "#ccccdd"; font.pixelSize: 11; font.weight: Font.Bold
+                                    }
+                                }
+
+                                // Prev button
+                                Rectangle {
+                                    id: prevSlideBtn
+                                    width: 36; height: 36; radius: 18
+                                    anchors.left: parent.left; anchors.leftMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: prevMa.containsMouse ? Qt.rgba(colorAccent.r,colorAccent.g,colorAccent.b,0.25) : Qt.rgba(0,0,0,0.45)
+                                    border.color: Qt.rgba(1,1,1, prevMa.containsMouse ? 0.35 : 0.15); border.width: 1
+                                    scale: prevMa.pressed ? 0.88 : (prevMa.containsMouse ? 1.1 : 1.0)
+                                    opacity: amGC.currentSlide > 0 ? 1.0 : 0.35
+                                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack } }
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Text { text: "‹"; color: "#ffffff"; font.pixelSize: 22; font.weight: Font.Bold; anchors.centerIn: parent }
+                                    MouseArea {
+                                        id: prevMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: { if (amGC.currentSlide > 0) { amGC.currentSlide--; slideTimer.restart() } }
+                                    }
+                                }
+
+                                // Next button
+                                Rectangle {
+                                    id: nextSlideBtn
+                                    width: 36; height: 36; radius: 18
+                                    anchors.right: parent.right; anchors.rightMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: nextMa.containsMouse ? Qt.rgba(colorAccent.r,colorAccent.g,colorAccent.b,0.25) : Qt.rgba(0,0,0,0.45)
+                                    border.color: Qt.rgba(1,1,1, nextMa.containsMouse ? 0.35 : 0.15); border.width: 1
+                                    scale: nextMa.pressed ? 0.88 : (nextMa.containsMouse ? 1.1 : 1.0)
+                                    opacity: amGC.currentSlide < amGC.totalSlides - 1 ? 1.0 : 0.35
+                                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack } }
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Text { text: "›"; color: "#ffffff"; font.pixelSize: 22; font.weight: Font.Bold; anchors.centerIn: parent }
+                                    MouseArea {
+                                        id: nextMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: { if (amGC.currentSlide < amGC.totalSlides - 1) { amGC.currentSlide++; slideTimer.restart() } }
+                                    }
+                                }
+
+                                // Open gallery button (bottom-right)
+                                Rectangle {
+                                    anchors.bottom: parent.bottom; anchors.right: parent.right
+                                    anchors.margins: 12
+                                    width: openGalLbl.implicitWidth + 24; height: 32; radius: 16
+                                    color: openGalMa.containsMouse
+                                        ? Qt.rgba(colorAccent.r,colorAccent.g,colorAccent.b,0.25)
+                                        : Qt.rgba(0,0,0,0.55)
+                                    border.color: Qt.rgba(colorAccent.r,colorAccent.g,colorAccent.b, openGalMa.containsMouse ? 0.55 : 0.25)
+                                    border.width: 1
+                                    scale: openGalMa.pressed ? 0.92 : 1.0
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                    Row {
+                                        anchors.centerIn: parent; spacing: 6
+                                        Text { id: openGalLbl; text: "Ver galería"; color: "#ffffff"; font.pixelSize: 11; font.weight: Font.Bold }
+                                        Text { text: "→"; color: Qt.rgba(colorAccent.r,colorAccent.g,colorAccent.b,1.0); font.pixelSize: 11; font.weight: Font.Bold }
+                                    }
+                                    MouseArea { id: openGalMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: amRootContent.showGallery = true }
                                 }
                             }
 
-                            // Card 2 (medio)
-                            Rectangle {
-                                x: amGC.spacingX; y: 10
-                                width: amGC.cardW; height: amGC.height - 20
-                                radius: 40; clip: true; color: "#1e1e40"
-                                border.color: "#33000000"; border.width: 1
-                                Image {
-                                    anchors.fill: parent
-                                    source: artistOfMonthTab.artworks.length > 1 ? artistOfMonthTab.artworks[1] : ""
-                                    fillMode: Image.PreserveAspectCrop; asynchronous: true
-                                    opacity: status === Image.Ready ? 1.0 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 500 } }
+                            // Dot indicators
+                            Row {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottom: parent.bottom
+                                spacing: 8
+                                Repeater {
+                                    model: amGC.totalSlides
+                                    delegate: Rectangle {
+                                        width: amGC.currentSlide === index ? 22 : 8
+                                        height: 8; radius: 4
+                                        color: amGC.currentSlide === index
+                                            ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 1.0)
+                                            : Qt.rgba(1, 1, 1, 0.25)
+                                        Behavior on width { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+                                        Behavior on color { ColorAnimation { duration: 280 } }
+                                        MouseArea {
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onClicked: { amGC.currentSlide = index; slideTimer.restart() }
+                                        }
+                                    }
                                 }
-                                Rectangle { anchors.fill: parent; color: Qt.rgba(0,0,0,0.2) }
-                            }
-
-                            // Card 1 (frente izquierda)
-                            Rectangle {
-                                x: 0; y: 0
-                                width: amGC.cardW; height: amGC.height
-                                radius: 40; clip: true; color: "#22224a"
-                                border.color: "#33ffffff"; border.width: 1
-                                Image {
-                                    anchors.fill: parent
-                                    source: artistOfMonthTab.artworks.length > 0 ? artistOfMonthTab.artworks[0] : ""
-                                    fillMode: Image.PreserveAspectCrop; asynchronous: true
-                                    opacity: status === Image.Ready ? 1.0 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 500 } }
-                                }
-                            }
-
-                            // Flecha lateral
-                            Rectangle {
-                                id: galleryArrow
-                                width: 44; height: 44; radius: 22; color: "#ffffff"
-                                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                                border.color: "#000000"; border.width: 1
-                                scale: gaMa.pressed ? 0.9 : (gaMa.containsMouse ? 1.1 : 1.0)
-                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                                Text { text: "→"; color: "#000000"; font.pixelSize: 20; font.weight: Font.Black; anchors.centerIn: parent }
-                                MouseArea { id: gaMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: amRootContent.showGallery = true }
                             }
                         }
 
-                        // ── INFO CARD ──
-                        // Sombra bruta
-                        Rectangle {
-                            x: amInfo.x + 12; y: amInfo.y + 12; width: amInfo.width; height: amInfo.height
-                            radius: 40; color: "#000000"
-                        }
+                        // ── INFO CARD ── (Premium Glassmorphic)
                         Rectangle {
                             id: amInfo
-                            x: amGC.x; y: amLC.y + amLC.height - height // Alineado exactamente con la base de la tarjeta izquierda
-                            width: amGC.width; height: 240 // Altura llenando el vacío, amGC=320, gap=40, amInfo=240 -> Total 600 (= amLC.height)
-                            radius: 40; color: "#acb6e7"
-                            border.color: "#000000"; border.width: 1
+                            x: amGC.x; y: amLC.y + amLC.height - height
+                            width: amGC.width; height: 240
+                            radius: 28
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: "#131322" }
+                                GradientStop { position: 1.0; color: "#0e0e1a" }
+                            }
+                            border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2)
+                            border.width: 1
 
                             Text {
                                 id: amInfoLbl
-                                anchors.top: parent.top; anchors.topMargin: 36
-                                anchors.left: parent.left; anchors.leftMargin: 36
+                                anchors.top: parent.top; anchors.topMargin: 32
+                                anchors.left: parent.left; anchors.leftMargin: 32
                                 text: "Información del Artista"
-                                color: "#111111"; font.pixelSize: 24; font.weight: Font.Black
+                                color: colorText; font.pixelSize: 18; font.weight: Font.Bold; font.letterSpacing: -0.3
                             }
 
                             Text {
-                                anchors.top: amInfoLbl.bottom; anchors.topMargin: 20
-                                anchors.left: parent.left; anchors.leftMargin: 36
+                                anchors.top: amInfoLbl.bottom; anchors.topMargin: 14
+                                anchors.left: parent.left; anchors.leftMargin: 32
                                 anchors.right: parent.right; anchors.rightMargin: 80
                                 text: artistOfMonthTab.artistInfo
-                                color: "#1a1a1a"; font.pixelSize: 18; lineHeight: 1.4; wrapMode: Text.WordWrap
+                                color: colorTextSecondary; font.pixelSize: 14; lineHeight: 1.5; wrapMode: Text.WordWrap
                             }
 
-                            // Flecha
+                            // Arrow button
                             Rectangle {
-                                width: 44; height: 44; radius: 22; color: "#ffffff"
-                                anchors.right: parent.right; anchors.rightMargin: -22
+                                width: 44; height: 44; radius: 14
+                                anchors.right: parent.right; anchors.rightMargin: 20
                                 anchors.verticalCenter: parent.verticalCenter
-                                border.color: "#000000"; border.width: 1
-                                scale: iaMa.pressed ? 0.9 : (iaMa.containsMouse ? 1.1 : 1.0)
+                                color: iaMa.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15) : Qt.rgba(1,1,1,0.05)
+                                border.color: iaMa.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4) : Qt.rgba(1,1,1,0.1)
+                                border.width: 1
+                                scale: iaMa.pressed ? 0.9 : (iaMa.containsMouse ? 1.08 : 1.0)
                                 Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                                Text { text: "→"; color: "#000000"; font.pixelSize: 20; font.weight: Font.Black; anchors.centerIn: parent }
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                                Text { text: "→"; color: iaMa.containsMouse ? colorText : colorMuted; font.pixelSize: 20; font.weight: Font.Bold; anchors.centerIn: parent }
                                 MouseArea { id: iaMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: amRootContent.showGallery = true }
                             }
                         }

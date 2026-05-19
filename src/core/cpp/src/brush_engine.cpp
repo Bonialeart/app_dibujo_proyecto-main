@@ -150,10 +150,8 @@ static QImage getTextureImage(const QString &name) {
         QRgb pixel = scanline[x];
         int luma = qGray(pixel);
         int a = hasAlpha ? qAlpha(pixel) : 255;
-        // Combina luma y alpha. Para la engine Raster, el alpha define la forma
+        // Luma as opacity: bright = opaque brush shape, dark = transparent
         int finalAlpha = (luma * a) / 255;
-        // Asignamos blanco sólido pero con la opacidad combinada
-        // (premultiplicado)
         scanline[x] = qRgba(finalAlpha, finalAlpha, finalAlpha, finalAlpha);
       }
     }
@@ -180,8 +178,15 @@ static void paintTipRaster(QPainter *painter, const QPointF &point, float size,
 
   // Tinting: Create a temporary image for the dab
   // This is expensive in Raster but necessary for correct visual
-  QImage dab =
-      tipImg.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+  // Scale to fill a square dab (crop to center if non-square, like ABR strips)
+  QImage scaled = tipImg.scaled(
+      static_cast<int>(size), static_cast<int>(size),
+      Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+  // Crop center square
+  int cx = (scaled.width()  - static_cast<int>(size)) / 2;
+  int cy = (scaled.height() - static_cast<int>(size)) / 2;
+  QImage dab = scaled.copy(cx, cy, static_cast<int>(size), static_cast<int>(size));
+  dab = dab.convertToFormat(QImage::Format_ARGB32_Premultiplied);
   QPainter p(&dab);
   p.setCompositionMode(QPainter::CompositionMode_SourceIn);
   p.fillRect(dab.rect(), color);

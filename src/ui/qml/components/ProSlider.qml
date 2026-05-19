@@ -6,6 +6,7 @@ Item {
     
     property string label: ""
     property real value: 0.0
+    property real maxVal: 100.0
     property string previewType: "" // "size", "opacity"
     property bool previewOnRight: false
     property color accentColor: "#6366f1" // Default Indigo
@@ -117,7 +118,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: Math.round(root.value * 100) + "%"
+                    text: previewType === "size" ? Math.round(root.value * root.maxVal) + "px" : Math.round(root.value * 100) + "%"
                     color: "white"
                     font.pixelSize: 10 * uiScale
                     font.bold: true

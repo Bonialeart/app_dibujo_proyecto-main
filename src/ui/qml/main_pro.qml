@@ -2459,10 +2459,11 @@ Window {
                         ProSlider {
                             label: "Size"
                             width: parent.width
-                            value: mainCanvas.brushSize / 100.0
+                            maxVal: 1000.0
+                            value: mainCanvas.brushSize / 1000.0
                             previewType: "size"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 100 }
+                            onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 1000 }
                         }
                         
                         ProSlider {
@@ -2485,10 +2486,11 @@ Window {
                         
                         ProSliderHorizontal {
                             label: "Size"
-                            value: mainCanvas.brushSize / 100.0
+                            maxVal: 1000.0
+                            value: mainCanvas.brushSize / 1000.0
                             previewType: "size"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 100 }
+                            onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 1000 }
                         }
                         
                         ProSliderHorizontal {
@@ -3508,7 +3510,7 @@ Window {
                                     Slider {
                                         id: sliderSize
                                         width: parent.width; height: 28
-                                        from: 1; to: 200; value: mainCanvas.brushSize
+                                        from: 1; to: 1000; value: mainCanvas.brushSize
                                         onValueChanged: mainCanvas.brushSize = value
                                         
                                         background: Rectangle {

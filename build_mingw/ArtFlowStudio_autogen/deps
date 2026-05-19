@@ -1574,6 +1574,8 @@ ArtFlowStudio_autogen/timestamp: \
 	E:/Programacion/Rescate_Proyecto/src/ProjectModel.h \
 	E:/Programacion/Rescate_Proyecto/src/WintabManager.cpp \
 	E:/Programacion/Rescate_Proyecto/src/WintabManager.h \
+	E:/Programacion/Rescate_Proyecto/src/core/brushes/abr_parser.cpp \
+	E:/Programacion/Rescate_Proyecto/src/core/brushes/abr_parser.h \
 	E:/Programacion/Rescate_Proyecto/src/core/cpp/include/ColorPicker.h \
 	E:/Programacion/Rescate_Proyecto/src/core/cpp/include/ColorPickerImpl.h \
 	E:/Programacion/Rescate_Proyecto/src/core/cpp/include/brush_engine.h \

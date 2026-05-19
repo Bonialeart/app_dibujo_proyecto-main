@@ -7,6 +7,7 @@ Item {
     
     property string label: ""
     property real value: 0.0
+    property real maxVal: 100.0
     property string previewType: "" // "size", "opacity"
     property bool previewOnBottom: false
     property string brushTipSource: ""
@@ -185,7 +186,7 @@ Item {
                     Text {
                         anchors.bottom: parent.bottom
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: Math.round(root.value * 100)
+                        text: previewType === "size" ? Math.round(root.value * root.maxVal) + "px" : Math.round(root.value * 100) + "%"
                         color: "white"
                         font.pixelSize: 10 * uiScale
                         font.bold: true

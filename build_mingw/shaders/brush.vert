@@ -15,26 +15,38 @@ out vec4 vColor;
 out vec2 vPos;
 out float vSize;
 out float vRot;
+out vec2 vWorldPos;
 
 void main() {
     if (instanced == 1) {
-        float cx = instPos.x - instSize / 2.0;
-        float cy = instPos.y - instSize / 2.0;
+        float cs = cos(instRot);
+        float sn = sin(instRot);
 
-        mat4 model = mat4(1.0);
-        model[0][0] = instSize;
-        model[1][1] = instSize;
-        model[3][0] = cx;
-        model[3][1] = cy;
-
-        gl_Position = projectionMatrix * model * vec4(position, 0.0, 1.0);
+        // Quad position goes from 0..1. Center is 0.5, 0.5.
+        vec2 localPos = position - vec2(0.5);
+        
+        // Scale
+        localPos *= instSize;
+        
+        // Rotate
+        vec2 rotatedPos;
+        rotatedPos.x = localPos.x * cs - localPos.y * sn;
+        rotatedPos.y = localPos.x * sn + localPos.y * cs;
+        
+        // Translate to instPos
+        vec2 worldPos = rotatedPos + instPos;
+        
+        gl_Position = projectionMatrix * vec4(worldPos, 0.0, 1.0);
         TexCoords = texCoords;
         vColor = instColor;
         vPos = instPos;
         vSize = instSize;
         vRot = instRot;
+        vWorldPos = worldPos;
     } else {
-        gl_Position = projectionMatrix * modelMatrix * vec4(position, 0.0, 1.0);
+        vec4 worldPosVec = modelMatrix * vec4(position, 0.0, 1.0);
+        gl_Position = projectionMatrix * worldPosVec;
         TexCoords = texCoords;
+        vWorldPos = worldPosVec.xy;
     }
 }

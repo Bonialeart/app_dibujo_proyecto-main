@@ -15,6 +15,7 @@ in vec4 vColor;
 in vec2 vPos;
 in float vSize;
 in float vRot;
+in vec2 vWorldPos;
 
 // === Brush Tip (Shape Texture) — Local UV Mapping ===
 uniform sampler2D tipTexture;
@@ -140,7 +141,7 @@ void main() {
         // GL_CLAMP_TO_BORDER (configurado en C++) devuelve alpha=0 fuera del rang [0,1]
         // así que NO necesitamos descartar manualmente; evita el borde duro al rotar.
         vec2 uv = TexCoords;
-        if (abs(effRot) > 0.001) {
+        if (instanced == 0 && abs(effRot) > 0.001) {
             vec2 center = vec2(0.5);
             vec2 d = uv - center;
             float cs = cos(effRot);
@@ -209,7 +210,12 @@ void main() {
 
     if (uHasGrain == 1 && grainIntensity > 0.001) {
         // GLOBAL CANVAS MAPPING — grain stays fixed to the paper position
-        vec2 globalCoord = ((TexCoords - 0.5) * effDabSize + effDabPos) / (5.0 * grainScale);
+        vec2 globalCoord;
+        if (instanced == 1) {
+            globalCoord = vWorldPos / (5.0 * grainScale);
+        } else {
+            globalCoord = ((TexCoords - 0.5) * effDabSize + effDabPos) / (5.0 * grainScale);
+        }
         vec4 grainSample = texture(grainTexture, globalCoord);
 
         // Extract grain value (handles both grayscale and color textures)
