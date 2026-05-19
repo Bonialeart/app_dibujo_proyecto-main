@@ -727,6 +727,7 @@ private:
   bool m_cursorVisible = false;
   bool m_spacePressed = false;
   bool m_shiftPressed = false; // Track Shift key for rotation gesture
+  bool m_rPressed = false; // Track 'R' key for rotation gesture
 
   // Composition Shader
   QOpenGLShaderProgram *m_compositionShader = nullptr;

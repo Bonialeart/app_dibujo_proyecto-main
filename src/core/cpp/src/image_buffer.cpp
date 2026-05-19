@@ -184,7 +184,7 @@ bool ImageBuffer::getContentBounds(int &minX_out, int &minY_out, int &maxX_out,
 
 void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b,
                             uint8_t a, float threshold,
-                            const ImageBuffer *mask) {
+                            const ImageBuffer *mask, bool alphaLock) {
   if (!isValidCoord(x, y))
     return;
 
@@ -201,8 +201,11 @@ void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b,
   uint8_t startB = startPixel[2];
   uint8_t startA = startPixel[3];
 
+  if (alphaLock && startA == 0)
+    return;
+
   // If already the same color, skip to avoid infinite loop
-  if (startR == r && startG == g && startB == b && startA == a)
+  if (!alphaLock && startR == r && startG == g && startB == b && startA == a)
     return;
 
   uint32_t thresholdSq =
@@ -221,10 +224,15 @@ void ImageBuffer::floodFill(int x, int y, uint8_t r, uint8_t g, uint8_t b,
     int cy = curr.second;
 
     // Apply color (Premultiplied internally)
-    uint8_t premulR = (r * a) / 255;
-    uint8_t premulG = (g * a) / 255;
-    uint8_t premulB = (b * a) / 255;
-    setPixel(cx, cy, premulR, premulG, premulB, a);
+    uint8_t targetA = a;
+    if (alphaLock) {
+      const uint8_t *currPixel = pixelAt(cx, cy);
+      targetA = currPixel ? currPixel[3] : 0;
+    }
+    uint8_t premulR = (r * targetA) / 255;
+    uint8_t premulG = (g * targetA) / 255;
+    uint8_t premulB = (b * targetA) / 255;
+    setPixel(cx, cy, premulR, premulG, premulB, targetA);
 
     // Neighbors
     int dx[] = {0, 0, 1, -1};

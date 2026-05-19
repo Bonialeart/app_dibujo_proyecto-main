@@ -1671,9 +1671,19 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     // Configurar blend mode a nivel de QPainter para que fluya
     // correctamente en la GPU
     if (settings.type == BrushSettings::Type::Eraser) {
+      if (layer->alphaLock) {
+        // Can't erase on an alpha-locked layer
+        fboPainter2.end();
+        m_pongFBO->release();
+        return;
+      }
       fboPainter2.setCompositionMode(QPainter::CompositionMode_DestinationOut);
     } else {
-      fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceOver);
+      if (layer->alphaLock) {
+        fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+      } else {
+        fboPainter2.setCompositionMode(QPainter::CompositionMode_SourceOver);
+      }
     }
 
     // ─── WATER BLENDER: Krita-style Color Smudge ───────────────────────
@@ -1906,7 +1916,15 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     }
 
     if (settings.type == BrushSettings::Type::Eraser) {
+      if (layer->alphaLock) {
+        painter.end();
+        return;
+      }
       painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    } else {
+      if (layer->alphaLock) {
+        painter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+      }
     }
 
     m_brushEngine->paintStroke(&painter, m_lastPos, canvasPos,
@@ -2250,8 +2268,8 @@ void CanvasItem::drawCircle(const QPointF &center, float radius) {
 void CanvasItem::mousePressEvent(QMouseEvent *event) {
   m_lastMousePos = event->position();
 
-  // ═══ Canvas Rotation Gesture: Shift+Space+Drag ═══
-  if (m_spacePressed && m_shiftPressed) {
+  // ═══ Canvas Rotation Gesture: 'R' + Drag ═══
+  if (m_rPressed) {
     m_isRotatingCanvas = true;
     m_rotateStartPos = event->position();
     m_rotateStartAngle = m_canvasRotation;
@@ -2506,7 +2524,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 
   emit cursorPosChanged(event->position().x(), event->position().y());
 
-  // ═══ Canvas Rotation Gesture: Shift+Space+Drag ═══
+  // ═══ Canvas Rotation Gesture: 'R' + Drag ═══
   if (m_isRotatingCanvas && (event->buttons() & Qt::LeftButton)) {
     QPointF viewCenter(width() / 2.0, height() / 2.0);
     QPointF startVec = m_rotateStartPos - viewCenter;
@@ -2793,6 +2811,15 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
         m_pingFBO = nullptr;
         delete m_pongFBO;
         m_pongFBO = nullptr;
+      } else {
+        // CPU Fallback: Stroke was drawn directly to layer buffer's raw data
+        // Sync the raw data into the tile grid before capturing the undo snapshot
+        Layer *layer = m_layerManager->getActiveLayer();
+        if (layer && layer->buffer && !wasHolding) {
+          layer->buffer->loadRawData(layer->buffer->data());
+          layer->markDirty();
+          m_cachedCanvasImage = QImage();
+        }
       }
 
       if (m_strokeBeforeBuffer) {
@@ -2840,6 +2867,16 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
   tiltFactor = std::max(0.0f, std::min(1.0f, tiltFactor));
 
   if (event->type() == QEvent::TabletPress) {
+    // ═══ Canvas Rotation Gesture: 'R' + Drag (Tablet) ═══
+    if (m_rPressed) {
+      m_isRotatingCanvas = true;
+      m_rotateStartPos = event->position();
+      m_rotateStartAngle = m_canvasRotation;
+      setCursor(Qt::CrossCursor);
+      event->accept();
+      return;
+    }
+
     // Evitar que herramientas de NO DIBUJO pinten accidentalmente
     if (m_tool != ToolType::Pen && m_tool != ToolType::Eraser &&
         m_tool != ToolType::Fill && m_tool != ToolType::Shape) {
@@ -2898,7 +2935,22 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     handleDraw(event->position(), pressure, tiltFactor);
     event->accept();
 
-  } else if (event->type() == QEvent::TabletMove && m_isDrawing) {
+  } else if (event->type() == QEvent::TabletMove) {
+    // ═══ Canvas Rotation Gesture: 'R' + Drag (Tablet) ═══
+    if (m_isRotatingCanvas) {
+      QPointF viewCenter(width() / 2.0, height() / 2.0);
+      QPointF startVec = m_rotateStartPos - viewCenter;
+      QPointF currentVec = event->position() - viewCenter;
+      float startAngle = std::atan2(startVec.y(), startVec.x());
+      float currentAngle = std::atan2(currentVec.y(), currentVec.x());
+      float deltaAngle = qRadiansToDegrees(currentAngle - startAngle);
+      setCanvasRotation(m_rotateStartAngle + deltaAngle);
+      m_lastMousePos = event->position();
+      event->accept();
+      return;
+    }
+
+    if (m_isDrawing) {
     if (m_isDrawing && m_isHoldingForShape &&
         m_quickShapeType != QuickShapeType::None) {
       // ═══════════════════════════════════════════════════════════
@@ -2949,8 +3001,17 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     }
     update();
     event->accept();
-
+    }
   } else if (event->type() == QEvent::TabletRelease) {
+    if (m_isRotatingCanvas) {
+      m_isRotatingCanvas = false;
+      if (m_spacePressed)
+        QGuiApplication::changeOverrideCursor(Qt::OpenHandCursor);
+      else
+        setCursor(Qt::BlankCursor);
+      event->accept();
+      return;
+    }
     m_quickShapeTimer->stop();
     bool wasHolding = m_isHoldingForShape;
     m_isDrawing = false;
@@ -2981,6 +3042,15 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
       m_pingFBO = nullptr;
       delete m_pongFBO;
       m_pongFBO = nullptr;
+    } else {
+      // CPU Fallback: Stroke was drawn directly to layer buffer's raw data
+      // Sync the raw data into the tile grid before capturing the undo snapshot
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->buffer && !wasHolding) {
+        layer->buffer->loadRawData(layer->buffer->data());
+        layer->markDirty();
+        m_cachedCanvasImage = QImage();
+      }
     }
 
     // CREATE UNDO COMMAND
@@ -3417,7 +3487,7 @@ void CanvasItem::apply_color_drop(int x, int y, const QColor &color) {
   // Flood fill
   layer->buffer->floodFill(ix, iy, color.red(), color.green(), color.blue(),
                            color.alpha(), m_selectionThreshold,
-                           selectionMask.get());
+                           selectionMask.get(), layer->alphaLock);
   layer->dirty = true;
 
   // Snapshot after for undo
@@ -4324,6 +4394,9 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
   if (key == Qt::Key_Space) {
     m_spacePressed = true;
   }
+  if (key == Qt::Key_R) {
+    m_rPressed = true;
+  }
 
   // Brush Size/Opacity are left here as they are fine-grained
   if (key == Qt::Key_BracketLeft)
@@ -4361,6 +4434,9 @@ void CanvasItem::handle_key_release(int key) {
   }
   if (key == Qt::Key_Shift) {
     m_shiftPressed = false;
+  }
+  if (key == Qt::Key_R) {
+    m_rPressed = false;
     m_isRotatingCanvas = false;
   }
 }
