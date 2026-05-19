@@ -14,6 +14,8 @@ Item {
     property color brushColor: "black"
     property color accentColor: "#6366f1"
     
+    signal moved(real val)
+    
     implicitWidth: 200 * uiScale
     implicitHeight: 60 * uiScale
     
@@ -58,10 +60,12 @@ Item {
 
                 // Progress Fill (Inside the clipped background)
                 Rectangle {
-                    width: parent.width * root.value
+                    width: (trackBg.width * root.value) + trackBg.radius
                     height: parent.height
                     anchors.left: parent.left
+                    anchors.leftMargin: -trackBg.radius
                     anchors.verticalCenter: parent.verticalCenter
+                    radius: trackBg.radius
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop { position: 0.0; color: root.accentColor }
@@ -217,7 +221,7 @@ Item {
                     if (pressed) {
                         var val = mouseX / width
                         val = Math.max(0.0, Math.min(1.0, val))
-                        root.value = val
+                        root.moved(val)
                     }
                 }
                 onPressed: positionChanged(mouse)

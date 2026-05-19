@@ -18,7 +18,7 @@ Item {
         return ["shape", "rect", "ellipse", "line", "panel", "bubble", "shapes"].indexOf(tool) !== -1 || tool.startsWith("panel_") || tool.startsWith("bubble_");
     }
     
-    property string studioSelectedCategory: "Sketching"
+    property string studioSelectedCategory: "Sketch & Ink"
     property var studioBrushList: []
     
     // Brush list loading

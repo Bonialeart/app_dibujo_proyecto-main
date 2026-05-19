@@ -1516,7 +1516,7 @@ Window {
                 property int activeSubToolIdx: 0
                 property bool showSubTools: false
                 property bool showToolSettings: false
-                property string selectedBrushCategory: "Sketching"
+                property string selectedBrushCategory: "Sketch & Ink"
                 
                 // Eyedropper logic
                 property int lastToolIdx: 4
@@ -2463,7 +2463,7 @@ Window {
                             value: mainCanvas.brushSize / 1000.0
                             previewType: "size"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 1000 }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
                         }
                         
                         ProSlider {
@@ -2472,7 +2472,7 @@ Window {
                             value: mainCanvas.brushOpacity
                             previewType: "opacity"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushOpacity = value }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushOpacity = val }
                         }
                     }
 
@@ -2490,7 +2490,7 @@ Window {
                             value: mainCanvas.brushSize / 1000.0
                             previewType: "size"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 1000 }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
                         }
                         
                         ProSliderHorizontal {
@@ -2498,7 +2498,7 @@ Window {
                             value: mainCanvas.brushOpacity
                             previewType: "opacity"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushOpacity = value }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushOpacity = val }
                         }
                     }
                     
@@ -6786,8 +6786,11 @@ Window {
         
         property string label: ""
         property real value: 0.5
+        property real maxVal: 100.0
         property string previewType: "size"
         property bool previewOnRight: true
+        
+        signal moved(real val)
         
         // Track Background (The "Empty" Pill Segment)
         Rectangle {
@@ -6801,9 +6804,11 @@ Window {
             // The "Liquid" Fill (Image 2 Style - Rellenando)
             Rectangle {
                 id: fillArea
-                width: parent.width; height: parent.height * sliderRoot.value
+                width: parent.width
+                height: (track.height * sliderRoot.value) + track.radius
                 anchors.bottom: parent.bottom
-                radius: parent.radius
+                anchors.bottomMargin: -track.radius
+                radius: track.radius
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.2) }
                     GradientStop { position: 1.0; color: colorAccent }
@@ -6828,7 +6833,8 @@ Window {
             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             function updateVal(my) {
                 var v = 1.0 - (my / parent.height)
-                sliderRoot.value = Math.max(0, Math.min(1.0, v))
+                var val = Math.max(0, Math.min(1.0, v))
+                sliderRoot.moved(val)
             }
             onPressed: updateVal(mouseY)
             onPositionChanged: if (pressed) updateVal(mouseY)
@@ -6852,7 +6858,7 @@ Window {
             Column {
                 anchors.fill: parent; anchors.margins: 18; spacing: 12
                 Text { 
-                    text: (sliderRoot.previewType === "size" ? "Size " : "Opacity ") + Math.round(sliderRoot.value * 100) + "%"
+                    text: sliderRoot.previewType === "size" ? "Size " + Math.round(sliderRoot.value * sliderRoot.maxVal) + "px" : "Opacity " + Math.round(sliderRoot.value * 100) + "%"
                     color: "white"; font.pixelSize: 18; font.weight: Font.DemiBold; anchors.horizontalCenter: parent.horizontalCenter 
                 }
                 Rectangle {
@@ -6893,10 +6899,13 @@ Window {
         
         property string label: "Size"
         property real value: 0.5
+        property real maxVal: 100.0
         property string previewType: "size"
         property bool previewOnBottom: true
-        property string valueText: Math.round(hSliderRoot.value * 100) + "%"
+        property string valueText: previewType === "size" ? Math.round(hSliderRoot.value * maxVal) + "px" : Math.round(hSliderRoot.value * 100) + "%"
         property bool showValueInLabel: true
+        
+        signal moved(real val)
         
         // Track Background ("Empty" Capsule)
         Rectangle {
@@ -6909,9 +6918,11 @@ Window {
             // Liquid Fill
             Rectangle {
                 id: hFillArea
-                height: parent.height; width: parent.width * hSliderRoot.value
+                height: parent.height
+                width: (hTrack.width * hSliderRoot.value) + hTrack.radius
                 anchors.left: parent.left
-                radius: parent.radius
+                anchors.leftMargin: -hTrack.radius
+                radius: hTrack.radius
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
                     GradientStop { position: 0.0; color: colorAccent }
@@ -6950,7 +6961,8 @@ Window {
             
             function updateVal(mx) {
                 var v = mx / parent.width
-                hSliderRoot.value = Math.max(0, Math.min(1.0, v))
+                var val = Math.max(0, Math.min(1.0, v))
+                hSliderRoot.moved(val)
             }
             
             onPressed: updateVal(mouseX)

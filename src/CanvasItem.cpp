@@ -7101,14 +7101,12 @@ QVariantList CanvasItem::getBrushCategories() {
   // Map of known built-in categories to icons
   // Fixed icons for premium aesthetic
   static QMap<QString, QString> builtInIcons = {
-      {"Favorites", "cat_favorites"}, {"Sketching", "cat_sketching"},
-      {"Inking", "cat_inking"},       {"Drawing", "marker"},
-      {"Painting", "cat_painting"},   {"Artistic", "palette"},
-      {"Watercolor", "palette"},      {"Oil Painting", "palette"},
-      {"Calligraphy", "cat_inking"},  {"Airbrushing", "airbrush"},
-      {"Textures", "cat_textures"},   {"Luminance", "cat_luminance"},
-      {"Charcoal", "cat_charcoal"},   {"Imported", "cat_imported"},
-      {"Manga", "palette"},           {"Sprays", "airbrush"}};
+      {"Favorites", "cat_favorites"},
+      {"Sketch & Ink", "cat_sketching"},
+      {"Paint & Blend", "cat_painting"},
+      {"Airbrush", "airbrush"},
+      {"Eraser", "eraser"},
+      {"Imported", "cat_imported"}};
 
   for (const auto &group : groups) {
     if (group.brushes.empty())

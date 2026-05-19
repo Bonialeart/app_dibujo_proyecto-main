@@ -55,13 +55,54 @@ void BrushPresetManager::loadFromDirectory(const QString &path) {
     if (root.contains("brushes")) {
       // It's a group file
       BrushGroup group = BrushGroup::fromJson(root);
+      
+      // Map group name to consolidated category
+      QString mappedGroupName = group.name;
+      static const QMap<QString, QString> categoryMapping = {
+          {"Sketching", "Sketch & Ink"},
+          {"Inking", "Sketch & Ink"},
+          {"Drawing", "Sketch & Ink"},
+          {"Charcoal", "Sketch & Ink"},
+          {"Calligraphy", "Sketch & Ink"},
+          {"Manga", "Sketch & Ink"},
+          
+          {"Painting", "Paint & Blend"},
+          {"Watercolor", "Paint & Blend"},
+          {"Oil Painting", "Paint & Blend"},
+          {"Oil Brushes", "Paint & Blend"},
+          {"Oil Pro", "Paint & Blend"},
+          {"Artistic", "Paint & Blend"},
+          
+          {"Airbrush", "Airbrush"},
+          {"Airbrushing", "Airbrush"},
+          {"Sprays", "Airbrush"},
+          {"Textures", "Airbrush"},
+          {"Custom Textures", "Airbrush"},
+          {"Luminance", "Airbrush"},
+          {"Abstract", "Airbrush"},
+          {"Elements", "Airbrush"},
+          {"Vintage", "Airbrush"},
+          {"Industrial", "Airbrush"},
+          
+          {"Eraser", "Eraser"}
+      };
+
+      QString lowerCat = group.name.trimmed();
+      for (auto it = categoryMapping.begin(); it != categoryMapping.end(); ++it) {
+        if (it.key().compare(lowerCat, Qt::CaseInsensitive) == 0) {
+          mappedGroupName = it.value();
+          break;
+        }
+      }
+
       // Merge into existing group or add new
-      BrushGroup &target = ensureGroup(group.name, group.icon);
+      BrushGroup &target = ensureGroup(mappedGroupName, group.icon);
       for (auto &b : group.brushes) {
+        b.category = mappedGroupName;
         target.brushes.push_back(std::move(b));
       }
       count += group.brushes.size();
-      qDebug() << "BrushPresetManager: Loaded group" << group.name << "with"
+      qDebug() << "BrushPresetManager: Loaded group" << mappedGroupName << "with"
                << group.brushes.size() << "brushes from" << it.fileName();
     } else {
       // Single preset file
@@ -160,8 +201,64 @@ QStringList BrushPresetManager::brushNames() const {
 }
 
 void BrushPresetManager::addPreset(const BrushPreset &preset) {
-  BrushGroup &group = ensureGroup(preset.category);
-  group.brushes.push_back(preset);
+  QString mappedCategory = preset.category;
+
+  // Group all standard preset categories into fewer master categories
+  static const QMap<QString, QString> categoryMapping = {
+      {"Sketching", "Sketch & Ink"},
+      {"Inking", "Sketch & Ink"},
+      {"Drawing", "Sketch & Ink"},
+      {"Charcoal", "Sketch & Ink"},
+      {"Calligraphy", "Sketch & Ink"},
+      {"Manga", "Sketch & Ink"},
+      
+      {"Painting", "Paint & Blend"},
+      {"Watercolor", "Paint & Blend"},
+      {"Oil Painting", "Paint & Blend"},
+      {"Oil Brushes", "Paint & Blend"},
+      {"Oil Pro", "Paint & Blend"},
+      {"Artistic", "Paint & Blend"},
+      
+      {"Airbrush", "Airbrush"},
+      {"Airbrushing", "Airbrush"},
+      {"Sprays", "Airbrush"},
+      {"Textures", "Airbrush"},
+      {"Custom Textures", "Airbrush"},
+      {"Luminance", "Airbrush"},
+      {"Abstract", "Airbrush"},
+      {"Elements", "Airbrush"},
+      {"Vintage", "Airbrush"},
+      {"Industrial", "Airbrush"},
+      
+      {"Eraser", "Eraser"}
+  };
+
+  QString lowerCat = preset.category.trimmed();
+  for (auto it = categoryMapping.begin(); it != categoryMapping.end(); ++it) {
+    if (it.key().compare(lowerCat, Qt::CaseInsensitive) == 0) {
+      mappedCategory = it.value();
+      break;
+    }
+  }
+
+  // Also verify by preset name heuristics if the category is empty or generic
+  if (mappedCategory.isEmpty() || mappedCategory.compare("Default", Qt::CaseInsensitive) == 0) {
+    if (preset.name.contains("Eraser", Qt::CaseInsensitive)) {
+      mappedCategory = "Eraser";
+    } else if (preset.name.contains("Airbrush", Qt::CaseInsensitive) || preset.name.contains("Spray", Qt::CaseInsensitive)) {
+      mappedCategory = "Airbrush";
+    } else if (preset.name.contains("Pencil", Qt::CaseInsensitive) || preset.name.contains("Ink", Qt::CaseInsensitive) || preset.name.contains("Pen", Qt::CaseInsensitive)) {
+      mappedCategory = "Sketch & Ink";
+    } else {
+      mappedCategory = "Paint & Blend";
+    }
+  }
+
+  BrushPreset updatedPreset = preset;
+  updatedPreset.category = mappedCategory;
+
+  BrushGroup &group = ensureGroup(mappedCategory);
+  group.brushes.push_back(updatedPreset);
 }
 
 void BrushPresetManager::removePreset(const QString &uuid) {
@@ -293,69 +390,63 @@ void BrushPresetManager::loadDefaults() {
     addPreset(p);
   };
 
-  // ==================== SKETCHING ====================
-  addBrush("Sketching", "Pencil HB", 8, 0.7f, 0.2f, 0.05f, 0.25f,
-           "grain_paper_standard.png", 200.0f, 0.6f, "tip_pencil_texture.png", 0, 0, true, true,
+  // ==================== SKETCH & INK ====================
+  addBrush("Sketch & Ink", "Pencil HB", 8, 0.7f, 0.2f, 0.05f, 0.25f,
+           "grain_paper_standard.png", 200.0f, 0.6f, "pencil_hb.png", 0, 0, true, true,
            0, 0.08f);
-  addBrush("Sketching", "Pencil 6B", 20, 0.9f, 0.4f, 0.04f, 0.1f,
-           "grain_paper_standard.png", 200.0f, 0.6f, "tip_pencil_texture.png", 0, 0, true, true,
+  addBrush("Sketch & Ink", "Pencil 6B", 20, 0.9f, 0.4f, 0.04f, 0.1f,
+           "grain_paper_standard.png", 200.0f, 0.6f, "pencil_6b_real.png", 0, 0, true, true,
            0, 0.12f);
-  addBrush("Sketching", "Mechanical", 2.5f, 0.95f, 0.95f, 0.008f, 0.3f,
-           "grain_paper_standard.png", 450.0f, 0.75f, "tip_hard_round.png", 0, 0, true, true,
+  addBrush("Sketch & Ink", "Mechanical", 2.5f, 0.95f, 0.95f, 0.008f, 0.3f,
+           "grain_paper_standard.png", 450.0f, 0.75f, "mechanical_0_5.png", 0, 0, true, true,
            0, 0.01f, 1.0f, 0.4f);
+  addBrush("Sketch & Ink", "Ink Pen", 12, 1.0f, 1.0f, 0.015f, 0.75f, "", 0, 0,
+           "ink_roller.png", 0, 0, true, false, -0.2f, 0, 1.0f, 0.8f);
+  addBrush("Sketch & Ink", "G-Pen", 18, 1.0f, 0.98f, 0.01f, 0.8f, "", 0, 0,
+           "ink_g_pen.png", 0, 0, true, false, -0.15f, 0, 1.0f, 0.9f);
+  addBrush("Sketch & Ink", "Maru Pen", 6, 1.0f, 1.0f, 0.01f, 0.6f, "", 0, 0,
+           "ink_maru_pen.png");
+  addBrush("Sketch & Ink", "Marker", 28, 0.35f, 0.95f, 0.03f, 0.15f, "", 0, 0,
+           "paint_flat.png", 0, 0, false, true);
 
-  // ==================== INKING ====================
-  addBrush("Inking", "Ink Pen", 12, 1.0f, 1.0f, 0.015f, 0.75f, "", 0, 0,
-           "tip_hard_round.png", 0, 0, true, false, -0.2f, 0, 1.0f, 0.8f);
-  addBrush("Inking", "G-Pen", 18, 1.0f, 0.98f, 0.01f, 0.8f, "", 0, 0,
-           "tip_hard_round.png", 0, 0, true, false, -0.15f, 0, 1.0f, 0.9f);
-  addBrush("Inking", "Maru Pen", 6, 1.0f, 1.0f, 0.01f, 0.6f, "", 0, 0,
-           "tip_hard_round.png");
-  addBrush("Inking", "Marker", 28, 0.35f, 0.95f, 0.03f, 0.15f, "", 0, 0,
-           "tip_square.png", 0, 0, false, true);
-
-  // ==================== WATERCOLOR ====================
-  addBrush("Watercolor", "Watercolor", 50, 0.3f, 0.15f, 0.08f, 0.45f,
-           "grain_watercolor_paper.png", 80.0f, 0.5f, "watercolor.png", 0.5f, 0,
+  // ==================== PAINT & BLEND ====================
+  addBrush("Paint & Blend", "Watercolor", 50, 0.3f, 0.15f, 0.08f, 0.45f,
+           "grain_watercolor_paper.png", 80.0f, 0.5f, "basic_watercolor.png", 0.5f, 0,
            true, false, 0, 0.06f);
-  addBrush("Watercolor", "Watercolor Wet", 60, 0.25f, 0.05f, 0.1f, 0.5f,
+  addBrush("Paint & Blend", "Watercolor Wet", 60, 0.25f, 0.05f, 0.1f, 0.5f,
            "grain_watercolor_paper.png", 60.0f, 0.4f, "watercolor.png", 0.95f, 0,
            true, false, 0, 0.1f);
-
-  // ==================== PAINTING ====================
-  addBrush("Painting", "Oil Paint", 40, 0.95f, 0.75f, 0.015f, 0.35f,
-           "grain_canvas_weave.png", 150.0f, 0.7f, "tip_bristle_generic.png", 0, 0.4f, true,
+  addBrush("Paint & Blend", "Oil Paint", 40, 0.95f, 0.75f, 0.015f, 0.35f,
+           "grain_canvas_weave.png", 150.0f, 0.7f, "oil_bristle_pro.png", 0, 0.4f, true,
            false, 0, 0);
-  addBrush("Painting", "Acrylic", 38, 0.98f, 0.85f, 0.02f, 0.25f,
-           "grain_canvas_weave.png", 150.0f, 0.5f, "tip_bristle_generic.png", 0, 0.25f, true,
+  addBrush("Paint & Blend", "Acrylic", 38, 0.98f, 0.85f, 0.02f, 0.25f,
+           "grain_canvas_weave.png", 150.0f, 0.5f, "wet_acrylic.png", 0, 0.25f, true,
            false);
-  addBrush("Painting", "The Blender", 50, 0.6f, 0.5f, 0.02f, 0.0f, "", 0, 0,
-           "tip_soft_round.png", 0.8f, 0.3f, true, false);
-  addBrush("Painting", "Smudge Tool", 40, 1.0f, 0.3f, 0.01f, 0.0f, "", 0, 0,
-           "tip_soft_round.png", 0.2f, 0.95f, true, false);
-
-  // ==================== OIL PAINTING ====================
-  addBrush("Oil Painting", "Óleo Classic Flat", 60, 1.0f, 0.9f, 0.04f, 0.0f, "",
-           0, 0, "oil_flat_pro.png", 0.6f, 0.1f, true, false, 0, 0, 0.35f);
-  addBrush("Oil Painting", "Óleo Round Bristle", 45, 0.95f, 0.7f, 0.05f, 0.0f,
-           "", 0, 0, "oil_filbert_pro.png", 0.75f, 0.2f, true, true, 0, 0,
+  addBrush("Paint & Blend", "The Blender", 50, 0.6f, 0.5f, 0.02f, 0.0f, "", 0, 0,
+           "soft_blend.png", 0.8f, 0.3f, true, false);
+  addBrush("Paint & Blend", "Smudge Tool", 40, 1.0f, 0.3f, 0.01f, 0.0f, "", 0, 0,
+           "smudge_textured.png", 0.2f, 0.95f, true, false);
+  addBrush("Paint & Blend", "Óleo Classic Flat", 60, 1.0f, 0.9f, 0.04f, 0.0f, "grain_canvas_weave.png",
+           120.0f, 0.5f, "oil_flat_pro.png", 0.6f, 0.1f, true, false, 0, 0, 0.35f);
+  addBrush("Paint & Blend", "Óleo Round Bristle", 45, 0.95f, 0.7f, 0.05f, 0.0f,
+           "grain_canvas_weave.png", 120.0f, 0.5f, "oil_filbert_pro.png", 0.75f, 0.2f, true, true, 0, 0,
            0.4f);
-  addBrush("Oil Painting", "Óleo Impasto Knife", 80, 1.0f, 1.0f, 0.02f, 0.0f,
-           "", 0, 0, "oil_knife_pro.png", 0.1f, 0.8f, false, false, 0, 0, 0.8f);
-  addBrush("Oil Painting", "Óleo Dry Scumble", 70, 0.8f, 0.5f, 0.08f, 0.0f, "",
-           0, 0, "oil_flat_pro.png", 0, 0.1f, false, true, 0, 0, 0.15f);
-  addBrush("Oil Painting", "Óleo Wet Blender", 90, 0.0f, 0.2f, 0.04f, 0.0f, "",
-           0, 0, "oil_filbert_pro.png", 1.0f, 0.95f, true, false, 0, 0, 0.5f);
+  addBrush("Paint & Blend", "Óleo Impasto Knife", 80, 1.0f, 1.0f, 0.02f, 0.0f,
+           "grain_canvas_weave.png", 120.0f, 0.5f, "oil_knife_pro.png", 0.1f, 0.8f, false, false, 0, 0, 0.8f);
+  addBrush("Paint & Blend", "Óleo Dry Scumble", 70, 0.8f, 0.5f, 0.08f, 0.0f, "grain_canvas_weave.png",
+           150.0f, 0.8f, "oil_dry.png", 0, 0.1f, false, true, 0, 0, 0.15f);
+  addBrush("Paint & Blend", "Óleo Wet Blender", 90, 0.0f, 0.2f, 0.04f, 0.0f, "grain_canvas_weave.png",
+           120.0f, 0.4f, "oil_rake.png", 1.0f, 0.95f, true, false, 0, 0, 0.5f);
 
   // ==================== AIRBRUSH ====================
   addBrush("Airbrush", "Soft", 100, 0.08f, 0.0f, 0.15f, 0.1f, "", 0, 0,
-           "tip_soft_round.png", 0, 0, false, true);
+           "shape_airbrush_soft.png", 0, 0, false, true);
   addBrush("Airbrush", "Hard", 45, 0.2f, 0.8f, 0.08f, 0.1f, "", 0, 0,
-           "tip_hard_round.png", 0, 0, false, true, 0, 0.15f);
+           "hard_airbrush.png", 0, 0, false, true, 0, 0.15f);
 
   // ==================== ERASER ====================
-  addBrush("Eraser", "Eraser Soft", 45, 0.85f, 0.15f, 0.08f, 0.0f);
-  addBrush("Eraser", "Eraser Hard", 22, 1.0f, 0.98f, 0.03f, 0.0f);
+  addBrush("Eraser", "Eraser Soft", 45, 0.85f, 0.15f, 0.08f, 0.0f, "", 0, 0, "tip_soft_round.png");
+  addBrush("Eraser", "Eraser Hard", 22, 1.0f, 0.98f, 0.03f, 0.0f, "", 0, 0, "tip_hard_round.png");
 
   qDebug() << "BrushPresetManager: Loaded" << allPresets().size()
            << "default presets in" << m_groups.size() << "groups";

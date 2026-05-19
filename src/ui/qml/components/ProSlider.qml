@@ -11,6 +11,8 @@ Item {
     property bool previewOnRight: false
     property color accentColor: "#6366f1" // Default Indigo
     
+    signal moved(real val)
+    
     implicitWidth: 60 * uiScale
     implicitHeight: 180 * uiScale
     
@@ -45,9 +47,11 @@ Item {
                 // Progress Fill (Inside the clipped background)
                 Rectangle {
                     width: parent.width
-                    height: parent.height * root.value
+                    height: (trackBg.height * root.value) + trackBg.radius
                     anchors.bottom: parent.bottom
+                    anchors.bottomMargin: -trackBg.radius
                     anchors.horizontalCenter: parent.horizontalCenter
+                    radius: trackBg.radius
                     
                     gradient: Gradient {
                         GradientStop { position: 0.0; color: Qt.lighter(root.accentColor, 1.2) } 
@@ -146,7 +150,7 @@ Item {
                     if (pressed) {
                         var val = 1.0 - (mouseY / height)
                         val = Math.max(0.0, Math.min(1.0, val))
-                        root.value = val
+                        root.moved(val)
                     }
                 }
                 onPressed: positionChanged(mouse)

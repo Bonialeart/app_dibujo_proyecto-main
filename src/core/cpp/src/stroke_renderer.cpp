@@ -289,7 +289,11 @@ void StrokeRenderer::renderStroke(
   projection.ortho(0, width, height, 0, -1, 1);
 
   QMatrix4x4 model;
-  model.translate(x - size / 2, y - size / 2, 0);
+  model.translate(x, y, 0);
+  if (std::abs(tipRotation) > 0.001f) {
+    model.rotate(tipRotation * 180.0f / 3.14159265f, 0.0f, 0.0f, 1.0f);
+  }
+  model.translate(-size / 2, -size / 2, 0);
   model.scale(size, size, 1);
 
   m_program->setUniformValue("projectionMatrix", projection);

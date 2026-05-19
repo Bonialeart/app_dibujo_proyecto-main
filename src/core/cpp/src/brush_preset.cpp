@@ -919,14 +919,14 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   // Determine brush type from category/name heuristics
   if (category == "Eraser" || name.contains("Eraser", Qt::CaseInsensitive)) {
     s.type = BrushSettings::Type::Eraser;
-  } else if (category == "Inking" ||
+  } else if (name.contains("Pencil", Qt::CaseInsensitive) ||
+             name.contains("Mechanical", Qt::CaseInsensitive) ||
+             category == "Sketching") {
+    s.type = BrushSettings::Type::Pencil;
+  } else if (category == "Inking" || category == "Sketch & Ink" ||
              name.contains("Ink", Qt::CaseInsensitive) ||
              name.contains("Pen", Qt::CaseInsensitive)) {
     s.type = BrushSettings::Type::Ink;
-  } else if (category == "Sketching" ||
-             name.contains("Pencil", Qt::CaseInsensitive) ||
-             name.contains("Mechanical", Qt::CaseInsensitive)) {
-    s.type = BrushSettings::Type::Pencil;
   } else if (name.contains("Water", Qt::CaseInsensitive)) {
     s.type = BrushSettings::Type::Watercolor;
   } else if (name.contains("Oil", Qt::CaseInsensitive) ||

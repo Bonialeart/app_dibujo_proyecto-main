@@ -550,7 +550,7 @@ import "../components"
                 property int activeSubToolIdx: 0
                 property bool showSubTools: false
                 property bool showToolSettings: false
-                property string selectedBrushCategory: "Sketching"
+                property string selectedBrushCategory: "Sketch & Ink"
                 
                 // Eyedropper logic
                 property int lastToolIdx: 5
@@ -802,7 +802,7 @@ import "../components"
                             previewType: "size"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
                             accentColor: canvasPage.colorAccent
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 1000 }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
                         }
                         
                         ProSlider {
@@ -811,7 +811,7 @@ import "../components"
                             previewType: "opacity"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
                             accentColor: canvasPage.colorAccent
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushOpacity = value }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushOpacity = val }
                         }
                     }
 
@@ -830,7 +830,7 @@ import "../components"
                             previewType: "size"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
                             accentColor: canvasPage.colorAccent
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushSize = value * 1000 }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
                         }
                         
                         ProSliderHorizontal {
@@ -839,7 +839,7 @@ import "../components"
                             previewType: "opacity"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
                             accentColor: canvasPage.colorAccent
-                            onValueChanged: { if (mainCanvas) mainCanvas.brushOpacity = value }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushOpacity = val }
                         }
                     }
                     

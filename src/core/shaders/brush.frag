@@ -141,13 +141,6 @@ void main() {
         // GL_CLAMP_TO_BORDER (configurado en C++) devuelve alpha=0 fuera del rang [0,1]
         // así que NO necesitamos descartar manualmente; evita el borde duro al rotar.
         vec2 uv = TexCoords;
-        if (instanced == 0 && abs(effRot) > 0.001) {
-            vec2 center = vec2(0.5);
-            vec2 d = uv - center;
-            float cs = cos(effRot);
-            float sn = sin(effRot);
-            uv = center + vec2(d.x * cs - d.y * sn, d.x * sn + d.y * cs);
-        }
 
         vec4 tipSample = texture(tipTexture, uv); // El GPU clampea a 0 automáticamente
         // Luminancia como máscara de forma (texturas en escala de grises)
@@ -210,12 +203,7 @@ void main() {
 
     if (uHasGrain == 1 && grainIntensity > 0.001) {
         // GLOBAL CANVAS MAPPING — grain stays fixed to the paper position
-        vec2 globalCoord;
-        if (instanced == 1) {
-            globalCoord = vWorldPos / (5.0 * grainScale);
-        } else {
-            globalCoord = ((TexCoords - 0.5) * effDabSize + effDabPos) / (5.0 * grainScale);
-        }
+        vec2 globalCoord = vWorldPos / (5.0 * grainScale);
         vec4 grainSample = texture(grainTexture, globalCoord);
 
         // Extract grain value (handles both grayscale and color textures)

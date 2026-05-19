@@ -6,11 +6,11 @@ import QtQuick.Dialogs
 
 Rectangle {
     id: root
-    width: 380 // Más estrecho, estilo panel lateral de iPad/Procreate
-    height: 700 
-    color: "#0d0d0f" 
-    radius: 24
-    border.color: "#1a1a1c"
+    width: 380 * uiScale
+    height: 700 * uiScale
+    color: "#0a0a0c" 
+    radius: 24 * uiScale
+    border.color: "#161619"
     border.width: 1
     clip: true
 
@@ -19,7 +19,9 @@ Rectangle {
     property var targetCanvas: null
     property var contextPage: null
     property string searchQuery: ""
-    property color accentColor: "#3b82f6" // Azul vibrante estilo Procreate/iOS
+    property color accentColor: "#3b82f6" // Vibrant iOS/Procreate Blue
+    
+    readonly property real uiScale: (typeof mainWindow !== "undefined" && mainWindow.uiScale) ? mainWindow.uiScale : 1.0
 
     signal closeRequested()
     signal importRequested()
@@ -28,7 +30,7 @@ Rectangle {
 
     property string selectedCategory: ""
 
-    // Bloquear clics y rueda al lienzo
+    // Block all clicks and scroll wheel leaks to canvas
     MouseArea { 
         anchors.fill: parent
         hoverEnabled: true
@@ -71,39 +73,76 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        // 1. LISTA DE PINCELES (Izquierda)
+        // 1. BRUSH LIST (Left Panel)
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
 
-            // Header "Brushes"
+            // Header Section
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 60
-                Layout.leftMargin: 20
-                Layout.rightMargin: 10
+                Layout.preferredHeight: 64 * root.uiScale
+                Layout.leftMargin: 20 * root.uiScale
+                Layout.rightMargin: 16 * root.uiScale
+                Layout.topMargin: 4 * root.uiScale
                 
-                Text {
-                    text: root.contextPage ? root.contextPage.selectedBrushCategory : "Brushes"
-                    color: "white"
-                    font.pixelSize: 20
-                    font.weight: Font.Bold
+                ColumnLayout {
                     Layout.fillWidth: true
+                    spacing: 2 * root.uiScale
+                    
+                    Text {
+                        id: headerCategoryText
+                        text: root.contextPage ? root.contextPage.selectedBrushCategory : "Brushes"
+                        color: "white"
+                        font.pixelSize: 20 * root.uiScale
+                        font.weight: Font.Bold
+                        Layout.fillWidth: true
+                    }
+                    
+                    Text {
+                        text: root.brushList.length + (root.brushList.length === 1 ? " brush" : " brushes")
+                        color: "#71717a"
+                        font.pixelSize: 11 * root.uiScale
+                        font.weight: Font.Medium
+                    }
                 }
 
+                // Import .ABR Button
                 Rectangle {
-                    width: 36; height: 36; radius: 18
-                    color: addMa.containsMouse ? "#222" : "transparent"
-                    Text { text: "+"; color: "white"; font.pixelSize: 24; anchors.centerIn: parent }
+                    width: 36 * root.uiScale; height: 36 * root.uiScale
+                    radius: 18 * root.uiScale
+                    color: importBtnMa.pressed ? "#27272a" : (importBtnMa.containsMouse ? "#1f1f22" : "#141416")
+                    border.color: importBtnMa.containsMouse ? "#3f3f46" : "#27272a"
+                    border.width: 1
+                    
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+                    
+                    Text {
+                        text: "+"
+                        color: importBtnMa.containsMouse ? "white" : "#a1a1aa"
+                        font.pixelSize: 20 * root.uiScale
+                        font.weight: Font.Light
+                        anchors.centerIn: parent
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                    }
+                    
                     MouseArea {
-                        id: addMa; anchors.fill: parent; hoverEnabled: true
+                        id: importBtnMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: importDialog.open()
                     }
+                    
+                    ToolTip.visible: importBtnMa.containsMouse
+                    ToolTip.text: "Import Photoshop Brushes (.abr)"
+                    ToolTip.delay: 300
                 }
             }
 
-            // Dialogo para importar archivos ABR
+            // Dialog to import ABR files
             FileDialog {
                 id: importDialog
                 title: "Import Brush Pack (.abr)"
@@ -113,7 +152,6 @@ Rectangle {
                     if (root.targetCanvas) {
                         var success = root.targetCanvas.importABR(selectedFile)
                         if (success) {
-                            // Cambiar a la categoría Imported para ver los nuevos pinceles
                             if (root.contextPage) {
                                 root.contextPage.selectedBrushCategory = "Imported"
                             }
@@ -123,79 +161,199 @@ Rectangle {
                 }
             }
 
-            // Buscador
+            // Premium Search Bar (Frosted/Focused glowing)
             Rectangle {
+                id: searchBarContainer
                 Layout.fillWidth: true
-                Layout.preferredHeight: 36
-                Layout.leftMargin: 20
-                Layout.rightMargin: 20
-                Layout.bottomMargin: 10
-                radius: 10; color: "#161618"
+                Layout.preferredHeight: 36 * root.uiScale
+                Layout.leftMargin: 20 * root.uiScale
+                Layout.rightMargin: 20 * root.uiScale
+                Layout.topMargin: 4 * root.uiScale
+                Layout.bottomMargin: 12 * root.uiScale
+                radius: 10 * root.uiScale
+                
+                color: sInput.activeFocus ? "#131316" : (searchBarMouse.containsMouse ? "#111113" : "#0d0d0f")
+                border.color: sInput.activeFocus ? root.accentColor : "#1e1e22"
+                border.width: 1
+                
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
                 
                 RowLayout {
-                    anchors.fill: parent; anchors.leftMargin: 12
-                    Text { text: ""; font.family: "Material Icons"; color: "#444"; font.pixelSize: 18 }
-                    TextInput {
-                        id: sInput; Layout.fillWidth: true; color: "white"; font.pixelSize: 13
-                        verticalAlignment: TextInput.AlignVCenter
-                        onTextChanged: { root.searchQuery = text; root.updateBrushList() }
-                        Text { text: "Find brushes..."; color: "#444"; font.pixelSize: 13; visible: parent.text === ""; anchors.verticalCenter: parent.verticalCenter }
+                    anchors.fill: parent
+                    anchors.leftMargin: 12 * root.uiScale
+                    anchors.rightMargin: 12 * root.uiScale
+                    spacing: 8 * root.uiScale
+                    
+                    // Vector magnifying glass
+                    Item {
+                        width: 14 * root.uiScale; height: 14 * root.uiScale
+                        Layout.alignment: Qt.AlignVCenter
+                        
+                        Rectangle {
+                            width: 10 * root.uiScale; height: 10 * root.uiScale
+                            radius: 5 * root.uiScale
+                            color: "transparent"
+                            border.color: sInput.activeFocus ? root.accentColor : "#52525b"
+                            border.width: 1.5 * root.uiScale
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                        }
+                        
+                        Rectangle {
+                            width: 5 * root.uiScale; height: 1.5 * root.uiScale
+                            color: sInput.activeFocus ? root.accentColor : "#52525b"
+                            rotation: 45
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.rightMargin: 0
+                            anchors.bottomMargin: 0
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
                     }
+                    
+                    TextInput {
+                        id: sInput
+                        Layout.fillWidth: true
+                        color: "white"
+                        font.pixelSize: 12 * root.uiScale
+                        verticalAlignment: TextInput.AlignVCenter
+                        selectByMouse: true
+                        activeFocusOnTab: true
+                        
+                        onTextChanged: { root.searchQuery = text; root.updateBrushList() }
+                        
+                        Text {
+                            text: "Search brushes..."
+                            color: "#52525b"
+                            font.pixelSize: 12 * root.uiScale
+                            visible: parent.text === ""
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    
+                    // Clear search text button
+                    Text {
+                        text: "✕"
+                        color: "#71717a"
+                        font.pixelSize: 11 * root.uiScale
+                        visible: sInput.text !== ""
+                        Layout.alignment: Qt.AlignVCenter
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: { sInput.text = ""; sInput.focus = false }
+                        }
+                    }
+                }
+                
+                MouseArea {
+                    id: searchBarMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: sInput.forceActiveFocus()
                 }
             }
 
-            // Lista de Cards
+            // Brush Grid / ListView
             ListView {
                 id: brushListItems
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                spacing: 12
+                spacing: 10 * root.uiScale
                 model: root.brushList
-                contentItem.anchors.leftMargin: 20
-                contentItem.anchors.rightMargin: 10
+                
+                leftMargin: 20 * root.uiScale
+                rightMargin: 16 * root.uiScale
+                topMargin: 2 * root.uiScale
+                bottomMargin: 2 * root.uiScale
                 
                 ScrollBar.vertical: ScrollBar { 
-                    width: 4
-                    contentItem: Rectangle { color: "#333"; radius: 2 }
+                    id: verticalScrollBar
+                    width: 6 * root.uiScale
+                    policy: ScrollBar.AsNeeded
+                    contentItem: Rectangle { 
+                        color: verticalScrollBar.pressed ? root.accentColor : (verticalScrollBar.active || verticalScrollBar.hovered ? Qt.lighter(root.accentColor, 1.2) : "#27272a")
+                        radius: 3 * root.uiScale 
+                        opacity: 0.6
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                    }
                 }
 
                 delegate: Rectangle {
                     id: brushCard
-                    width: brushListItems.width - 30
-                    height: 90
-                    radius: 16
+                    width: ListView.view.width - ListView.view.leftMargin - ListView.view.rightMargin
+                    height: 86 * root.uiScale
+                    radius: 14 * root.uiScale
+                    
                     property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData
                     
-                    color: isSelected ? Qt.rgba(59/255, 130/255, 246/255, 0.1) : "#161618"
-                    border.color: isSelected ? "#3b82f6" : "transparent"
-                    border.width: isSelected ? 2 : 0
+                    // Premium smooth background gradients
+                    color: isSelected 
+                        ? Qt.rgba(59/255, 130/255, 246/255, 0.08) 
+                        : (brushItemMa.containsMouse ? "#141417" : "#0e0e10")
+                    
+                    border.color: isSelected ? root.accentColor : "#161619"
+                    border.width: isSelected ? 1.5 * root.uiScale : 1
+                    
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+                    
+                    layer.enabled: isSelected
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: Qt.rgba(59/255, 130/255, 246/255, 0.15)
+                        shadowBlur: 0.4
+                        shadowVerticalOffset: 2 * root.uiScale
+                    }
 
-                    Column {
+                    Item {
                         anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 2
+                        anchors.margins: 10 * root.uiScale
 
+                        // Brush Title Text
                         Text {
+                            id: brushNameText
                             text: modelData
-                            color: isSelected ? "white" : "#888"
-                            font.pixelSize: 12
-                            font.weight: isSelected ? Font.DemiBold : Font.Normal
+                            color: brushCard.isSelected ? "white" : (brushItemMa.containsMouse ? "#ffffff" : "#a1a1aa")
+                            font.pixelSize: 11.5 * root.uiScale
+                            font.weight: brushCard.isSelected ? Font.DemiBold : Font.Medium
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            elide: Text.ElideRight
+                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
 
+                        // Brush Stroke Preview Image
                         Image {
-                            width: parent.width
-                            height: 50
+                            id: strokeImg
+                            anchors.top: brushNameText.bottom
+                            anchors.topMargin: 4 * root.uiScale
+                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left
+                            anchors.right: parent.right
                             source: root.targetCanvas ? root.targetCanvas.get_brush_preview(modelData) : ""
                             fillMode: Image.PreserveAspectFit
                             asynchronous: true
-                            opacity: isSelected ? 1.0 : 0.8
+                            opacity: brushCard.isSelected ? 1.0 : (brushItemMa.containsMouse ? 0.95 : 0.7)
+                            mipmap: true
+                            smooth: true
                             
-                            // Placeholder mientras carga
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            
+                            // Spinner while loading
                             Rectangle {
                                 anchors.fill: parent; color: "transparent"
                                 visible: parent.status !== Image.Ready
-                                BusyIndicator { anchors.centerIn: parent; width: 20; height: 20; visible: parent.visible }
+                                BusyIndicator { 
+                                    anchors.centerIn: parent; 
+                                    width: 18 * root.uiScale; height: 18 * root.uiScale; 
+                                    visible: parent.visible 
+                                }
                             }
                         }
                     }
@@ -205,6 +363,7 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: (mouse) => {
                             if (mouse.button === Qt.RightButton) {
                                 brushContextMenu.brushTarget = modelData
@@ -221,17 +380,17 @@ Rectangle {
                         }
                     }
 
-                    // Context Menu
+                    // Brush Option Context Menu
                     Menu {
                         id: brushContextMenu
                         property string brushTarget: ""
 
                         background: Rectangle {
-                            implicitWidth: 180
-                            color: "#1c1c1e"
-                            border.color: "#3a3a3a"
+                            implicitWidth: 160 * root.uiScale
+                            color: "#121214"
+                            border.color: "#222225"
                             border.width: 1
-                            radius: 8
+                            radius: 10 * root.uiScale
                         }
 
                         MenuItem {
@@ -248,7 +407,7 @@ Rectangle {
                             onTriggered: {
                                 if(root.targetCanvas) {
                                     root.targetCanvas.duplicateBrush(brushContextMenu.brushTarget)
-                                    updateBrushList(root.selectedCategory || "")
+                                    updateBrushList()
                                 }
                             }
                         }
@@ -272,49 +431,82 @@ Rectangle {
                     }
                 }
             }
-        }
 
-        // New Brush Button
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 36
-            Layout.margins: 12
-            radius: 8
-            color: newBrushMa.containsMouse ? "#2a2a2e" : "#1c1c1e"
-            border.color: "#3a3a3c"
-            border.width: 1
+            // New Brush Button (Clean Frosted Action Button)
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 38 * root.uiScale
+                Layout.leftMargin: 20 * root.uiScale
+                Layout.rightMargin: 16 * root.uiScale
+                Layout.topMargin: 8 * root.uiScale
+                Layout.bottomMargin: 16 * root.uiScale
+                radius: 12 * root.uiScale
+                
+                color: newBrushMa.pressed ? "#1c1c1f" : (newBrushMa.containsMouse ? "#141416" : "#0e0e10")
+                border.color: newBrushMa.containsMouse ? "#2d2d31" : "#1a1a1d"
+                border.width: 1
+                
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
 
-            Row {
-                anchors.centerIn: parent; spacing: 6
-                Text { text: "+"; color: "#6366f1"; font.pixelSize: 16; font.weight: Font.Bold; verticalAlignment: Text.AlignVCenter }
-                Text { text: "New Brush"; color: "#ababab"; font.pixelSize: 12 }
-            }
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 6 * root.uiScale
+                    
+                    Text { 
+                        text: "+" 
+                        color: root.accentColor 
+                        font.pixelSize: 15 * root.uiScale 
+                        font.weight: Font.Bold 
+                        verticalAlignment: Text.AlignVCenter 
+                    }
+                    
+                    Text { 
+                        text: "New Brush" 
+                        color: newBrushMa.containsMouse ? "white" : "#a1a1aa" 
+                        font.pixelSize: 12 * root.uiScale 
+                        font.weight: Font.Medium 
+                        verticalAlignment: Text.AlignVCenter
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                    }
+                }
 
-            MouseArea {
-                id: newBrushMa
-                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (root.targetCanvas) {
-                        root.targetCanvas.createNewBrush("New Brush", root.selectedCategory || "Custom")
-                        updateBrushList(root.selectedCategory || "")
-                        root.editBrushRequested("New Brush")
+                MouseArea {
+                    id: newBrushMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (root.targetCanvas) {
+                            var category = root.contextPage ? root.contextPage.selectedBrushCategory : "Custom"
+                            root.targetCanvas.createNewBrush("New Brush", category)
+                            updateBrushList()
+                            root.editBrushRequested("New Brush")
+                        }
                     }
                 }
             }
         }
 
-        // 2. BARRA DE CATEGORÍAS (Derecha - Estilo Iconos)
+        // 2. CATEGORY ICON TOOLBAR (Right Panel - Sleek & Tactile)
         Rectangle {
             Layout.fillHeight: true
-            Layout.preferredWidth: 60
-            color: "#0a0a0c"
+            Layout.preferredWidth: 56 * root.uiScale
+            color: "#060608" // Deep contrast background
+            
+            // Left division separator
+            Rectangle {
+                width: 1; height: parent.height
+                color: "#111114"
+                anchors.left: parent.left
+            }
             
             ListView {
                 id: categoryListView
                 anchors.fill: parent
-                anchors.topMargin: 20
-                anchors.bottomMargin: 20
-                spacing: 12
+                anchors.topMargin: 18 * root.uiScale
+                anchors.bottomMargin: 18 * root.uiScale
+                spacing: 12 * root.uiScale
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 
@@ -322,27 +514,38 @@ Rectangle {
 
                 ScrollBar.vertical: ScrollBar { 
                     width: 2; policy: ScrollBar.AsNeeded
-                    contentItem: Rectangle { color: "#222"; radius: 1 }
+                    contentItem: Rectangle { color: "#18181b"; radius: 1 }
                 }
 
                 delegate: Rectangle {
                     id: cateItem
-                    width: 50; height: 50; radius: 25
+                    width: 40 * root.uiScale; height: 40 * root.uiScale
+                    radius: 20 * root.uiScale
                     anchors.horizontalCenter: parent.horizontalCenter
-                    color: (root.contextPage && root.contextPage.selectedBrushCategory === modelData.name) ? "#1c1c1e" : "transparent"
+                    
+                    property bool isCurrent: root.contextPage && root.contextPage.selectedBrushCategory === modelData.name
+                    
+                    color: isCurrent 
+                        ? Qt.rgba(59/255, 130/255, 246/255, 0.1) 
+                        : (catMa.containsMouse ? "#111113" : "transparent")
+                    
+                    border.color: isCurrent ? root.accentColor : "transparent"
+                    border.width: isCurrent ? 1 : 0
+                    
+                    Behavior on color { ColorAnimation { duration: 150 } }
                     
                     Image {
                         source: "image://icons/" + modelData.icon
-                        width: 24; height: 24
+                        width: 18 * root.uiScale; height: 18 * root.uiScale
                         anchors.centerIn: parent
-                        sourceSize: Qt.size(24, 24)
+                        sourceSize: Qt.size(18 * root.uiScale, 18 * root.uiScale)
                         smooth: true
+                        mipmap: true
                         
-                        // Icono blanco por defecto, se tiñe de azul si está seleccionado
                         layer.enabled: true
                         layer.effect: MultiEffect {
                             colorization: 1.0
-                            colorizationColor: (root.contextPage && root.contextPage.selectedBrushCategory === modelData.name) ? "#3b82f6" : "white"
+                            colorizationColor: cateItem.isCurrent ? root.accentColor : (catMa.containsMouse ? "#ffffff" : "#6b7280")
                         }
                     }
 
@@ -350,6 +553,7 @@ Rectangle {
                         id: catMa
                         anchors.fill: parent
                         hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: { if(root.contextPage) root.contextPage.selectedBrushCategory = modelData.name }
                     }
                     
@@ -361,53 +565,53 @@ Rectangle {
         }
     }
 
-    // 3. LOADING OVERLAY (ABR Import)
+    // 3. ABR IMPORTING SCREEN OVERLAY
     Rectangle {
         id: importOverlay
         anchors.fill: parent
-        color: Qt.rgba(0, 0, 0, 0.7)
+        color: Qt.rgba(0, 0, 0, 0.8)
         visible: root.targetCanvas && root.targetCanvas.isImporting
         z: 1000
 
-        // Bloquear clics mientras importa
+        // Block interaction
         MouseArea { anchors.fill: parent }
 
         ColumnLayout {
             anchors.centerIn: parent
             width: parent.width * 0.7
-            spacing: 16
+            spacing: 16 * root.uiScale
 
             Text {
                 text: "Importing Brushes..."
                 color: "white"
-                font.pixelSize: 16
+                font.pixelSize: 15 * root.uiScale
                 font.weight: Font.DemiBold
                 Layout.alignment: Qt.AlignHCenter
             }
 
-            // Barra de progreso personalizada
+            // Custom glowing progress track
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 8
-                color: "#1a1a1c"
-                radius: 4
+                Layout.preferredHeight: 6 * root.uiScale
+                color: "#18181b"
+                radius: 3 * root.uiScale
 
                 Rectangle {
                     width: parent.width * (root.targetCanvas ? root.targetCanvas.importProgress : 0)
                     height: parent.height
                     color: root.accentColor
-                    radius: 4
+                    radius: 3 * root.uiScale
                     
                     Behavior on width {
-                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
                     }
                 }
             }
 
             Text {
                 text: root.targetCanvas ? Math.round(root.targetCanvas.importProgress * 100) + "%" : "0%"
-                color: "#888"
-                font.pixelSize: 12
+                color: "#71717a"
+                font.pixelSize: 11 * root.uiScale
                 Layout.alignment: Qt.AlignHCenter
             }
         }
@@ -445,7 +649,7 @@ Rectangle {
             var newN = renameInput.text.trim()
             if (newN.length > 0 && root.targetCanvas) {
                 root.targetCanvas.renameBrush(renameDialog.oldName, newN)
-                updateBrushList(root.selectedCategory || "")
+                updateBrushList()
             }
         }
     }
@@ -468,7 +672,7 @@ Rectangle {
         onAccepted: {
             if (root.targetCanvas) {
                 root.targetCanvas.deleteBrush(deleteDialog.brushTarget)
-                updateBrushList(root.selectedCategory || "")
+                updateBrushList()
             }
         }
     }
