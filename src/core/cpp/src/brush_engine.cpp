@@ -169,6 +169,32 @@ static void paintTipRaster(QPainter *painter, const QPointF &point, float size,
   if (tipImg.isNull())
     return;
 
+  // Cache key: we cache the tinted image for the current texture and color to avoid
+  // expensive scaling, cropping, and QPainter setup on every single dab.
+  static QString cachedTexName;
+  static QColor cachedColor;
+  static QImage cachedTintedImg;
+
+  if (cachedTexName != texName || cachedColor != color || cachedTintedImg.isNull()) {
+    cachedTexName = texName;
+    cachedColor = color;
+
+    // Crop center square of the texture once if it's not square
+    QImage base = tipImg;
+    if (base.width() != base.height()) {
+      int s = std::min(base.width(), base.height());
+      int cx = (base.width() - s) / 2;
+      int cy = (base.height() - s) / 2;
+      base = base.copy(cx, cy, s, s);
+    }
+
+    cachedTintedImg = base.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QPainter p(&cachedTintedImg);
+    p.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    p.fillRect(cachedTintedImg.rect(), color);
+    p.end();
+  }
+
   painter->save();
   painter->setOpacity(opacity);
   painter->translate(point);
@@ -176,23 +202,8 @@ static void paintTipRaster(QPainter *painter, const QPointF &point, float size,
 
   QRectF rect(-size / 2.0, -size / 2.0, size, size);
 
-  // Tinting: Create a temporary image for the dab
-  // This is expensive in Raster but necessary for correct visual
-  // Scale to fill a square dab (crop to center if non-square, like ABR strips)
-  QImage scaled = tipImg.scaled(
-      static_cast<int>(size), static_cast<int>(size),
-      Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-  // Crop center square
-  int cx = (scaled.width()  - static_cast<int>(size)) / 2;
-  int cy = (scaled.height() - static_cast<int>(size)) / 2;
-  QImage dab = scaled.copy(cx, cy, static_cast<int>(size), static_cast<int>(size));
-  dab = dab.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-  QPainter p(&dab);
-  p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-  p.fillRect(dab.rect(), color);
-  p.end();
-
-  painter->drawImage(rect, dab);
+  // Draw the pre-tinted image, letting QPainter handle the scaling automatically
+  painter->drawImage(rect, cachedTintedImg);
   painter->restore();
 }
 

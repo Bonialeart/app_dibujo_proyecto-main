@@ -266,6 +266,10 @@ Rectangle {
                 clip: true
                 spacing: 10 * root.uiScale
                 model: root.brushList
+                reuseItems: true
+                cacheBuffer: 200 * root.uiScale
+                displayMarginBeginning: 40
+                displayMarginEnd: 40
                 
                 leftMargin: 20 * root.uiScale
                 rightMargin: 16 * root.uiScale
@@ -290,7 +294,15 @@ Rectangle {
                     height: 86 * root.uiScale
                     
                     property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData
-                    property string previewSource: (root.targetCanvas && modelData) ? root.targetCanvas.get_brush_preview(modelData) : ""
+                    property string previewSource: ""
+
+                    onModelDataChanged: {
+                        if (root.targetCanvas && modelData) {
+                            previewSource = root.targetCanvas.get_brush_preview(modelData)
+                        } else {
+                            previewSource = ""
+                        }
+                    }
                     
                     Rectangle {
                         id: cardRect

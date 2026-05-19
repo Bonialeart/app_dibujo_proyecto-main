@@ -110,6 +110,8 @@ Item {
             clip: true; spacing: 2
             model: studioBrushList
             boundsBehavior: Flickable.StopAtBounds
+            reuseItems: true
+            cacheBuffer: 300
 
             ScrollBar.vertical: ScrollBar { width: 3; policy: ScrollBar.AsNeeded; contentItem: Rectangle { radius: 1.5; color: "#333" } }
 
@@ -128,8 +130,15 @@ Item {
                 color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.12) : (brushItemMa.containsMouse ? "#141418" : "transparent")
                 border.color: isActive ? accentColor : "transparent"
                 border.width: isActive ? 1 : 0
+                property string previewSource: ""
 
-                property string previewSource: (mainCanvas && modelData) ? mainCanvas.get_brush_preview(modelData) : ""
+                onModelDataChanged: {
+                    if (mainCanvas && modelData) {
+                        previewSource = mainCanvas.get_brush_preview(modelData)
+                    } else {
+                        previewSource = ""
+                    }
+                }
 
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10; spacing: 10
