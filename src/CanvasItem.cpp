@@ -6566,6 +6566,9 @@ void CanvasItem::applyBrushEdit() {
   if (!m_isEditingBrush)
     return;
 
+  // Limpiar de la caché de vistas previas para forzar regeneración
+  m_brushPreviewCache.remove(m_editingPreset.name);
+
   auto *bpm = artflow::BrushPresetManager::instance();
 
   // Update the preset in the manager
@@ -7390,6 +7393,11 @@ QString CanvasItem::getStampPreview() {
 }
 
 QString CanvasItem::get_brush_preview(const QString &brushName) {
+  // Retornar de la caché inmediatamente si ya ha sido generada
+  if (m_brushPreviewCache.contains(brushName)) {
+    return m_brushPreviewCache.value(brushName);
+  }
+
   // Aumentar resolución para un preview más nítido y "premium"
   QImage img(400, 160, QImage::Format_ARGB32);
   img.fill(Qt::transparent);
@@ -7443,7 +7451,12 @@ QString CanvasItem::get_brush_preview(const QString &brushName) {
   buffer.open(QIODevice::WriteOnly);
   img.save(&buffer, "PNG");
 
-  return "data:image/png;base64," + ba.toBase64();
+  QString base64Str = "data:image/png;base64," + ba.toBase64();
+  
+  // Guardar en la caché
+  m_brushPreviewCache.insert(brushName, base64Str);
+
+  return base64Str;
 }
 
 void CanvasItem::updateBrushTipImage() {
@@ -8193,6 +8206,9 @@ bool CanvasItem::deleteBrush(const QString &name) {
   if (isBuiltInBrush(name))
     return false;
 
+  // Eliminar de la caché de vistas previas
+  m_brushPreviewCache.remove(name);
+
   auto *bpm = artflow::BrushPresetManager::instance();
   const artflow::BrushPreset *p = bpm->findByName(name);
   if (!p)
@@ -8257,6 +8273,9 @@ bool CanvasItem::renameBrush(const QString &oldName, const QString &newName) {
     return false;
   if (isBuiltInBrush(oldName))
     return false;
+
+  // Eliminar el viejo nombre de la caché de vistas previas
+  m_brushPreviewCache.remove(oldName);
 
   auto *bpm = artflow::BrushPresetManager::instance();
   const artflow::BrushPreset *p = bpm->findByName(oldName);

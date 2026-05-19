@@ -828,6 +828,9 @@ private:
 
   // Convierte los parámetros del preset activo al formato WatercolorParams
   WatercolorEngine::WatercolorParams buildWatercolorParams() const;
+
+  // Cache para las imágenes de vista previa de pinceles codificadas en base64
+  QMap<QString, QString> m_brushPreviewCache;
 };
 
 #endif // CANVASITEM_H
