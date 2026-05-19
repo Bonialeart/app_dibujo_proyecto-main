@@ -25,7 +25,17 @@ Item {
     function updateStudioBrushList() {
         if (!mainCanvas) return
         var catBrushes = mainCanvas.getBrushesForCategory(studioSelectedCategory)
-        studioBrushList = catBrushes || []
+        if (!catBrushes) {
+            studioBrushList = []
+            return
+        }
+        var list = []
+        for (var i = 0; i < catBrushes.length; i++) {
+            var name = catBrushes[i]
+            var preview = mainCanvas.get_brush_preview(name)
+            list.push({ "name": name, "preview": preview })
+        }
+        studioBrushList = list
     }
 
     onStudioSelectedCategoryChanged: updateStudioBrushList()
@@ -123,10 +133,10 @@ Item {
             }
 
             delegate: Rectangle {
-                width: studioBrushListView.width; height: 44; radius: 6
-                property bool isActive: mainCanvas && mainCanvas.activeBrushName === modelData
-                color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (brushItemMa.containsMouse ? "#141418" : "transparent")
-                border.color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.4) : "transparent"
+                width: studioBrushListView.width; height: 44; radius: 8
+                property bool isActive: mainCanvas && mainCanvas.activeBrushName === modelData.name
+                color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.12) : (brushItemMa.containsMouse ? "#141418" : "transparent")
+                border.color: isActive ? accentColor : "transparent"
                 border.width: isActive ? 1 : 0
 
                 RowLayout {
@@ -138,13 +148,13 @@ Item {
                         Layout.preferredWidth: 60; Layout.preferredHeight: 30
                         Image {
                             anchors.fill: parent
-                            source: mainCanvas ? mainCanvas.get_brush_preview(modelData) : ""
+                            source: modelData.preview
                             fillMode: Image.PreserveAspectFit; asynchronous: true
                         }
                     }
 
                     Text {
-                        Layout.fillWidth: true; text: modelData
+                        Layout.fillWidth: true; text: modelData.name
                         color: isActive ? "#fff" : (brushItemMa.containsMouse ? "#bbb" : "#777")
                         font.pixelSize: 12; elide: Text.ElideRight
                         font.weight: isActive ? Font.DemiBold : Font.Normal
@@ -154,7 +164,7 @@ Item {
                 MouseArea {
                     id: brushItemMa; anchors.fill: parent; hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: { if (mainCanvas) mainCanvas.usePreset(modelData) }
+                    onClicked: { if (mainCanvas) mainCanvas.usePreset(modelData.name) }
                 }
             }
         }

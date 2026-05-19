@@ -8,7 +8,7 @@ Rectangle {
     id: root
     width: 380 * uiScale
     height: 700 * uiScale
-    color: "#0a0a0c" 
+    color: Qt.rgba(10/255, 10/255, 12/255, 0.88)
     radius: 24 * uiScale
     border.color: "#161619"
     border.width: 1
@@ -54,18 +54,22 @@ Rectangle {
         if (!root.contextPage || !root.targetCanvas) return
         var category = root.contextPage.selectedBrushCategory
         var catBrushes = root.targetCanvas.getBrushesForCategory(category)
+        if (!catBrushes) return
         
-        if (root.searchQuery !== "") {
-            var filtered = []
-            for(var i=0; i<catBrushes.length; i++) {
-                if (String(catBrushes[i]).toLowerCase().includes(root.searchQuery.toLowerCase())) {
-                    filtered.push(catBrushes[i])
+        var list = []
+        for (var i = 0; i < catBrushes.length; i++) {
+            var name = catBrushes[i]
+            if (root.searchQuery !== "") {
+                if (String(name).toLowerCase().includes(root.searchQuery.toLowerCase())) {
+                    var preview = root.targetCanvas.get_brush_preview(name)
+                    list.push({ "name": name, "preview": preview })
                 }
+            } else {
+                var preview = root.targetCanvas.get_brush_preview(name)
+                list.push({ "name": name, "preview": preview })
             }
-            root.brushList = filtered
-        } else {
-            root.brushList = catBrushes
         }
+        root.brushList = list
     }
 
     // ========== MAIN CONTENT ==========
@@ -286,82 +290,83 @@ Rectangle {
                 delegate: Item {
                     id: brushCard
                     width: ListView.view.width - ListView.view.leftMargin - ListView.view.rightMargin
-                    height: 80 * root.uiScale
+                    height: 86 * root.uiScale
                     
-                    property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData
+                    property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData.name
                     
-                    Column {
+                    Rectangle {
+                        id: cardRect
                         anchors.fill: parent
-                        spacing: 4 * root.uiScale
+                        radius: 14 * root.uiScale
                         
-                        // Brush Title Text (Elegant and small, located above the stroke preview container)
+                        color: brushCard.isSelected 
+                            ? "#131620" 
+                            : (brushItemMa.containsMouse ? "#0f0f12" : "#08080a")
+                        
+                        border.color: brushCard.isSelected 
+                            ? root.accentColor 
+                            : (brushItemMa.containsMouse ? "#222227" : "#131316")
+                        
+                        border.width: brushCard.isSelected ? 1.5 * root.uiScale : 1
+                        
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                        
+                        layer.enabled: brushCard.isSelected
+                        layer.effect: MultiEffect {
+                            shadowEnabled: true
+                            shadowColor: Qt.rgba(59/255, 130/255, 246/255, 0.25)
+                            shadowBlur: 0.5
+                            shadowVerticalOffset: 1 * root.uiScale
+                        }
+                        
+                        // Brush Title Text (Elegant, inside the card at the top-left)
                         Text {
                             id: brushNameText
-                            width: parent.width
-                            text: modelData
-                            color: brushCard.isSelected ? "#ffffff" : (brushItemMa.containsMouse ? "#f3f4f6" : "#8e8e93")
-                            font.pixelSize: 11 * root.uiScale
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.leftMargin: 16 * root.uiScale
+                            anchors.topMargin: 10 * root.uiScale
+                            anchors.right: parent.right
+                            anchors.rightMargin: 16 * root.uiScale
+                            
+                            text: modelData.name
+                            color: brushCard.isSelected ? "#ffffff" : (brushItemMa.containsMouse ? "#f3f4f6" : "#a1a1aa")
+                            font.pixelSize: 11.5 * root.uiScale
                             font.weight: brushCard.isSelected ? Font.DemiBold : Font.Medium
                             elide: Text.ElideRight
-                            leftPadding: 8 * root.uiScale
                             
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
                         
-                        // Stroke Preview Container (Sleek dark panel with glowing neon-blue border when selected)
-                        Rectangle {
-                            id: strokeContainer
-                            width: parent.width
-                            height: 52 * root.uiScale
-                            radius: 10 * root.uiScale
+                        // Brush Stroke Preview Image (Below the text inside the same selected border)
+                        Image {
+                            id: strokeImg
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: brushNameText.bottom
+                            anchors.bottom: parent.bottom
+                            anchors.leftMargin: 16 * root.uiScale
+                            anchors.rightMargin: 16 * root.uiScale
+                            anchors.topMargin: 4 * root.uiScale
+                            anchors.bottomMargin: 8 * root.uiScale
+                            source: modelData.preview
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            opacity: brushCard.isSelected ? 1.0 : (brushItemMa.containsMouse ? 0.92 : 0.75)
+                            mipmap: true
+                            smooth: true
                             
-                            color: brushCard.isSelected 
-                                ? "#121215" 
-                                : (brushItemMa.containsMouse ? "#0f0f11" : "#070709")
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                             
-                            border.color: brushCard.isSelected 
-                                ? root.accentColor 
-                                : (brushItemMa.containsMouse ? "#222227" : "#131316")
-                            
-                            border.width: brushCard.isSelected ? 1.5 * root.uiScale : 1
-                            
-                            Behavior on color { ColorAnimation { duration: 150 } }
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
-                            
-                            layer.enabled: brushCard.isSelected
-                            layer.effect: MultiEffect {
-                                shadowEnabled: true
-                                shadowColor: Qt.rgba(59/255, 130/255, 246/255, 0.22)
-                                shadowBlur: 0.4
-                                shadowVerticalOffset: 1 * root.uiScale
-                            }
-                            
-                            // Brush Stroke Preview Image
-                            Image {
-                                id: strokeImg
-                                anchors.fill: parent
-                                anchors.leftMargin: 12 * root.uiScale
-                                anchors.rightMargin: 12 * root.uiScale
-                                anchors.topMargin: 4 * root.uiScale
-                                anchors.bottomMargin: 4 * root.uiScale
-                                source: root.targetCanvas ? root.targetCanvas.get_brush_preview(modelData) : ""
-                                fillMode: Image.PreserveAspectFit
-                                asynchronous: true
-                                opacity: brushCard.isSelected ? 1.0 : (brushItemMa.containsMouse ? 0.92 : 0.75)
-                                mipmap: true
-                                smooth: true
-                                
-                                Behavior on opacity { NumberAnimation { duration: 150 } }
-                                
-                                // Spinner while loading
-                                Rectangle {
-                                    anchors.fill: parent; color: "transparent"
-                                    visible: parent.status !== Image.Ready
-                                    BusyIndicator { 
-                                        anchors.centerIn: parent; 
-                                        width: 16 * root.uiScale; height: 16 * root.uiScale; 
-                                        visible: parent.visible 
-                                    }
+                            // Spinner while loading
+                            Rectangle {
+                                anchors.fill: parent; color: "transparent"
+                                visible: parent.status !== Image.Ready
+                                BusyIndicator { 
+                                    anchors.centerIn: parent; 
+                                    width: 16 * root.uiScale; height: 16 * root.uiScale; 
+                                    visible: parent.visible 
                                 }
                             }
                         }
@@ -375,16 +380,16 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: (mouse) => {
                             if (mouse.button === Qt.RightButton) {
-                                brushContextMenu.brushTarget = modelData
+                                brushContextMenu.brushTarget = modelData.name
                                 brushContextMenu.popup()
                             } else {
-                                if(root.targetCanvas) root.targetCanvas.usePreset(modelData)
+                                if(root.targetCanvas) root.targetCanvas.usePreset(modelData.name)
                             }
                         }
                         onDoubleClicked: {
                             if(root.targetCanvas) {
-                                root.targetCanvas.usePreset(modelData)
-                                root.editBrushRequested(modelData)
+                                root.targetCanvas.usePreset(modelData.name)
+                                root.editBrushRequested(modelData.name)
                             }
                         }
                     }
