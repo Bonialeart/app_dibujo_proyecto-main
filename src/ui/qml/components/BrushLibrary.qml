@@ -283,81 +283,90 @@ Rectangle {
                     }
                 }
 
-                delegate: Rectangle {
+                delegate: Item {
                     id: brushCard
                     width: ListView.view.width - ListView.view.leftMargin - ListView.view.rightMargin
-                    height: 86 * root.uiScale
-                    radius: 14 * root.uiScale
+                    height: 80 * root.uiScale
                     
                     property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData
                     
-                    // Premium smooth background gradients
-                    color: isSelected 
-                        ? Qt.rgba(59/255, 130/255, 246/255, 0.08) 
-                        : (brushItemMa.containsMouse ? "#141417" : "#0e0e10")
-                    
-                    border.color: isSelected ? root.accentColor : "#161619"
-                    border.width: isSelected ? 1.5 * root.uiScale : 1
-                    
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                    Behavior on border.color { ColorAnimation { duration: 150 } }
-                    
-                    layer.enabled: isSelected
-                    layer.effect: MultiEffect {
-                        shadowEnabled: true
-                        shadowColor: Qt.rgba(59/255, 130/255, 246/255, 0.15)
-                        shadowBlur: 0.4
-                        shadowVerticalOffset: 2 * root.uiScale
-                    }
-
-                    Item {
+                    Column {
                         anchors.fill: parent
-                        anchors.margins: 10 * root.uiScale
-
-                        // Brush Title Text
+                        spacing: 4 * root.uiScale
+                        
+                        // Brush Title Text (Elegant and small, located above the stroke preview container)
                         Text {
                             id: brushNameText
+                            width: parent.width
                             text: modelData
-                            color: brushCard.isSelected ? "white" : (brushItemMa.containsMouse ? "#ffffff" : "#a1a1aa")
-                            font.pixelSize: 11.5 * root.uiScale
+                            color: brushCard.isSelected ? "#ffffff" : (brushItemMa.containsMouse ? "#f3f4f6" : "#8e8e93")
+                            font.pixelSize: 11 * root.uiScale
                             font.weight: brushCard.isSelected ? Font.DemiBold : Font.Medium
-                            anchors.top: parent.top
-                            anchors.left: parent.left
-                            anchors.right: parent.right
                             elide: Text.ElideRight
+                            leftPadding: 8 * root.uiScale
+                            
                             Behavior on color { ColorAnimation { duration: 150 } }
                         }
-
-                        // Brush Stroke Preview Image
-                        Image {
-                            id: strokeImg
-                            anchors.top: brushNameText.bottom
-                            anchors.topMargin: 4 * root.uiScale
-                            anchors.bottom: parent.bottom
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            source: root.targetCanvas ? root.targetCanvas.get_brush_preview(modelData) : ""
-                            fillMode: Image.PreserveAspectFit
-                            asynchronous: true
-                            opacity: brushCard.isSelected ? 1.0 : (brushItemMa.containsMouse ? 0.95 : 0.7)
-                            mipmap: true
-                            smooth: true
+                        
+                        // Stroke Preview Container (Sleek dark panel with glowing neon-blue border when selected)
+                        Rectangle {
+                            id: strokeContainer
+                            width: parent.width
+                            height: 52 * root.uiScale
+                            radius: 10 * root.uiScale
                             
-                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                            color: brushCard.isSelected 
+                                ? "#121215" 
+                                : (brushItemMa.containsMouse ? "#0f0f11" : "#070709")
                             
-                            // Spinner while loading
-                            Rectangle {
-                                anchors.fill: parent; color: "transparent"
-                                visible: parent.status !== Image.Ready
-                                BusyIndicator { 
-                                    anchors.centerIn: parent; 
-                                    width: 18 * root.uiScale; height: 18 * root.uiScale; 
-                                    visible: parent.visible 
+                            border.color: brushCard.isSelected 
+                                ? root.accentColor 
+                                : (brushItemMa.containsMouse ? "#222227" : "#131316")
+                            
+                            border.width: brushCard.isSelected ? 1.5 * root.uiScale : 1
+                            
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                            
+                            layer.enabled: brushCard.isSelected
+                            layer.effect: MultiEffect {
+                                shadowEnabled: true
+                                shadowColor: Qt.rgba(59/255, 130/255, 246/255, 0.22)
+                                shadowBlur: 0.4
+                                shadowVerticalOffset: 1 * root.uiScale
+                            }
+                            
+                            // Brush Stroke Preview Image
+                            Image {
+                                id: strokeImg
+                                anchors.fill: parent
+                                anchors.leftMargin: 12 * root.uiScale
+                                anchors.rightMargin: 12 * root.uiScale
+                                anchors.topMargin: 4 * root.uiScale
+                                anchors.bottomMargin: 4 * root.uiScale
+                                source: root.targetCanvas ? root.targetCanvas.get_brush_preview(modelData) : ""
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                opacity: brushCard.isSelected ? 1.0 : (brushItemMa.containsMouse ? 0.92 : 0.75)
+                                mipmap: true
+                                smooth: true
+                                
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                
+                                // Spinner while loading
+                                Rectangle {
+                                    anchors.fill: parent; color: "transparent"
+                                    visible: parent.status !== Image.Ready
+                                    BusyIndicator { 
+                                        anchors.centerIn: parent; 
+                                        width: 16 * root.uiScale; height: 16 * root.uiScale; 
+                                        visible: parent.visible 
+                                    }
                                 }
                             }
                         }
                     }
-
+                    
                     MouseArea {
                         id: brushItemMa
                         anchors.fill: parent
@@ -379,12 +388,12 @@ Rectangle {
                             }
                         }
                     }
-
+                    
                     // Brush Option Context Menu
                     Menu {
                         id: brushContextMenu
                         property string brushTarget: ""
-
+                        
                         background: Rectangle {
                             implicitWidth: 160 * root.uiScale
                             color: "#121214"
@@ -392,7 +401,7 @@ Rectangle {
                             border.width: 1
                             radius: 10 * root.uiScale
                         }
-
+                        
                         MenuItem {
                             text: "✏️  Edit Brush"
                             onTriggered: {

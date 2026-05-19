@@ -2131,7 +2131,10 @@ Window {
                     visible: isStudioMode && isProjectActive && !isZenMode
                     z: 900
 
-                    onSwitchToEssential: mainWindow.canvasMode = "essential"
+                    onSwitchToEssential: {
+                        modeChangeConfirmDialog.targetMode = "essential"
+                        modeChangeConfirmDialog.open()
+                    }
                 }
                 
                 // Studio Mode top bar is now integrated inside StudioCanvasLayout.qml (studioInfoBar)
@@ -2837,7 +2840,10 @@ Window {
                             TopBarButton {
                                 iconSource: iconPath("studio.svg")
                                 tooltip: "Modo Studio"
-                                onClicked: mainWindow.canvasMode = "studio"
+                                onClicked: {
+                                    modeChangeConfirmDialog.targetMode = "studio"
+                                    modeChangeConfirmDialog.open()
+                                }
                             }
 
                             // Color Swatch (special — not TopBarButton)
@@ -7166,6 +7172,131 @@ Window {
         nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp)", "All Files (*)"]
         onAccepted: {
             refWindow.refSource = selectedFile
+        }
+    }
+
+    Popup {
+        id: modeChangeConfirmDialog
+        width: 420 * uiScale
+        height: 260 * uiScale
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+        anchors.centerIn: parent
+        
+        property string targetMode: ""
+        
+        background: Rectangle {
+            color: "#161618"
+            radius: 20 * uiScale
+            border.color: "#2c2c2e"
+            border.width: 1 * uiScale
+        }
+        
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 25 * uiScale
+            spacing: 20 * uiScale
+            
+            // Header con icono y título
+            RowLayout {
+                spacing: 15 * uiScale
+                Layout.fillWidth: true
+                
+                Text {
+                    text: "🔄"
+                    font.pixelSize: 28 * uiScale
+                }
+                
+                ColumnLayout {
+                    spacing: 4 * uiScale
+                    Text {
+                        text: modeChangeConfirmDialog.targetMode === "studio" ? "Cambiar a Modo Studio" : "Cambiar a Modo Esencial"
+                        color: "white"
+                        font.pixelSize: 18 * uiScale
+                        font.bold: true
+                    }
+                    Text {
+                        text: "ArtFlow Studio Pro"
+                        color: colorAccent
+                        font.pixelSize: 11 * uiScale
+                        font.bold: true
+                    }
+                }
+            }
+            
+            // Mensaje explicativo
+            Text {
+                Layout.fillWidth: true
+                text: modeChangeConfirmDialog.targetMode === "studio" 
+                    ? "¿Estás seguro de que quieres cambiar al Modo Studio? La interfaz se adaptará al estilo de Clip Studio Paint, con paneles avanzados para flujos de trabajo profesionales."
+                    : "¿Estás seguro de que quieres volver al Modo Esencial? La interfaz se simplificará para un enfoque minimalista y centrado en el dibujo rápido (estilo Procreate)."
+                color: "#aaa"
+                font.pixelSize: 13 * uiScale
+                wrapMode: Text.Wrap
+                lineHeight: 1.2
+            }
+            
+            Item { Layout.fillHeight: true }
+            
+            // Botones de acción
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 15 * uiScale
+                
+                Button {
+                    id: modeCancelBtn
+                    Layout.fillWidth: true
+                    height: 42 * uiScale
+                    contentItem: Text {
+                        text: "Cancelar"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.bold: true
+                        font.pixelSize: 13 * uiScale
+                    }
+                    background: Rectangle {
+                        color: modeCancelMa.containsMouse ? "#2a2a2e" : "#212123"
+                        radius: 10 * uiScale
+                    }
+                    MouseArea {
+                        id: modeCancelMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: modeChangeConfirmDialog.close()
+                    }
+                }
+                
+                Button {
+                    id: modeConfirmBtn
+                    Layout.fillWidth: true
+                    height: 42 * uiScale
+                    contentItem: Text {
+                        text: "Confirmar"
+                        color: "white"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.bold: true
+                        font.pixelSize: 13 * uiScale
+                    }
+                    background: Rectangle {
+                        color: modeConfirmMa.containsMouse ? Qt.lighter(colorAccent, 1.1) : colorAccent
+                        radius: 10 * uiScale
+                    }
+                    MouseArea {
+                        id: modeConfirmMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            mainWindow.canvasMode = modeChangeConfirmDialog.targetMode
+                            modeChangeConfirmDialog.close()
+                        }
+                    }
+                }
+            }
         }
     }
 

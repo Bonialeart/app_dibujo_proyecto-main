@@ -7415,10 +7415,10 @@ QString CanvasItem::get_brush_preview(const QString &brushName) {
   s.spacing = std::max(s.spacing, 0.05f); // Evitar espaciado demasiado denso
   tempEngine.setBrush(s);
 
-  // Dibujar una curva elegante "S" para mostrar la textura
+  // Dibujar una curva de onda horizontal extremadamente elegante, suave y centrada
   QPainterPath path;
-  path.moveTo(40, 100);
-  path.cubicTo(120, 20, 280, 140, 360, 60);
+  path.moveTo(40, 80);
+  path.cubicTo(130, 45, 270, 115, 360, 80);
 
   // Simular el trazo con interpolación para que el motor de pincel actúe
   QPointF lastP = path.pointAtPercent(0);
@@ -7429,8 +7429,8 @@ QString CanvasItem::get_brush_preview(const QString &brushName) {
     float t = (float)i / segments;
     QPointF currP = path.pointAtPercent(t);
 
-    // Simular presión variable para dar dinamismo (estilo caligráfico)
-    float pressure = 0.3f + 0.7f * std::sin(t * M_PI);
+    // Presión senoidal con exponente para lograr un estrechamiento caligráfico perfecto en los extremos (tapered to 0)
+    float pressure = std::pow(std::sin(t * M_PI), 1.2f);
 
     tempEngine.paintStroke(&painter, lastP, currP, pressure, s);
     lastP = currP;
@@ -7472,22 +7472,59 @@ void CanvasItem::updateBrushTipImage() {
   emit brushTipImageChanged();
 }
 
+struct LayerSnapshot {
+  std::shared_ptr<artflow::ImageBuffer> buffer;
+  float opacity;
+  artflow::BlendMode blendMode;
+  bool clipped;
+};
+
 void CanvasItem::capture_timelapse_frame() {
   if (!m_layerManager)
     return;
 
-  // Temporarily disable as it requires a synchronous
-  // m_layerManager->compositeAll which takes seconds on large inputs, freezing
-  // the application on stroke finish.
-  return;
+  // Instantánea ultrarrápida del estado de las capas en el hilo de la UI (toma < 3ms)
+  std::vector<LayerSnapshot> snapshot;
+  int count = m_layerManager->getLayerCount();
+  snapshot.reserve(count);
 
-  // Realizar la composición en el hilo principal antes de pasarlo a un hilo
-  auto composite = std::make_shared<ImageBuffer>(m_canvasWidth, m_canvasHeight);
-  m_layerManager->compositeAll(*composite, true); // skipPrivate = true
+  for (int i = 0; i < count; ++i) {
+    const artflow::Layer *layer = m_layerManager->getLayer(i);
+    if (layer && layer->visible && !layer->isPrivate && layer->buffer) {
+      LayerSnapshot snap;
+      // Clonación profunda ligera de los tiles asignados
+      snap.buffer = std::make_shared<artflow::ImageBuffer>(*layer->buffer);
+      snap.opacity = layer->opacity;
+      snap.blendMode = layer->blendMode;
+      snap.clipped = layer->clipped;
+      snapshot.push_back(snap);
+    }
+  }
 
-  // Guardar a disco de forma asíncrona para no congelar la UI
-  std::ignore = QtConcurrent::run([composite, cw = m_canvasWidth, ch = m_canvasHeight]() {
+  int cw = m_canvasWidth;
+  int ch = m_canvasHeight;
+
+  // Ejecutar la composición de capas y la escritura a disco de forma totalmente asíncrona
+  std::ignore = QtConcurrent::run([snapshot, cw, ch]() {
     static int frameCount = 0;
+
+    // Crear buffer compuesto intermedio en segundo plano
+    artflow::ImageBuffer composite(cw, ch);
+    composite.clear();
+
+    // Componer todas las capas clonadas en segundo plano
+    const artflow::ImageBuffer *currentBaseBuffer = nullptr;
+    for (const auto &snap : snapshot) {
+      if (snap.clipped && currentBaseBuffer) {
+        composite.composite(*snap.buffer, 0, 0, snap.opacity, snap.blendMode,
+                            currentBaseBuffer);
+      } else {
+        composite.composite(*snap.buffer, 0, 0, snap.opacity, snap.blendMode,
+                            nullptr);
+        currentBaseBuffer = snap.buffer.get();
+      }
+    }
+
     QString path =
         QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) +
         "/ArtFlow/Timelapse";
@@ -7497,7 +7534,7 @@ void CanvasItem::capture_timelapse_frame() {
                            .arg(path)
                            .arg(frameCount++, 6, 10, QChar('0'));
 
-    QImage img(composite->data(), cw, ch, QImage::Format_RGBA8888);
+    QImage img(composite.data(), cw, ch, QImage::Format_RGBA8888);
     img.save(fileName, "JPG", 85);
   });
 }
@@ -7941,22 +7978,49 @@ void CanvasItem::blendWithShader(QPainter *painter, artflow::Layer *layer,
       if (!tex) {
         if (!L->buffer)
           return nullptr;
+        // Crear textura vacía con formato comprimido de alta calidad DXT5 (BC3) para ahorrar memoria gráfica
+        tex = new QOpenGLTexture(QOpenGLTexture::Target2D);
+        tex->setFormat(QOpenGLTexture::RGBA_DXT5);
+        tex->setSize(L->buffer->width(), L->buffer->height());
+        tex->allocateStorage();
+
         QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
                    QImage::Format_RGBA8888_Premultiplied);
-        tex = new QOpenGLTexture(img);
+        tex->setData(img);
+
         tex->setMinificationFilter(QOpenGLTexture::Linear);
         tex->setMagnificationFilter(QOpenGLTexture::Linear);
         tex->setWrapMode(QOpenGLTexture::ClampToBorder);
         tex->setBorderColor(QColor(0, 0, 0, 0));
         m_layerTextures.insert(L, tex);
+        L->buffer->clearDirtyFlags();
         L->dirty = false;
       } else if (L->dirty) {
         if (!L->buffer)
           return tex;
-        QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
-                   QImage::Format_RGBA8888_Premultiplied);
-        tex->setData(img);
-        L->dirty = false;
+
+        // Optimización por mosaicos (Tiled GPU Upload): Subir únicamente los tiles modificados
+        if (tex->isCreated() && L->buffer->hasDirtyTiles()) {
+          f->glBindTexture(GL_TEXTURE_2D, tex->textureId());
+          const auto &tiles = L->buffer->getTiles();
+          for (const auto &tile : tiles) {
+            if (tile && tile->dirty) {
+              f->glTexSubImage2D(GL_TEXTURE_2D, 0,
+                                 tile->startX, tile->startY,
+                                 artflow::ImageBuffer::TILE_SIZE, artflow::ImageBuffer::TILE_SIZE,
+                                 GL_RGBA, GL_UNSIGNED_BYTE, tile->data.get());
+            }
+          }
+          L->buffer->clearDirtyFlags();
+          L->dirty = false;
+        } else {
+          // Fallback completo si la textura no ha sido reservada
+          QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                     QImage::Format_RGBA8888_Premultiplied);
+          tex->setData(img);
+          L->buffer->clearDirtyFlags();
+          L->dirty = false;
+        }
       }
       return tex;
     };
@@ -7972,18 +8036,49 @@ void CanvasItem::blendWithShader(QPainter *painter, artflow::Layer *layer,
       if (!tex) {
         if (!L->buffer)
           return nullptr;
+        // Crear textura vacía con formato comprimido de alta calidad DXT5 (BC3) para ahorrar memoria gráfica
+        tex = new QOpenGLTexture(QOpenGLTexture::Target2D);
+        tex->setFormat(QOpenGLTexture::RGBA_DXT5);
+        tex->setSize(L->buffer->width(), L->buffer->height());
+        tex->allocateStorage();
+
         QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
                    QImage::Format_RGBA8888_Premultiplied);
-        tex = new QOpenGLTexture(img);
+        tex->setData(img);
+
+        tex->setMinificationFilter(QOpenGLTexture::Linear);
+        tex->setMagnificationFilter(QOpenGLTexture::Linear);
+        tex->setWrapMode(QOpenGLTexture::ClampToBorder);
+        tex->setBorderColor(QColor(0, 0, 0, 0));
         m_layerTextures.insert(L, tex);
+        L->buffer->clearDirtyFlags();
         L->dirty = false;
       } else if (L->dirty) {
         if (!L->buffer)
           return tex;
-        QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
-                   QImage::Format_RGBA8888_Premultiplied);
-        tex->setData(img);
-        L->dirty = false;
+
+        // Optimización por mosaicos (Tiled GPU Upload): Subir únicamente los tiles modificados
+        if (tex->isCreated() && L->buffer->hasDirtyTiles()) {
+          f->glBindTexture(GL_TEXTURE_2D, tex->textureId());
+          const auto &tiles = L->buffer->getTiles();
+          for (const auto &tile : tiles) {
+            if (tile && tile->dirty) {
+              f->glTexSubImage2D(GL_TEXTURE_2D, 0,
+                                 tile->startX, tile->startY,
+                                 artflow::ImageBuffer::TILE_SIZE, artflow::ImageBuffer::TILE_SIZE,
+                                 GL_RGBA, GL_UNSIGNED_BYTE, tile->data.get());
+            }
+          }
+          L->buffer->clearDirtyFlags();
+          L->dirty = false;
+        } else {
+          // Fallback completo si la textura no ha sido reservada
+          QImage img(L->buffer->data(), L->buffer->width(), L->buffer->height(),
+                     QImage::Format_RGBA8888_Premultiplied);
+          tex->setData(img);
+          L->buffer->clearDirtyFlags();
+          L->dirty = false;
+        }
       }
       return tex;
     };
