@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Effects
 
 // ══════════════════════════════════════════════════════════════
 //  SIMPLE ANIMATION BAR  —  Flipbook-style floating timeline
@@ -15,6 +16,8 @@ Item {
     property int    projectFPS:     12
     property int    projectFrames:  48
     property bool   projectLoop:    true
+
+    property var    copiedFrame:    null
 
     // Canvas background color
     property color  canvasBgColor: {
@@ -143,13 +146,20 @@ Item {
         return -1
     }
 
-    function goToFrame(idx) {
+    property bool isScrubbing: false
+
+    function goToFrame(idx, force) {
         if (idx < 0 || idx >= frameCount) return
+
+        var isChanged = (currentFrameIdx !== idx) || force
+
         currentFrameIdx = idx
         // Only reset tickCounter for manual navigation, not when the timer advances
         if (playTimer.running && !_advancingFromTimer) playTimer.tickCounter = 0
         // Snap playhead for manual navigation
         if (!_advancingFromTimer) _playheadSlot = getSlotOffset(idx)
+
+        if (!isChanged) return
 
         if (targetCanvas) {
             for (var i = 0; i < frameCount; i++) {
@@ -182,10 +192,10 @@ Item {
         }
     }
 
-    onOnionEnabledChanged: { goToFrame(currentFrameIdx) }
-    onOnionBeforeChanged: { goToFrame(currentFrameIdx) }
-    onOnionAfterChanged: { goToFrame(currentFrameIdx) }
-    onOnionOpacityChanged: { goToFrame(currentFrameIdx) }
+    onOnionEnabledChanged: { goToFrame(currentFrameIdx, true) }
+    onOnionBeforeChanged: { goToFrame(currentFrameIdx, true) }
+    onOnionAfterChanged: { goToFrame(currentFrameIdx, true) }
+    onOnionOpacityChanged: { goToFrame(currentFrameIdx, true) }
 
     function addFrame() {
         var newIdx = frameModel.count
@@ -230,6 +240,66 @@ Item {
         goToFrame(currentFrameIdx + 1)
     }
 
+    function copyFrame(fi) {
+        if (fi < 0 || fi >= frameModel.count) return
+        var src = frameModel.get(fi)
+        copiedFrame = { layerName: src.layerName, duration: src.duration || 1 }
+        if (targetCanvas) targetCanvas.notificationRequested("Fotograma copiado", "success")
+    }
+
+    function pasteFrame(fi) {
+        if (!copiedFrame) return
+        if (fi < 0 || fi >= frameModel.count) fi = frameModel.count - 1
+        var newIdx = frameModel.count
+        var nm = "AF_Simple_F" + (newIdx + 1) + "_Copia"
+        if (targetCanvas) {
+            var srcRi = findLayerIndexByName(copiedFrame.layerName)
+            if (srcRi >= 0) {
+                targetCanvas.duplicateLayer(srcRi)
+                targetCanvas.renameLayer(targetCanvas.activeLayerIndex, nm)
+            } else {
+                targetCanvas.addLayer()
+                targetCanvas.renameLayer(targetCanvas.activeLayerIndex, nm)
+            }
+        }
+        frameModel.insert(fi + 1, { thumbnail: "", layerName: nm, duration: copiedFrame.duration || 1 })
+        goToFrame(fi + 1)
+        durationChanged()
+        if (targetCanvas) targetCanvas.notificationRequested("Fotograma pegado", "success")
+    }
+
+    // ── Keyboard Shortcuts ───────────────────────────────────
+    Shortcut {
+        sequence: "Left"
+        enabled: root.visible && root.frameCount > 0
+        onActivated: root.goToFrame(Math.max(0, root.currentFrameIdx - 1))
+    }
+    Shortcut {
+        sequence: ","
+        enabled: root.visible && root.frameCount > 0
+        onActivated: root.goToFrame(Math.max(0, root.currentFrameIdx - 1))
+    }
+    Shortcut {
+        sequence: "Right"
+        enabled: root.visible && root.frameCount > 0
+        onActivated: root.goToFrame(Math.min(root.frameCount - 1, root.currentFrameIdx + 1))
+    }
+    Shortcut {
+        sequence: "."
+        enabled: root.visible && root.frameCount > 0
+        onActivated: root.goToFrame(Math.min(root.frameCount - 1, root.currentFrameIdx + 1))
+    }
+    Shortcut {
+        sequence: "Return"
+        enabled: root.visible && root.frameCount > 1
+        onActivated: root.isPlaying = !root.isPlaying
+    }
+    Shortcut {
+        sequence: "Shift+Space"
+        enabled: root.visible && root.frameCount > 1
+        onActivated: root.isPlaying = !root.isPlaying
+    }
+
     // ── Entry Animation ──────────────────────────────────────
     property bool _ready: false
     Component.onCompleted: Qt.callLater(function() { root._ready = true })
@@ -241,6 +311,16 @@ Item {
     // ════════════════════════════════════════════════════════
     //  FLOATING PANEL — Flipbook Style
     // ════════════════════════════════════════════════════════
+    // Premium Shadow Backplate for 3D depth
+    Rectangle {
+        anchors.fill: pill
+        anchors.margins: -4
+        radius: pill.radius + 4
+        color: "#000000"
+        opacity: 0.45
+        z: pill.z - 1
+    }
+
     Rectangle {
         id: pill
         anchors.horizontalCenter: parent.horizontalCenter
@@ -249,20 +329,20 @@ Item {
 
         width:  Math.min(960, Math.max(500, parent.width * 0.78))
         height: root.frameCount === 0 ? 52 : 136
-        radius: 16
-        color:  "#17171c"
-        border.color: "#2a2a32"
+        radius: 20
+        color:  Qt.rgba(0.04, 0.04, 0.06, 0.94)  // Obsidian Slate Glass
+        border.color: Qt.rgba(1, 1, 1, 0.06)
         border.width: 1
 
         Behavior on height { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
-        // Subtle top highlight
+        // Subtle top highlight reflection
         Rectangle {
             width: parent.width * 0.5; height: 1
             anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
             gradient: Gradient { orientation: Gradient.Horizontal
                 GradientStop { position: 0; color: "transparent" }
-                GradientStop { position: 0.5; color: Qt.rgba(1,1,1,0.06) }
+                GradientStop { position: 0.5; color: Qt.rgba(1,1,1,0.12) }
                 GradientStop { position: 1; color: "transparent" }
             }
         }
@@ -272,32 +352,37 @@ Item {
             id: topBar
             anchors.top: parent.top; anchors.topMargin: 10
             anchors.left: parent.left; anchors.right: parent.right
-            anchors.leftMargin: 14; anchors.rightMargin: 14
-            height: 28; spacing: 6
+            anchors.leftMargin: 16; anchors.rightMargin: 16
+            height: 28; spacing: 8
 
             // ▶ Play button
             Rectangle {
-                width: playRow.implicitWidth + 20; height: 26; radius: 13
+                width: playRow.implicitWidth + 24; height: 26; radius: 13
                 color: root.isPlaying
-                    ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.2)
-                    : (playBtnMa.containsMouse ? "#252530" : "#1e1e24")
-                border.color: root.isPlaying ? root.accentColor : "#333"
+                    ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.18)
+                    : (playBtnMa.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.02))
+                border.color: root.isPlaying ? root.accentColor : Qt.rgba(1, 1, 1, 0.06)
                 border.width: root.isPlaying ? 1.5 : 1
                 opacity: root.frameCount > 1 ? 1.0 : 0.4
                 Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                scale: playBtnMa.pressed ? 0.95 : 1.0
+                Behavior on scale { NumberAnimation { duration: 80 } }
 
                 Row {
-                    id: playRow; anchors.centerIn: parent; spacing: 5
+                    id: playRow; anchors.centerIn: parent; spacing: 6
                     Text {
                         text: root.isPlaying ? "■" : "▶"
-                        color: root.isPlaying ? root.accentColor : "#ccc"
+                        color: root.isPlaying ? root.accentColor : "#ffffff"
                         font.pixelSize: root.isPlaying ? 10 : 11
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
                         text: root.isPlaying ? "Stop" : "Play"
-                        color: root.isPlaying ? root.accentColor : "#aaa"
+                        color: root.isPlaying ? root.accentColor : "#e4e4e7"
                         font.pixelSize: 11; font.weight: Font.Medium
+                        font.family: "System-UI, Segoe UI, sans-serif"
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -310,12 +395,13 @@ Item {
 
             // Frame counter pill
             Rectangle {
-                width: fcText.implicitWidth + 18; height: 22; radius: 6
-                color: "#0e0e12"; border.color: "#2a2a30"
+                width: fcText.implicitWidth + 18; height: 22; radius: 11
+                color: Qt.rgba(1, 1, 1, 0.025); border.color: Qt.rgba(1, 1, 1, 0.05)
+                border.width: 1
                 Text {
                     id: fcText; anchors.centerIn: parent
                     text: root.frameCount === 0 ? "—" : (root.currentFrameIdx + 1) + " / " + root.frameCount
-                    color: "#777"; font.pixelSize: 10; font.family: "Monospace"; font.weight: Font.DemiBold
+                    color: "#a1a1aa"; font.pixelSize: 10; font.family: "System-UI, Segoe UI, sans-serif"; font.weight: Font.DemiBold
                 }
             }
 
@@ -326,14 +412,37 @@ Item {
                     var s = root.currentTimeSec; var sec = s.toFixed(1)
                     return sec + "s"
                 }
-                color: "#444"; font.pixelSize: 9; font.family: "Monospace"
+                color: "#61616a"; font.pixelSize: 9; font.family: "System-UI, Segoe UI, sans-serif"; font.weight: Font.Medium
                 visible: root.frameCount > 0
+            }
+
+            // Interactive FPS Button
+            Rectangle {
+                visible: root.frameCount > 0
+                width: fpsTxt.implicitWidth + 18; height: 22; radius: 11
+                color: fpsMa.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(1, 1, 1, 0.015)
+                border.color: fpsPopup.visible ? root.accentColor : Qt.rgba(1, 1, 1, 0.05)
+                border.width: fpsPopup.visible ? 1.2 : 1
+                Behavior on color { ColorAnimation { duration: 120 } }
+                Text {
+                    id: fpsTxt
+                    anchors.centerIn: parent
+                    text: root.fps + " fps"
+                    color: fpsPopup.visible ? root.accentColor : "#a1a1aa"
+                    font.pixelSize: 9; font.weight: Font.DemiBold
+                    font.family: "System-UI, Segoe UI, sans-serif"
+                }
+                MouseArea {
+                    id: fpsMa; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: fpsPopup.visible = !fpsPopup.visible
+                }
             }
 
             Item { Layout.fillWidth: true }
 
             // ── RIGHT ICONS ─────────────────────────────────
-            Row { spacing: 3
+            Row { spacing: 4
                 // Loop
                 IconBtn {
                     icon: "↻"; active: root.loopEnabled; activeCol: root.accentColor
@@ -341,7 +450,7 @@ Item {
                 }
                 // Onion
                 IconBtn {
-                    icon: "◉"; active: root.onionEnabled; activeCol: "#f0d060"
+                    iconSource: "image://icons/onion"; active: root.onionEnabled; activeCol: "#f0d060"
                     tip: "Onion Skin"; visible: root.frameCount > 1
                     onToggled: root.onionEnabled = !root.onionEnabled
                 }
@@ -353,13 +462,13 @@ Item {
                 }
 
                 // Separator
-                Rectangle { width: 1; height: 16; color: "#2a2a32"; anchors.verticalCenter: parent.verticalCenter }
+                Rectangle { width: 1; height: 16; color: Qt.rgba(1, 1, 1, 0.06); anchors.verticalCenter: parent.verticalCenter }
 
                 // + New Frame
                 Rectangle {
-                    width: root.frameCount === 0 ? (addTxt.implicitWidth + 22) : 26
+                    width: root.frameCount === 0 ? (addTxt.implicitWidth + 24) : 26
                     height: 26; radius: 8
-                    color: addMa.containsMouse ? Qt.lighter(root.accentColor, 1.1) : root.accentColor
+                    color: addMa.containsMouse ? Qt.lighter(root.accentColor, 1.05) : root.accentColor
                     scale: addMa.pressed ? 0.93 : 1.0
                     Behavior on scale { NumberAnimation { duration: 80 } }
                     Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -369,6 +478,7 @@ Item {
                         text: root.frameCount === 0 ? "+ Frame" : "+"
                         color: "white"; font.pixelSize: root.frameCount === 0 ? 11 : 14
                         font.weight: Font.Bold
+                        font.family: "System-UI, Segoe UI, sans-serif"
                     }
                     MouseArea {
                         id: addMa; anchors.fill: parent; hoverEnabled: true
@@ -386,7 +496,8 @@ Item {
             anchors.bottom: parent.bottom; anchors.bottomMargin: 10
             anchors.horizontalCenter: parent.horizontalCenter
             text: "Pulsa  + Frame  para comenzar"
-            color: "#333"; font.pixelSize: 10; font.italic: true
+            color: "#52525b"; font.pixelSize: 10; font.italic: true
+            font.family: "System-UI, Segoe UI, sans-serif"
         }
 
         // ── TIMELINE GRID AREA (visible when frames > 0) ─────
@@ -406,23 +517,24 @@ Item {
                 width: root.trackLabelW; z: 5
                 anchors.top: parent.top; anchors.topMargin: root.rulerH + 2
                 anchors.bottom: parent.bottom; anchors.bottomMargin: 2
-                radius: 8
-                color: "#1e1e24"
-                border.color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.35)
-                border.width: 1.5
+                radius: 12
+                color: Qt.rgba(1, 1, 1, 0.025)
+                border.color: Qt.rgba(1, 1, 1, 0.05)
+                border.width: 1
 
-                Row {
-                    anchors.centerIn: parent; spacing: 5
-                    // Color dot
-                    Rectangle {
-                        width: 8; height: 8; radius: 4
-                        color: root.accentColor
-                        anchors.verticalCenter: parent.verticalCenter
+                Column {
+                    anchors.centerIn: parent; spacing: 2
+                    Text {
+                        text: "Animación"
+                        color: "#ffffff"; font.pixelSize: 10; font.weight: Font.Bold
+                        font.family: "System-UI, Segoe UI, sans-serif"
+                        anchors.horizontalCenter: parent.horizontalCenter
                     }
                     Text {
-                        text: "Track 1"
-                        color: "#ccc"; font.pixelSize: 10; font.weight: Font.DemiBold
-                        anchors.verticalCenter: parent.verticalCenter
+                        text: root.totalSlots() + "f"
+                        color: "#a1a1aa"; font.pixelSize: 8; font.weight: Font.Medium
+                        font.family: "System-UI, Segoe UI, sans-serif"
+                        anchors.horizontalCenter: parent.horizontalCenter
                     }
                 }
             }
@@ -471,16 +583,16 @@ Item {
                                     width: 1
                                     height: index < root.totalSlots() ? (parent.inCurrent ? 10 : 6) : 4
                                     color: index < root.totalSlots()
-                                        ? (parent.inCurrent ? root.accentColor : "#444")
-                                        : "#222"
+                                        ? (parent.inCurrent ? root.accentColor : Qt.rgba(1, 1, 1, 0.09))
+                                        : Qt.rgba(1, 1, 1, 0.02)
                                     anchors.bottom: parent.bottom
                                 }
                                 // Number
                                 Text {
                                     visible: index < root.totalSlots() && (index % 5 === 0 || index === 0 || root.totalSlots() <= 20)
                                     text: (index + 1)
-                                    color: parent.inCurrent ? "#ddd" : "#555"
-                                    font.pixelSize: 8; font.family: "Monospace"
+                                    color: parent.inCurrent ? "#ffffff" : "#61616a"
+                                    font.pixelSize: 8; font.family: "System-UI, Segoe UI, sans-serif"
                                     font.weight: parent.inCurrent ? Font.Bold : Font.Normal
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     anchors.top: parent.top; anchors.topMargin: 1
@@ -492,8 +604,10 @@ Item {
                         MouseArea {
                             anchors.fill: parent; z: 2
                             cursorShape: Qt.PointingHandCursor
-                            onPressed: function(m) { seekFromPx(m.x) }
+                            onPressed: function(m) { root.isScrubbing = true; seekFromPx(m.x) }
                             onPositionChanged: function(m) { if (pressed) seekFromPx(m.x) }
+                            onReleased: { root.isScrubbing = false }
+                            onCanceled: { root.isScrubbing = false }
                             function seekFromPx(px) {
                                 var slot = Math.floor(px / root.cellStep)
                                 // Find which frame this slot belongs to
@@ -510,7 +624,7 @@ Item {
                         // Ruler bottom line
                         Rectangle {
                             anchors.bottom: parent.bottom; width: parent.width; height: 1
-                            color: "#2a2a32"
+                            color: Qt.rgba(1, 1, 1, 0.06)
                         }
                     }
 
@@ -526,7 +640,7 @@ Item {
                             model: root.totalSlots() + 5
                             Rectangle {
                                 x: index * root.cellStep; width: 1; height: cellsRow.height
-                                color: "#1a1a20"; opacity: 0.6
+                                color: Qt.rgba(1, 1, 1, 0.025)
                             }
                         }
 
@@ -557,34 +671,59 @@ Item {
                                 }
                                 onDragDeltaChanged: _smoothDelta = dragDelta
 
-                                // Live resize: while dragging, show the visual width
+                                // --- PHYSICAL TACTILE INTERACTION PROPERTIES ---
+                                property real snapImpulse: 0
+
+                                onVisualDurChanged: {
+                                    if (isDragging) {
+                                        // Visual bounce feedback at the snap boundary!
+                                        snapBounceAnim.dragDirection = (visualDur > fCell.dur) ? 1 : -1
+                                        snapBounceAnim.restart()
+                                        handleBounce.restart()
+                                    }
+                                }
+
+                                SequentialAnimation {
+                                    id: snapBounceAnim
+                                    property int dragDirection: 1
+                                    NumberAnimation {
+                                        target: fCell
+                                        property: "snapImpulse"
+                                        from: dragDirection * 12
+                                        to: 0
+                                        duration: 160
+                                        easing.type: Easing.OutBack
+                                    }
+                                }
+
+                                // Live resize: while dragging, show the visual width (including the tactile snapImpulse!)
                                 x: slotOff * root.cellStep + 1
                                 y: 1
                                 width: isDragging
-                                    ? Math.max(root.cellStep - root.cellGap, dur * root.cellStep + _smoothDelta - root.cellGap)
+                                    ? Math.max(root.cellStep - root.cellGap, dur * root.cellStep + _smoothDelta - root.cellGap + snapImpulse)
                                     : dur * root.cellStep - root.cellGap
                                 height: cellsRow.height - 2
-                                radius: 4
+                                radius: 12
 
                                 Behavior on width {
                                     enabled: !fCell.isDragging
-                                    NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 0.8 }
+                                    NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 1.4 }
                                 }
 
                                 color: {
-                                    if (isCur) return Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.15)
-                                    if (isHov) return "#1e1e26"
-                                    return "#141418"
+                                    if (isCur) return "#ffffff"  // High contrast white active card
+                                    if (isHov) return Qt.rgba(1, 1, 1, 0.08)
+                                    return Qt.rgba(1, 1, 1, 0.02)  // Obsidian Slate Glass inactive
                                 }
                                 border.color: {
-                                    if (isCur) return root.accentColor
-                                    if (isHov) return "#3a3a44"
-                                    return "#222228"
+                                    if (isCur) return "#e84393"  // Hot pink border
+                                    if (isHov) return Qt.rgba(1, 1, 1, 0.15)
+                                    return Qt.rgba(1, 1, 1, 0.06)
                                 }
-                                border.width: isCur ? 1.5 : 1
+                                border.width: isCur ? 2.0 : 1.0
 
-                                Behavior on color { ColorAnimation { duration: 100 } }
-                                Behavior on border.color { ColorAnimation { duration: 100 } }
+                                Behavior on color { ColorAnimation { duration: 120 } }
+                                Behavior on border.color { ColorAnimation { duration: 120 } }
 
                                 // Onion overlay
                                 Rectangle {
@@ -593,16 +732,17 @@ Item {
                                         ((fCell.onionDist < 0 && -fCell.onionDist <= root.onionBefore) ||
                                          (fCell.onionDist > 0 &&  fCell.onionDist <= root.onionAfter))
                                     color: fCell.onionDist < 0
-                                        ? Qt.rgba(1, 0.2, 0.3, 0.15)
-                                        : Qt.rgba(0.2, 0.8, 0.3, 0.12)
+                                        ? Qt.rgba(1, 0.2, 0.3, 0.12)
+                                        : Qt.rgba(0.2, 0.8, 0.3, 0.10)
                                 }
 
                                 // Thumbnail content
                                 Rectangle {
-                                    anchors.fill: parent; anchors.margins: 2
-                                    radius: 3; color: root.canvasBgColor; z: 0
+                                    anchors.fill: parent; anchors.margins: isCur ? 3 : 2
+                                    radius: isCur ? 10 : 10
+                                    color: root.canvasBgColor; z: 0
                                     clip: true
-                                    opacity: fCell.isCur ? 1.0 : 0.6
+                                    opacity: fCell.isCur ? 1.0 : 0.65
 
                                     Image {
                                         anchors.fill: parent; anchors.margins: 1
@@ -617,15 +757,15 @@ Item {
                                         visible: status === Image.Ready
                                     }
 
-                                    // Frame number + duration indicator
+                                    // Faint frame number placeholder
                                     Text {
                                         anchors.centerIn: parent
-                                        text: fCell.dur > 1 ? (fCell.fi + 1) + "×" + fCell.dur : (fCell.fi + 1)
-                                        color: fCell.isCur ? "#ccc" : "#999"
-                                        font.pixelSize: root.cellSize > 26 ? 9 : 7
-                                        font.family: "Monospace"
+                                        text: (fCell.fi + 1)
+                                        color: fCell.isCur ? "#888896" : "#61616a"
+                                        font.pixelSize: 12
+                                        font.family: "System-UI, Segoe UI, sans-serif"
                                         font.weight: fCell.isCur ? Font.Bold : Font.Normal
-                                        opacity: 0.5
+                                        opacity: 0.35
                                         z: 2
                                     }
                                 }
@@ -636,57 +776,107 @@ Item {
                                     Rectangle {
                                         x: (index + 1) * root.cellStep - 1
                                         y: 4; width: 1; height: fCell.height - 8
-                                        color: Qt.rgba(1,1,1,0.08)
+                                        color: Qt.rgba(1,1,1,0.06)
                                     }
                                 }
 
-                                // Current frame top accent
+                                // Current frame top accent (Neon light indicator)
                                 Rectangle {
                                     visible: fCell.isCur
                                     anchors.top: parent.top; anchors.topMargin: -1
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    width: Math.min(parent.width - 4, 12); height: 2; radius: 1
-                                    color: root.accentColor; z: 5
+                                    width: Math.min(parent.width - 4, 14); height: 2; radius: 1
+                                    color: "#e84393"; z: 5
+                                }
+
+                                // ── DURATION FLOATING PILL (e.g. x6 bubble) ──
+                                Rectangle {
+                                    id: durPill
+                                    property bool showPill: fCell.dur > 1 || fCell.isDragging
+                                    visible: showPill
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.bottom: parent.bottom
+                                    anchors.bottomMargin: -6  // float at bottom center
+                                    z: 16
+
+                                    width: durTxt.implicitWidth + 14; height: 16; radius: 8
+                                    color: "#e84393"
+                                    border.color: "#ffffff"
+                                    border.width: 1
+
+                                    // Shadow
+                                    Rectangle {
+                                        anchors.fill: parent; anchors.margins: -1
+                                        radius: 9; color: "#000000"; opacity: 0.35; z: -1
+                                    }
+
+                                    Text {
+                                        id: durTxt
+                                        anchors.centerIn: parent
+                                        text: "×" + (fCell.isDragging ? fCell.visualDur : fCell.dur)
+                                        color: "#ffffff"
+                                        font.pixelSize: 9
+                                        font.weight: Font.Black
+                                        font.family: "System-UI, Segoe UI, sans-serif"
+                                    }
+
+                                    // Scale spring bounce on show/hide
+                                    scale: showPill ? 1.0 : 0.0
+                                    opacity: showPill ? 1.0 : 0.0
+                                    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack; easing.overshoot: 1.4 } }
+                                    Behavior on opacity { NumberAnimation { duration: 120 } }
                                 }
 
                                 // ── EXTENDER HANDLE (right edge) ─────
                                 Rectangle {
                                     id: extHandle
-                                    width: 14; height: parent.height
+                                    width: 10; height: parent.height - 4
                                     anchors.right: parent.right
-                                    color: "transparent"
-                                    radius: 3; z: 15
+                                    anchors.rightMargin: 2
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: "#e84393"  // Neon magenta/pink
+                                    radius: 5; z: 15
 
-                                    // Glow background on hover/press
+                                    // Outer border highlight
+                                    border.color: "#ffffff"
+                                    border.width: 1
+
+                                    // Glow shadow on hover/press
                                     Rectangle {
-                                        anchors.fill: parent; radius: parent.radius
-                                        color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b,
-                                            extMa.pressed ? 0.35 : (extMa.containsMouse ? 0.15 : 0))
-                                        Behavior on color { ColorAnimation { duration: 150 } }
+                                        anchors.fill: parent; anchors.margins: -3
+                                        radius: parent.radius + 3
+                                        color: "#e84393"
+                                        opacity: extMa.pressed ? 0.35 : (extMa.containsMouse ? 0.15 : 0)
+                                        z: -1
+                                        Behavior on opacity { NumberAnimation { duration: 150 } }
                                     }
 
-                                    // Grip dots with glow
+                                    // Grip dots
                                     Column {
-                                        anchors.centerIn: parent; spacing: 3
+                                        anchors.centerIn: parent; spacing: 2
                                         Repeater {
                                             model: 3
                                             Rectangle {
-                                                width: 3; height: 3; radius: 1.5
-                                                color: extMa.pressed
-                                                    ? root.accentColor
-                                                    : (extMa.containsMouse ? Qt.lighter(root.accentColor, 1.3) : "#555")
-                                                Behavior on color { ColorAnimation { duration: 120 } }
-                                                // Subtle scale on press
-                                                scale: extMa.pressed ? 1.3 : 1.0
-                                                Behavior on scale { NumberAnimation { duration: 100 } }
+                                                width: 2; height: 2; radius: 1
+                                                color: "#ffffff"
                                             }
                                         }
                                     }
 
+                                    // Dynamic scale animation on snap
+                                    property real bounceScale: 1.0
+                                    scale: bounceScale
+
+                                    SequentialAnimation {
+                                        id: handleBounce
+                                        NumberAnimation { target: extHandle; property: "bounceScale"; to: 1.35; duration: 60; easing.type: Easing.OutQuad }
+                                        NumberAnimation { target: extHandle; property: "bounceScale"; to: 1.0; duration: 180; easing.type: Easing.OutElastic }
+                                    }
+
                                     MouseArea {
                                         id: extMa; anchors.fill: parent
-                                        anchors.leftMargin: -4  // larger hit area
-                                        anchors.rightMargin: -2
+                                        anchors.leftMargin: -8  // larger hit area
+                                        anchors.rightMargin: -4
                                         cursorShape: Qt.SizeHorCursor; hoverEnabled: true
                                         preventStealing: true
 
@@ -721,8 +911,8 @@ Item {
                                     x: fCell.visualDur * root.cellStep - root.cellGap - 2
                                     y: 0; width: 2; height: parent.height
                                     radius: 1
-                                    color: root.accentColor
-                                    opacity: 0.7
+                                    color: "#e84393"
+                                    opacity: 0.75
                                     Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
                                 }
 
@@ -739,7 +929,12 @@ Item {
                                             var globalPos = mapToItem(root, m.x, m.y)
                                             frameCtx.popup(globalPos.x, globalPos.y)
                                         } else {
-                                            root.goToFrame(fCell.fi)
+                                            if (m.modifiers & Qt.AltModifier) {
+                                                root.copyFrame(fCell.fi)
+                                                root.pasteFrame(fCell.fi)
+                                            } else {
+                                                root.goToFrame(fCell.fi)
+                                            }
                                         }
                                     }
                                 }
@@ -750,14 +945,14 @@ Item {
                         Rectangle {
                             x: root.totalSlots() * root.cellStep + 1
                             y: 1; width: root.cellSize; height: cellsRow.height - 2
-                            radius: 4
-                            color: addCellMa2.containsMouse ? "#1a1a24" : "transparent"
-                            border.color: addCellMa2.containsMouse ? "#333" : "#1e1e24"
+                            radius: 8
+                            color: addCellMa2.containsMouse ? Qt.rgba(1, 1, 1, 0.09) : Qt.rgba(1, 1, 1, 0.02)
+                            border.color: addCellMa2.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.06)
                             border.width: 1
                             Behavior on color { ColorAnimation { duration: 120 } }
                             Text {
                                 anchors.centerIn: parent; text: "+"
-                                color: addCellMa2.containsMouse ? "#888" : "#2a2a30"
+                                color: addCellMa2.containsMouse ? "#ffffff" : "#a1a1aa"
                                 font.pixelSize: 16; font.weight: Font.Light
                             }
                             MouseArea {
@@ -769,8 +964,10 @@ Item {
                         // Click empty space = seek (slot-aware)
                         MouseArea {
                             anchors.fill: parent; z: -1
-                            onPressed: function(m) { seekSlot(m.x) }
+                            onPressed: function(m) { root.isScrubbing = true; seekSlot(m.x) }
                             onPositionChanged: function(m) { if (pressed) seekSlot(m.x) }
+                            onReleased: { root.isScrubbing = false }
+                            onCanceled: { root.isScrubbing = false }
                             function seekSlot(px) {
                                 var slot = Math.floor(px / root.cellStep)
                                 var acc = 0
@@ -783,6 +980,24 @@ Item {
                         }
                     }
 
+                    // ── SCRUBBING GUIDELINE ───────────────────
+                    Rectangle {
+                        id: scrubbingGuideline
+                        visible: root.isScrubbing
+                        x: (root.getSlotOffset(root.currentFrameIdx) * root.cellStep)
+                        width: root.getFrameDuration(root.currentFrameIdx) * root.cellStep - root.cellGap
+                        y: 0
+                        height: parent.height
+                        color: Qt.rgba(0, 210, 255, 0.08)
+                        border.color: "#00d2ff"
+                        border.width: 1
+                        z: 18
+                        opacity: visible ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        Behavior on x { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+                        Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+                    }
+
                     // ── PLAYHEAD LINE ─────────────────────────
                     Rectangle {
                         id: playheadLine
@@ -793,8 +1008,8 @@ Item {
                             : root.getSlotOffset(root.currentFrameIdx) * root.cellStep + root.cellStep / 2 - 1) || 0
                         y: 0; width: 2
                         height: parent.height
-                        color: root.accentColor; z: 20
-                        opacity: root.isPlaying ? 0.85 : 0.6
+                        color: "#00d2ff"; z: 20
+                        opacity: root.isPlaying ? 0.95 : 0.70
 
                         Behavior on x {
                             NumberAnimation {
@@ -804,22 +1019,41 @@ Item {
                         }
                         Behavior on opacity { NumberAnimation { duration: 200 } }
 
-                        // Glow effect during playback
+                        // Glow effect during playback or scrubbing
                         Rectangle {
-                            visible: root.isPlaying
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: 0; width: 8; height: parent.height
-                            color: root.accentColor; opacity: 0.08; radius: 4
+                            y: 0; width: 6; height: parent.height
+                            color: "#00d2ff"; opacity: 0.12; radius: 3
+                            visible: root.isPlaying || root.isScrubbing
                         }
 
-                        // Top diamond marker
+                        // Top circular playhead knob containing a mini white triangle play icon
                         Rectangle {
-                            width: 10; height: 10; rotation: 45; z: 21
+                            width: 16; height: 16; radius: 8; z: 21
                             anchors.horizontalCenter: parent.horizontalCenter
-                            y: -3; color: root.accentColor
-                            radius: 1.5
+                            y: -6
+                            color: "#00d2ff"
+                            border.color: "#ffffff"
+                            border.width: 1.5
+
+                            // Subtle drop shadow for playhead knob
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: -2
+                                radius: 10; color: "#000000"; opacity: 0.35; z: -1
+                            }
+
+                            // Triangular play symbol inside
+                            Text {
+                                text: "▶"
+                                color: "#ffffff"
+                                font.pixelSize: 8
+                                font.bold: true
+                                anchors.centerIn: parent
+                                anchors.horizontalCenterOffset: 0.5
+                            }
+
                             // Pulse during playback
-                            scale: root.isPlaying ? 1.0 + Math.abs(Math.sin(_pulseTimer.t * 3.14)) * 0.15 : 1.0
+                            scale: root.isPlaying ? 1.0 + Math.abs(Math.sin(_pulseTimer.t * 3.14)) * 0.12 : 1.0
                             Item {
                                 id: _pulseTimer
                                 property real t: 0
@@ -843,28 +1077,36 @@ Item {
         Behavior on opacity { NumberAnimation { duration: 180 } }
 
         anchors.bottom: pill.top; anchors.bottomMargin: 6
-        anchors.horizontalCenter: pill.horizontalCenter
-        width: 270; height: 36; radius: 18
-        color: "#14141a"; border.color: "#f0d06055"; border.width: 1
+        anchors.left: pill.left; anchors.leftMargin: 12
+        width: 270; height: 38; radius: 19
+        color: Qt.rgba(0.06, 0.06, 0.09, 0.94)  // Slate glass
+        border.color: Qt.rgba(0.94, 0.82, 0.38, 0.33); border.width: 1
+
+        // Shadow
+        Rectangle {
+            anchors.fill: parent; anchors.margins: -4
+            z: -1; radius: parent.radius + 4
+            color: "#000000"; opacity: 0.4
+        }
 
         RowLayout {
-            anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14; spacing: 8
+            anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 16; spacing: 8
 
             Text { text: "◉"; font.pixelSize: 14; color: "#f0d060" }
-            Text { text: "Antes"; color: "#cc4444"; font.pixelSize: 10; font.weight: Font.Medium }
-            OSpinner { value: root.onionBefore; accentColor: "#cc4444"; onChanged: (v) => root.onionBefore = v }
+            Text { text: "Antes"; color: "#ff6b81"; font.pixelSize: 10; font.weight: Font.Bold; font.family: "System-UI, Segoe UI, sans-serif" }
+            OSpinner { value: root.onionBefore; accentColor: "#ff6b81"; onChanged: (v) => root.onionBefore = v }
 
-            Rectangle { width: 1; height: 16; color: "#333" }
+            Rectangle { width: 1; height: 16; color: Qt.rgba(1, 1, 1, 0.06) }
 
-            Text { text: "Desp"; color: "#44cc66"; font.pixelSize: 10; font.weight: Font.Medium }
-            OSpinner { value: root.onionAfter; accentColor: "#44cc66"; onChanged: (v) => root.onionAfter = v }
+            Text { text: "Desp"; color: "#2ed573"; font.pixelSize: 10; font.weight: Font.Bold; font.family: "System-UI, Segoe UI, sans-serif" }
+            OSpinner { value: root.onionAfter; accentColor: "#2ed573"; onChanged: (v) => root.onionAfter = v }
 
-            Rectangle { width: 1; height: 16; color: "#333" }
+            Rectangle { width: 1; height: 16; color: Qt.rgba(1, 1, 1, 0.06) }
 
-            Text { text: "Op."; color: "#aaa"; font.pixelSize: 10 }
+            Text { text: "Op."; color: "#a1a1aa"; font.pixelSize: 10; font.family: "System-UI, Segoe UI, sans-serif" }
             Text {
                 text: Math.round(root.onionOpacity * 100) + "%"
-                color: "#f0d060"; font.pixelSize: 10; font.weight: Font.DemiBold
+                color: "#f0d060"; font.pixelSize: 10; font.weight: Font.Black; font.family: "System-UI, Segoe UI, sans-serif"
                 MouseArea {
                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.SizeHorCursor
                     property real sx; property real so
@@ -875,13 +1117,138 @@ Item {
         }
     }
 
+    // ── FPS POPUP ──────────────────────────────────────────
+    Rectangle {
+        id: fpsPopup
+        visible: false
+        opacity: visible ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+
+        anchors.bottom: pill.top; anchors.bottomMargin: 6
+        anchors.right: pill.right; anchors.rightMargin: 12
+        width: 320; height: 48; radius: 24
+        color: Qt.rgba(0.06, 0.06, 0.09, 0.94)  // Slate glass
+        border.color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.4); border.width: 1.5
+        z: 9999
+
+        // Shadow
+        Rectangle {
+            anchors.fill: parent; anchors.margins: -4
+            z: -1; radius: parent.radius + 4
+            color: "#000000"; opacity: 0.45
+        }
+
+        RowLayout {
+            anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 16; spacing: 10
+
+            Text {
+                text: "⚡"
+                font.pixelSize: 13
+                color: root.accentColor
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            // Slider container
+            Item {
+                Layout.fillWidth: true
+                height: 24
+                anchors.verticalCenter: parent.verticalCenter
+
+                // Slider Track
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width
+                    height: 4
+                    radius: 2
+                    color: Qt.rgba(1, 1, 1, 0.06)
+
+                    // Highlighted Track
+                    Rectangle {
+                        height: parent.height
+                        width: Math.max(0, Math.min(parent.width, (root.fps - 1) / 59 * parent.width))
+                        radius: 2
+                        color: root.accentColor
+                    }
+                }
+
+                // Handle
+                Rectangle {
+                    x: Math.max(0, Math.min(parent.width - 12, (root.fps - 1) / 59 * (parent.width - 12)))
+                    y: (parent.height - 12) / 2
+                    width: 12; height: 12; radius: 6
+                    color: "#ffffff"
+                    border.color: root.accentColor
+                    border.width: 2
+
+                    // Outer shadow glow
+                    Rectangle {
+                        anchors.fill: parent; anchors.margins: -4
+                        radius: 10; color: root.accentColor; opacity: sliderMa.containsMouse ? 0.25 : 0
+                        z: -1
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
+                }
+
+                MouseArea {
+                    id: sliderMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    preventStealing: true
+
+                    function updateFPS(mx) {
+                        var pct = Math.max(0.0, Math.min(1.0, mx / width))
+                        var val = Math.round(1 + pct * 59)
+                        root.fps = val
+                    }
+                    onPressed: (m) => updateFPS(m.x)
+                    onPositionChanged: (m) => { if (pressed) updateFPS(m.x) }
+                }
+            }
+
+            // Presets
+            Row {
+                spacing: 4
+                anchors.verticalCenter: parent.verticalCenter
+                Repeater {
+                    model: [8, 12, 24, 30]
+                    Rectangle {
+                        width: 24; height: 20; radius: 4
+                        color: root.fps === modelData
+                            ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25)
+                            : (presetMa.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.02))
+                        border.color: root.fps === modelData ? root.accentColor : Qt.rgba(1, 1, 1, 0.06)
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: modelData
+                            color: root.fps === modelData ? root.accentColor : "#a1a1aa"
+                            font.pixelSize: 9; font.weight: Font.Bold
+                            font.family: "System-UI, Segoe UI, sans-serif"
+                        }
+
+                        MouseArea {
+                            id: presetMa; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.fps = modelData
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // ── PREMIUM CONTEXT MENU ────────────────────────────────────
     // Dismiss overlay - catches clicks outside the popup
     MouseArea {
         id: ctxDismissOverlay
         anchors.fill: parent; z: 9998
-        visible: frameCtx.visible
-        onClicked: frameCtx.dismiss()
+        visible: frameCtx.visible || fpsPopup.visible
+        onClicked: {
+            frameCtx.dismiss()
+            fpsPopup.visible = false
+        }
     }
 
     // Custom popup with glassmorphism, hover states, and grouped actions
@@ -892,20 +1259,20 @@ Item {
         property real popY: 0
         visible: false
 
-        // Position near click point, clamped to viewport
+        // Position near click point, clamped to viewport horizontally
         x: Math.min(popX, root.width - width - 12)
-        y: Math.max(8, Math.min(popY - height - 4, root.height - height - 8))
-        width: 220; radius: 14; z: 9999
+        y: Math.min(popY - height - 4, root.height - height - 8)
+        width: 220; radius: 16; z: 9999
         height: ctxCol.implicitHeight + 20
-        color: "#1c1c24"
-        border.color: Qt.rgba(1,1,1,0.10)
+        color: Qt.rgba(0.05, 0.05, 0.07, 0.94)  // Slate glass
+        border.color: Qt.rgba(1, 1, 1, 0.07)
         border.width: 1
 
         // Shadow
         Rectangle {
             anchors.fill: parent; anchors.margins: -6
             z: -1; radius: parent.radius + 6
-            color: "#000"; opacity: 0.45
+            color: "#000000"; opacity: 0.45
         }
 
         // Top glass highlight
@@ -949,25 +1316,38 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                        text: "Frame " + (frameCtx.frameIdx + 1)
-                        color: "#999"; font.pixelSize: 10; font.weight: Font.DemiBold
+                        text: "Fotograma " + (frameCtx.frameIdx + 1)
+                        color: "#ffffff"; font.pixelSize: 10; font.weight: Font.Bold
                         font.letterSpacing: 0.5
+                        font.family: "System-UI, Segoe UI, sans-serif"
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
                         text: "·  " + root.getFrameDuration(frameCtx.frameIdx) + "f"
-                        color: "#555"; font.pixelSize: 10
+                        color: "#a1a1aa"; font.pixelSize: 10
+                        font.family: "System-UI, Segoe UI, sans-serif"
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
             }
 
             // Separator
-            Rectangle { width: parent.width - 16; height: 1; color: Qt.rgba(1,1,1,0.06); anchors.horizontalCenter: parent.horizontalCenter }
+            Rectangle { width: parent.width - 16; height: 1; color: Qt.rgba(1, 1, 1, 0.06); anchors.horizontalCenter: parent.horizontalCenter }
 
             // ── Actions ──
             CtxBtn {
-                icon: "📋"; label: "Duplicar frame"; shortcut: ""
+                icon: "📄"; label: "Copiar fotograma"; shortcut: ""
+                iconColor: "#9ece6a"
+                onClicked: { root.copyFrame(frameCtx.frameIdx); frameCtx.dismiss() }
+            }
+            CtxBtn {
+                icon: "📋"; label: "Pegar fotograma"; shortcut: ""
+                iconColor: "#bb9af7"
+                visible: root.copiedFrame !== null
+                onClicked: { root.pasteFrame(frameCtx.frameIdx); frameCtx.dismiss() }
+            }
+            CtxBtn {
+                icon: "📑"; label: "Duplicar frame"; shortcut: ""
                 iconColor: "#7aa2f7"
                 onClicked: { root.goToFrame(frameCtx.frameIdx); root.duplicateCurrentFrame(); frameCtx.dismiss() }
             }
@@ -983,9 +1363,14 @@ Item {
                     frameCtx.dismiss()
                 }
             }
+            CtxBtn {
+                icon: "🗑️"; label: "Borrar frame"; shortcut: ""
+                iconColor: "#f7768e"
+                onClicked: { root.goToFrame(frameCtx.frameIdx); root.deleteCurrentFrame(); frameCtx.dismiss() }
+            }
 
             // Separator
-            Rectangle { width: parent.width - 16; height: 1; color: Qt.rgba(1,1,1,0.06); anchors.horizontalCenter: parent.horizontalCenter }
+            Rectangle { width: parent.width - 16; height: 1; color: Qt.rgba(1, 1, 1, 0.06); anchors.horizontalCenter: parent.horizontalCenter }
 
             // ── Duration controls ──
             Item {
@@ -994,7 +1379,7 @@ Item {
                     anchors.left: parent.left; anchors.leftMargin: 10; spacing: 6
                     anchors.verticalCenter: parent.verticalCenter
                     Text { text: "⟷"; font.pixelSize: 13; color: "#9ece6a"; anchors.verticalCenter: parent.verticalCenter }
-                    Text { text: "Duración"; color: "#aaa"; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: "Duración"; color: "#d4d4d8"; font.pixelSize: 11; font.family: "System-UI, Segoe UI, sans-serif"; anchors.verticalCenter: parent.verticalCenter }
                 }
 
                 // Stepper control
@@ -1005,10 +1390,11 @@ Item {
                     // Minus
                     Rectangle {
                         width: 26; height: 24; radius: 6
-                        color: durMinMa.containsMouse ? "#2a2a36" : "#1e1e28"
-                        border.color: durMinMa.containsMouse ? "#444" : "#2a2a32"
+                        color: durMinMa.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.02)
+                        border.color: durMinMa.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.06)
+                        border.width: 1
 
-                        Text { text: "−"; anchors.centerIn: parent; color: "#aaa"; font.pixelSize: 14; font.weight: Font.Medium }
+                        Text { text: "−"; anchors.centerIn: parent; color: "#ffffff"; font.pixelSize: 14; font.weight: Font.Medium }
                         MouseArea {
                             id: durMinMa; anchors.fill: parent; hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
@@ -1021,23 +1407,24 @@ Item {
 
                     // Value display
                     Rectangle {
-                        width: 32; height: 24; color: "#12121a"; radius: 0
-                        border.color: "#2a2a32"; border.width: 1
+                        width: 32; height: 24; color: Qt.rgba(1, 1, 1, 0.015); radius: 0
+                        border.color: Qt.rgba(1, 1, 1, 0.06); border.width: 1
                         Text {
                             anchors.centerIn: parent
                             text: root.getFrameDuration(frameCtx.frameIdx)
                             color: root.accentColor; font.pixelSize: 12
-                            font.weight: Font.Bold; font.family: "Monospace"
+                            font.weight: Font.Bold; font.family: "System-UI, Segoe UI, sans-serif"
                         }
                     }
 
                     // Plus
                     Rectangle {
                         width: 26; height: 24; radius: 6
-                        color: durPlsMa.containsMouse ? "#2a2a36" : "#1e1e28"
-                        border.color: durPlsMa.containsMouse ? "#444" : "#2a2a32"
+                        color: durPlsMa.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.02)
+                        border.color: durPlsMa.containsMouse ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(1, 1, 1, 0.06)
+                        border.width: 1
 
-                        Text { text: "+"; anchors.centerIn: parent; color: "#aaa"; font.pixelSize: 14; font.weight: Font.Medium }
+                        Text { text: "+"; anchors.centerIn: parent; color: "#ffffff"; font.pixelSize: 14; font.weight: Font.Medium }
                         MouseArea {
                             id: durPlsMa; anchors.fill: parent; hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
@@ -1051,13 +1438,13 @@ Item {
             }
 
             // Separator
-            Rectangle { width: parent.width - 16; height: 1; color: Qt.rgba(1,1,1,0.06); anchors.horizontalCenter: parent.horizontalCenter }
+            Rectangle { width: parent.width - 16; height: 1; color: Qt.rgba(1, 1, 1, 0.06); anchors.horizontalCenter: parent.horizontalCenter }
 
             // ── Destructive ──
             CtxBtn {
                 icon: "🗑"; label: "Eliminar frame"; shortcut: ""
-                iconColor: "#f7768e"; labelColor: "#f7768e"
-                hoverBg: "#2d1a1f"
+                iconColor: "#ff6b81"; labelColor: "#ff6b81"
+                hoverBg: Qt.rgba(1, 0.1, 0.2, 0.1)
                 enabled: root.frameCount > 1
                 onClicked: { root.goToFrame(frameCtx.frameIdx); root.deleteCurrentFrame(); frameCtx.dismiss() }
             }
@@ -1073,8 +1460,8 @@ Item {
         property string label: ""
         property string shortcut: ""
         property color iconColor: "#888"
-        property color labelColor: "#ddd"
-        property color hoverBg: "#252530"
+        property color labelColor: "#e4e4e7"
+        property color hoverBg: Qt.rgba(1, 1, 1, 0.05)
         signal clicked()
 
         width: parent ? parent.width : 200; height: 32; radius: 8
@@ -1084,7 +1471,7 @@ Item {
 
         // Left accent bar on hover
         Rectangle {
-            width: 3; height: parent.height - 8; radius: 1.5
+            width: 3; height: parent.height - 12; radius: 1.5
             anchors.left: parent.left; anchors.leftMargin: 2
             anchors.verticalCenter: parent.verticalCenter
             color: ctxb.iconColor
@@ -1104,6 +1491,7 @@ Item {
             Text {
                 text: ctxb.label; color: ctxb.labelColor
                 font.pixelSize: 12; font.weight: Font.Medium
+                font.family: "System-UI, Segoe UI, sans-serif"
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -1111,8 +1499,8 @@ Item {
         // Shortcut hint (right side)
         Text {
             visible: ctxb.shortcut !== ""
-            text: ctxb.shortcut; color: "#444"
-            font.pixelSize: 9; font.family: "Monospace"
+            text: ctxb.shortcut; color: "#52525b"
+            font.pixelSize: 9; font.family: "System-UI, Segoe UI, sans-serif"
             anchors.right: parent.right; anchors.rightMargin: 10
             anchors.verticalCenter: parent.verticalCenter
         }
@@ -1128,6 +1516,7 @@ Item {
     component IconBtn : Rectangle {
         id: ib
         property string icon: "?"
+        property string iconSource: ""
         property bool active: false
         property color activeCol: root.accentColor
         property string tip: ""
@@ -1136,16 +1525,29 @@ Item {
         width: 26; height: 26; radius: 7
         color: active
             ? Qt.rgba(activeCol.r, activeCol.g, activeCol.b, 0.15)
-            : (ibMa.containsMouse ? "#252530" : "transparent")
-        border.color: active ? Qt.rgba(activeCol.r, activeCol.g, activeCol.b, 0.5) : "transparent"
+            : (ibMa.containsMouse ? "#ffffff0c" : "transparent")
+        border.color: active ? Qt.rgba(activeCol.r, activeCol.g, activeCol.b, 0.4) : "transparent"
         border.width: active ? 1 : 0
         Behavior on color { ColorAnimation { duration: 100 } }
 
         Text {
+            visible: ib.iconSource === ""
             text: ib.icon; anchors.centerIn: parent
-            color: ib.active ? ib.activeCol : (ibMa.containsMouse ? "#bbb" : "#666")
+            color: ib.active ? ib.activeCol : (ibMa.containsMouse ? "#ffffff" : "#a1a1aa")
             font.pixelSize: 13
             Behavior on color { ColorAnimation { duration: 100 } }
+        }
+        Image {
+            visible: ib.iconSource !== ""
+            source: ib.iconSource
+            width: 14; height: 14; anchors.centerIn: parent
+            smooth: true; mipmap: true
+            opacity: ibMa.containsMouse ? 1.0 : 0.8
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                colorizationColor: ib.active ? ib.activeCol : (ibMa.containsMouse ? "#ffffff" : "#a1a1aa")
+                colorization: 1.0
+            }
         }
         MouseArea {
             id: ibMa; anchors.fill: parent; hoverEnabled: true
@@ -1159,14 +1561,14 @@ Item {
         id: osp
         property int   value: 2; property color accentColor: "#6366f1"
         signal changed(int v); spacing: 3
-        Rectangle { width: 18; height: 18; radius: 4; color: mMa.containsMouse ? "#333" : "#222"
-            Text { text: "−"; color: "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+        Rectangle { width: 18; height: 18; radius: 4; color: mMa.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.02)
+            Text { text: "−"; color: "#a1a1aa"; font.pixelSize: 12; anchors.centerIn: parent }
             MouseArea { id: mMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: if (osp.value > 0) { osp.value--; osp.changed(osp.value) } } }
-        Rectangle { width: 22; height: 18; radius: 4; color: "#151518"
+        Rectangle { width: 22; height: 18; radius: 4; color: Qt.rgba(1, 1, 1, 0.015)
             Text { text: osp.value; color: osp.accentColor; font.pixelSize: 11; font.bold: true; anchors.centerIn: parent } }
-        Rectangle { width: 18; height: 18; radius: 4; color: pMa.containsMouse ? "#333" : "#222"
-            Text { text: "+"; color: "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+        Rectangle { width: 18; height: 18; radius: 4; color: pMa.containsMouse ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(1, 1, 1, 0.02)
+            Text { text: "+"; color: "#a1a1aa"; font.pixelSize: 12; anchors.centerIn: parent }
             MouseArea { id: pMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                 onClicked: if (osp.value < 8) { osp.value++; osp.changed(osp.value) } } }
     }

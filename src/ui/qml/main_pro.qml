@@ -179,12 +179,11 @@ Window {
         for (var i = 0; i < simpleModel.count; i++) {
             var item = simpleModel.get(i)
             var dur = item.duration !== undefined ? item.duration : 1
-            for (var d = 0; d < dur; d++) {
-                trk0.push({
-                    layerName: item.layerName || "",
-                    label: "F" + (trk0.length + 1)
-                })
-            }
+            trk0.push({
+                layerName: item.layerName || "",
+                label: "F" + (trk0.length + 1),
+                span: dur
+            })
         }
         advFrames[0] = trk0
 
@@ -206,21 +205,14 @@ Window {
         var simpleModel = simpleAnimationBar.frameModel
         simpleModel.clear()
 
-        var i = 0
-        while (i < frames.length) {
+        for (var i = 0; i < frames.length; i++) {
             var curLayer = frames[i].layerName ? frames[i].layerName : ""
-            var dur = 1
-            while (i + dur < frames.length) {
-                var nextLayer = frames[i + dur].layerName ? frames[i + dur].layerName : ""
-                if (nextLayer === curLayer) dur++
-                else break
-            }
+            var dur = frames[i].span || 1
             simpleModel.append({
                 thumbnail: "",
                 layerName: curLayer,
                 duration: dur
             })
-            i += dur
         }
 
         if (frames.length > 0) {
@@ -1575,8 +1567,8 @@ Window {
                     radius: 26 * uiScale
                     border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4)
                     border.width: 1.5
-                    visible: isProjectActive && !isZenMode && !isStudioMode
-                    z: 1000
+                    visible: isProjectActive && !isZenMode && !isStudioMode && !(showAnimationBar && useAdvancedTimeline)
+                    z: 1100
 
                     // Inner highlight for 3D feel
                     Rectangle { 
@@ -2807,6 +2799,30 @@ Window {
 
                             // Separator
                             Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
+
+                            // Brush Tools (Only visible in Pro Animation Mode)
+                            TopBarButton {
+                                iconSource: iconPath("brush.svg")
+                                tooltip: "Pincel"
+                                active: showBrush
+                                visible: showAnimationBar && useAdvancedTimeline
+                                onClicked: {
+                                    canvasPage.activeToolIdx = 5 // Brush
+                                    showBrush = !showBrush
+                                    showLayers = false
+                                    showColor = false
+                                    showBrushSettings = false
+                                }
+                            }
+                            TopBarButton {
+                                iconSource: iconPath("eraser.svg")
+                                tooltip: "Borrador"
+                                visible: showAnimationBar && useAdvancedTimeline
+                                onClicked: {
+                                    canvasPage.activeToolIdx = 6 // Eraser
+                                }
+                            }
+                            Rectangle { visible: showAnimationBar && useAdvancedTimeline; width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
 
                             // Brush Config
                             TopBarButton {

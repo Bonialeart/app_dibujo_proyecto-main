@@ -56,6 +56,7 @@
     <file>qml/components/ReferencePanel.qml</file>
     <file>qml/components/TimelinePanel.qml</file>
     <file>qml/components/SimpleAnimationBar.qml</file>
+    <file>qml/components/AnimationTopBar.qml</file>
     <file>qml/components/AdvancedTimelineBar.qml</file>
     <file>qml/components/LiquifyBar.qml</file>
     <file>qml/components/AssetsPage.qml</file>

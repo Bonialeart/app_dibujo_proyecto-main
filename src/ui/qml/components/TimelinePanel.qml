@@ -33,6 +33,7 @@ Item {
     property real onionOpacity:    sharedBar ? sharedBar.onionOpacity    : 0.4
     property int  onionBefore:     sharedBar ? sharedBar.onionBefore     : 2
     property int  onionAfter:      sharedBar ? sharedBar.onionAfter      : 1
+    property bool isScrubbing:     false
 
     // ── Grid layout ─────────────────────────────────────────
     property real cellW:  52
@@ -61,6 +62,38 @@ Item {
         var rates = [6, 8, 12, 15, 24, 30]
         var i = rates.indexOf(sharedBar.fps)
         sharedBar.fps = rates[(i + 1) % rates.length]
+    }
+
+    // ── Keyboard Shortcuts ───────────────────────────────────
+    Shortcut {
+        sequence: "Left"
+        enabled: root.visible && root.frameCount > 0
+        onActivated: root.goToFrame(Math.max(0, root.currentFrameIdx - 1))
+    }
+    Shortcut {
+        sequence: ","
+        enabled: root.visible && root.frameCount > 0
+        onActivated: root.goToFrame(Math.max(0, root.currentFrameIdx - 1))
+    }
+    Shortcut {
+        sequence: "Right"
+        enabled: root.visible && root.frameCount > 0
+        onActivated: root.goToFrame(Math.min(root.frameCount - 1, root.currentFrameIdx + 1))
+    }
+    Shortcut {
+        sequence: "."
+        enabled: root.visible && root.frameCount > 0
+        onActivated: root.goToFrame(Math.min(root.frameCount - 1, root.currentFrameIdx + 1))
+    }
+    Shortcut {
+        sequence: "Return"
+        enabled: root.visible && root.frameCount > 1
+        onActivated: root.togglePlay()
+    }
+    Shortcut {
+        sequence: "Shift+Space"
+        enabled: root.visible && root.frameCount > 1
+        onActivated: root.togglePlay()
     }
 
     // ════════════════════════════════════════════════════════
@@ -142,15 +175,17 @@ Item {
 
                     // ── FPS pill ──
                     Rectangle {
+                        id: fpsPillContainer
                         width: fpsTxt.implicitWidth + 14; height: 24; radius: 12
-                        color: fpsMa.containsMouse ? "#1a1a20" : "#111116"
-                        border.color: Qt.rgba(1,1,1,0.06)
+                        color: fpsPopup.visible ? root.accentColor : (fpsMa.containsMouse ? "#1a1a20" : "#111116")
+                        border.color: fpsPopup.visible ? root.accentColor : Qt.rgba(1,1,1,0.06)
+                        border.width: 1
                         Behavior on color { ColorAnimation { duration: 150 } }
                         Text { id: fpsTxt; anchors.centerIn: parent; text: root.fps + " fps"
-                            color: "#777"; font.pixelSize: 9 }
+                            color: fpsPopup.visible ? "white" : "#777"; font.pixelSize: 9 }
                         MouseArea { id: fpsMa; anchors.fill: parent; hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor; onClicked: root.cycleFPS() }
-                        ToolTip.visible: fpsMa.containsMouse; ToolTip.text: "Cambiar FPS"; ToolTip.delay: 400
+                            cursorShape: Qt.PointingHandCursor; onClicked: fpsPopup.visible = !fpsPopup.visible }
+                        ToolTip.visible: fpsMa.containsMouse && !fpsPopup.visible; ToolTip.text: "Cambiar FPS"; ToolTip.delay: 400
                     }
 
                     Item { Layout.fillWidth: true }
@@ -381,8 +416,10 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent; z: 2
                                     cursorShape: Qt.PointingHandCursor
-                                    onPressed: function(m) { seekFromPx(m.x) }
+                                    onPressed: function(m) { root.isScrubbing = true; seekFromPx(m.x) }
                                     onPositionChanged: function(m) { if (pressed) seekFromPx(m.x) }
+                                    onReleased: { root.isScrubbing = false }
+                                    onCanceled: { root.isScrubbing = false }
                                     function seekFromPx(px) {
                                         var slot = Math.floor(px / root.cellStep)
                                         var acc = 0
@@ -599,8 +636,10 @@ Item {
                                 // Click empty = seek
                                 MouseArea {
                                     anchors.fill: parent; z: -1
-                                    onPressed: function(m) { seekSlot(m.x) }
+                                    onPressed: function(m) { root.isScrubbing = true; seekSlot(m.x) }
                                     onPositionChanged: function(m) { if (pressed) seekSlot(m.x) }
+                                    onReleased: { root.isScrubbing = false }
+                                    onCanceled: { root.isScrubbing = false }
                                     function seekSlot(px) {
                                         var slot = Math.floor(px / root.cellStep)
                                         var acc = 0
@@ -611,6 +650,24 @@ Item {
                                         }
                                     }
                                 }
+                            }
+
+                            // ── Scrubbing Guideline ──
+                            Rectangle {
+                                id: scrubbingGuideline
+                                visible: root.isScrubbing
+                                x: (root.getSlotOffset(root.currentFrameIdx) * root.cellStep)
+                                width: root.getFrameDuration(root.currentFrameIdx) * root.cellStep - root.cellGap
+                                y: root.rulerH + 2
+                                height: cellsRow.height
+                                color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.08)
+                                border.color: root.accentColor
+                                border.width: 1
+                                z: 18
+                                opacity: visible ? 1.0 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                Behavior on x { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+                                Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
                             }
 
                             // ── Playhead line ──
@@ -665,7 +722,137 @@ Item {
     // Dismiss overlay
     MouseArea {
         id: ctxDismiss; anchors.fill: parent; z: 9998
-        visible: ctxMenu.visible; onClicked: ctxMenu.dismiss()
+        visible: ctxMenu.visible || fpsPopup.visible
+        onClicked: {
+            ctxMenu.dismiss()
+            fpsPopup.visible = false
+        }
+    }
+
+    // ── FPS POPUP ──────────────────────────────────────────
+    Rectangle {
+        id: fpsPopup
+        visible: false
+        opacity: visible ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 180 } }
+
+        anchors.top: parent.top; anchors.topMargin: 40
+        x: {
+            if (fpsPillContainer) {
+                var pos = fpsPillContainer.mapToItem(root, 0, 0)
+                return Math.max(12, Math.min(root.width - width - 12, pos.x + (fpsPillContainer.width - width) / 2))
+            }
+            return root.width - width - 12
+        }
+        width: 320; height: 48; radius: 24
+        color: "#14141a"; border.color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.35); border.width: 1.5
+        z: 9999
+
+        // Shadow
+        Rectangle {
+            anchors.fill: parent; anchors.margins: -4
+            z: -1; radius: parent.radius + 4
+            color: "#000000"; opacity: 0.5
+        }
+
+        RowLayout {
+            anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 16; spacing: 10
+
+            Text {
+                text: "⚡"
+                font.pixelSize: 13
+                color: root.accentColor
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            // Slider container
+            Item {
+                Layout.fillWidth: true
+                height: 24
+                anchors.verticalCenter: parent.verticalCenter
+
+                // Slider Track
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: parent.width
+                    height: 4
+                    radius: 2
+                    color: "#2a2a32"
+
+                    // Highlighted Track
+                    Rectangle {
+                        height: parent.height
+                        width: Math.max(0, Math.min(parent.width, (root.fps - 1) / 59 * parent.width))
+                        radius: 2
+                        color: root.accentColor
+                    }
+                }
+
+                // Handle
+                Rectangle {
+                    x: Math.max(0, Math.min(parent.width - 12, (root.fps - 1) / 59 * (parent.width - 12)))
+                    y: (parent.height - 12) / 2
+                    width: 12; height: 12; radius: 6
+                    color: "#ffffff"
+                    border.color: root.accentColor
+                    border.width: 2
+
+                    // Outer shadow glow
+                    Rectangle {
+                        anchors.fill: parent; anchors.margins: -4
+                        radius: 10; color: root.accentColor; opacity: sliderMa.containsMouse ? 0.2 : 0
+                        z: -1
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
+                }
+
+                MouseArea {
+                    id: sliderMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    preventStealing: true
+
+                    function updateFPS(mx) {
+                        var pct = Math.max(0.0, Math.min(1.0, mx / width))
+                        var val = Math.round(1 + pct * 59)
+                        if (sharedBar) sharedBar.fps = val
+                    }
+                    onPressed: (m) => updateFPS(m.x)
+                    onPositionChanged: (m) => { if (pressed) updateFPS(m.x) }
+                }
+            }
+
+            // Presets
+            Row {
+                spacing: 4
+                anchors.verticalCenter: parent.verticalCenter
+                Repeater {
+                    model: [8, 12, 24, 30]
+                    Rectangle {
+                        width: 24; height: 20; radius: 4
+                        color: root.fps === modelData
+                            ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25)
+                            : (presetMa.containsMouse ? "#2a2a32" : "#1e1e24")
+                        border.color: root.fps === modelData ? root.accentColor : "#333"
+                        border.width: 1
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: modelData
+                            color: root.fps === modelData ? root.accentColor : "#999"
+                            font.pixelSize: 9; font.weight: Font.Bold
+                        }
+
+                        MouseArea {
+                            id: presetMa; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: if (sharedBar) sharedBar.fps = modelData
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Rectangle {
