@@ -95,7 +95,8 @@
                 "dilution": 0.95,
                 "bleed": 0.85,
                 "absorption_rate": 0.05,
-                "drying_time": 4.0
+                "drying_time": 4.0,
+                "blend_only": true
             },
             "pigment": { "granulation": 0.20, "flow": 0.0, "staining": 0.0 },
             "bloom": { "enabled": true, "intensity": 0.30, "radius": 22.0 },
@@ -132,7 +133,8 @@
                 "dilution": 0.88,
                 "bleed": 0.80,
                 "absorption_rate": 0.15,
-                "drying_time": 3.2
+                "drying_time": 3.2,
+                "blend_only": true
             },
             "pigment": { "granulation": 0.30, "flow": 0.10 },
             "bloom": { "enabled": false, "intensity": 0.0 },

@@ -7,6 +7,27 @@ Item {
     
     // Public API
     function show(message, type) {
+        // Enforce: only allow notifications related to saving files
+        var isSaveRelated = false
+        var msgLower = message.toLowerCase()
+        if (msgLower.indexOf("save") !== -1 || 
+            msgLower.indexOf("guardar") !== -1 || 
+            msgLower.indexOf("guardado") !== -1 || 
+            msgLower.indexOf("saving") !== -1) {
+            isSaveRelated = true
+        }
+        
+        if (!isSaveRelated) {
+            return
+        }
+
+        // Prevent duplicate notifications in the active stack
+        for (var i = 0; i < toastModel.count; i++) {
+            if (toastModel.get(i).message === message) {
+                return
+            }
+        }
+
         // Enforce max stack size, remove oldest if needed
         if (toastModel.count >= 3) {
             toastModel.remove(0)

@@ -927,7 +927,8 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
              name.contains("Ink", Qt::CaseInsensitive) ||
              name.contains("Pen", Qt::CaseInsensitive)) {
     s.type = BrushSettings::Type::Ink;
-  } else if (name.contains("Water", Qt::CaseInsensitive)) {
+  } else if (name.contains("Water", Qt::CaseInsensitive) ||
+             category.contains("Watercolor", Qt::CaseInsensitive)) {
     s.type = BrushSettings::Type::Watercolor;
   } else if (name.contains("Oil", Qt::CaseInsensitive) ||
              name.contains("Óleo", Qt::CaseInsensitive) ||

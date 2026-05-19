@@ -697,8 +697,18 @@ void CanvasItem::paint(QPainter *painter) {
     painter->drawRect(paperRect);
     painter->restore();
 
-    // Draw Background Color (if not transparent)
-    if (m_backgroundColor.alpha() > 0) {
+    // Draw Background Color (only if not transparent AND the background layer is visible)
+    bool isBgVisible = true;
+    if (m_layerManager) {
+      for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+        artflow::Layer *l = m_layerManager->getLayer(i);
+        if (l && l->type == artflow::Layer::Type::Background) {
+          isBgVisible = l->visible;
+          break;
+        }
+      }
+    }
+    if (isBgVisible && m_backgroundColor.alpha() > 0) {
       painter->fillRect(paperRect, m_backgroundColor);
     }
   }
@@ -778,7 +788,7 @@ void CanvasItem::paint(QPainter *painter) {
       if (m_transformShader && m_transformStaticTex && m_selectionTex) {
         QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
         f->glEnable(GL_BLEND);
-        f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        f->glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
         m_transformShader->bind();
         QMatrix4x4 ortho;
@@ -1675,7 +1685,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     // Lee desde la capa CPU (img) - RAPIDO, sin GPU readback.
     // Muestrea el color existente bajo el pincel y lo usa como el color
     // que "carga" el pincel, creando el efecto de arrastrar y fusionar.
-    bool isWaterBlend = (settings.dilution > 0.85f);
+    bool isWaterBlend = false; // Disabled to let high-performance GPU blending operate natively
     if (isWaterBlend) {
         int sampleRadius = std::max(4, (int)(settings.size * 0.40f));
         int cx = (int)canvasPos.x();
@@ -3933,6 +3943,15 @@ void CanvasItem::beginTransform() {
     p2.setClipPath(m_selectionPath);
     p2.fillRect(bbox, Qt::transparent);
     p2.end();
+
+    // Clear real tiles in original layer buffer
+    for (int y = bbox.top(); y <= bbox.bottom(); ++y) {
+      for (int x = bbox.left(); x <= bbox.right(); ++x) {
+        if (m_selectionPath.contains(QPointF(x, y))) {
+          layer->buffer->setPixel(x, y, 0, 0, 0, 0);
+        }
+      }
+    }
   } else {
     // Use the content bounds instead of full canvas
     int bx, by, bw, bh;
@@ -3959,6 +3978,13 @@ void CanvasItem::beginTransform() {
     p2.setCompositionMode(QPainter::CompositionMode_Clear);
     p2.fillRect(bbox, Qt::transparent);
     p2.end();
+
+    // Clear real tiles in original layer buffer
+    for (int y = bbox.top(); y <= bbox.bottom(); ++y) {
+      for (int x = bbox.left(); x <= bbox.right(); ++x) {
+        layer->buffer->setPixel(x, y, 0, 0, 0, 0);
+      }
+    }
   }
 
   m_initialMatrix = QTransform();
@@ -4176,7 +4202,7 @@ void CanvasItem::applyTransform() {
       f->glClearColor(0, 0, 0, 0);
       f->glClear(GL_COLOR_BUFFER_BIT);
       f->glEnable(GL_BLEND);
-      f->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+      f->glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
       m_transformShader->bind();
 

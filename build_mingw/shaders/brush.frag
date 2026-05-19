@@ -152,7 +152,7 @@ void main() {
         float d = dist * 2.0; // 0.0 en el centro, 1.0 en el borde
         float aaPixel = 2.0 / max(effDabSize, 1.0); // 1 píxel en espacio normalizado
         
-        bool isWc = (brushType == 2 || brushType == 5 || wetness > 0.3);
+        bool isWc = (brushType == 4 || wetness > 0.3);
         if (isWc) {
             // FORMA DE CHARCO (PUDDLE) PARA ACUARELA:
             // La acuarela no se desvanece linealmente desde el centro. 
@@ -191,7 +191,7 @@ void main() {
     // el agua avanzando más allá del pigmento por capilaridad.
     // NO toca el interior del dab para no perder opacidad.
     // =========================================================
-    bool isWatercolorExpand = (brushType == 2 || brushType == 5 || wetness > 0.3);
+    bool isWatercolorExpand = (brushType == 4 || wetness > 0.3);
     if (isWatercolorExpand && uHasTip == 0) {
         // Halo muy sutil fuera del borde real: solo alpha extra, sin robar nada
         float outerExtra = smoothstep(0.50, 0.54, dist) * (1.0 - smoothstep(0.54, 0.60, dist));
@@ -220,7 +220,7 @@ void main() {
     // --- WATERCOLOR PIGMENT MIGRATION ---
     // El pigmento se concentra más en el borde (tide-mark) y
     // la densidad global no se reduce, solo se redistribuye.
-    bool isWatercolor = (brushType == 2 || brushType == 5 || wetness > 0.3);
+    bool isWatercolor = (brushType == 4 || wetness > 0.3);
     float watercolorEdgeDarkenFactor = 1.0;
     if (isWatercolor) {
         float migr = bleed * 0.85;  // Aumentado para un borde más fuerte
@@ -229,9 +229,10 @@ void main() {
         float ring      = smoothstep(0.38, 0.50, dist);
         float outerRing = smoothstep(0.44, 0.50, dist) * (1.0 - smoothstep(0.50, 0.54, dist));
 
-        // El centro mantiene opacidad, pero el borde se hiper-concentra
-        float edgeAccumulation = mix(1.0, 1.0 + migr * 2.5, ring);
-        edgeAccumulation += outerRing * migr * 1.5;
+        // El centro es más claro (el pigmento migró al borde)
+        float centerDepletion = mix(0.40, 1.0, ring); // 40% de opacidad en el centro, sube a 100% en el anillo
+        float edgeAccumulation = mix(centerDepletion, centerDepletion + migr * 3.5, ring);
+        edgeAccumulation += outerRing * migr * 2.0;
 
         baseAlpha *= clamp(edgeAccumulation, 0.0, 3.0);
         
@@ -339,9 +340,7 @@ void main() {
         float effectiveWetness = max(wetness, mixing);
         float effectiveSmudge  = max(smudge, smudgeStrength);
 
-        // Coordenadas de pantalla para muestrear el canvas existente
-        vec2 screenPos = ((TexCoords - 0.5) * effDabSize + effDabPos) / canvasSize;
-        screenPos.y = 1.0 - screenPos.y;
+        vec2 screenPos = gl_FragCoord.xy / canvasSize;
         vec4 canvasColor = texture(canvasTexture, screenPos);
         vec3 canvasRGB   = canvasColor.a > 0.001 ? canvasColor.rgb / canvasColor.a : vec3(1.0);
         float canvasA    = canvasColor.a;
@@ -355,8 +354,8 @@ void main() {
         // Activado cuando dilution > 0.85.
         // El preset tiene default_opacity = 0.0, por lo que baseAlpha llega aquí en ~0.
         // Este bloque ACTIVA (no suprime) la opacidad solo donde hay pigmento.
-        bool isWaterOnly = (dilution > 0.85); 
-        if (isWaterOnly) {
+        bool isBlender = (blendOnly == 1 || dilution > 0.85); 
+        if (isBlender) {
             // ── MUESTREO DE VECINOS: kernel 5-tap alrededor del centro del dab ──
             // El pincel de agua MEZCLA el color de los pixeles vecinos con el local.
             // Esto crea el efecto real de "arrastrar y fusionar" pigmento.
@@ -401,7 +400,7 @@ void main() {
                 // Simplificado:
                 avgRGB = blendedRGB / weightSum;
 
-                float blendStrength = bleed * effectiveWetness;
+                float blendStrength = max(bleed * effectiveWetness, effectiveSmudge);
                 blendStrength = clamp(blendStrength, 0.0, 0.92);
 
                 // Mezcla Kubelka-Munk entre el color local y el promedio vecino
@@ -445,6 +444,22 @@ void main() {
             // Aumentar alpha donde hay pigmento acumulado (densidad visual)
             baseAlpha = min(baseAlpha + existingDensity * darken * 0.28, 1.0);
 
+            // ── DILUCIÓN POR AGUA ACUMULADA (Watery Dilution) ────────────────
+            // Mientras más pintura húmeda haya debajo y más húmedo esté el pincel,
+            // más se disuelve/diluye el pigmento en el centro del trazo,
+            // simulando que el agua acumulada empuja el pigmento hacia el borde.
+            float moisture = effectiveWetness * existingDensity * 0.65;
+            if (moisture > 0.05) {
+                // Diluye el centro (distancia corta del centro)
+                float dilutionRing = smoothstep(0.0, 0.38, dist); // 0 en centro, 1 en borde
+                float localDilution = moisture * (1.0 - dilutionRing); // Disminuye hacia el borde
+                baseAlpha = mix(baseAlpha, baseAlpha * 0.28, localDilution); // Reduce hasta un 72% en el centro
+                
+                // El pigmento disuelto viaja al borde exterior
+                float edgeBoost = moisture * smoothstep(0.38, 0.50, dist) * 1.5;
+                baseAlpha = clamp(baseAlpha + edgeBoost, 0.0, 1.0);
+            }
+
             // ── EXPANSIÓN DEL BORDE HÚMEDO (Capilaridad) ────────────────────
             // El agua en el papel hace que el pigmento se extienda hacia el borde.
             if (bleed > 0.01 && dist > 0.36) {
@@ -468,11 +483,7 @@ void main() {
         }
 
         // ─── MEZCLADO ESTÁNDAR WET (pinceles de óleo y otros) ────────────────
-        if (!isWatercolor && effectiveWetness > 0.01 && canvasA > 0.01) {
-            if (blendOnly == 1) {
-                baseAlpha *= 0.1;
-                finalRGB = canvasRGB;
-            }
+        if (!isWatercolor && blendOnly == 0 && effectiveWetness > 0.01 && canvasA > 0.01) {
             float mixAmount = clamp(effectiveWetness * 0.5 * canvasA + bleed * 0.3, 0.0, 1.0);
             finalRGB = mixColorsKM(finalRGB, canvasRGB, mixAmount);
             if (dirtyMixing == 1) finalRGB = mixColorsKM(finalRGB, canvasRGB, 0.2);

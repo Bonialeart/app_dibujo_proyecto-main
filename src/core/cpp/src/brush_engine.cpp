@@ -412,8 +412,16 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           finalColor.setHslF(h, s, l, a);
         }
 
+        // Blend-only brushes (e.g. blenders or watercolor wet mixers) have 0 opacity pigment
+        // but need to draw dabs to trigger GPU neighbor blending and smudging.
+        bool isBlendOnly = (settings.blendOnly || 
+                            settings.dilution > 0.01f || 
+                            settings.smudge > 0.01f || 
+                            settings.type == BrushSettings::Type::Watercolor || 
+                            settings.type == BrushSettings::Type::Oil);
+
         if (devSizeBase < 1.0f || effectivePressure < 0.001f ||
-            opacityBase < 0.001f)
+            (!isBlendOnly && opacityBase < 0.001f))
           continue;
 
         // Calculate base rotation

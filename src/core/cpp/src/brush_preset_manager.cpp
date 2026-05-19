@@ -411,11 +411,39 @@ void BrushPresetManager::loadDefaults() {
 
   // ==================== PAINT & BLEND ====================
   addBrush("Paint & Blend", "Watercolor", 50, 0.3f, 0.15f, 0.08f, 0.45f,
-           "grain_watercolor_paper.png", 80.0f, 0.5f, "basic_watercolor.png", 0.5f, 0,
+           "grain_watercolor_paper.png", 80.0f, 0.5f, "basic_watercolor.png", 0.78f, 0,
            true, false, 0, 0.06f);
+  {
+    BrushPreset &wcPreset = m_groups.back().brushes.back();
+    wcPreset.wetMix.dilution = 0.18f;
+    wcPreset.wetMix.bleed = 0.65f;
+    wcPreset.wetMix.absorptionRate = 0.28f;
+    wcPreset.wetMix.dryingTime = 2.5f;
+    wcPreset.pigment.granulation = 0.35f;
+    wcPreset.pigment.flow = 0.70f;
+    wcPreset.pigment.staining = 0.38f;
+    wcPreset.bloom.enabled = true;
+    wcPreset.bloom.intensity = 0.50f;
+    wcPreset.bloom.radius = 16.0f;
+    wcPreset.edgeDarkening.enabled = true;
+    wcPreset.edgeDarkening.intensity = 0.55f;
+    wcPreset.edgeDarkening.width = 0.18f;
+  }
+
   addBrush("Paint & Blend", "Watercolor Wet", 60, 0.25f, 0.05f, 0.1f, 0.5f,
-           "grain_watercolor_paper.png", 60.0f, 0.4f, "watercolor.png", 0.95f, 0,
+           "grain_watercolor_paper.png", 60.0f, 0.4f, "watercolor.png", 0.90f, 0,
            true, false, 0, 0.1f);
+  {
+    BrushPreset &wcPreset = m_groups.back().brushes.back();
+    wcPreset.wetMix.dilution = 0.88f;
+    wcPreset.wetMix.bleed = 0.80f;
+    wcPreset.wetMix.absorptionRate = 0.15f;
+    wcPreset.wetMix.dryingTime = 3.2f;
+    wcPreset.pigment.granulation = 0.30f;
+    wcPreset.pigment.flow = 0.10f;
+    wcPreset.bloom.enabled = false;
+    wcPreset.edgeDarkening.enabled = false;
+  }
   addBrush("Paint & Blend", "Oil Paint", 40, 0.95f, 0.75f, 0.015f, 0.35f,
            "grain_canvas_weave.png", 150.0f, 0.7f, "oil_bristle_pro.png", 0, 0.4f, true,
            false, 0, 0);
@@ -424,19 +452,40 @@ void BrushPresetManager::loadDefaults() {
            false);
   addBrush("Paint & Blend", "The Blender", 50, 0.6f, 0.5f, 0.02f, 0.0f, "", 0, 0,
            "soft_blend.png", 0.8f, 0.3f, true, false);
+  {
+    BrushPreset &p = m_groups.back().brushes.back();
+    p.wetMix.blendOnly = true;
+    p.defaultOpacity = 0.0f;
+  }
+
   addBrush("Paint & Blend", "Smudge Tool", 40, 1.0f, 0.3f, 0.01f, 0.0f, "", 0, 0,
            "smudge_textured.png", 0.2f, 0.95f, true, false);
+  {
+    BrushPreset &p = m_groups.back().brushes.back();
+    p.wetMix.blendOnly = true;
+    p.defaultOpacity = 0.0f;
+  }
+
   addBrush("Paint & Blend", "Óleo Classic Flat", 60, 1.0f, 0.9f, 0.04f, 0.0f, "grain_canvas_weave.png",
            120.0f, 0.5f, "oil_flat_pro.png", 0.6f, 0.1f, true, false, 0, 0, 0.35f);
+
   addBrush("Paint & Blend", "Óleo Round Bristle", 45, 0.95f, 0.7f, 0.05f, 0.0f,
            "grain_canvas_weave.png", 120.0f, 0.5f, "oil_filbert_pro.png", 0.75f, 0.2f, true, true, 0, 0,
            0.4f);
+
   addBrush("Paint & Blend", "Óleo Impasto Knife", 80, 1.0f, 1.0f, 0.02f, 0.0f,
            "grain_canvas_weave.png", 120.0f, 0.5f, "oil_knife_pro.png", 0.1f, 0.8f, false, false, 0, 0, 0.8f);
+
   addBrush("Paint & Blend", "Óleo Dry Scumble", 70, 0.8f, 0.5f, 0.08f, 0.0f, "grain_canvas_weave.png",
            150.0f, 0.8f, "oil_dry.png", 0, 0.1f, false, true, 0, 0, 0.15f);
+
   addBrush("Paint & Blend", "Óleo Wet Blender", 90, 0.0f, 0.2f, 0.04f, 0.0f, "grain_canvas_weave.png",
            120.0f, 0.4f, "oil_rake.png", 1.0f, 0.95f, true, false, 0, 0, 0.5f);
+  {
+    BrushPreset &p = m_groups.back().brushes.back();
+    p.wetMix.blendOnly = true;
+    p.defaultOpacity = 0.0f;
+  }
 
   // ==================== AIRBRUSH ====================
   addBrush("Airbrush", "Soft", 100, 0.08f, 0.0f, 0.15f, 0.1f, "", 0, 0,
