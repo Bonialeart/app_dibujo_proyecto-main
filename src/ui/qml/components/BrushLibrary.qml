@@ -56,20 +56,17 @@ Rectangle {
         var catBrushes = root.targetCanvas.getBrushesForCategory(category)
         if (!catBrushes) return
         
-        var list = []
-        for (var i = 0; i < catBrushes.length; i++) {
-            var name = catBrushes[i]
-            if (root.searchQuery !== "") {
-                if (String(name).toLowerCase().includes(root.searchQuery.toLowerCase())) {
-                    var preview = root.targetCanvas.get_brush_preview(name)
-                    list.push({ "name": name, "preview": preview })
+        if (root.searchQuery !== "") {
+            var filtered = []
+            for(var i=0; i<catBrushes.length; i++) {
+                if (String(catBrushes[i]).toLowerCase().includes(root.searchQuery.toLowerCase())) {
+                    filtered.push(catBrushes[i])
                 }
-            } else {
-                var preview = root.targetCanvas.get_brush_preview(name)
-                list.push({ "name": name, "preview": preview })
             }
+            root.brushList = filtered
+        } else {
+            root.brushList = catBrushes
         }
-        root.brushList = list
     }
 
     // ========== MAIN CONTENT ==========
@@ -292,7 +289,15 @@ Rectangle {
                     width: ListView.view.width - ListView.view.leftMargin - ListView.view.rightMargin
                     height: 86 * root.uiScale
                     
-                    property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData.name
+                    property bool isSelected: root.targetCanvas && root.targetCanvas.activeBrushName === modelData
+                    property string previewSource: ""
+                    
+                    onModelDataChanged: {
+                        previewSource = root.targetCanvas ? root.targetCanvas.get_brush_preview(modelData) : ""
+                    }
+                    Component.onCompleted: {
+                        previewSource = root.targetCanvas ? root.targetCanvas.get_brush_preview(modelData) : ""
+                    }
                     
                     Rectangle {
                         id: cardRect
@@ -330,7 +335,7 @@ Rectangle {
                             anchors.right: parent.right
                             anchors.rightMargin: 16 * root.uiScale
                             
-                            text: modelData.name
+                            text: modelData
                             color: brushCard.isSelected ? "#ffffff" : (brushItemMa.containsMouse ? "#f3f4f6" : "#a1a1aa")
                             font.pixelSize: 11.5 * root.uiScale
                             font.weight: brushCard.isSelected ? Font.DemiBold : Font.Medium
@@ -350,7 +355,7 @@ Rectangle {
                             anchors.rightMargin: 16 * root.uiScale
                             anchors.topMargin: 4 * root.uiScale
                             anchors.bottomMargin: 8 * root.uiScale
-                            source: modelData.preview
+                            source: brushCard.previewSource
                             fillMode: Image.PreserveAspectFit
                             asynchronous: true
                             opacity: brushCard.isSelected ? 1.0 : (brushItemMa.containsMouse ? 0.92 : 0.75)
@@ -380,16 +385,16 @@ Rectangle {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: (mouse) => {
                             if (mouse.button === Qt.RightButton) {
-                                brushContextMenu.brushTarget = modelData.name
+                                brushContextMenu.brushTarget = modelData
                                 brushContextMenu.popup()
                             } else {
-                                if(root.targetCanvas) root.targetCanvas.usePreset(modelData.name)
+                                if(root.targetCanvas) root.targetCanvas.usePreset(modelData)
                             }
                         }
                         onDoubleClicked: {
                             if(root.targetCanvas) {
-                                root.targetCanvas.usePreset(modelData.name)
-                                root.editBrushRequested(modelData.name)
+                                root.targetCanvas.usePreset(modelData)
+                                root.editBrushRequested(modelData)
                             }
                         }
                     }
