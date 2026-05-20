@@ -317,20 +317,22 @@ Item {
                     // Clear button
                     Rectangle {
                         width: 16; height: 16; radius: 8
-                        color: "#222"
+                        color: clearSearchMouse.containsMouse ? "#333" : "#222"
                         visible: searchInput.text !== ""
+                        Behavior on color { ColorAnimation { duration: 150 } }
                         
-                        Text {
-                            text: "×"
-                            color: "#888"
-                            font.pixelSize: 10
-                            font.bold: true
+                        Image {
+                            source: "image://icons/close.svg"
+                            width: 8; height: 8
                             anchors.centerIn: parent
-                            anchors.verticalCenterOffset: -1
+                            opacity: clearSearchMouse.containsMouse ? 0.9 : 0.5
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
                         
                         MouseArea {
+                            id: clearSearchMouse
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
                             onClicked: {
                                 searchInput.text = ""
                             }
@@ -526,11 +528,18 @@ Item {
                                 Rectangle {
                                     width: 26; height: 22; radius: 5
                                     color: exportSingleMa.containsMouse ? "#2a2a30" : "#1a1a1e"
-                                    border.color: "#333"; border.width: 1
+                                    border.color: exportSingleMa.containsMouse ? "#555" : "#333"
+                                    border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on border.color { ColorAnimation { duration: 150 } }
                                     
-                                    Text {
-                                        text: "⤓"; color: "#aaa"; font.pixelSize: 11
+                                    Image {
+                                        width: 12; height: 12
+                                        source: "image://icons/export_outline.svg"
                                         anchors.centerIn: parent
+                                        fillMode: Image.PreserveAspectFit
+                                        opacity: exportSingleMa.containsMouse ? 1.0 : 0.6
+                                        Behavior on opacity { NumberAnimation { duration: 150 } }
                                     }
                                     
                                     MouseArea {
@@ -556,12 +565,16 @@ Item {
                                     color: duplicateMa.containsMouse ? "#222a22" : "#1a1a1e"
                                     border.color: duplicateMa.containsMouse ? "#22aa22" : "#333"
                                     border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on border.color { ColorAnimation { duration: 150 } }
                                     
-                                    Text {
-                                        text: "📑"
-                                        color: duplicateMa.containsMouse ? "#44ff44" : "#aaa"
-                                        font.pixelSize: 10
+                                    Image {
+                                        width: 12; height: 12
+                                        source: "image://icons/duplicate_outline.svg"
                                         anchors.centerIn: parent
+                                        fillMode: Image.PreserveAspectFit
+                                        opacity: duplicateMa.containsMouse ? 1.0 : 0.6
+                                        Behavior on opacity { NumberAnimation { duration: 150 } }
                                     }
                                     
                                     MouseArea {
@@ -584,14 +597,19 @@ Item {
                                 // Rename page
                                 Rectangle {
                                     width: 26; height: 22; radius: 5
-                                    color: renameMa.containsMouse ? "#222a36" : "#1a1a1e"
+                                    color: renameMa.containsMouse ? "#2a2a30" : "#1a1a1e"
                                     border.color: renameMa.containsMouse ? accentColor : "#333"
                                     border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on border.color { ColorAnimation { duration: 150 } }
                                     
-                                    Text {
-                                        text: "✏️"
-                                        font.pixelSize: 10
+                                    Image {
+                                        width: 11; height: 11
+                                        source: "image://icons/pencil_outline.svg"
                                         anchors.centerIn: parent
+                                        fillMode: Image.PreserveAspectFit
+                                        opacity: renameMa.containsMouse ? 1.0 : 0.6
+                                        Behavior on opacity { NumberAnimation { duration: 150 } }
                                     }
                                     
                                     MouseArea {
@@ -617,12 +635,18 @@ Item {
                                 Rectangle {
                                     width: 26; height: 22; radius: 5
                                     color: deleteMa.containsMouse ? "#3a1515" : "#1a1a1e"
-                                    border.color: deleteMa.containsMouse ? "#662222" : "#333"
+                                    border.color: deleteMa.containsMouse ? "#ff4444" : "#333"
                                     border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on border.color { ColorAnimation { duration: 150 } }
                                     
-                                    Text {
-                                        text: "✕"; color: deleteMa.containsMouse ? "#ff4444" : "#666"; font.pixelSize: 10
+                                    Image {
+                                        width: 12; height: 12
+                                        source: "image://icons/trash.svg"
                                         anchors.centerIn: parent
+                                        fillMode: Image.PreserveAspectFit
+                                        opacity: deleteMa.containsMouse ? 1.0 : 0.6
+                                        Behavior on opacity { NumberAnimation { duration: 150 } }
                                     }
                                     
                                     MouseArea {
@@ -832,13 +856,21 @@ Item {
             Rectangle {
                 width: 168; height: 38; radius: 8
                 color: expCurrentMa.containsMouse ? "#252528" : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
                 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left; anchors.leftMargin: 12
                     spacing: 10
                     
-                    Text { text: "📄"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+                    Image {
+                        width: 14; height: 14
+                        source: "image://icons/file_outline.svg"
+                        anchors.verticalCenter: parent.verticalCenter
+                        fillMode: Image.PreserveAspectFit
+                        opacity: expCurrentMa.containsMouse ? 1.0 : 0.6
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
                     Text { text: "Export Current"; color: "white"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                 }
                 
@@ -860,13 +892,21 @@ Item {
             Rectangle {
                 width: 168; height: 38; radius: 8
                 color: expAllMa.containsMouse ? "#252528" : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
                 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left; anchors.leftMargin: 12
                     spacing: 10
                     
-                    Text { text: "📁"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+                    Image {
+                        width: 14; height: 14
+                        source: "image://icons/folder_outline.svg"
+                        anchors.verticalCenter: parent.verticalCenter
+                        fillMode: Image.PreserveAspectFit
+                        opacity: expAllMa.containsMouse ? 1.0 : 0.6
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
                     Text { text: "Export All Pages"; color: "white"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                 }
                 
@@ -887,13 +927,21 @@ Item {
             Rectangle {
                 width: 168; height: 38; radius: 8
                 color: expPngMa.containsMouse ? "#252528" : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
                 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left; anchors.leftMargin: 12
                     spacing: 10
                     
-                    Text { text: "🖼️"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+                    Image {
+                        width: 14; height: 14
+                        source: "image://icons/image_outline.svg"
+                        anchors.verticalCenter: parent.verticalCenter
+                        fillMode: Image.PreserveAspectFit
+                        opacity: expPngMa.containsMouse ? 1.0 : 0.6
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
                     Text { text: "All as PNG"; color: "#aaa"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                 }
                 
@@ -912,13 +960,21 @@ Item {
             Rectangle {
                 width: 168; height: 38; radius: 8
                 color: expJpgMa.containsMouse ? "#252528" : "transparent"
+                Behavior on color { ColorAnimation { duration: 150 } }
                 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.left: parent.left; anchors.leftMargin: 12
                     spacing: 10
                     
-                    Text { text: "📸"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+                    Image {
+                        width: 14; height: 14
+                        source: "image://icons/image_outline.svg"
+                        anchors.verticalCenter: parent.verticalCenter
+                        fillMode: Image.PreserveAspectFit
+                        opacity: expJpgMa.containsMouse ? 1.0 : 0.6
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                    }
                     Text { text: "All as JPG"; color: "#aaa"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                 }
                 

@@ -1515,8 +1515,8 @@ Window {
                     visible: comicOverlay.visible && (comicOverlay.panelItems.length > 0 || comicOverlay.bubbleItems.length > 0 || mainCanvas.currentTool.startsWith("panel_"))
                     anchors.top: parent.top; anchors.topMargin: 10
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: comicBarRow.width + 24
-                    height: 42; radius: 21
+                    width: comicBarRow.width + 20
+                    height: 38; radius: 19
                     color: "#e61a1a1e"
                     border.color: "#333"; border.width: 1
                     z: 500
@@ -1531,29 +1531,44 @@ Window {
                         
                         // Info badge
                         Rectangle {
-                            width: infoText.width + 14; height: 28; radius: 14
-                            color: "#252530"; anchors.verticalCenter: parent.verticalCenter
-                            Text {
-                                id: infoText
-                                text: "✎ " + comicOverlay.panelItems.length + "P · " + comicOverlay.bubbleItems.length + "B"
-                                color: colorAccent; font.pixelSize: 11; font.bold: true
+                            width: infoRow.width + 16; height: 26; radius: 13
+                            color: "#1e1e24"
+                            border.color: "#2c2c35"; border.width: 1
+                            anchors.verticalCenter: parent.verticalCenter
+                            Row {
+                                id: infoRow
                                 anchors.centerIn: parent
+                                spacing: 6
+                                Image {
+                                    source: iconPath("comic.svg")
+                                    width: 14; height: 14
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                Text {
+                                    id: infoText
+                                    text: comicOverlay.panelItems.length + "P · " + comicOverlay.bubbleItems.length + "B"
+                                    color: colorAccent
+                                    font.pixelSize: 10; font.bold: true
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
                             }
                         }
                         
-                        Rectangle { width: 1; height: 24; color: "#333"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#333"; anchors.verticalCenter: parent.verticalCenter }
                         
                         // Manga Guides Toggle
                         Rectangle {
-                            width: guidesText.width + 24; height: 28; radius: 14
-                            color: guidesMa.containsMouse ? (comicOverlay.showMangaGuides ? colorAccent : "#333") : (comicOverlay.showMangaGuides ? Qt.darker(colorAccent, 1.2) : "transparent")
+                            width: 28; height: 28; radius: 14
+                            color: comicOverlay.showMangaGuides ? (guidesMa.containsMouse ? Qt.lighter(colorAccent, 1.1) : colorAccent) : (guidesMa.containsMouse ? "#2d2d35" : "transparent")
+                            border.color: comicOverlay.showMangaGuides ? "transparent" : (guidesMa.containsMouse ? "#444" : "transparent")
+                            border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
                             
-                            Text {
-                                id: guidesText
-                                text: comicOverlay.showMangaGuides ? "▣ Guides On" : "□ Guides Off"
-                                color: comicOverlay.showMangaGuides ? "white" : "#aaa"; font.pixelSize: 11; font.weight: Font.Medium
+                            Image {
+                                source: iconPath("cut-guides.svg")
+                                width: 16; height: 16
                                 anchors.centerIn: parent
+                                opacity: comicOverlay.showMangaGuides ? 1.0 : 0.6
                             }
                             MouseArea {
                                 id: guidesMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -1564,15 +1579,16 @@ Window {
                         
                         // Flatten to Layer
                         Rectangle {
-                            width: flattenText.width + 24; height: 28; radius: 14
-                            color: flattenMa.containsMouse ? colorAccent : "#252530"
+                            width: 28; height: 28; radius: 14
+                            color: flattenMa.containsMouse ? "#2d2d35" : "transparent"
+                            border.color: flattenMa.containsMouse ? "#444" : "transparent"; border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
                             
-                            Text {
-                                id: flattenText
-                                text: "⤓ Flatten"
-                                color: "white"; font.pixelSize: 11; font.weight: Font.Medium
+                            Image {
+                                source: iconPath("cut-flatten.svg")
+                                width: 16; height: 16
                                 anchors.centerIn: parent
+                                opacity: 0.8
                             }
                             MouseArea {
                                 id: flattenMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -1591,9 +1607,15 @@ Window {
                         // Deselect All
                         Rectangle {
                             width: 28; height: 28; radius: 14
-                            color: deselectMa.containsMouse ? "#333" : "transparent"
+                            color: deselectMa.containsMouse ? "#2d2d35" : "transparent"
+                            border.color: deselectMa.containsMouse ? "#444" : "transparent"; border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
-                            Text { text: "⊘"; color: "#aaa"; font.pixelSize: 14; anchors.centerIn: parent }
+                            Image {
+                                source: iconPath("deselect.svg")
+                                width: 16; height: 16
+                                anchors.centerIn: parent
+                                opacity: 0.8
+                            }
                             MouseArea {
                                 id: deselectMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: comicOverlay.deselectAll()
@@ -1605,8 +1627,14 @@ Window {
                         Rectangle {
                             width: 28; height: 28; radius: 14
                             color: clearMa.containsMouse ? "#3a1515" : "transparent"
+                            border.color: clearMa.containsMouse ? "#ff4444" : "transparent"; border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
-                            Text { text: "✕"; color: clearMa.containsMouse ? "#ff4444" : "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+                            Image {
+                                source: iconPath("trash-2.svg")
+                                width: 16; height: 16
+                                anchors.centerIn: parent
+                                opacity: clearMa.containsMouse ? 1.0 : 0.8
+                            }
                             MouseArea {
                                 id: clearMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                 onClicked: comicOverlay.clearAll()
@@ -1625,8 +1653,8 @@ Window {
                     anchors.horizontalCenter: parent.horizontalCenter
                     
                     // Glassmorphic styling
-                    width: panelCutRow.width + 32
-                    height: 56; radius: 28
+                    width: panelCutRow.width + 24
+                    height: 44; radius: 22
                     color: "#e61a1a1e"
                     border.color: "#3e3e42"
                     border.width: 1
@@ -1648,130 +1676,189 @@ Window {
                     Row {
                         id: panelCutRow
                         anchors.centerIn: parent
-                        spacing: 16
+                        spacing: 12
                         
-                        // Badge / Title
-                        Row {
-                            spacing: 8
+                        // Smart Snapping Indicator
+                        Rectangle {
+                            width: 32; height: 32; radius: 16
+                            color: "#16251b" // dark subtle green
+                            border.color: "#30d158" // neon green
+                            border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
-                            Text {
-                                text: "⚡ Snapping"
-                                color: colorAccent; font.pixelSize: 12; font.bold: true
-                                anchors.verticalCenter: parent.verticalCenter
+                            
+                            Image {
+                                source: iconPath("cut-snap.svg")
+                                width: 16; height: 16
+                                anchors.centerIn: parent
                             }
+                            
+                            // Glowing green dot in the corner for pulse
                             Rectangle {
-                                width: 8; height: 8; radius: 4
-                                color: "#30d158" // neon green
-                                anchors.verticalCenter: parent.verticalCenter
+                                width: 6; height: 6; radius: 3
+                                color: "#30d158"
+                                anchors.top: parent.top; anchors.topMargin: 2
+                                anchors.right: parent.right; anchors.rightMargin: 2
+                                
                                 SequentialAnimation on opacity {
                                     loops: Animation.Infinite
-                                    NumberAnimation { to: 0.3; duration: 800 }
+                                    NumberAnimation { to: 0.2; duration: 800 }
                                     NumberAnimation { to: 1.0; duration: 800 }
                                 }
                             }
+                            
+                            ToolTip.visible: snapMa.containsMouse
+                            ToolTip.text: "Smart Panel Snapping: Guides alignment is active"
+                            ToolTip.delay: 400
+                            
+                            MouseArea {
+                                id: snapMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                            }
                         }
                         
-                        Rectangle { width: 1; height: 28; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
                         
                         // Gutter Control
                         Row {
-                            spacing: 8
+                            spacing: 6
                             anchors.verticalCenter: parent.verticalCenter
-                            Text {
-                                text: "Gutter: " + Math.round(mainCanvas.panelGutterSize) + "px"
-                                color: "#bbb"; font.pixelSize: 11; font.weight: Font.Medium
-                                width: 75; anchors.verticalCenter: parent.verticalCenter
+                            
+                            Image {
+                                source: iconPath("cut-gutter.svg")
+                                width: 18; height: 18
+                                opacity: 0.7
+                                anchors.verticalCenter: parent.verticalCenter
                             }
+                            
                             Slider {
                                 id: gutterSlider
-                                width: 100; height: 24
+                                width: 70; height: 20
                                 from: 0; to: 80; value: mainCanvas.panelGutterSize
                                 anchors.verticalCenter: parent.verticalCenter
                                 onMoved: mainCanvas.panelGutterSize = value
                                 
                                 background: Rectangle {
                                     y: (parent.height - height) / 2
-                                    width: parent.width; height: 6; radius: 3
+                                    width: parent.width; height: 4; radius: 2
                                     color: "#252528"
                                     Rectangle {
                                         width: gutterSlider.visualPosition * parent.width
-                                        height: parent.height; radius: 3
+                                        height: parent.height; radius: 2
                                         color: colorAccent
                                     }
                                 }
                                 handle: Rectangle {
                                     x: gutterSlider.visualPosition * (gutterSlider.width - width)
                                     y: (gutterSlider.height - height) / 2
-                                    width: 14; height: 14; radius: 7
+                                    width: 10; height: 10; radius: 5
                                     color: gutterSlider.pressed ? "#fff" : "#eee"
-                                    border.color: "#1a1a1c"; border.width: 2
+                                    border.color: "#1a1a1c"; border.width: 1.5
                                 }
+                            }
+                            
+                            Text {
+                                text: Math.round(mainCanvas.panelGutterSize) + "px"
+                                color: "#888"; font.pixelSize: 10; font.bold: true
+                                width: 28
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            
+                            ToolTip.visible: gutterMa.containsMouse
+                            ToolTip.text: "Panel Gutter Spacing: " + Math.round(mainCanvas.panelGutterSize) + "px"
+                            ToolTip.delay: 400
+                            
+                            MouseArea {
+                                id: gutterMa
+                                anchors.fill: parent
+                                hoverEnabled: true
                             }
                         }
                         
-                        Rectangle { width: 1; height: 28; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
                         
                         // Border Width Control
                         Row {
-                            spacing: 8
+                            spacing: 6
                             anchors.verticalCenter: parent.verticalCenter
-                            Text {
-                                text: "Width: " + Math.round(mainCanvas.panelBorderWidth) + "px"
-                                color: "#bbb"; font.pixelSize: 11; font.weight: Font.Medium
-                                width: 75; anchors.verticalCenter: parent.verticalCenter
+                            
+                            Image {
+                                source: iconPath("cut-width.svg")
+                                width: 18; height: 18
+                                opacity: 0.7
+                                anchors.verticalCenter: parent.verticalCenter
                             }
+                            
                             Slider {
                                 id: borderWidthSlider
-                                width: 100; height: 24
+                                width: 70; height: 20
                                 from: 1; to: 15; value: mainCanvas.panelBorderWidth
                                 anchors.verticalCenter: parent.verticalCenter
                                 onMoved: mainCanvas.panelBorderWidth = value
                                 
                                 background: Rectangle {
                                     y: (parent.height - height) / 2
-                                    width: parent.width; height: 6; radius: 3
+                                    width: parent.width; height: 4; radius: 2
                                     color: "#252528"
                                     Rectangle {
                                         width: borderWidthSlider.visualPosition * parent.width
-                                        height: parent.height; radius: 3
+                                        height: parent.height; radius: 2
                                         color: colorAccent
                                     }
                                 }
                                 handle: Rectangle {
                                     x: borderWidthSlider.visualPosition * (borderWidthSlider.width - width)
                                     y: (borderWidthSlider.height - height) / 2
-                                    width: 14; height: 14; radius: 7
+                                    width: 10; height: 10; radius: 5
                                     color: borderWidthSlider.pressed ? "#fff" : "#eee"
-                                    border.color: "#1a1a1c"; border.width: 2
+                                    border.color: "#1a1a1c"; border.width: 1.5
                                 }
+                            }
+                            
+                            Text {
+                                text: Math.round(mainCanvas.panelBorderWidth) + "px"
+                                color: "#888"; font.pixelSize: 10; font.bold: true
+                                width: 24
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            
+                            ToolTip.visible: widthMa.containsMouse
+                            ToolTip.text: "Panel Border Width: " + Math.round(mainCanvas.panelBorderWidth) + "px"
+                            ToolTip.delay: 400
+                            
+                            MouseArea {
+                                id: widthMa
+                                anchors.fill: parent
+                                hoverEnabled: true
                             }
                         }
                         
-                        Rectangle { width: 1; height: 28; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
                         
                         // Style Picker
                         Row {
                             id: styleRow
-                            spacing: 6
+                            spacing: 4
                             anchors.verticalCenter: parent.verticalCenter
                             
                             property var styles: ["solid", "sketchy", "double", "dotted", "blurry", "invisible"]
                             property var labels: ["Solid", "Sketchy", "Double", "Dotted", "Blurry", "Invisible"]
+                            property var styleIcons: ["cut-solid.svg", "cut-sketchy.svg", "cut-double.svg", "cut-dotted.svg", "cut-blurry.svg", "cut-invisible.svg"]
                             
                             Repeater {
                                 model: 6
                                 Rectangle {
-                                    width: 58; height: 26; radius: 13
+                                    width: 28; height: 28; radius: 14
                                     color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? colorAccent : (styleMa.containsMouse ? "#252528" : "transparent")
                                     border.color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? "transparent" : "#3e3e42"
                                     border.width: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? 0 : 1
                                     anchors.verticalCenter: parent.verticalCenter
                                     
-                                    Text {
-                                        text: styleRow.labels[index]
-                                        color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? "#fff" : "#aaa"
-                                        font.pixelSize: 10; font.weight: Font.DemiBold
+                                    Image {
+                                        source: iconPath(styleRow.styleIcons[index])
+                                        width: 16; height: 16
                                         anchors.centerIn: parent
+                                        opacity: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? 1.0 : 0.6
                                     }
                                     
                                     MouseArea {
@@ -1782,42 +1869,28 @@ Window {
                                         onClicked: mainCanvas.panelBorderStyle = styleRow.styles[index]
                                     }
                                     ToolTip.visible: styleMa.containsMouse
-                                    ToolTip.text: "Apply " + styleRow.labels[index] + " style to cut and borders"
+                                    ToolTip.text: styleRow.labels[index] + " Border Style"
                                     ToolTip.delay: 400
                                 }
                             }
                         }
                         
-                        Rectangle { width: 1; height: 28; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
                         
                         // 3D Panel Breaker Toggle
                         Rectangle {
                             id: breakerBtn
-                            width: 120; height: 32; radius: 16
-                            anchors.verticalCenter: parent.verticalCenter
-                            
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { 
-                                    position: 0.0 
-                                    color: panelCutBar.is3DOverflowActive ? "#34c759" : "#252528" 
-                                }
-                                GradientStop { 
-                                    position: 1.0 
-                                    color: panelCutBar.is3DOverflowActive ? "#30d158" : "#2a2a30" 
-                                }
-                            }
+                            width: 32; height: 32; radius: 16
+                            color: panelCutBar.is3DOverflowActive ? colorAccent : (breakerMa.containsMouse ? "#252528" : "transparent")
                             border.color: panelCutBar.is3DOverflowActive ? "transparent" : "#3e3e42"
                             border.width: panelCutBar.is3DOverflowActive ? 0 : 1
+                            anchors.verticalCenter: parent.verticalCenter
                             
-                            Row {
+                            Image {
+                                source: iconPath("cut-3d.svg")
+                                width: 16; height: 16
                                 anchors.centerIn: parent
-                                spacing: 6
-                                Text {
-                                    text: panelCutBar.is3DOverflowActive ? "💥 3D Breaker On" : "💥 3D Breaker Off"
-                                    color: "#fff"
-                                    font.pixelSize: 11; font.bold: true
-                                }
+                                opacity: panelCutBar.is3DOverflowActive ? 1.0 : 0.6
                             }
                             
                             MouseArea {
@@ -1836,7 +1909,7 @@ Window {
                                 }
                             }
                             ToolTip.visible: breakerMa.containsMouse
-                            ToolTip.text: "Allow active layer artwork to overlap and spill over the panel borders"
+                            ToolTip.text: "3D Panel Breaker: " + (panelCutBar.is3DOverflowActive ? "ON (Layer bleeds outside panel)" : "OFF (Layer clipped to panel)")
                             ToolTip.delay: 400
                         }
                     }
@@ -1880,6 +1953,7 @@ Window {
                     id: toolsModel
                     ListElement { name: "selection"; icon: "selection.svg"; label: "Selection"; subTools: [
                         ListElement { name: "select_rect"; label: "Rectangle"; icon: "selection.svg" },
+                        ListElement { name: "select_ellipse"; label: "Ellipse"; icon: "shapes.svg" },
                         ListElement { name: "select_wand"; label: "Magic Wand"; icon: "selection.svg" }
                     ]}
                     ListElement { name: "shapes"; icon: "shapes.svg"; label: "Shapes"; subTools: [
@@ -1984,7 +2058,24 @@ Window {
                     showLayers = false
                     mainWindow.showBrush = false
                 }
-                property int activeSubToolIdx: 0
+                                property int activeSubToolIdx: 0
+                onActiveSubToolIdxChanged: {
+                    var toolData = toolsModel.get(activeToolIdx)
+                    if (toolData && toolData.subTools && toolData.subTools.count > 0) {
+                        var subIdx = activeSubToolIdx
+                        if (subIdx >= 0 && subIdx < toolData.subTools.count) {
+                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill") {
+                                var subName = toolData.subTools.get(subIdx).name
+                                console.log("Switching Subtool: " + subName)
+                                mainCanvas.currentTool = subName
+                            } else {
+                                var presetName = toolData.subTools.get(subIdx).label
+                                console.log("Auto-applying Subtool Preset: " + presetName)
+                                mainCanvas.usePreset(presetName)
+                            }
+                        }
+                    }
+                }
                 property bool showSubTools: false
                 property bool showToolSettings: false
                 property string selectedBrushCategory: "Sketch & Ink"
@@ -2122,8 +2213,8 @@ Window {
                                 height: isHiddenInSimple ? -toolsColumn.spacing : 42 * uiScale
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 radius: 14 * uiScale
-                                color: (model.name === "selection" && mainCanvas.isSelectionModeActive) ? "#3b82f6" : ((index === canvasPage.activeToolIdx) ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (toolHover.containsMouse ? "#1affffff" : "transparent"))
-                                border.color: (model.name === "selection" && mainCanvas.isSelectionModeActive) ? "#60a5fa" : ((index === canvasPage.activeToolIdx) ? colorAccent : "transparent")
+                                color: (index === canvasPage.activeToolIdx) ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (toolHover.containsMouse ? "#1affffff" : "transparent")
+                                border.color: (index === canvasPage.activeToolIdx) ? colorAccent : "transparent"
                                 border.width: 1
                                 
                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -2239,7 +2330,12 @@ Window {
                                                 else if (toolName === "fill") mainCanvas.currentTool = "fill"
                                                 else if (toolName === "picker") mainCanvas.currentTool = "picker" 
                                                 else if (toolName === "hand") mainCanvas.currentTool = "hand"
-                                                else if (toolName === "selection") mainCanvas.currentTool = "selection"
+                                                else if (toolName === "selection") {
+                                                    var selToolData = toolsModel.get(index)
+                                                    var selSubIdx = canvasPage.activeSubToolIdx
+                                                    if (selSubIdx < 0 || selSubIdx >= selToolData.subTools.count) selSubIdx = 0
+                                                    mainCanvas.currentTool = selToolData.subTools.get(selSubIdx).name
+                                                }
                                                 else if (toolName === "lasso") mainCanvas.currentTool = "lasso"
                                                 else if (toolName === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
                                                 else if (toolName === "move") mainCanvas.currentTool = "move"

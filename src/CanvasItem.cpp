@@ -671,6 +671,18 @@ void CanvasItem::paint(QPainter *painter) {
   // context)
   cleanupGlResources();
 
+  // Clean up active transform GL textures if we are not transforming anymore
+  if (!m_isTransforming) {
+    if (m_transformStaticTex) {
+      delete m_transformStaticTex;
+      m_transformStaticTex = nullptr;
+    }
+    if (m_selectionTex) {
+      delete m_selectionTex;
+      m_selectionTex = nullptr;
+    }
+  }
+
   // --- El cursor global ya no se fuerza en paint() para permitir que
   // setCursor(Qt::BlankCursor) del CanvasItem funcione y oculte la flecha
   // nativa mientras el usuario dibuja. ---
@@ -4249,15 +4261,16 @@ void CanvasItem::setCurrentTool(const QString &tool) {
   if (m_currentToolStr == tool)
     return;
 
-  // Commit transformation if switching away from transform tool
-  if (m_currentToolStr == "transform" && m_isTransforming) {
+  // Commit transformation if switching away from transform/move tool
+  if (m_isTransforming) {
     commitTransform();
   }
 
   m_currentToolStr = tool;
+  setIsSelectionModeActive(false); // Reset selection mode active flag by default
 
   // Sync QML toolbar index
-  if (tool == "selection")
+  if (tool == "selection" || tool == "select_rect" || tool == "select_ellipse" || tool == "select_wand")
     emit requestToolIdx(0);
   else if (tool == "shapes")
     emit requestToolIdx(1);
@@ -4758,86 +4771,14 @@ void CanvasItem::applyTransform() {
 
   Layer *layer = m_layerManager->getActiveLayer();
   if (layer && layer->buffer) {
-    QOpenGLContext *ctx = QOpenGLContext::currentContext();
-
-    if (ctx && m_transformShader && m_selectionTex) {
-      // --- CAMINO RÁPIDO: blit final por GPU usando el shader que ya existe
-      // --- Renderizamos a un FBO del tamaño del canvas y leemos el resultado
-      QOpenGLFramebufferObjectFormat fmt;
-      fmt.setInternalTextureFormat(GL_RGBA8);
-      QOpenGLFramebufferObject fbo(m_canvasWidth, m_canvasHeight, fmt);
-      fbo.bind();
-
-      QOpenGLFunctions *f = ctx->functions();
-      f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
-      f->glClearColor(0, 0, 0, 0);
-      f->glClear(GL_COLOR_BUFFER_BIT);
-      f->glEnable(GL_BLEND);
-      f->glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-      m_transformShader->bind();
-
-      // Proyección ortográfica del tamaño del canvas (sin pan/zoom)
-      QMatrix4x4 ortho;
-      ortho.ortho(0, m_canvasWidth, m_canvasHeight, 0, -1, 1);
-
-      // Construir MVP = ortho * perspectiveMatrix * localOffset
-      QMatrix4x4 qtMat;
-      qtMat.setColumn(0, QVector4D(m_transformMatrix.m11(),
-                                   m_transformMatrix.m12(), 0,
-                                   m_transformMatrix.m13()));
-      qtMat.setColumn(1, QVector4D(m_transformMatrix.m21(),
-                                   m_transformMatrix.m22(), 0,
-                                   m_transformMatrix.m23()));
-      qtMat.setColumn(2, QVector4D(0, 0, 1, 0));
-      qtMat.setColumn(3, QVector4D(m_transformMatrix.m31(),
-                                   m_transformMatrix.m32(), 0,
-                                   m_transformMatrix.m33()));
-      m_transformShader->setUniformValue("MVP", ortho * qtMat);
-      m_transformShader->setUniformValue("opacity", 1.0f);
-      m_selectionTex->bind(0);
-      m_transformShader->setUniformValue("tex", 0);
-
-      float sw = m_selectionBuffer.width();
-      float sh = m_selectionBuffer.height();
-      GLfloat verts[] = {0, 0,  0, 0, sw, 0, 1, 0, 0,  sh, 0, 1,
-                         0, sh, 0, 1, sw, 0, 1, 0, sw, sh, 1, 1};
-      m_transformShader->enableAttributeArray(0);
-      m_transformShader->enableAttributeArray(1);
-      m_transformShader->setAttributeArray(0, GL_FLOAT, verts, 2,
-                                           4 * sizeof(float));
-      m_transformShader->setAttributeArray(1, GL_FLOAT, verts + 2, 2,
-                                           4 * sizeof(float));
-      f->glDrawArrays(GL_TRIANGLES, 0, 6);
-      m_transformShader->disableAttributeArray(0);
-      m_transformShader->disableAttributeArray(1);
-      m_transformShader->release();
-      fbo.release();
-
-      // Leer resultado del FBO (GPU→CPU, una sola vez al confirmar)
-      QImage result =
-          fbo.toImage().convertToFormat(QImage::Format_RGBA8888_Premultiplied);
-
-      // Combinar con el buffer de la capa (que ya tiene el fondo sin la
-      // selección)
-      QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                      QImage::Format_RGBA8888_Premultiplied);
-      QPainter p(&layerImg);
-      p.setCompositionMode(QPainter::CompositionMode_SourceOver);
-      p.drawImage(0, 0, result);
-      p.end();
-
-    } else {
-      // --- FALLBACK CPU (sin contexto GL disponible en este momento) ---
-      QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                 QImage::Format_RGBA8888_Premultiplied);
-      QPainter p(&img);
-      p.setRenderHint(QPainter::SmoothPixmapTransform);
-      p.setRenderHint(QPainter::Antialiasing);
-      p.setTransform(m_transformMatrix);
-      p.drawImage(0, 0, m_selectionBuffer);
-      p.end();
-    }
+    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+               QImage::Format_RGBA8888_Premultiplied);
+    QPainter p(&img);
+    p.setRenderHint(QPainter::SmoothPixmapTransform);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.setTransform(m_transformMatrix);
+    p.drawImage(0, 0, m_selectionBuffer);
+    p.end();
 
     layer->dirty = true;
 
@@ -5415,6 +5356,9 @@ void CanvasItem::toggleGroupExpanded(int index) {
 }
 
 void CanvasItem::removeLayer(int index) {
+  if (m_isTransforming) {
+    cancelTransform();
+  }
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->locked) {
     emit notificationRequested("Cannot delete a locked layer", "error");
@@ -5522,6 +5466,83 @@ void CanvasItem::renameLayer(int index, const QString &name) {
   }
 }
 
+void CanvasItem::selectPixels(int index) {
+  Layer *l = m_layerManager->getLayer(index);
+  if (!l || !l->buffer)
+    return;
+
+  m_selectionPath = QPainterPath();
+  int w = l->buffer->width();
+  int h = l->buffer->height();
+  const uint8_t *pixels = l->buffer->data();
+
+  // Scan row by row to find opaque spans
+  for (int y = 0; y < h; ++y) {
+    int startX = -1;
+    for (int x = 0; x < w; ++x) {
+      uint8_t alpha = pixels[(y * w + x) * 4 + 3];
+      if (alpha > 5) { // Threshold for non-transparency
+        if (startX == -1) {
+          startX = x;
+        }
+      } else {
+        if (startX != -1) {
+          m_selectionPath.addRect(startX, y, x - startX, 1);
+          startX = -1;
+        }
+      }
+    }
+    if (startX != -1) {
+      m_selectionPath.addRect(startX, y, w - startX, 1);
+    }
+  }
+
+  m_hasSelection = !m_selectionPath.isEmpty();
+  emit hasSelectionChanged();
+  update();
+}
+
+void CanvasItem::invertLayerColors(int index) {
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->locked) {
+    emit notificationRequested("Layer is locked", "warning");
+    return;
+  }
+  if (l && l->buffer) {
+    int w = l->buffer->width();
+    int h = l->buffer->height();
+    uint8_t *pixels = l->buffer->data();
+    for (int i = 0; i < w * h; ++i) {
+      pixels[i * 4] = 255 - pixels[i * 4];       // R
+      pixels[i * 4 + 1] = 255 - pixels[i * 4 + 1]; // G
+      pixels[i * 4 + 2] = 255 - pixels[i * 4 + 2]; // B
+    }
+    l->buffer->loadRawData(pixels);
+    l->markDirty();
+    update();
+    updateLayersList();
+  }
+}
+
+void CanvasItem::toggleReference(int index) {
+  Layer *l = m_layerManager->getLayer(index);
+  if (l) {
+    l->reference = !l->reference;
+    if (l->reference) {
+      // Turn off reference for all other layers
+      for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+        if (i != index) {
+          Layer *other = m_layerManager->getLayer(i);
+          if (other) {
+            other->reference = false;
+          }
+        }
+      }
+    }
+    updateLayersList();
+  }
+}
+
 void CanvasItem::applyEffect(int index, const QString &effect,
                              const QVariantMap &params) {
   Layer *l = m_layerManager->getLayer(index);
@@ -5618,6 +5639,7 @@ bool CanvasItem::loadProject(const QString &path) {
         newLayer->visible = layerObj["visible"].toBool(true);
         newLayer->locked = layerObj["locked"].toBool(false);
         newLayer->alphaLock = layerObj["alphaLock"].toBool(false);
+        newLayer->reference = layerObj["reference"].toBool(false);
         newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
         newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
 
@@ -5705,6 +5727,7 @@ bool CanvasItem::saveProject(const QString &pathText) {
       layerObj["visible"] = layer->visible;
       layerObj["locked"] = layer->locked;
       layerObj["alphaLock"] = layer->alphaLock;
+      layerObj["reference"] = layer->reference;
       layerObj["blendMode"] = (int)layer->blendMode;
       layerObj["type"] = (int)layer->type;
 
@@ -6619,6 +6642,7 @@ void CanvasItem::updateLayersList() {
     layer["alpha_lock"] = l->alphaLock;
     layer["clipped"] = l->clipped;
     layer["is_private"] = l->isPrivate;
+    layer["reference"] = l->reference;
     layer["active"] = (i == m_activeLayerIndex);
     layer["stableId"] = (int)l->stableId;
     layer["parentId"] = l->parentId;
@@ -7180,6 +7204,9 @@ void CanvasItem::toggleLock(int index) {
 }
 
 void CanvasItem::clearLayer(int index) {
+  if (m_isTransforming && index == m_activeLayerIndex) {
+    cancelTransform();
+  }
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->locked) {
     emit notificationRequested("Layer is locked", "warning");
@@ -7273,6 +7300,9 @@ void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
 
 void CanvasItem::setActiveLayer(int index) {
   if (m_layerManager && index >= 0 && index < m_layerManager->getLayerCount()) {
+    if (m_isTransforming) {
+      applyTransform();
+    }
     // SYNC CURRENT LAYER BEFORE SWITCHING
     if (index != m_activeLayerIndex) {
       syncGpuToCpu();
@@ -8545,6 +8575,10 @@ void CanvasItem::capture_timelapse_frame() {
 }
 
 void CanvasItem::undo() {
+  if (m_isTransforming) {
+    cancelTransform();
+    return;
+  }
   if (m_undoManager && m_undoManager->canUndo()) {
     m_undoManager->undo();
     update();
@@ -8552,6 +8586,9 @@ void CanvasItem::undo() {
 }
 
 void CanvasItem::redo() {
+  if (m_isTransforming) {
+    cancelTransform();
+  }
   if (m_undoManager && m_undoManager->canRedo()) {
     m_undoManager->redo();
     update();

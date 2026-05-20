@@ -20,6 +20,7 @@ Item {
     property color accentColor: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#007aff"
     // Group color token
     readonly property color groupColor: "#f59e0b"
+    property bool isRenaming: false
 
     // --- 0. DROP INDICATOR (Dual-Position Dot & Line) ---
     Item {
@@ -566,8 +567,8 @@ Item {
                         anchors.fill: parent
                         onClicked: {
                             if (layerType !== "background") {
-                                layersListRef.optionsIndex = (layersListRef.optionsIndex === layerIndex) ? -1 : layerIndex
                                 layersListRef.swipedIndex = -1
+                                layerOptionsPopup.open()
                             }
                         }
                     }
@@ -606,17 +607,78 @@ Item {
                                 }
                             }
 
-                            Text {
-                                text: layerName
-                                color: {
-                                    if (!isVisible) return "#777"
-                                    if (layerDelegate.isGroup) return layerDelegate.isGroupDropHover ? layerDelegate.groupColor : "#f8d87a"
-                                    return "#ffffff"
-                                }
-                                font.pixelSize: 13
-                                font.weight: (isActive || layerDelegate.isGroup) ? Font.DemiBold : Font.Normal
+                            Item {
                                 Layout.fillWidth: true
-                                elide: Text.ElideRight 
+                                Layout.preferredHeight: 24
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    visible: !layerDelegate.isRenaming
+                                    anchors.fill: parent
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    text: layerName
+                                    color: {
+                                        if (!isVisible) return "#777"
+                                        if (layerDelegate.isGroup) return layerDelegate.isGroupDropHover ? layerDelegate.groupColor : "#f8d87a"
+                                        return "#ffffff"
+                                    }
+                                    font.pixelSize: 13
+                                    font.weight: (isActive || layerDelegate.isGroup) ? Font.DemiBold : Font.Normal
+                                    elide: Text.ElideRight 
+                                }
+
+                                TextField {
+                                    id: inlineRenameField
+                                    visible: layerDelegate.isRenaming
+                                    anchors.fill: parent
+                                    anchors.margins: 1
+                                    text: layerName
+                                    color: "white"
+                                    font.pixelSize: 13
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    leftPadding: 6
+                                    rightPadding: 6
+                                    background: Rectangle {
+                                        color: "#121214"
+                                        border.color: layerDelegate.accentColor
+                                        border.width: 1
+                                        radius: 6
+                                    }
+                                    
+                                    onVisibleChanged: {
+                                        if (visible) {
+                                            forceActiveFocus()
+                                            selectAll()
+                                        }
+                                    }
+                                    
+                                    onAccepted: {
+                                        var txt = text.trim()
+                                        if (txt !== "") {
+                                            if (targetCanvas && typeof targetCanvas.renameLayer === "function") {
+                                                targetCanvas.renameLayer(layerIndex, txt)
+                                            }
+                                        }
+                                        layerDelegate.isRenaming = false
+                                    }
+                                    
+                                    onActiveFocusChanged: {
+                                        if (!activeFocus && visible) {
+                                            var txt = text.trim()
+                                            if (txt !== "") {
+                                                if (targetCanvas && typeof targetCanvas.renameLayer === "function") {
+                                                    targetCanvas.renameLayer(layerIndex, txt)
+                                                }
+                                            }
+                                            layerDelegate.isRenaming = false
+                                        }
+                                    }
+                                    
+                                    Keys.onEscapePressed: {
+                                        layerDelegate.isRenaming = false
+                                    }
+                                }
                             }
                             
                             // Locked Indicator
@@ -879,6 +941,183 @@ Item {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // Contextual Options Popup
+    Popup {
+        id: layerOptionsPopup
+        width: 180
+        height: 356
+        x: -width - 8
+        y: Math.max(4, Math.min(layersListRef ? layersListRef.height - height - 4 : 400, (headerContent.height - height) / 2))
+        padding: 6
+        modal: false
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        
+        background: Rectangle {
+            color: "#141416"
+            radius: 12
+            border.color: "#2c2c30"
+            border.width: 1
+            
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: "#aa000000"
+                shadowBlur: 15
+                shadowVerticalOffset: 4
+            }
+            
+            // Arrow pointing towards the thumbnail on the right
+            Rectangle {
+                id: popupArrow
+                width: 12; height: 12
+                rotation: 45
+                color: "#141416"
+                border.color: "#2c2c30"
+                border.width: 1
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.horizontalCenter: parent.right
+                anchors.horizontalCenterOffset: -1
+                z: -1
+            }
+            // Arrow mask to keep clean inside the popup
+            Rectangle {
+                width: 12; height: 24
+                color: "#141416"
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: 1
+                z: 0
+            }
+        }
+        
+        contentItem: Column {
+            spacing: 1
+            width: parent.width
+            
+            Repeater {
+                model: [
+                    { label: "Rename", icon: "edit-3.svg", action: "rename", active: false, rot: 0 },
+                    { label: "Select Pixels", icon: "selection.svg", action: "select", active: false, rot: 0 },
+                    { label: "Copy", icon: "copy.svg", action: "copy", active: false, rot: 0 },
+                    { label: "Fill Layer", icon: "paint-bucket.svg", action: "fill", active: false, rot: 0 },
+                    { label: "Clear", icon: "trash-2.svg", action: "clear", active: false, rot: 0 },
+                    { label: "Alpha Lock", icon: "lock.svg", action: "alphalock", active: isAlphaLocked, rot: 0 },
+                    { label: "Clipping Mask", icon: "arrow-down-left.svg", action: "clip", active: isClipped, rot: -90 },
+                    { label: "Invert Colors", icon: "rotate.svg", action: "invert", active: false, rot: 0 },
+                    { label: "Reference Layer", icon: "star.svg", action: "reference", active: (typeof listModel.reference !== "undefined" ? listModel.reference : false), rot: 0 },
+                    { label: "Merge Down", icon: "arrow-down-left.svg", action: "mergedown", active: false, rot: 0 }
+                ]
+                
+                delegate: Rectangle {
+                    width: 168
+                    height: 34
+                    color: "transparent"
+                    radius: 6
+                    
+                    property bool isHovered: false
+                    property bool isActiveItem: modelData.active
+                    
+                    Rectangle {
+                        anchors.fill: parent
+                        color: isActiveItem ? Qt.rgba(layerDelegate.accentColor.r, layerDelegate.accentColor.g, layerDelegate.accentColor.b, 0.25) : (isHovered ? "#ffffff10" : "transparent")
+                        radius: 6
+                        border.color: isActiveItem ? layerDelegate.accentColor : "transparent"
+                        border.width: 1
+                        
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
+                    
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        spacing: 8
+                        
+                        Image {
+                            source: iconPath(modelData.icon)
+                            Layout.preferredWidth: 14
+                            Layout.preferredHeight: 14
+                            Layout.alignment: Qt.AlignVCenter
+                            rotation: modelData.rot
+                            
+                            layer.enabled: isActiveItem
+                            layer.effect: MultiEffect {
+                                colorization: 1.0
+                                colorizationColor: layerDelegate.accentColor
+                            }
+                            opacity: isActiveItem ? 1.0 : (isHovered ? 0.9 : 0.7)
+                        }
+                        
+                        Text {
+                            text: modelData.label
+                            color: isActiveItem ? "white" : "#e4e4e7"
+                            font.pixelSize: 11
+                            font.weight: isActiveItem ? Font.Bold : Font.Normal
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onEntered: isHovered = true
+                        onExited: isHovered = false
+                        onClicked: {
+                            layerOptionsPopup.close()
+                            handleMenuAction(modelData.action)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function handleMenuAction(action) {
+        if (action === "rename") {
+            layerDelegate.isRenaming = true
+        } else if (action === "select") {
+            if (targetCanvas && typeof targetCanvas.selectPixels === "function") {
+                targetCanvas.selectPixels(layerIndex)
+            }
+        } else if (action === "copy") {
+            if (targetCanvas && typeof targetCanvas.duplicateLayer === "function") {
+                targetCanvas.duplicateLayer(layerIndex)
+            }
+        } else if (action === "fill") {
+            if (targetCanvas && typeof targetCanvas.selectAll === "function") {
+                targetCanvas.selectAll()
+                targetCanvas.colorSelection(targetCanvas.brushColor)
+                targetCanvas.deselect()
+            }
+        } else if (action === "clear") {
+            if (targetCanvas && typeof targetCanvas.clearLayer === "function") {
+                targetCanvas.clearLayer(layerIndex)
+            }
+        } else if (action === "alphalock") {
+            if (targetCanvas && typeof targetCanvas.toggleAlphaLock === "function") {
+                targetCanvas.toggleAlphaLock(layerIndex)
+            }
+        } else if (action === "clip") {
+            if (targetCanvas && typeof targetCanvas.toggleClipping === "function") {
+                targetCanvas.toggleClipping(layerIndex)
+            }
+        } else if (action === "invert") {
+            if (targetCanvas && typeof targetCanvas.invertLayerColors === "function") {
+                targetCanvas.invertLayerColors(layerIndex)
+            }
+        } else if (action === "reference") {
+            if (targetCanvas && typeof targetCanvas.toggleReference === "function") {
+                targetCanvas.toggleReference(layerIndex)
+            }
+        } else if (action === "mergedown") {
+            if (targetCanvas && typeof targetCanvas.mergeDown === "function") {
+                targetCanvas.mergeDown(layerIndex)
             }
         }
     }

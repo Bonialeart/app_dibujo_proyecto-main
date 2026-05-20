@@ -27,6 +27,34 @@ Rectangle {
     property string dragMode: "insert" // "insert" or "group"
     
     property color accentColor: "#6366f1"
+    property string tabDisplayMode: "both" // "both", "icon", "text"
+    
+    readonly property var allPanelsList: [
+        { id: "brushes", name: "Pinceles" },
+        { id: "settings", name: "Configuración de Pincel" },
+        { id: "toolsettings", name: "Ajustes de Herramienta" },
+        { id: "color", name: "Color" },
+        { id: "layers", name: "Capas" },
+        { id: "navigator", name: "Navegador" },
+        { id: "history", name: "Historial" },
+        { id: "reference", name: "Referencia" },
+        { id: "timeline", name: "Línea de Tiempo" }
+    ]
+    
+    function isPanelActiveAnywhere(pId) {
+        if (!manager) return false
+        var models = [manager.leftDockModel, manager.leftDockModel2, manager.rightDockModel, manager.rightDockModel2, manager.bottomDockModel, manager.floatingModel]
+        for (var i = 0; i < models.length; i++) {
+            var model = models[i]
+            if (model) {
+                for (var j = 0; j < model.count; j++) {
+                    var p = model.get(j)
+                    if (p && p.panelId === pId) return p.visible
+                }
+            }
+        }
+        return false
+    }
     
     property real targetHoverY: {
         var count = dockModel ? dockModel.count : 0
@@ -281,26 +309,26 @@ Rectangle {
                                         id: tabItem
                                         property bool isActiveTab: modelData.pId === activeTabId
                                         height: parent.height
-                                        width: 44 * root.uiScale
+                                        width: tabContentRow.width + 16 * root.uiScale
                                         color: isActiveTab ? "#151518" : (tabMa.containsMouse ? "#121215" : "transparent")
                                         
                                         // Slight rounding at the top for tabs
-                                        radius: isActiveTab ? 6 : 0
-                                        Rectangle { width: parent.width; height: 6; anchors.bottom: parent.bottom; color: parent.color; visible: isActiveTab }
+                                        radius: isActiveTab ? 5 : 0
+                                        Rectangle { width: parent.width; height: 5; anchors.bottom: parent.bottom; color: parent.color; visible: isActiveTab }
                                         
                                         // Separator between inactive tabs
                                         Rectangle { 
-                                            width: 1; height: 14; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; 
+                                            width: 1; height: 12; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; 
                                             color: "#1f1f22"; visible: !isActiveTab
                                         }
                                         
                                         // Top accent glow for active tab
                                         Rectangle { 
-                                            width: parent.width - 16; height: 2; anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
+                                            width: parent.width - 6; height: 2; anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
                                             radius: 1
                                             color: root.accentColor; visible: isActiveTab 
                                             layer.enabled: true
-                                            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 12; shadowColor: root.accentColor; shadowVerticalOffset: 2 }
+                                            layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 10; shadowColor: root.accentColor; shadowVerticalOffset: 1 }
                                         }
                                         
                                         // Bottom seamless cover
@@ -310,21 +338,55 @@ Rectangle {
                                         }
                                         
                                         Row {
-                                            anchors.centerIn: parent; spacing: 0
-                                            opacity: isActiveTab ? 1.0 : (tabMa.containsMouse ? 0.8 : 0.5)
+                                            id: tabContentRow
+                                            anchors.centerIn: parent
+                                            spacing: 6 * root.uiScale
+                                            opacity: isActiveTab ? 1.0 : (tabMa.containsMouse ? 0.85 : 0.6)
                                             
                                             Image {
-                                                source: modelData.icon !== "" ? "image://icons/" + modelData.icon : ""
-                                                width: 16 * root.uiScale; height: 16 * root.uiScale
+                                                source: (root.tabDisplayMode !== "text" && modelData.icon !== "") ? "image://icons/" + modelData.icon : ""
+                                                width: 13 * root.uiScale; height: 13 * root.uiScale
                                                 sourceSize: Qt.size(32, 32); smooth: true; mipmap: true; anchors.verticalCenter: parent.verticalCenter
-                                                visible: modelData.icon !== ""
+                                                visible: root.tabDisplayMode !== "text" && modelData.icon !== ""
                                                 layer.enabled: isActiveTab
                                                 layer.effect: MultiEffect { colorizationColor: root.accentColor; colorization: 1.0 }
                                             }
+                                            
                                             Text {
-                                                id: tabText
-                                                visible: false
                                                 text: modelData.name
+                                                color: isActiveTab ? "#ffffff" : "#bbbbbb"
+                                                font.pixelSize: 10 * root.uiScale
+                                                font.weight: isActiveTab ? Font.Bold : Font.Medium
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                visible: root.tabDisplayMode !== "icon" && modelData.name !== ""
+                                            }
+                                            
+                                            // Close button (x) on the tab!
+                                            Rectangle {
+                                                id: closeTabBtn
+                                                width: 12 * root.uiScale; height: 12 * root.uiScale
+                                                radius: 3
+                                                color: closeTabMa.containsMouse ? "#2d2d32" : "transparent"
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                visible: isActiveTab || tabMa.containsMouse
+                                                
+                                                Image {
+                                                    source: "image://icons/close.svg"
+                                                    width: 7 * root.uiScale; height: 7 * root.uiScale
+                                                    anchors.centerIn: parent
+                                                    opacity: closeTabMa.containsMouse ? 0.95 : 0.4
+                                                    smooth: true; mipmap: true
+                                                }
+                                                
+                                                MouseArea {
+                                                    id: closeTabMa
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        root.manager.togglePanel(modelData.pId)
+                                                    }
+                                                }
                                             }
                                         }
                                         
@@ -332,7 +394,7 @@ Rectangle {
                                             id: hoverToolTip
                                             visible: tabMa.containsMouse && !tabMa.isDragging
                                             text: modelData.name
-                                            delay: 300
+                                            delay: 400
                                             y: parent.height + 4
                                             x: (parent.width - width) / 2
                                             background: Rectangle {
@@ -343,7 +405,7 @@ Rectangle {
                                             contentItem: Text {
                                                 text: hoverToolTip.text
                                                 color: "#f0f0f5"
-                                                font.pixelSize: 11
+                                                font.pixelSize: 10
                                                 font.weight: Font.Medium
                                             }
                                         }
@@ -386,7 +448,7 @@ Rectangle {
                                 Rectangle {
                                     width: 24; height: 24; radius: 6
                                     color: popoutMa.containsMouse ? "#252528" : "transparent"
-                                    Image { source: "image://icons/external-link.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
+                                    Image { source: "image://icons/float-window.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
                                     MouseArea {
                                         id: popoutMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: root.manager.movePanelToFloat(activeTabId, parent.mapToGlobal(0,0).x - 200, parent.mapToGlobal(0,0).y)
@@ -400,6 +462,19 @@ Rectangle {
                                     MouseArea {
                                         id: collapseMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: root.toggleCollapse(activeTabId)
+                                    }
+                                }
+                                
+                                Rectangle {
+                                    width: 24; height: 24; radius: 6
+                                    color: optionsMa.containsMouse ? "#252528" : "transparent"
+                                    Image { source: "image://icons/dots-vertical.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
+                                    MouseArea {
+                                        id: optionsMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            var p = parent.mapToItem(root, 0, parent.height + 4)
+                                            optionsPopup.openAt(p.x, p.y, activeTabId, delegateGroupId)
+                                        }
                                     }
                                 }
                             }
@@ -537,5 +612,218 @@ Rectangle {
                 }
             }
         }
+    }
+
+    // Click-away overlay to close the options popup
+    MouseArea {
+        anchors.fill: parent
+        z: 9990
+        visible: optionsPopup.visible
+        hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onPressed: optionsPopup.close()
+    }
+
+    // Options Popup
+    Rectangle {
+        id: optionsPopup
+        visible: false
+        width: 200 * root.uiScale
+        height: Math.min(parent.height - 16 * root.uiScale, popupContent.implicitHeight + 20 * root.uiScale)
+        
+        property real targetX: 0
+        property real targetY: 0
+        property string menuActiveTabId: ""
+        property string menuGroupId: ""
+        
+        x: Math.max(8, Math.min(parent.width - width - 8, targetX))
+        y: Math.max(8, Math.min(parent.height - height - 8, targetY))
+        z: 9999
+        
+        color: "#111115"
+        border.color: "#282830"
+        border.width: 1
+        radius: 8
+        
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowBlur: 15
+            shadowColor: "#aa000000"
+            shadowVerticalOffset: 4
+        }
+        
+        function openAt(tx, ty, activeTabId, groupId) {
+            targetX = tx
+            targetY = ty
+            menuActiveTabId = activeTabId
+            menuGroupId = groupId
+            visible = true
+        }
+        
+        function close() {
+            visible = false
+        }
+        
+        ScrollView {
+            anchors.fill: parent
+            anchors.margins: 6 * root.uiScale
+            clip: true
+            ScrollBar.vertical.policy: ScrollBar.AsNeeded
+
+            Column {
+                id: popupContent
+                width: parent.width
+                spacing: 1 * root.uiScale
+
+                // ── SECTION: Panel Actions ────────────────────
+                PopupSectionHeader { sectionText: "PANEL" }
+
+                PopupMenuItem {
+                    menuText: "Flotar panel"
+                    menuEmoji: "⬖"
+                    onItemClicked: {
+                        root.manager.movePanelToFloat(optionsPopup.menuActiveTabId,
+                            root.mapToGlobal(0,0).x + 50, root.mapToGlobal(0,0).y + 50)
+                        optionsPopup.close()
+                    }
+                }
+                PopupMenuItem {
+                    menuText: "Colapsar dock"
+                    menuEmoji: "◁"
+                    onItemClicked: { root.manager.collapseDock(root.dockSide); optionsPopup.close() }
+                }
+                PopupMenuItem {
+                    menuText: "Cerrar pestaña"
+                    menuEmoji: "✕"
+                    isDanger: true
+                    onItemClicked: { root.manager.togglePanel(optionsPopup.menuActiveTabId); optionsPopup.close() }
+                }
+
+                PopupDivider {}
+
+                // ── SECTION: Tab display mode ──────────────────
+                PopupSectionHeader { sectionText: "DISEÑO DE PESTAÑA" }
+
+                PopupMenuItem {
+                    menuText: "Icono y Texto"
+                    menuEmoji: "⊞"
+                    isChecked: root.tabDisplayMode === "both"
+                    acColor: root.accentColor
+                    onItemClicked: { root.tabDisplayMode = "both"; optionsPopup.close() }
+                }
+                PopupMenuItem {
+                    menuText: "Solo Icono"
+                    menuEmoji: "◉"
+                    isChecked: root.tabDisplayMode === "icon"
+                    acColor: root.accentColor
+                    onItemClicked: { root.tabDisplayMode = "icon"; optionsPopup.close() }
+                }
+                PopupMenuItem {
+                    menuText: "Solo Texto"
+                    menuEmoji: "𝖠"
+                    isChecked: root.tabDisplayMode === "text"
+                    acColor: root.accentColor
+                    onItemClicked: { root.tabDisplayMode = "text"; optionsPopup.close() }
+                }
+
+                PopupDivider {}
+
+                // ── SECTION: Show panel ────────────────────────
+                PopupSectionHeader { sectionText: "MOSTRAR PANEL" }
+
+                Repeater {
+                    model: root.allPanelsList
+                    PopupMenuItem {
+                        menuText: modelData.name
+                        menuEmoji: ""
+                        isChecked: root.isPanelActiveAnywhere(modelData.id)
+                        acColor: root.accentColor
+                        onItemClicked: { root.manager.togglePanel(modelData.id); optionsPopup.close() }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── REUSABLE POPUP COMPONENTS ──────────────────────────
+    component PopupSectionHeader: Item {
+        property string sectionText: ""
+        width: parent ? parent.width : 0
+        height: 22 * root.uiScale
+        Text {
+            text: sectionText
+            color: "#4a4a58"
+            font.pixelSize: 8 * root.uiScale
+            font.weight: Font.Bold
+            font.letterSpacing: 0.8
+            anchors.left: parent.left; anchors.leftMargin: 10 * root.uiScale
+            anchors.verticalCenter: parent.verticalCenter
+        }
+    }
+
+    component PopupDivider: Item {
+        width: parent ? parent.width : 0
+        height: 10 * root.uiScale
+        Rectangle {
+            width: parent.width - 16 * root.uiScale; height: 1
+            color: "#1e1e26"
+            anchors.centerIn: parent
+        }
+    }
+
+    component PopupMenuItem: Rectangle {
+        id: _pmi
+        property string menuText: ""
+        property string menuEmoji: ""
+        property bool isChecked: false
+        property bool isDanger: false
+        property color acColor: root.accentColor
+        signal itemClicked()
+
+        width: parent ? parent.width : 0
+        height: 28 * root.uiScale
+        radius: 5
+        color: _pmiMa.containsMouse
+            ? (isDanger ? "#2a1518" : "#1c1c24")
+            : "transparent"
+        Behavior on color { ColorAnimation { duration: 120 } }
+
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10 * root.uiScale
+            anchors.rightMargin: 10 * root.uiScale
+            spacing: 8 * root.uiScale
+
+            // Check indicator or emoji icon
+            Text {
+                text: _pmi.isChecked ? "✓" : (_pmi.menuEmoji !== "" ? _pmi.menuEmoji : "  ")
+                color: _pmi.isChecked ? _pmi.acColor : (_pmiMa.containsMouse ? "#aaa" : "#444")
+                font.pixelSize: _pmi.isChecked ? 11 * root.uiScale : 12 * root.uiScale
+                font.weight: Font.Bold
+                Layout.preferredWidth: 14 * root.uiScale
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            Text {
+                text: _pmi.menuText
+                color: _pmi.isDanger
+                    ? (_pmiMa.containsMouse ? "#ff6b6b" : "#c04444")
+                    : (_pmi.isChecked ? "#ffffff" : (_pmiMa.containsMouse ? "#e0e0e8" : "#9090a0"))
+                font.pixelSize: 11 * root.uiScale
+                font.weight: _pmi.isChecked ? Font.DemiBold : Font.Normal
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                Behavior on color { ColorAnimation { duration: 100 } }
+            }
+        }
+
+        MouseArea {
+            id: _pmiMa; anchors.fill: parent
+            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+            onClicked: _pmi.itemClicked()
+        }
+        scale: _pmiMa.pressed ? 0.97 : 1.0
+        Behavior on scale { NumberAnimation { duration: 80 } }
     }
 }

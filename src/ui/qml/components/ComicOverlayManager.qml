@@ -552,12 +552,14 @@ Item {
                 width: 24; height: 24; radius: 12
                 color: cancelDrawMa.containsMouse ? "#3a1515" : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
+                Behavior on color { ColorAnimation { duration: 150 } }
                 
-                Text {
-                    text: "✕"
-                    color: cancelDrawMa.containsMouse ? "#ff4444" : "#aaa"
-                    font.pixelSize: 12
+                Image {
+                    source: "image://icons/close.svg"
+                    width: 10; height: 10
                     anchors.centerIn: parent
+                    opacity: cancelDrawMa.containsMouse ? 1.0 : 0.6
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
                 }
                 
                 MouseArea {
@@ -749,7 +751,18 @@ Item {
                     Rectangle {
                         width: 28; height: 28; radius: 14
                         color: delPanelMa.containsMouse ? "#3a1515" : "transparent"
-                        Text { text: "✕"; color: delPanelMa.containsMouse ? "#ff4444" : "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+                        border.color: delPanelMa.containsMouse ? "#662222" : "transparent"; border.width: 1
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                        
+                        Image {
+                            source: "image://icons/trash.svg"
+                            width: 12; height: 12
+                            anchors.centerIn: parent
+                            opacity: delPanelMa.containsMouse ? 1.0 : 0.6
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                        }
+                        
                         MouseArea {
                             id: delPanelMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: root.deleteSelected()
@@ -1133,7 +1146,18 @@ Item {
                     Rectangle {
                         width: 28; height: 28; radius: 14
                         color: delBubbleMa.containsMouse ? "#3a1515" : "transparent"
-                        Text { text: "✕"; color: delBubbleMa.containsMouse ? "#ff4444" : "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+                        border.color: delBubbleMa.containsMouse ? "#662222" : "transparent"; border.width: 1
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                        
+                        Image {
+                            source: "image://icons/trash.svg"
+                            width: 12; height: 12
+                            anchors.centerIn: parent
+                            opacity: delBubbleMa.containsMouse ? 1.0 : 0.6
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                        }
+                        
                         MouseArea {
                             id: delBubbleMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: root.deleteSelected()
@@ -1441,7 +1465,18 @@ Item {
                     Rectangle {
                         width: 28; height: 28; radius: 14
                         color: delShpMa.containsMouse ? "#3a1515" : "transparent"
-                        Text { text: "✕"; color: delShpMa.containsMouse ? "#ff4444" : "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+                        border.color: delShpMa.containsMouse ? "#662222" : "transparent"; border.width: 1
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+                        
+                        Image {
+                            source: "image://icons/trash.svg"
+                            width: 12; height: 12
+                            anchors.centerIn: parent
+                            opacity: delShpMa.containsMouse ? 1.0 : 0.6
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                        }
+                        
                         MouseArea {
                             id: delShpMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: root.deleteSelected()

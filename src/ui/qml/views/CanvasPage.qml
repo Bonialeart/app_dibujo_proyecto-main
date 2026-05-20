@@ -1321,10 +1321,17 @@ import "../components"
                         
                         // Close button
                         Rectangle {
-                            width: 18; height: 18; radius: 9
-                            color: closeRefMouse.containsMouse ? "#44ffffff" : "transparent"
+                            width: 18; height: 18; radius: 4
+                            color: closeRefMouse.containsMouse ? "#2a2a2e" : "transparent"
                             anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                            Text { text: "×"; color: "#666"; font.pixelSize: 12; anchors.centerIn: parent }
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                            Image {
+                                source: "image://icons/close.svg"
+                                width: 10; height: 10
+                                anchors.centerIn: parent
+                                opacity: closeRefMouse.containsMouse ? 0.9 : 0.5
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                            }
                             MouseArea { id: closeRefMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: refWindow.active = false }
                         }
                     }

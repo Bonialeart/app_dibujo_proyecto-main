@@ -59,7 +59,7 @@ Item {
                     Item {
                         Layout.fillWidth: true; Layout.preferredHeight: 36
                         Rectangle { width: parent.width; anchors.bottom: parent.bottom; color: "#1E1E22"; height: 1 }
-                        RowLayout {
+                                                RowLayout {
                             anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 2
                             
                             // Clipping Mask
@@ -67,8 +67,17 @@ Item {
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
                                 color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (clipMa.containsMouse ? "#222228" : "transparent")
                                 border.color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"; border.width: 1
-                                Image { source: "image://icons/corner-down-right.svg"; width: 14; height: 14; anchors.centerIn: parent; opacity: activeLayerClipped ? 1.0 : 0.5 }
-                                MouseArea { id: clipMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.toggleClipping(activeLayerId) }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+                                
+                                Image { 
+                                    source: "image://icons/corner-down-right.svg"
+                                    width: 14; height: 14
+                                    anchors.centerIn: parent
+                                    opacity: activeLayerClipped ? 1.0 : (clipMa.containsMouse ? 0.9 : 0.5)
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                                }
+                                MouseArea { id: clipMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.toggleClipping(activeLayerId) }
                                 ToolTip.visible: clipMa.containsMouse; ToolTip.text: "Clipping Mask" 
                             }
                             
@@ -77,19 +86,36 @@ Item {
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
                                 color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (alphaMa.containsMouse ? "#222228" : "transparent")
                                 border.color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"; border.width: 1
-                                Image { source: "image://icons/lock.svg"; width: 12; height: 12; anchors.centerIn: parent; opacity: (activeLayer && activeLayer.alpha_lock) ? 1.0 : 0.5 }
-                                MouseArea { id: alphaMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.toggleAlphaLock(activeLayerId) }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+                                
+                                Image { 
+                                    source: "image://icons/lock.svg"
+                                    width: 12; height: 12
+                                    anchors.centerIn: parent
+                                    opacity: (activeLayer && activeLayer.alpha_lock) ? 1.0 : (alphaMa.containsMouse ? 0.9 : 0.5)
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                                }
+                                MouseArea { id: alphaMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.toggleAlphaLock(activeLayerId) }
                                 ToolTip.visible: alphaMa.containsMouse; ToolTip.text: "Lock Alpha" 
                             }
 
-                            Item { Layout.fillWidth: true }
+                             Item { Layout.fillWidth: true }
 
                             // Duplicate
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
                                 color: dupMa.containsMouse ? "#222228" : "transparent"
-                                Image { source: "image://icons/copy.svg"; width: 14; height: 14; anchors.centerIn: parent; opacity: dupMa.containsMouse ? 1.0 : 0.5 }
-                                MouseArea { id: dupMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.duplicateLayer(activeLayerId) }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                
+                                Image { 
+                                    source: "image://icons/copy.svg"
+                                    width: 14; height: 14
+                                    anchors.centerIn: parent
+                                    opacity: dupMa.containsMouse ? 0.9 : 0.5
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                                }
+                                MouseArea { id: dupMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.duplicateLayer(activeLayerId) }
                                 ToolTip.visible: dupMa.containsMouse; ToolTip.text: "Duplicate Layer" 
                             }
 
@@ -97,27 +123,54 @@ Item {
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
                                 color: addLyrMa.containsMouse ? "#222228" : "transparent"
-                                Image { source: "image://icons/plus.svg"; width: 16; height: 16; anchors.centerIn: parent; opacity: addLyrMa.containsMouse ? 1.0 : 0.6 }
-                                MouseArea { id: addLyrMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas) targetCanvas.addLayer() }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                
+                                Image { 
+                                    source: "image://icons/plus.svg"
+                                    width: 16; height: 16
+                                    anchors.centerIn: parent
+                                    opacity: addLyrMa.containsMouse ? 1.0 : 0.6
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                                }
+                                MouseArea { id: addLyrMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if(targetCanvas) targetCanvas.addLayer() }
                                 ToolTip.visible: addLyrMa.containsMouse; ToolTip.text: "New Layer" 
                             }
                             
                             // Add Group / Folder
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
-                                color: addGrpMa.containsMouse ? "#2a1e0a" : "transparent"
-                                border.color: addGrpMa.containsMouse ? "#f0903090" : "transparent"; border.width: 1
-                                Image { source: "image://icons/folder-plus.svg"; width: 14; height: 14; anchors.centerIn: parent; opacity: addGrpMa.containsMouse ? 1.0 : 0.5 }
-                                MouseArea { id: addGrpMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas) targetCanvas.addGroup() }
+                                color: addGrpMa.containsMouse ? "#2a221a" : "transparent"
+                                border.color: addGrpMa.containsMouse ? Qt.rgba(240/255, 144/255, 48/255, 0.4) : "transparent"; border.width: 1
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+                                
+                                Image { 
+                                    source: "image://icons/folder-plus.svg"
+                                    width: 14; height: 14
+                                    anchors.centerIn: parent
+                                    opacity: addGrpMa.containsMouse ? 1.0 : 0.5
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                                }
+                                MouseArea { id: addGrpMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if(targetCanvas) targetCanvas.addGroup() }
                                 ToolTip.visible: addGrpMa.containsMouse; ToolTip.text: "New Folder (Group)" 
                             }
 
                             // Delete
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
-                                color: delMa.containsMouse ? "#3a1a1a" : "transparent"
-                                Image { source: "image://icons/trash-2.svg"; width: 14; height: 14; anchors.centerIn: parent; opacity: delMa.containsMouse ? 1.0 : 0.5 }
-                                MouseArea { id: delMa; anchors.fill: parent; hoverEnabled: true; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.removeLayer(activeLayerId) }
+                                color: delMa.containsMouse ? "#3a1515" : "transparent"
+                                border.color: delMa.containsMouse ? "#662222" : "transparent"; border.width: 1
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+                                
+                                Image { 
+                                    source: "image://icons/trash-2.svg"
+                                    width: 14; height: 14
+                                    anchors.centerIn: parent
+                                    opacity: delMa.containsMouse ? 1.0 : 0.5
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                                }
+                                MouseArea { id: delMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if(targetCanvas && activeLayerId !== -1) targetCanvas.removeLayer(activeLayerId) }
                                 ToolTip.visible: delMa.containsMouse; ToolTip.text: "Delete Layer" 
                             }
                         }

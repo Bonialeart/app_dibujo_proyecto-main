@@ -33,6 +33,7 @@ struct Layer {
   bool dirty = true;
   QRect dirtyRect; // Region that needs texture re-upload
   bool isPrivate = false;
+  bool reference = false;
   Type type = Type::Drawing;
   int parentId = -1; // -1 means no parent (root level)
   bool expanded = true; // For group layers: is it expanded in UI?

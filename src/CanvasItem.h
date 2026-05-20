@@ -406,6 +406,9 @@ public:
   Q_INVOKABLE void duplicateLayer(int index);
   Q_INVOKABLE void moveLayer(int fromIndex, int toIndex);
   Q_INVOKABLE void mergeDown(int index);
+  Q_INVOKABLE void selectPixels(int index);
+  Q_INVOKABLE void invertLayerColors(int index);
+  Q_INVOKABLE void toggleReference(int index);
   Q_INVOKABLE int getFolderCount() const;
   Q_INVOKABLE int getFirstCreatedFolderStableId() const;
   Q_INVOKABLE void renameLayer(int index, const QString &name);

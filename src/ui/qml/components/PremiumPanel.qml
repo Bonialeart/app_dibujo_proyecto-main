@@ -219,14 +219,16 @@ Item {
                         Layout.preferredWidth: 22
                         Layout.preferredHeight: 22
                         radius: 6
-                        color: closeMouse.containsMouse ? Qt.rgba(1, 0.2, 0.2, 0.3) : "transparent"
+                        color: closeMouse.containsMouse ? Qt.rgba(1, 0.2, 0.2, 0.2) : "transparent"
+                        Behavior on color { ColorAnimation { duration: 150 } }
 
-                        Text {
-                            text: "×"
-                            color: closeMouse.containsMouse ? "#ff6b6b" : "#555"
-                            font.pixelSize: 14
-                            font.weight: Font.Bold
+                        Image {
+                            source: "image://icons/close.svg"
+                            width: 10
+                            height: 10
                             anchors.centerIn: parent
+                            opacity: closeMouse.containsMouse ? 1.0 : 0.5
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                         }
 
                         MouseArea {

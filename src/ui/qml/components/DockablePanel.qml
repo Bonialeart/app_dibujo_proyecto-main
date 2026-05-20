@@ -102,12 +102,14 @@ Rectangle {
                 width: 18; height: 18; radius: 4
                 color: collapseMouse.containsMouse ? "#2a2a2e" : "transparent"
                 Layout.alignment: Qt.AlignVCenter
+                Behavior on color { ColorAnimation { duration: 150 } }
                 
-                Text {
-                    text: isCollapsed ? "▸" : "▾"
-                    color: "#666"
-                    font.pixelSize: 10
+                Image {
+                    source: isCollapsed ? "image://icons/chevron-right.svg" : "image://icons/chevron-down.svg"
+                    width: 11; height: 11
                     anchors.centerIn: parent
+                    opacity: collapseMouse.containsMouse ? 0.9 : 0.5
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
                 }
                 
                 MouseArea {
@@ -124,12 +126,14 @@ Rectangle {
                 width: 18; height: 18; radius: 4
                 color: floatMouse.containsMouse ? "#2a2a2e" : "transparent"
                 Layout.alignment: Qt.AlignVCenter
+                Behavior on color { ColorAnimation { duration: 150 } }
                 
-                Text {
-                    text: isDocked ? "⊞" : "⊟"
-                    color: "#666"
-                    font.pixelSize: 11
+                Image {
+                    source: isDocked ? "image://icons/float-window.svg" : "image://icons/dock-window.svg"
+                    width: 11; height: 11
                     anchors.centerIn: parent
+                    opacity: floatMouse.containsMouse ? 0.9 : 0.5
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
                 }
                 
                 MouseArea {
@@ -149,12 +153,14 @@ Rectangle {
                 width: 18; height: 18; radius: 4
                 color: closeMouse.containsMouse ? "#ff3b30" : "transparent"
                 Layout.alignment: Qt.AlignVCenter
+                Behavior on color { ColorAnimation { duration: 150 } }
                 
-                Text {
-                    text: "×"
-                    color: closeMouse.containsMouse ? "#fff" : "#666"
-                    font.pixelSize: 13
+                Image {
+                    source: "image://icons/close.svg"
+                    width: 10; height: 10
                     anchors.centerIn: parent
+                    opacity: closeMouse.containsMouse ? 1.0 : 0.5
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
                 }
                 
                 MouseArea {

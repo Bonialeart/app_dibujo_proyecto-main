@@ -8,20 +8,21 @@ Rectangle {
     // Props
     property var panelModel: null // ListModel
     property bool isCollapsed: true
-    property int iconSize: 22
+    property int iconSize: 18
     property color accentColor: "#6366f1"
     property string dockSide: "left"
     
     signal toggleDock(string panelId)
     signal reorder(int sourceIdx, int targetIdx, string mode)
     
-    width: 48
+    width: 34
     color: "#0c0c0f" // Ultra-dark
     
     // Border
     Rectangle {
         width: 1; height: parent.height
-        anchors.right: parent.right
+        anchors.left: root.dockSide.indexOf("right") !== -1 ? parent.left : undefined
+        anchors.right: root.dockSide.indexOf("left") !== -1 ? parent.right : undefined
         color: "#1c1c1e"
     }
 
@@ -35,8 +36,8 @@ Rectangle {
             
             delegate: Item {
                 id: delegateRoot
-                Layout.preferredWidth: 48
-                Layout.preferredHeight: 40 + (isGroupLast ? 8 : 0) // Extra spacing only at the end of groups/singles
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34 + (isGroupLast ? 8 : 0) // Spacing at end of groups
                 Layout.alignment: Qt.AlignHCenter
                 
                 property bool isActive: (model.visible !== undefined ? model.visible : true) && !root.isCollapsed
@@ -49,50 +50,35 @@ Rectangle {
                 property bool customDragging: false
                 z: customDragging ? 2000 : 1
                 
-                // Actual visual pill (Container)
+                // Actual visual button container
                 Item {
-                    width: 40; height: parent.height - (isGroupLast ? 8 : 0) // Extra 8 at bottom of group
+                    width: 28; height: 28
                     anchors.top: parent.top
+                    anchors.topMargin: 3
                     anchors.horizontalCenter: parent.horizontalCenter
-                    clip: true
                     
+                    // Subtle background highlight for active or hover states
                     Rectangle {
-                        width: parent.width
-                        y: isGroupFirst ? 0 : -12
-                        height: parent.height + (isGroupFirst ? 0 : 12) + (isGroupLast ? 0 : 12)
-                        
-                        radius: 12
-                        
-                        gradient: Gradient {
-                            orientation: Gradient.Vertical
-                            GradientStop { position: 0.0; color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.45) : (isHovered ? "#2a2a2f" : "#1e1e22") }
-                            GradientStop { position: 1.0; color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : (isHovered ? "#222226" : "#161619") }
-                        }
-                               
-                        border.color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : (isHovered ? "#3a3a3d" : "#2a2a2d")
+                        anchors.fill: parent
+                        radius: 6
+                        color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (isHovered ? Qt.rgba(255, 255, 255, 0.08) : "transparent")
+                        border.color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.4) : "transparent"
                         border.width: 1
+                        
+                        Behavior on color { ColorAnimation { duration: 150 } }
                     }
 
-                    // Separator line between group items (only if NOT last) - subtle and modern
-                    Rectangle {
-                        width: 28; height: 1
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        color: "#1affffff"
-                        visible: !isGroupLast
-                    }
-                    
-                    // Active indicator line
+                    // Active indicator line adjacent to the dock!
                     Rectangle {
                         visible: isActive
-                        width: 3; height: 24
-                        radius: 1.5
+                        width: 2; height: 16
+                        radius: 1
                         color: accentColor
-                        anchors.left: parent.left; anchors.leftMargin: 2
+                        anchors.left: root.dockSide.indexOf("right") !== -1 ? parent.left : undefined
+                        anchors.right: root.dockSide.indexOf("left") !== -1 ? parent.right : undefined
+                        anchors.leftMargin: root.dockSide.indexOf("right") !== -1 ? -3 : 0
+                        anchors.rightMargin: root.dockSide.indexOf("left") !== -1 ? -3 : 0
                         anchors.verticalCenter: parent.verticalCenter
-                        
-                        layer.enabled: true
-                        layer.effect: Qt.createQmlObject('import QtQuick.Effects; MultiEffect { blurEnabled: true; blur: 0.5 }', root)
                     }
                     
                     // Icon
@@ -100,10 +86,22 @@ Rectangle {
                         source: "image://icons/" + model.icon
                         width: root.iconSize; height: root.iconSize
                         anchors.centerIn: parent
-                        opacity: isDragging ? 0.3 : (isActive ? 1.0 : (isHovered ? 0.9 : 0.6))
+                        opacity: customDragging ? 0.3 : (isActive ? 1.0 : (isHovered ? 0.95 : 0.65))
                         mipmap: true; smooth: true
-                        sourceSize: Qt.size(48, 48)
+                        sourceSize: Qt.size(32, 32) // Render at crisp 32x32 source
+                        
+                        Behavior on opacity { NumberAnimation { duration: 150 } }
                     }
+                }
+
+                // Spacing indicator bar at bottom of group
+                Rectangle {
+                    width: 14; height: 1
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 4
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "#1c1c1f"
+                    visible: isGroupLast && index !== root.panelModel.count - 1
                 }
                 
                 DropArea {
@@ -148,13 +146,14 @@ Rectangle {
                 }
                 
                 ToolTip {
+                    id: sideTooltip
                     visible: isHovered && !customDragging
                     text: model.name || "Panel"
                     delay: 500
-                    x: root.width + 4
+                    x: root.dockSide.indexOf("right") !== -1 ? -width - 4 : root.width + 4
                     y: (parent.height - height) / 2
                     background: Rectangle { color: "#1e1e24"; border.color: "#3a3a3d"; radius: 6 }
-                    contentItem: Text { text: parent.text; color: "#f0f0f5"; font.pixelSize: 12; font.weight: Font.Medium }
+                    contentItem: Text { text: sideTooltip.text; color: "#f0f0f5"; font.pixelSize: 12; font.weight: Font.Medium }
                 }
                 
                 // Ghost item when dragging
