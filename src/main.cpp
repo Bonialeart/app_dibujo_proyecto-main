@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
   // Registro del componente de dibujo nativo
   // Registro de tipos QML
   qmlRegisterType<CanvasItem>("ArtFlow", 1, 0, "QCanvasItem");
+  qmlRegisterType<PreviewPadItem>("ArtFlow", 1, 0, "QPreviewPadItem");
   qmlRegisterType<ColorPicker>("ArtFlow", 1, 0, "ColorPicker");
   qmlRegisterUncreatableType<artflow::PanelListModel>(
       "ArtFlow", 1, 0, "PanelListModel",

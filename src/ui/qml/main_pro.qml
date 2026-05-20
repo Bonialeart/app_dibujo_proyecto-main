@@ -2115,7 +2115,11 @@ Window {
                         Repeater {
                             model: toolsModel
                             delegate: Rectangle {
-                                width: 42 * uiScale; height: 42 * uiScale
+                                property bool isHiddenInSimple: model.name === "pencil" || model.name === "brush" || model.name === "airbrush"
+                                visible: !isHiddenInSimple
+                                enabled: !isHiddenInSimple
+                                width: isHiddenInSimple ? 0 : 42 * uiScale
+                                height: isHiddenInSimple ? -toolsColumn.spacing : 42 * uiScale
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 radius: 14 * uiScale
                                 color: (model.name === "selection" && mainCanvas.isSelectionModeActive) ? "#3b82f6" : ((index === canvasPage.activeToolIdx) ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (toolHover.containsMouse ? "#1affffff" : "transparent"))
@@ -3515,7 +3519,11 @@ Window {
                     z: 1500
                     clip: true
 
-                    border.color: _navHover.containsMouse ? Qt.rgba(1,1,1,0.12) : Qt.rgba(1,1,1,0.04)
+                    HoverHandler {
+                        id: refWindowHover
+                    }
+
+                    border.color: refWindowHover.hovered ? Qt.rgba(1,1,1,0.12) : Qt.rgba(1,1,1,0.04)
                     border.width: 1
 
                     Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
@@ -3533,8 +3541,17 @@ Window {
                     property string refTool: "move"
                     property string refSource: ""
                     property real navZoom: 1.0
-                    property bool flipH: false
+                    property bool flipH: mode === "canvas" ? mainCanvas.isFlippedH : false
                     property point panOffset: Qt.point(0,0)
+
+                    onModeChanged: {
+                        navZoom = 1.0
+                        panOffset = Qt.point(0, 0)
+                    }
+                    onRefSourceChanged: {
+                        navZoom = 1.0
+                        panOffset = Qt.point(0, 0)
+                    }
 
                     // Master hover detector
                     MouseArea {
@@ -3617,6 +3634,32 @@ Window {
                                 cache: false
                                 opacity: status === Image.Ready ? 1.0 : 0.0
                                 Behavior on opacity { NumberAnimation { duration: 150 } }
+
+                                // Viewport Indicator
+                                Rectangle {
+                                    id: viewportIndicator
+                                    visible: refWindow.mode === "canvas"
+                                    color: "transparent"
+                                    border.color: "#ef4444"
+                                    border.width: 2 / refWindow.navZoom
+                                    
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: -1 / refWindow.navZoom
+                                        color: "transparent"
+                                        border.color: "#ffffff"
+                                        border.width: 1 / refWindow.navZoom
+                                    }
+
+                                    property real mapScale: mainCanvas.canvasWidth > 0 ? (_navImage.paintedWidth / mainCanvas.canvasWidth) : 1
+                                    property real imgOriginX: (_navImage.width - _navImage.paintedWidth) / 2
+                                    property real imgOriginY: (_navImage.height - _navImage.paintedHeight) / 2
+
+                                    x: imgOriginX + (-mainCanvas.viewOffset.x * mapScale)
+                                    y: imgOriginY + (-mainCanvas.viewOffset.y * mapScale)
+                                    width: (mainCanvas.width / (mainCanvas.zoomLevel || 1)) * mapScale
+                                    height: (mainCanvas.height / (mainCanvas.zoomLevel || 1)) * mapScale
+                                }
                             }
                         }
 
@@ -3664,8 +3707,15 @@ Window {
                             }
 
                             onWheel: (wheel) => {
-                                if (wheel.angleDelta.y > 0) refWindow.navZoom = Math.min(5.0, refWindow.navZoom + 0.1)
-                                else refWindow.navZoom = Math.max(0.1, refWindow.navZoom - 0.1)
+                                var zoomFactor = wheel.angleDelta.y > 0 ? 1.1 : 0.9
+                                var newZoom = Math.min(5.0, Math.max(0.1, refWindow.navZoom * zoomFactor))
+                                if (newZoom !== refWindow.navZoom) {
+                                    var f = newZoom / refWindow.navZoom
+                                    var dx = wheel.x - (refWindow.panOffset.x + _navContent.width / 2)
+                                    var dy = wheel.y - (refWindow.panOffset.y + _navContent.height / 2)
+                                    refWindow.panOffset = Qt.point(refWindow.panOffset.x - dx * (f - 1), refWindow.panOffset.y - dy * (f - 1))
+                                    refWindow.navZoom = newZoom
+                                }
                                 wheel.accepted = true
                             }
                         }
@@ -3681,8 +3731,8 @@ Window {
                             color: "#cc1a1a1e"
                             border.color: Qt.rgba(1,1,1,0.1); border.width: 0.5
 
-                            opacity: _navHover.containsMouse ? 1.0 : 0.0
-                            scale: _navHover.containsMouse ? 1.0 : 0.9
+                            opacity: refWindowHover.hovered ? 1.0 : 0.0
+                            scale: refWindowHover.hovered ? 1.0 : 0.9
                             Behavior on opacity { NumberAnimation { duration: 150 } }
                             Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
 

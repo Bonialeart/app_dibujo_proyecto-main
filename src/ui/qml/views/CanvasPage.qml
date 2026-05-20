@@ -43,7 +43,7 @@ import "../components"
                         HoverHandler {
                             acceptedDevices: PointerDevice.Mouse | PointerDevice.Stylus | PointerDevice.TouchPad
                             cursorShape: {
-                                if (canvasPage.activeToolIdx === 12) return Qt.OpenHandCursor; // Hand tool
+                                if (canvasPage.activeToolIdx === 12) return Qt.BitmapCursor; // Hand tool, let C++ handle it
                                 if (canvasPage.activeToolIdx === 4) return Qt.ArrowCursor;     // Move/Transform tool
                                 if (canvasPage.activeToolIdx === 11) return Qt.CrossCursor;    // Eyedropper tool
                                 return Qt.BlankCursor; // Hide for Brush, Eraser, Lasso, etc.
@@ -1229,8 +1229,12 @@ import "../components"
                     z: 1500
                     clip: true
                     
+                    HoverHandler {
+                        id: refWindowHover
+                    }
+                    
                     // Subtle border only on hover
-                    border.color: refHoverArea.containsMouse ? "#22ffffff" : "#0affffff"
+                    border.color: refWindowHover.hovered ? "#22ffffff" : "#0affffff"
                     border.width: 1
                     
                     // Transitions
@@ -1249,8 +1253,17 @@ import "../components"
                     property string refTool: "move" // "move" or "pick"
                     property string refSource: ""
                     property real navZoom: 1.0
-                    property bool flipH: false
+                    property bool flipH: mode === "canvas" ? mainCanvas.isFlippedH : false
                     property point panOffset: Qt.point(0,0)
+
+                    onModeChanged: {
+                        navZoom = 1.0
+                        panOffset = Qt.point(0, 0)
+                    }
+                    onRefSourceChanged: {
+                        navZoom = 1.0
+                        panOffset = Qt.point(0, 0)
+                    }
                     
                     // Main hover detector
                     MouseArea {
@@ -1424,6 +1437,32 @@ import "../components"
                                     
                                     opacity: status === Image.Ready ? 1.0 : 0.0
                                     Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                                    // Viewport Indicator
+                                    Rectangle {
+                                        id: viewportIndicator
+                                        visible: refWindow.mode === "canvas"
+                                        color: "transparent"
+                                        border.color: "#ef4444"
+                                        border.width: 2 / refWindow.navZoom
+                                        
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            anchors.margins: -1 / refWindow.navZoom
+                                            color: "transparent"
+                                            border.color: "#ffffff"
+                                            border.width: 1 / refWindow.navZoom
+                                        }
+
+                                        property real mapScale: mainCanvas.canvasWidth > 0 ? (refImage.paintedWidth / mainCanvas.canvasWidth) : 1
+                                        property real imgOriginX: (refImage.width - refImage.paintedWidth) / 2
+                                        property real imgOriginY: (refImage.height - refImage.paintedHeight) / 2
+
+                                        x: imgOriginX + (-mainCanvas.viewOffset.x * mapScale)
+                                        y: imgOriginY + (-mainCanvas.viewOffset.y * mapScale)
+                                        width: (mainCanvas.width / (mainCanvas.zoomLevel || 1)) * mapScale
+                                        height: (mainCanvas.height / (mainCanvas.zoomLevel || 1)) * mapScale
+                                    }
                                 }
                             }
                         }
@@ -1434,8 +1473,8 @@ import "../components"
                             anchors.margins: 6
                             spacing: 4
                             z: 20
-                            // Fix: Keep visible when hovering buttons OR content
-                            opacity: (refHoverArea.containsMouse || refContentMouse.containsMouse || flipBtnM.containsMouse || resetBtnM.containsMouse || (loadBtnM.visible && loadBtnM.containsMouse) || handBtnM.containsMouse || pickBtnM.containsMouse) ? 1.0 : 0.0
+                            // Fix: Keep visible when hovering anywhere in refWindow using HoverHandler
+                            opacity: refWindowHover.hovered ? 1.0 : 0.0
                             Behavior on opacity { NumberAnimation { duration: 120 } }
                             
                             // Flip button
@@ -1526,8 +1565,15 @@ import "../components"
                             }
 
                             function onWheel(wheel) {
-                                if (wheel.angleDelta.y > 0) refWindow.navZoom = Math.min(5.0, refWindow.navZoom + 0.1)
-                                else refWindow.navZoom = Math.max(0.1, refWindow.navZoom - 0.1)
+                                var zoomFactor = wheel.angleDelta.y > 0 ? 1.1 : 0.9
+                                var newZoom = Math.min(5.0, Math.max(0.1, refWindow.navZoom * zoomFactor))
+                                if (newZoom !== refWindow.navZoom) {
+                                    var f = newZoom / refWindow.navZoom
+                                    var dx = wheel.x - (refWindow.panOffset.x + contentContainer.width / 2)
+                                    var dy = wheel.y - (refWindow.panOffset.y + contentContainer.height / 2)
+                                    refWindow.panOffset = Qt.point(refWindow.panOffset.x - dx * (f - 1), refWindow.panOffset.y - dy * (f - 1))
+                                    refWindow.navZoom = newZoom
+                                }
                                 wheel.accepted = true
                             }
                         }

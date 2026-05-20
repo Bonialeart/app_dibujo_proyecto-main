@@ -69,6 +69,13 @@ template <> constexpr inline auto PreferencesManager::qt_create_metaobjectdata<q
         "setTouchGesturesEnabled",
         "setTouchEyedropperEnabled",
         "setMultitouchUndoRedoEnabled",
+        "setShowTopProjectInfo",
+        "setShowTopBrushControls",
+        "setShowTopActionButtons",
+        "setShowTopSymmetryUndoRedo",
+        "setShowTopWorkspaceSwitcher",
+        "setShowRightToolbar",
+        "setShowRightColorSelector",
         "setPressureCurve",
         "QVariantList",
         "curve",
@@ -97,7 +104,14 @@ template <> constexpr inline auto PreferencesManager::qt_create_metaobjectdata<q
         "touchEyedropperEnabled",
         "multitouchUndoRedoEnabled",
         "pressureCurve",
-        "shortcuts"
+        "shortcuts",
+        "showTopProjectInfo",
+        "showTopBrushControls",
+        "showTopActionButtons",
+        "showTopSymmetryUndoRedo",
+        "showTopWorkspaceSwitcher",
+        "showRightToolbar",
+        "showRightColorSelector"
     };
 
     QtMocHelpers::UintData qt_methods {
@@ -171,62 +185,104 @@ template <> constexpr inline auto PreferencesManager::qt_create_metaobjectdata<q
         QtMocHelpers::SlotData<void(bool)>(30, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::Bool, 12 },
         }}),
+        // Slot 'setShowTopProjectInfo'
+        QtMocHelpers::SlotData<void(bool)>(31, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 18 },
+        }}),
+        // Slot 'setShowTopBrushControls'
+        QtMocHelpers::SlotData<void(bool)>(32, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 18 },
+        }}),
+        // Slot 'setShowTopActionButtons'
+        QtMocHelpers::SlotData<void(bool)>(33, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 18 },
+        }}),
+        // Slot 'setShowTopSymmetryUndoRedo'
+        QtMocHelpers::SlotData<void(bool)>(34, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 18 },
+        }}),
+        // Slot 'setShowTopWorkspaceSwitcher'
+        QtMocHelpers::SlotData<void(bool)>(35, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 18 },
+        }}),
+        // Slot 'setShowRightToolbar'
+        QtMocHelpers::SlotData<void(bool)>(36, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 18 },
+        }}),
+        // Slot 'setShowRightColorSelector'
+        QtMocHelpers::SlotData<void(bool)>(37, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Bool, 18 },
+        }}),
         // Slot 'setPressureCurve'
-        QtMocHelpers::SlotData<void(const QVariantList &)>(31, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { 0x80000000 | 32, 33 },
+        QtMocHelpers::SlotData<void(const QVariantList &)>(38, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 39, 40 },
         }}),
         // Slot 'setShortcuts'
-        QtMocHelpers::SlotData<void(const QVariantMap &)>(34, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { 0x80000000 | 35, 36 },
+        QtMocHelpers::SlotData<void(const QVariantMap &)>(41, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 42, 43 },
         }}),
         // Slot 'setShortcut'
-        QtMocHelpers::SlotData<void(const QString &, const QString &)>(37, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 38 }, { QMetaType::QString, 39 },
+        QtMocHelpers::SlotData<void(const QString &, const QString &)>(44, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 45 }, { QMetaType::QString, 46 },
         }}),
         // Slot 'resetDefaults'
-        QtMocHelpers::SlotData<void()>(40, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::SlotData<void()>(47, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'getShortcut'
-        QtMocHelpers::MethodData<QString(const QString &) const>(41, 2, QMC::AccessPublic, QMetaType::QString, {{
-            { QMetaType::QString, 38 },
+        QtMocHelpers::MethodData<QString(const QString &) const>(48, 2, QMC::AccessPublic, QMetaType::QString, {{
+            { QMetaType::QString, 45 },
         }}),
     };
     QtMocHelpers::UintData qt_properties {
         // property 'themeMode'
-        QtMocHelpers::PropertyData<QString>(42, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<QString>(49, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'themeAccent'
-        QtMocHelpers::PropertyData<QString>(43, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'language'
-        QtMocHelpers::PropertyData<QString>(44, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'gpuAcceleration'
-        QtMocHelpers::PropertyData<bool>(45, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'undoLevels'
-        QtMocHelpers::PropertyData<int>(46, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'memoryUsageLimit'
-        QtMocHelpers::PropertyData<int>(47, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'cursorShowOutline'
-        QtMocHelpers::PropertyData<bool>(48, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'cursorShowCrosshair'
-        QtMocHelpers::PropertyData<bool>(49, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'tabletInputMode'
         QtMocHelpers::PropertyData<QString>(50, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'toolSwitchDelay'
-        QtMocHelpers::PropertyData<int>(51, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'dragDistance'
-        QtMocHelpers::PropertyData<int>(52, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'autoSaveEnabled'
-        QtMocHelpers::PropertyData<bool>(53, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'uiScale'
-        QtMocHelpers::PropertyData<double>(54, QMetaType::Double, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'touchGesturesEnabled'
+        // property 'language'
+        QtMocHelpers::PropertyData<QString>(51, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'gpuAcceleration'
+        QtMocHelpers::PropertyData<bool>(52, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'undoLevels'
+        QtMocHelpers::PropertyData<int>(53, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'memoryUsageLimit'
+        QtMocHelpers::PropertyData<int>(54, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'cursorShowOutline'
         QtMocHelpers::PropertyData<bool>(55, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
-        // property 'touchEyedropperEnabled'
+        // property 'cursorShowCrosshair'
         QtMocHelpers::PropertyData<bool>(56, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'tabletInputMode'
+        QtMocHelpers::PropertyData<QString>(57, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'toolSwitchDelay'
+        QtMocHelpers::PropertyData<int>(58, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'dragDistance'
+        QtMocHelpers::PropertyData<int>(59, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'autoSaveEnabled'
+        QtMocHelpers::PropertyData<bool>(60, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'uiScale'
+        QtMocHelpers::PropertyData<double>(61, QMetaType::Double, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'touchGesturesEnabled'
+        QtMocHelpers::PropertyData<bool>(62, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'touchEyedropperEnabled'
+        QtMocHelpers::PropertyData<bool>(63, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'multitouchUndoRedoEnabled'
-        QtMocHelpers::PropertyData<bool>(57, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        QtMocHelpers::PropertyData<bool>(64, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
         // property 'pressureCurve'
-        QtMocHelpers::PropertyData<QVariantList>(58, 0x80000000 | 32, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 1),
+        QtMocHelpers::PropertyData<QVariantList>(65, 0x80000000 | 39, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 1),
         // property 'shortcuts'
-        QtMocHelpers::PropertyData<QVariantMap>(59, 0x80000000 | 35, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 2),
+        QtMocHelpers::PropertyData<QVariantMap>(66, 0x80000000 | 42, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 2),
+        // property 'showTopProjectInfo'
+        QtMocHelpers::PropertyData<bool>(67, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'showTopBrushControls'
+        QtMocHelpers::PropertyData<bool>(68, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'showTopActionButtons'
+        QtMocHelpers::PropertyData<bool>(69, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'showTopSymmetryUndoRedo'
+        QtMocHelpers::PropertyData<bool>(70, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'showTopWorkspaceSwitcher'
+        QtMocHelpers::PropertyData<bool>(71, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'showRightToolbar'
+        QtMocHelpers::PropertyData<bool>(72, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
+        // property 'showRightColorSelector'
+        QtMocHelpers::PropertyData<bool>(73, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 0),
     };
     QtMocHelpers::UintData qt_enums {
     };
@@ -267,11 +323,18 @@ void PreferencesManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c, i
         case 16: _t->setTouchGesturesEnabled((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
         case 17: _t->setTouchEyedropperEnabled((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
         case 18: _t->setMultitouchUndoRedoEnabled((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
-        case 19: _t->setPressureCurve((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
-        case 20: _t->setShortcuts((*reinterpret_cast<std::add_pointer_t<QVariantMap>>(_a[1]))); break;
-        case 21: _t->setShortcut((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 22: _t->resetDefaults(); break;
-        case 23: { QString _r = _t->getShortcut((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 19: _t->setShowTopProjectInfo((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 20: _t->setShowTopBrushControls((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 21: _t->setShowTopActionButtons((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 22: _t->setShowTopSymmetryUndoRedo((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 23: _t->setShowTopWorkspaceSwitcher((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 24: _t->setShowRightToolbar((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 25: _t->setShowRightColorSelector((*reinterpret_cast<std::add_pointer_t<bool>>(_a[1]))); break;
+        case 26: _t->setPressureCurve((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
+        case 27: _t->setShortcuts((*reinterpret_cast<std::add_pointer_t<QVariantMap>>(_a[1]))); break;
+        case 28: _t->setShortcut((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 29: _t->resetDefaults(); break;
+        case 30: { QString _r = _t->getShortcut((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
         default: ;
         }
@@ -305,6 +368,13 @@ void PreferencesManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c, i
         case 15: *reinterpret_cast<bool*>(_v) = _t->multitouchUndoRedoEnabled(); break;
         case 16: *reinterpret_cast<QVariantList*>(_v) = _t->pressureCurve(); break;
         case 17: *reinterpret_cast<QVariantMap*>(_v) = _t->shortcuts(); break;
+        case 18: *reinterpret_cast<bool*>(_v) = _t->showTopProjectInfo(); break;
+        case 19: *reinterpret_cast<bool*>(_v) = _t->showTopBrushControls(); break;
+        case 20: *reinterpret_cast<bool*>(_v) = _t->showTopActionButtons(); break;
+        case 21: *reinterpret_cast<bool*>(_v) = _t->showTopSymmetryUndoRedo(); break;
+        case 22: *reinterpret_cast<bool*>(_v) = _t->showTopWorkspaceSwitcher(); break;
+        case 23: *reinterpret_cast<bool*>(_v) = _t->showRightToolbar(); break;
+        case 24: *reinterpret_cast<bool*>(_v) = _t->showRightColorSelector(); break;
         default: break;
         }
     }
@@ -329,6 +399,13 @@ void PreferencesManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c, i
         case 15: _t->setMultitouchUndoRedoEnabled(*reinterpret_cast<bool*>(_v)); break;
         case 16: _t->setPressureCurve(*reinterpret_cast<QVariantList*>(_v)); break;
         case 17: _t->setShortcuts(*reinterpret_cast<QVariantMap*>(_v)); break;
+        case 18: _t->setShowTopProjectInfo(*reinterpret_cast<bool*>(_v)); break;
+        case 19: _t->setShowTopBrushControls(*reinterpret_cast<bool*>(_v)); break;
+        case 20: _t->setShowTopActionButtons(*reinterpret_cast<bool*>(_v)); break;
+        case 21: _t->setShowTopSymmetryUndoRedo(*reinterpret_cast<bool*>(_v)); break;
+        case 22: _t->setShowTopWorkspaceSwitcher(*reinterpret_cast<bool*>(_v)); break;
+        case 23: _t->setShowRightToolbar(*reinterpret_cast<bool*>(_v)); break;
+        case 24: _t->setShowRightColorSelector(*reinterpret_cast<bool*>(_v)); break;
         default: break;
         }
     }
@@ -353,20 +430,20 @@ int PreferencesManager::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 24)
+        if (_id < 31)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 24;
+        _id -= 31;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 24)
+        if (_id < 31)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 24;
+        _id -= 31;
     }
     if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty
             || _c == QMetaObject::RegisterPropertyMetaType) {
         qt_static_metacall(this, _c, _id, _a);
-        _id -= 18;
+        _id -= 25;
     }
     return _id;
 }

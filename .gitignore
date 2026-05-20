@@ -28,3 +28,9 @@ __pycache__/
 # Logs y temporales
 *.log
 *.tmp
+build_mingw/
+app_err.txt
+app_out.txt
+debug_curve.txt
+diff.txt
+

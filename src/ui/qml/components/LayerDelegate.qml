@@ -380,8 +380,13 @@ Item {
                             var itm = layersListRef.itemAt(10, pList.y + layersListRef.contentY)
                             if (itm) {
                                 var localY = itm.mapFromItem(layersListRef, 10, pList.y + layersListRef.contentY).y
-                                // If hovering over a GROUP layer -> activate group drop mode
-                                var targetModel = layersListRef.model[targetIdx]
+                                var model = layersListRef.model
+                                var targetModel = null
+                                if (rootRef && rootRef.layerModel && targetIdx >= 0 && targetIdx < rootRef.layerModel.length) {
+                                    targetModel = rootRef.layerModel[targetIdx]
+                                } else if (model && targetIdx >= 0) {
+                                    targetModel = (typeof model.get === "function") ? model.get(targetIdx) : model[targetIdx]
+                                }
                                 if (targetModel && targetModel.type === "group" && targetIdx !== listIndex) {
                                     // GROUP DROP MODE: highlight the group, hide regular indicator
                                     if (rootRef) rootRef.groupDropTarget = targetModel.layerId
@@ -450,10 +455,13 @@ Item {
                                 var targetId = -1
                                 var queryIdx = (finalTargetIdx >= layersListRef.count) ? layersListRef.count - 1 : finalTargetIdx
                                 
-                                if (model && queryIdx >= 0) {
-                                    var item = (typeof model.get === "function") ? model.get(queryIdx) : model[queryIdx]
-                                    if (item) targetId = item.layerId
+                                var item = null
+                                if (rootRef && rootRef.layerModel && queryIdx >= 0 && queryIdx < rootRef.layerModel.length) {
+                                    item = rootRef.layerModel[queryIdx]
+                                } else if (model && queryIdx >= 0) {
+                                    item = (typeof model.get === "function") ? model.get(queryIdx) : model[queryIdx]
                                 }
+                                if (item) targetId = item.layerId
                                 
                                 if (targetId !== -1 && targetId !== undefined) {
                                     mainCanvas.moveLayer(layerIndex, targetId)

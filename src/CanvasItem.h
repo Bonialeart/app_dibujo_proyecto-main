@@ -10,6 +10,7 @@
 #include "core/cpp/include/undo_manager.h"
 #include "core/cpp/include/watercolor_engine.h"
 #include <QColor>
+#include <QCursor>
 #include <QImage>
 #include <QMap>
 #include <QNativeGestureEvent>
@@ -109,6 +110,7 @@ public:
   Q_PROPERTY(int symmetrySegments READ symmetrySegments WRITE
                  setSymmetrySegments NOTIFY symmetrySegmentsChanged)
   Q_PROPERTY(QString brushTip READ brushTip NOTIFY brushTipChanged)
+  Q_PROPERTY(QString canvas_preview READ getCanvasPreview NOTIFY canvasPreviewChanged)
   Q_PROPERTY(
       bool isEraser READ isEraser WRITE setIsEraser NOTIFY isEraserChanged)
   Q_PROPERTY(bool isFlippedH READ isFlippedH WRITE setIsFlippedH NOTIFY
@@ -438,6 +440,8 @@ public:
 
   // Drawing Pad preview
   Q_INVOKABLE void clearPreviewPad();
+  Q_INVOKABLE void resizePreviewPad(int w, int h);
+  QImage getPreviewPadRawImage() const { return m_previewPadImage; }
   Q_INVOKABLE void previewPadBeginStroke(float x, float y, float pressure);
   Q_INVOKABLE void previewPadContinueStroke(float x, float y, float pressure);
   Q_INVOKABLE void previewPadEndStroke();
@@ -448,6 +452,8 @@ public:
 
   // Canvas preview for navigator (base64 PNG)
   Q_INVOKABLE QString getCanvasPreview();
+  Q_INVOKABLE QString sampleColorFromImage(const QString &imagePath, int x, int y, int viewWidth, int viewHeight);
+  Q_INVOKABLE QString loadReference(const QString &path);
 
   // ══════════════════════════════════════════════════════════════
   // Brush CRUD — Create, Delete, Duplicate, Rename
@@ -470,6 +476,7 @@ public:
   Q_INVOKABLE void setCurvePoints(const QVariantList &points);
 
 signals:
+  void canvasPreviewChanged();
   void brushSizeChanged();
   void brushColorChanged();
   void brushOpacityChanged();
@@ -637,6 +644,8 @@ private:
   artflow::BrushPreset m_editingPreset; // Working copy being edited
   artflow::BrushPreset m_resetPoint;    // Original state for "Reset"
   QImage m_previewPadImage;             // Offscreen drawing pad
+  int m_previewPadWidth = 800;
+  int m_previewPadHeight = 600;
   QPointF m_previewLastPos;
   bool m_previewIsDrawing = false;
 
@@ -795,6 +804,9 @@ private:
   void syncGpuToCpu();
   int m_lastActiveLayerIndex = -1;
 
+  QCursor m_customOpenHandCursor;
+  QCursor m_customClosedHandCursor;
+
   // --- Throttle de redibujado ---
   bool m_pendingUpdate = false;
   QTimer *m_updateThrottle = nullptr;
@@ -855,6 +867,26 @@ private:
 
   // Cache para las imágenes de vista previa de pinceles codificadas en base64
   QMap<QString, QString> m_brushPreviewCache;
+};
+
+class PreviewPadItem : public QQuickPaintedItem {
+  Q_OBJECT
+  Q_PROPERTY(CanvasItem* canvasItem READ canvasItem WRITE setCanvasItem NOTIFY canvasItemChanged)
+
+public:
+  explicit PreviewPadItem(QQuickItem *parent = nullptr);
+  ~PreviewPadItem() override = default;
+
+  CanvasItem* canvasItem() const { return m_canvasItem; }
+  void setCanvasItem(CanvasItem *item);
+
+  void paint(QPainter *painter) override;
+
+signals:
+  void canvasItemChanged();
+
+private:
+  CanvasItem *m_canvasItem = nullptr;
 };
 
 #endif // CANVASITEM_H

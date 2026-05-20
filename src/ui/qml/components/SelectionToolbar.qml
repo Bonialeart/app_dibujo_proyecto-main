@@ -46,22 +46,22 @@ Item {
 
         // ─── SELECTION MODE: New / Add / Subtract / Intersect ───
         Row {
-            spacing: 2 * uiScale
+            spacing: 4 * uiScale
 
             ModeBtn {
-                label: "New"
+                icon: "selection-new.svg"
                 tooltip: "New Selection (N)"
                 active: canvas && canvas.selectionAddMode === 0
                 onClicked: canvas.selectionAddMode = 0
             }
             ModeBtn {
-                label: "Add"
+                icon: "selection-add.svg"
                 tooltip: "Add to Selection (Shift)"
                 active: canvas && canvas.selectionAddMode === 1
                 onClicked: canvas.selectionAddMode = 1
             }
             ModeBtn {
-                label: "Sub"
+                icon: "selection-sub.svg"
                 tooltip: "Subtract from Selection (Alt)"
                 active: canvas && canvas.selectionAddMode === 2
                 onClicked: canvas.selectionAddMode = 2
@@ -112,17 +112,17 @@ Item {
 
         // ─── LASSO SUB-MODE (only when lasso is active) ───
         Row {
-            spacing: 2 * uiScale
+            spacing: 4 * uiScale
             visible: canvas && canvas.currentTool === "lasso"
 
             ModeBtn {
-                label: "Free"
+                icon: "lasso.svg"
                 tooltip: "Freehand Lasso"
                 active: canvas && canvas.lassoMode === 0
                 onClicked: canvas.lassoMode = 0
             }
             ModeBtn {
-                label: "Poly"
+                icon: "magnet.svg"
                 tooltip: "Polygonal Lasso (click to add vertices, double-click or click start to close)"
                 active: canvas && canvas.lassoMode === 1
                 onClicked: canvas.lassoMode = 1
@@ -139,20 +139,25 @@ Item {
                 visible: canvas &&
                          (canvas.currentTool === "lasso" && canvas.lassoMode === 1 ||
                           canvas.currentTool === "magnetic_lasso")
-                width: closeBtnLabel.implicitWidth + 18 * uiScale
-                height: 30 * uiScale
-                radius: 15 * uiScale
+                width: 32 * uiScale
+                height: 32 * uiScale
+                radius: 16 * uiScale
                 color: closeArea.containsMouse ? Qt.rgba(1,1,1,0.15) : Qt.rgba(1,1,1,0.07)
                 border.color: root.accentColor
                 border.width: 1 * uiScale
 
-                Text {
-                    id: closeBtnLabel
-                    anchors.centerIn: parent
-                    text: "Close ↩"
-                    color: root.accentColor
-                    font.pixelSize: 11 * uiScale
-                    font.weight: Font.Medium
+                ToolTip.visible: closeArea.containsMouse
+                ToolTip.text: "Apply / Close Path (Enter)"
+                ToolTip.delay: 300
+
+                Image {
+                    anchors.fill: parent
+                    anchors.margins: 7 * uiScale
+                    source: "../../../../assets/icons/arrow-down-left.svg"
+                    sourceSize: Qt.size(18 * uiScale, 18 * uiScale)
+                    opacity: closeArea.containsMouse ? 1.0 : 0.7
+                    smooth: true
+                    mipmap: true
                 }
 
                 MouseArea {
@@ -172,14 +177,14 @@ Item {
 
         // ─── QUICK ACTIONS ───
         Row {
-            spacing: 2 * uiScale
+            spacing: 4 * uiScale
             visible: canvas && canvas.hasSelection
 
-            ActionBtn { label: "Invert";   onClicked: canvas.invertSelection() }
-            ActionBtn { label: "Feather";  onClicked: canvas.featherSelection(8) }
-            ActionBtn { label: "Copy";     onClicked: canvas.duplicateSelection() }
-            ActionBtn { label: "Clear";    onClicked: canvas.clearSelectionContent() }
-            ActionBtn { label: "Deselect"; onClicked: canvas.deselect() }
+            ActionBtn { icon: "invert-selection.svg"; tip: "Invert Selection (Ctrl+Shift+I)"; onClicked: canvas.invertSelection() }
+            ActionBtn { icon: "feather-selection.svg"; tip: "Feather Edge"; onClicked: canvas.featherSelection(8) }
+            ActionBtn { icon: "copy.svg"; tip: "Copy Selection (Ctrl+C)"; onClicked: canvas.duplicateSelection() }
+            ActionBtn { icon: "trash-2.svg"; tip: "Clear Content (Delete)"; onClicked: canvas.clearSelectionContent() }
+            ActionBtn { icon: "deselect.svg"; tip: "Deselect (Ctrl+D)"; onClicked: canvas.deselect() }
         }
     }
 
@@ -194,29 +199,30 @@ Item {
 
     component ModeBtn : Rectangle {
         id: modeBtnRoot
-        property string label: ""
+        property string icon: ""
         property string tooltip: ""
         property bool active: false
         signal clicked()
 
-        width: labelTxt.implicitWidth + 16 * uiScale
-        height: 28 * uiScale
-        radius: 14 * uiScale
+        width: 32 * uiScale
+        height: 32 * uiScale
+        radius: 16 * uiScale
         color: active ? root.accentColor : (modeMa.containsMouse ? "#22ffffff" : "transparent")
         border.color: active ? root.accentColor : "#22ffffff"
         border.width: 1 * uiScale
 
         ToolTip.visible: modeMa.containsMouse && tooltip !== ""
         ToolTip.text: tooltip
-        ToolTip.delay: 600
+        ToolTip.delay: 300
 
-        Text {
-            id: labelTxt
-            anchors.centerIn: parent
-            text: parent.label
-            color: parent.active ? "white" : "#ccffffff"
-            font.pixelSize: 11 * uiScale
-            font.weight: parent.active ? Font.Bold : Font.Normal
+        Image {
+            anchors.fill: parent
+            anchors.margins: 7 * uiScale
+            source: "../../../../assets/icons/" + parent.icon
+            sourceSize: Qt.size(18 * uiScale, 18 * uiScale)
+            opacity: parent.active ? 1.0 : 0.7
+            smooth: true
+            mipmap: true
         }
 
         MouseArea {
@@ -244,7 +250,7 @@ Item {
 
         ToolTip.visible: toolMa.containsMouse && tip !== ""
         ToolTip.text: tip
-        ToolTip.delay: 600
+        ToolTip.delay: 300
 
         Image {
             anchors.fill: parent
@@ -252,6 +258,8 @@ Item {
             source: "../../../../assets/icons/" + parent.icon
             sourceSize: Qt.size(22 * uiScale, 22 * uiScale)
             opacity: parent.active ? 1.0 : 0.7
+            smooth: true
+            mipmap: true
         }
 
         MouseArea {
@@ -267,20 +275,27 @@ Item {
 
     component ActionBtn : Rectangle {
         id: actionBtnRoot
-        property string label: ""
+        property string icon: ""
+        property string tip: ""
         signal clicked()
 
-        width: actionLabel.implicitWidth + 14 * uiScale
-        height: 28 * uiScale
-        radius: 14 * uiScale
+        width: 32 * uiScale
+        height: 32 * uiScale
+        radius: 16 * uiScale
         color: actionMa.containsMouse ? "#22ffffff" : "transparent"
 
-        Text {
-            id: actionLabel
-            anchors.centerIn: parent
-            text: parent.label
-            color: "#ccffffff"
-            font.pixelSize: 11 * uiScale
+        ToolTip.visible: actionMa.containsMouse && tip !== ""
+        ToolTip.text: tip
+        ToolTip.delay: 300
+
+        Image {
+            anchors.fill: parent
+            anchors.margins: 7 * uiScale
+            source: "../../../../assets/icons/" + parent.icon
+            sourceSize: Qt.size(18 * uiScale, 18 * uiScale)
+            opacity: actionMa.containsMouse ? 1.0 : 0.7
+            smooth: true
+            mipmap: true
         }
 
         MouseArea {

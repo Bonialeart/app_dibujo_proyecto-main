@@ -7,6 +7,7 @@ Rectangle {
     id: root
     
     // Props
+    readonly property real uiScale: (typeof mainWindow !== "undefined" && mainWindow.uiScale) ? mainWindow.uiScale : 1.0
     property string dockSide: "left"
     property var manager: null
     property var dockModel: {
@@ -280,7 +281,7 @@ Rectangle {
                                         id: tabItem
                                         property bool isActiveTab: modelData.pId === activeTabId
                                         height: parent.height
-                                        width: Math.min(130, Math.max(90, tabText.implicitWidth + 40))
+                                        width: 44 * root.uiScale
                                         color: isActiveTab ? "#151518" : (tabMa.containsMouse ? "#121215" : "transparent")
                                         
                                         // Slight rounding at the top for tabs
@@ -309,23 +310,41 @@ Rectangle {
                                         }
                                         
                                         Row {
-                                            anchors.centerIn: parent; spacing: 8
+                                            anchors.centerIn: parent; spacing: 0
                                             opacity: isActiveTab ? 1.0 : (tabMa.containsMouse ? 0.8 : 0.5)
                                             
                                             Image {
                                                 source: modelData.icon !== "" ? "image://icons/" + modelData.icon : ""
-                                                width: 14; height: 14; 
-                                                sourceSize: Qt.size(28, 28); smooth: true; mipmap: true; anchors.verticalCenter: parent.verticalCenter
+                                                width: 16 * root.uiScale; height: 16 * root.uiScale
+                                                sourceSize: Qt.size(32, 32); smooth: true; mipmap: true; anchors.verticalCenter: parent.verticalCenter
                                                 visible: modelData.icon !== ""
                                                 layer.enabled: isActiveTab
                                                 layer.effect: MultiEffect { colorizationColor: root.accentColor; colorization: 1.0 }
                                             }
                                             Text {
                                                 id: tabText
+                                                visible: false
                                                 text: modelData.name
-                                                color: isActiveTab ? "#ffffff" : "#aaabaf"
-                                                font.pixelSize: 11; font.weight: isActiveTab ? Font.DemiBold : Font.Medium
-                                                anchors.verticalCenter: parent.verticalCenter
+                                            }
+                                        }
+                                        
+                                        ToolTip {
+                                            id: hoverToolTip
+                                            visible: tabMa.containsMouse && !tabMa.isDragging
+                                            text: modelData.name
+                                            delay: 300
+                                            y: parent.height + 4
+                                            x: (parent.width - width) / 2
+                                            background: Rectangle {
+                                                color: "#1e1e24"
+                                                border.color: "#3a3a3d"
+                                                radius: 6
+                                            }
+                                            contentItem: Text {
+                                                text: hoverToolTip.text
+                                                color: "#f0f0f5"
+                                                font.pixelSize: 11
+                                                font.weight: Font.Medium
                                             }
                                         }
                                         

@@ -528,6 +528,7 @@ E:/Programacion/Rescate_Proyecto/src/CanvasItem.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtCore/qxptype_traits.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtCore/qyieldcpu.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/QColor
+ mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/QCursor
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/QImage
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/QNativeGestureEvent
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/QOpenGLExtraFunctions
@@ -542,8 +543,10 @@ E:/Programacion/Rescate_Proyecto/src/CanvasItem.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/QTransform
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qaccessible.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qaccessible_base.h
+ mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qbitmap.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qbrush.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qcolor.h
+ mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qcursor.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qevent.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qeventpoint.h
  mdp:C:/Qt/6.11.1/mingw_64/include/QtGui/qfont.h

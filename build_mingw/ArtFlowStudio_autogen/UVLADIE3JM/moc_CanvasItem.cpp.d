@@ -176,6 +176,7 @@ E:/Programacion/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/mo
   C:/Qt/6.11.1/mingw_64/include/QtCore/qxptype_traits.h \
   C:/Qt/6.11.1/mingw_64/include/QtCore/qyieldcpu.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QColor \
+  C:/Qt/6.11.1/mingw_64/include/QtGui/QCursor \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QImage \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QNativeGestureEvent \
   C:/Qt/6.11.1/mingw_64/include/QtGui/QOpenGLExtraFunctions \
@@ -190,8 +191,10 @@ E:/Programacion/Rescate_Proyecto/build_mingw/ArtFlowStudio_autogen/UVLADIE3JM/mo
   C:/Qt/6.11.1/mingw_64/include/QtGui/QTransform \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qaccessible.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qaccessible_base.h \
+  C:/Qt/6.11.1/mingw_64/include/QtGui/qbitmap.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qbrush.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qcolor.h \
+  C:/Qt/6.11.1/mingw_64/include/QtGui/qcursor.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qevent.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qeventpoint.h \
   C:/Qt/6.11.1/mingw_64/include/QtGui/qfont.h \

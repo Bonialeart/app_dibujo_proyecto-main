@@ -7,6 +7,7 @@
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QCursor>
+#include <QSvgRenderer>
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
@@ -84,6 +85,45 @@ static QCursor getModernCursor() {
   return modernCursor;
 }
 
+static QCursor loadCustomSvgCursor(const QString &fileName, int hotX = 16, int hotY = 16) {
+  QStringList searchPaths;
+  searchPaths << QCoreApplication::applicationDirPath() + "/assets/icons/" + fileName;
+  searchPaths << QCoreApplication::applicationDirPath() + "/../assets/icons/" + fileName;
+  searchPaths << "assets/icons/" + fileName;
+  searchPaths << "src/assets/icons/" + fileName;
+  searchPaths << QDir::currentPath() + "/assets/icons/" + fileName;
+
+  QString path;
+  for (const QString &searchPath : searchPaths) {
+    if (QFile::exists(searchPath)) {
+      path = searchPath;
+      break;
+    }
+  }
+
+  if (path.isEmpty()) {
+    qWarning() << "Custom cursor SVG not found:" << fileName;
+    return QCursor(Qt::ArrowCursor);
+  }
+
+  QPixmap pixmap(32, 32);
+  pixmap.fill(Qt::transparent);
+
+  QSvgRenderer renderer(path);
+  if (!renderer.isValid()) {
+    qWarning() << "Invalid cursor SVG:" << path;
+    return QCursor(Qt::ArrowCursor);
+  }
+
+  QPainter painter(&pixmap);
+  renderer.render(&painter);
+  painter.end();
+
+  return QCursor(pixmap, hotX, hotY);
+}
+
+
+
 
 
 CanvasItem::CanvasItem(QQuickItem *parent)
@@ -103,6 +143,10 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_lastActiveLayerIndex(-1), m_updateTransformTextures(false),
       m_transformShader(nullptr), m_transformStaticTex(nullptr),
       m_selectionTex(nullptr) {
+  m_customOpenHandCursor = loadCustomSvgCursor("hand-open.svg");
+  m_customClosedHandCursor = loadCustomSvgCursor("hand-closed.svg");
+
+
 
 
 
@@ -2460,9 +2504,9 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     event->accept();
     // Change the existing override cursor instead of pushing a new one
     if (m_spacePressed)
-      QGuiApplication::changeOverrideCursor(Qt::ClosedHandCursor);
+      QGuiApplication::changeOverrideCursor(m_customClosedHandCursor);
     else
-      setCursor(Qt::ClosedHandCursor);
+      setCursor(m_customClosedHandCursor);
     return;
   }
 
@@ -2691,10 +2735,17 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 
   // Actualizar cursor si estamos arrastrando
   if (m_spacePressed || m_tool == ToolType::Hand) {
-    if (event->buttons() & Qt::LeftButton)
-      setCursor(Qt::ClosedHandCursor);
-    else
-      setCursor(Qt::OpenHandCursor);
+    if (event->buttons() & Qt::LeftButton) {
+      if (m_spacePressed)
+        QGuiApplication::changeOverrideCursor(m_customClosedHandCursor);
+      else
+        setCursor(m_customClosedHandCursor);
+    } else {
+      if (m_spacePressed)
+        QGuiApplication::changeOverrideCursor(m_customOpenHandCursor);
+      else
+        setCursor(m_customOpenHandCursor);
+    }
   } else if (m_tool == ToolType::Transform) {
     setCursor(getModernCursor());
   } else {
@@ -2903,7 +2954,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
   if (m_isRotatingCanvas) {
     m_isRotatingCanvas = false;
     if (m_spacePressed)
-      QGuiApplication::changeOverrideCursor(Qt::OpenHandCursor);
+      QGuiApplication::changeOverrideCursor(m_customOpenHandCursor);
     else
       setCursor(Qt::BlankCursor);
     return;
@@ -2911,9 +2962,9 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
 
   if (m_tool == ToolType::Hand || m_spacePressed) {
     if (m_spacePressed) {
-      QGuiApplication::changeOverrideCursor(Qt::OpenHandCursor);
+      QGuiApplication::changeOverrideCursor(m_customOpenHandCursor);
     } else {
-      setCursor(Qt::OpenHandCursor);
+      setCursor(m_customOpenHandCursor);
     }
   }
   if (m_tool == ToolType::PanelCut && m_isPanelCutting) {
@@ -4267,7 +4318,7 @@ void CanvasItem::setCurrentTool(const QString &tool) {
     setCursor(QCursor(Qt::BlankCursor));
   } else if (tool == "hand") {
     m_tool = ToolType::Hand;
-    setCursor(QCursor(Qt::OpenHandCursor));
+    setCursor(m_customOpenHandCursor);
   } else if (tool == "fill" || tool == "BUCKET") {
     m_tool = ToolType::Fill;
     setCursor(QCursor(Qt::BlankCursor));
@@ -4948,7 +4999,10 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
     m_shiftPressed = true;
   }
   if (key == Qt::Key_Space) {
-    m_spacePressed = true;
+    if (!m_spacePressed) {
+      m_spacePressed = true;
+      QGuiApplication::setOverrideCursor(m_customOpenHandCursor);
+    }
   }
   if (key == Qt::Key_R) {
     m_rPressed = true;
@@ -4974,14 +5028,17 @@ void CanvasItem::handle_shortcuts(int key, int modifiers) {
 
 void CanvasItem::handle_key_release(int key) {
   if (key == Qt::Key_Space) {
-    m_spacePressed = false;
-    m_isRotatingCanvas = false;
+    if (m_spacePressed) {
+      m_spacePressed = false;
+      m_isRotatingCanvas = false;
+      QGuiApplication::restoreOverrideCursor();
+    }
 
     // Restaurar cursor correcto al soltar espacio
     if (m_tool != ToolType::Hand && m_tool != ToolType::Transform) {
       setCursor(Qt::BlankCursor);
     } else if (m_tool == ToolType::Hand) {
-      setCursor(Qt::OpenHandCursor);
+      setCursor(m_customOpenHandCursor);
     } else if (m_tool == ToolType::Transform) {
       setCursor(getModernCursor());
     }
@@ -5227,13 +5284,6 @@ void CanvasItem::moveLayerToGroup(int layerId, int groupId) {
     return;
   }
 
-  if (getFolderCount() >= 2) {
-    int firstFolderStableId = getFirstCreatedFolderStableId();
-    if (firstFolderStableId != -1 && (int)grpLayer->stableId != firstFolderStableId) {
-      qWarning() << "Blocking moveLayerToGroup: Target folder is not the first created folder.";
-      return;
-    }
-  }
 
   artflow::Layer *layerToMove = m_layerManager->getLayer(fromManagerIdx);
   if (layerToMove) {
@@ -5283,13 +5333,6 @@ void CanvasItem::groupLayersOrMoveToGroup(int draggedLayerId, int targetLayerId)
   if (!targetLayer) return;
 
   if (targetLayer->type == artflow::Layer::Type::Group) {
-    if (getFolderCount() >= 2) {
-      int firstFolderStableId = getFirstCreatedFolderStableId();
-      if (firstFolderStableId != -1 && (int)targetLayer->stableId != firstFolderStableId) {
-        qWarning() << "Blocking groupLayersOrMoveToGroup: Target folder is not the first created folder.";
-        return;
-      }
-    }
     moveLayerToGroup(draggedLayerId, targetLayerId);
     return;
   }
@@ -5304,23 +5347,12 @@ void CanvasItem::groupLayersOrMoveToGroup(int draggedLayerId, int targetLayerId)
       }
     }
     if (parentManagerIdx != -1) {
-      if (getFolderCount() >= 2) {
-        int firstFolderStableId = getFirstCreatedFolderStableId();
-        if (firstFolderStableId != -1 && targetLayer->parentId != firstFolderStableId) {
-          qWarning() << "Blocking groupLayersOrMoveToGroup: Parent folder is not the first created folder.";
-          return;
-        }
-      }
       moveLayerToGroup(draggedLayerId, parentManagerIdx);
       return;
     }
   }
 
-  // Target is NOT a group and NOT in a group, so we create a new group and put both inside.
-  if (getFolderCount() >= 2) {
-    qWarning() << "Blocking groupLayersOrMoveToGroup: Cannot create new folder because there are already 2 or more folders.";
-    return;
-  }
+
 
   artflow::Layer *draggedLayer = m_layerManager->getLayer(draggedManagerIdx);
   if (!draggedLayer) return;
@@ -5437,12 +5469,7 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
         moved->parentId = neighborAbove->parentId;
       }
 
-      if (moved->parentId != -1 && getFolderCount() >= 2) {
-        int firstFolderStableId = getFirstCreatedFolderStableId();
-        if (firstFolderStableId != -1 && moved->parentId != firstFolderStableId) {
-          moved->parentId = -1;
-        }
-      }
+
     } else {
       moved->parentId = -1;
     }
@@ -6769,6 +6796,7 @@ void CanvasItem::updateLayersList() {
   }
   m_layerModel = layerList;
   emit layersChanged(layerList);
+  emit canvasPreviewChanged();
 }
 
 void CanvasItem::resizeCanvas(int w, int h) {
@@ -7385,7 +7413,7 @@ void CanvasItem::beginBrushEdit(const QString &brushName) {
   m_isEditingBrush = true;
 
   // Initialize the preview pad
-  m_previewPadImage = QImage(800, 600, QImage::Format_ARGB32);
+  m_previewPadImage = QImage(m_previewPadWidth, m_previewPadHeight, QImage::Format_ARGB32);
   m_previewPadImage.fill(QColor(10, 10, 12));
 
   applyEditingPresetToEngine();
@@ -7480,6 +7508,7 @@ void CanvasItem::resetBrushToDefault() {
     return;
 
   m_editingPreset = m_resetPoint;
+  m_brushPreviewCache.remove(m_editingPreset.name);
   applyEditingPresetToEngine();
 
   emit editingPresetChanged();
@@ -7937,6 +7966,9 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
   }
 
   if (changed) {
+    // Clear preview cache for this brush to force regeneration
+    m_brushPreviewCache.remove(m_editingPreset.name);
+
     // Apply to engine for live preview
     applyEditingPresetToEngine();
 
@@ -8065,13 +8097,31 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
 // ══════════════════════════════════════════════════════════════════════
 
 void CanvasItem::clearPreviewPad() {
-  if (m_previewPadImage.isNull()) {
-    m_previewPadImage = QImage(800, 600, QImage::Format_ARGB32);
+  if (m_previewPadImage.isNull() || m_previewPadImage.width() != m_previewPadWidth || m_previewPadImage.height() != m_previewPadHeight) {
+    m_previewPadImage = QImage(m_previewPadWidth, m_previewPadHeight, QImage::Format_ARGB32);
   }
   m_previewPadImage.fill(QColor(10, 10, 12));
   if (m_brushEngine)
     m_brushEngine->resetRemainder();
   emit previewPadUpdated();
+}
+
+void CanvasItem::resizePreviewPad(int w, int h) {
+  if (w <= 0 || h <= 0) return;
+  m_previewPadWidth = w;
+  m_previewPadHeight = h;
+
+  if (m_previewPadImage.isNull() || m_previewPadImage.width() != w || m_previewPadImage.height() != h) {
+    QImage newImg(w, h, QImage::Format_ARGB32);
+    newImg.fill(QColor(10, 10, 12));
+    if (!m_previewPadImage.isNull()) {
+      QPainter painter(&newImg);
+      painter.drawImage(0, 0, m_previewPadImage);
+      painter.end();
+    }
+    m_previewPadImage = newImg;
+    emit previewPadUpdated();
+  }
 }
 
 void CanvasItem::previewPadBeginStroke(float x, float y, float pressure) {
@@ -8200,6 +8250,80 @@ QString CanvasItem::getCanvasPreview() {
   preview.save(&buffer, "PNG");
 
   return "data:image/png;base64," + QString(ba.toBase64());
+}
+
+QString CanvasItem::loadReference(const QString &path) {
+  return path;
+}
+
+QString CanvasItem::sampleColorFromImage(const QString &imagePath, int x, int y, int viewWidth, int viewHeight) {
+  if (imagePath.isEmpty() || viewWidth <= 0 || viewHeight <= 0) {
+    return "#000000";
+  }
+
+  QString localPath = imagePath;
+  if (localPath.startsWith("file:///")) {
+    localPath = QUrl(imagePath).toLocalFile();
+  } else if (localPath.startsWith("qrc:/")) {
+    localPath = imagePath.mid(3);
+    if (!localPath.startsWith(":/")) {
+      localPath = ":" + localPath.mid(1);
+    }
+  }
+
+  QImage img;
+  static QString cachedPath;
+  static QImage cachedImage;
+
+  if (cachedPath == localPath && !cachedImage.isNull()) {
+    img = cachedImage;
+  } else {
+    if (img.load(localPath)) {
+      cachedPath = localPath;
+      cachedImage = img;
+    } else {
+      QUrl url(imagePath);
+      if (url.isLocalFile()) {
+        if (img.load(url.toLocalFile())) {
+          cachedPath = localPath;
+          cachedImage = img;
+        }
+      }
+    }
+  }
+
+  if (img.isNull()) {
+    qWarning() << "Failed to load image for color sampling:" << imagePath;
+    return "#000000";
+  }
+
+  double imgAspect = static_cast<double>(img.width()) / img.height();
+  double viewAspect = static_cast<double>(viewWidth) / viewHeight;
+
+  double scale = 1.0;
+  double offsetX = 0.0;
+  double offsetY = 0.0;
+
+  if (imgAspect > viewAspect) {
+    scale = static_cast<double>(viewWidth) / img.width();
+    offsetY = (viewHeight - img.height() * scale) / 2.0;
+  } else {
+    scale = static_cast<double>(viewHeight) / img.height();
+    offsetX = (viewWidth - img.width() * scale) / 2.0;
+  }
+
+  double imgX = (x - offsetX) / scale;
+  double imgY = (y - offsetY) / scale;
+
+  int pixelX = static_cast<int>(qRound(imgX));
+  int pixelY = static_cast<int>(qRound(imgY));
+
+  if (pixelX < 0 || pixelX >= img.width() || pixelY < 0 || pixelY >= img.height()) {
+    return "#000000";
+  }
+
+  QColor col = img.pixelColor(pixelX, pixelY);
+  return col.name();
 }
 
 // ─── Stamp Preview ────────────────────────────────────────────────────
@@ -8599,7 +8723,7 @@ void CanvasItem::hoverEnterEvent(QHoverEvent *event) {
 
   // Decide el cursor solo para el área del Canvas
   if (m_spacePressed || m_tool == ToolType::Hand)
-    setCursor(Qt::OpenHandCursor);
+    setCursor(m_customOpenHandCursor);
   else if (m_tool == ToolType::Transform)
     setCursor(getModernCursor());
   else
@@ -8614,7 +8738,7 @@ void CanvasItem::hoverMoveEvent(QHoverEvent *event) {
   m_cursorVisible = true;
 
   if (m_spacePressed || m_tool == ToolType::Hand)
-    setCursor(Qt::OpenHandCursor);
+    setCursor(m_customOpenHandCursor);
   else if (m_tool == ToolType::Transform)
     setCursor(getModernCursor());
   else
@@ -9515,4 +9639,45 @@ bool CanvasItem::lineIntersectsRect(const QLineF &line, const QRectF &rect) {
     return true;
 
   return false;
+}
+
+PreviewPadItem::PreviewPadItem(QQuickItem *parent)
+    : QQuickPaintedItem(parent), m_canvasItem(nullptr) {
+  setAcceptHoverEvents(true);
+  setAcceptedMouseButtons(Qt::LeftButton);
+}
+
+void PreviewPadItem::setCanvasItem(CanvasItem *item) {
+  if (m_canvasItem == item)
+    return;
+
+  if (m_canvasItem) {
+    disconnect(m_canvasItem, &CanvasItem::previewPadUpdated, this, nullptr);
+  }
+
+  m_canvasItem = item;
+
+  if (m_canvasItem) {
+    connect(m_canvasItem, &CanvasItem::previewPadUpdated, this, [this]() {
+      update();
+    });
+  }
+
+  emit canvasItemChanged();
+  update();
+}
+
+void PreviewPadItem::paint(QPainter *painter) {
+  if (!m_canvasItem) {
+    painter->fillRect(boundingRect(), QColor(10, 10, 12));
+    return;
+  }
+
+  QImage img = m_canvasItem->getPreviewPadRawImage();
+  if (img.isNull()) {
+    painter->fillRect(boundingRect(), QColor(10, 10, 12));
+    return;
+  }
+
+  painter->drawImage(boundingRect(), img);
 }
