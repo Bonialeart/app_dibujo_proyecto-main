@@ -48,6 +48,8 @@ template <> constexpr inline auto artflow::PanelListModel::qt_create_metaobjectd
         "property",
         "QVariant",
         "value",
+        "findById",
+        "panelId",
         "count"
     };
 
@@ -62,10 +64,14 @@ template <> constexpr inline auto artflow::PanelListModel::qt_create_metaobjectd
         QtMocHelpers::MethodData<void(int, const QString &, const QVariant &)>(6, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::Int, 5 }, { QMetaType::QString, 7 }, { 0x80000000 | 8, 9 },
         }}),
+        // Method 'findById'
+        QtMocHelpers::MethodData<int(const QString &) const>(10, 2, QMC::AccessPublic, QMetaType::Int, {{
+            { QMetaType::QString, 11 },
+        }}),
     };
     QtMocHelpers::UintData qt_properties {
         // property 'count'
-        QtMocHelpers::PropertyData<int>(10, QMetaType::Int, QMC::DefaultPropertyFlags, 0),
+        QtMocHelpers::PropertyData<int>(12, QMetaType::Int, QMC::DefaultPropertyFlags, 0),
     };
     QtMocHelpers::UintData qt_enums {
     };
@@ -91,6 +97,8 @@ void artflow::PanelListModel::qt_static_metacall(QObject *_o, QMetaObject::Call 
         case 1: { QVariantMap _r = _t->get((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QVariantMap*>(_a[0]) = std::move(_r); }  break;
         case 2: _t->setProperty((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QVariant>>(_a[3]))); break;
+        case 3: { int _r = _t->findById((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+            if (_a[0]) *reinterpret_cast<int*>(_a[0]) = std::move(_r); }  break;
         default: ;
         }
     }
@@ -126,14 +134,14 @@ int artflow::PanelListModel::qt_metacall(QMetaObject::Call _c, int _id, void **_
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 3)
+        if (_id < 4)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 3;
+        _id -= 4;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 3)
+        if (_id < 4)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 3;
+        _id -= 4;
     }
     if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty

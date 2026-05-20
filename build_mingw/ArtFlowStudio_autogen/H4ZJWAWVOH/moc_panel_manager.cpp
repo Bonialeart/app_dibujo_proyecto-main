@@ -42,9 +42,14 @@ template <> constexpr inline auto artflow::PanelManager::qt_create_metaobjectdat
         "dockStateChanged",
         "",
         "workspaceChanged",
+        "workspacesChanged",
         "activeTabChanged",
         "loadWorkspace",
         "name",
+        "registerWorkspace",
+        "deleteWorkspace",
+        "resetCurrentWorkspace",
+        "reloadCurrentWorkspace",
         "togglePanel",
         "panelId",
         "collapseDock",
@@ -77,6 +82,7 @@ template <> constexpr inline auto artflow::PanelManager::qt_create_metaobjectdat
         "rightCollapsed2",
         "bottomCollapsed",
         "activeWorkspace",
+        "availableWorkspaces",
         "activeGroupTabs",
         "QVariantMap"
     };
@@ -86,76 +92,92 @@ template <> constexpr inline auto artflow::PanelManager::qt_create_metaobjectdat
         QtMocHelpers::SignalData<void()>(1, 2, QMC::AccessPublic, QMetaType::Void),
         // Signal 'workspaceChanged'
         QtMocHelpers::SignalData<void()>(3, 2, QMC::AccessPublic, QMetaType::Void),
-        // Signal 'activeTabChanged'
+        // Signal 'workspacesChanged'
         QtMocHelpers::SignalData<void()>(4, 2, QMC::AccessPublic, QMetaType::Void),
+        // Signal 'activeTabChanged'
+        QtMocHelpers::SignalData<void()>(5, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'loadWorkspace'
-        QtMocHelpers::MethodData<void(const QString &)>(5, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 6 },
+        QtMocHelpers::MethodData<void(const QString &)>(6, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 7 },
         }}),
+        // Method 'registerWorkspace'
+        QtMocHelpers::MethodData<void(const QString &)>(8, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 7 },
+        }}),
+        // Method 'deleteWorkspace'
+        QtMocHelpers::MethodData<void(const QString &)>(9, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 7 },
+        }}),
+        // Method 'resetCurrentWorkspace'
+        QtMocHelpers::MethodData<void()>(10, 2, QMC::AccessPublic, QMetaType::Void),
+        // Method 'reloadCurrentWorkspace'
+        QtMocHelpers::MethodData<void()>(11, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'togglePanel'
-        QtMocHelpers::MethodData<void(const QString &)>(7, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 8 },
+        QtMocHelpers::MethodData<void(const QString &)>(12, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 13 },
         }}),
         // Method 'collapseDock'
-        QtMocHelpers::MethodData<void(const QString &)>(9, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 10 },
+        QtMocHelpers::MethodData<void(const QString &)>(14, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 15 },
         }}),
         // Method 'reorderPanel'
-        QtMocHelpers::MethodData<void(const QString &, int, int, const QString &)>(11, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 10 }, { QMetaType::Int, 12 }, { QMetaType::Int, 13 }, { QMetaType::QString, 14 },
+        QtMocHelpers::MethodData<void(const QString &, int, int, const QString &)>(16, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 15 }, { QMetaType::Int, 17 }, { QMetaType::Int, 18 }, { QMetaType::QString, 19 },
         }}),
         // Method 'movePanel'
-        QtMocHelpers::MethodData<void(const QString &, const QString &, int, const QString &)>(15, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 8 }, { QMetaType::QString, 16 }, { QMetaType::Int, 17 }, { QMetaType::QString, 14 },
+        QtMocHelpers::MethodData<void(const QString &, const QString &, int, const QString &)>(20, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 13 }, { QMetaType::QString, 21 }, { QMetaType::Int, 22 }, { QMetaType::QString, 19 },
         }}),
         // Method 'movePanel'
-        QtMocHelpers::MethodData<void(const QString &, const QString &, int)>(15, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
-            { QMetaType::QString, 8 }, { QMetaType::QString, 16 }, { QMetaType::Int, 17 },
+        QtMocHelpers::MethodData<void(const QString &, const QString &, int)>(20, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
+            { QMetaType::QString, 13 }, { QMetaType::QString, 21 }, { QMetaType::Int, 22 },
         }}),
         // Method 'movePanel'
-        QtMocHelpers::MethodData<void(const QString &, const QString &)>(15, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
-            { QMetaType::QString, 8 }, { QMetaType::QString, 16 },
+        QtMocHelpers::MethodData<void(const QString &, const QString &)>(20, 2, QMC::AccessPublic | QMC::MethodCloned, QMetaType::Void, {{
+            { QMetaType::QString, 13 }, { QMetaType::QString, 21 },
         }}),
         // Method 'movePanelToFloat'
-        QtMocHelpers::MethodData<void(const QString &, qreal, qreal)>(18, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 8 }, { QMetaType::QReal, 19 }, { QMetaType::QReal, 20 },
+        QtMocHelpers::MethodData<void(const QString &, qreal, qreal)>(23, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 13 }, { QMetaType::QReal, 24 }, { QMetaType::QReal, 25 },
         }}),
         // Method 'setActiveTab'
-        QtMocHelpers::MethodData<void(const QString &, const QString &)>(21, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 22 }, { QMetaType::QString, 8 },
+        QtMocHelpers::MethodData<void(const QString &, const QString &)>(26, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 27 }, { QMetaType::QString, 13 },
         }}),
         // Method 'setDockCollapsedByName'
-        QtMocHelpers::MethodData<void(const QString &, bool)>(23, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 24 }, { QMetaType::Bool, 25 },
+        QtMocHelpers::MethodData<void(const QString &, bool)>(28, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 29 }, { QMetaType::Bool, 30 },
         }}),
     };
     QtMocHelpers::UintData qt_properties {
         // property 'leftDockModel'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(26, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(31, 0x80000000 | 32, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'leftDockModel2'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(28, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(33, 0x80000000 | 32, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'rightDockModel'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(29, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(34, 0x80000000 | 32, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'rightDockModel2'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(30, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(35, 0x80000000 | 32, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'bottomDockModel'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(31, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(36, 0x80000000 | 32, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'floatingModel'
-        QtMocHelpers::PropertyData<artflow::PanelListModel*>(32, 0x80000000 | 27, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
+        QtMocHelpers::PropertyData<artflow::PanelListModel*>(37, 0x80000000 | 32, QMC::DefaultPropertyFlags | QMC::EnumOrFlag | QMC::Constant),
         // property 'leftCollapsed'
-        QtMocHelpers::PropertyData<bool>(33, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
+        QtMocHelpers::PropertyData<bool>(38, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
         // property 'leftCollapsed2'
-        QtMocHelpers::PropertyData<bool>(34, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
+        QtMocHelpers::PropertyData<bool>(39, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
         // property 'rightCollapsed'
-        QtMocHelpers::PropertyData<bool>(35, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
+        QtMocHelpers::PropertyData<bool>(40, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
         // property 'rightCollapsed2'
-        QtMocHelpers::PropertyData<bool>(36, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
+        QtMocHelpers::PropertyData<bool>(41, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
         // property 'bottomCollapsed'
-        QtMocHelpers::PropertyData<bool>(37, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
+        QtMocHelpers::PropertyData<bool>(42, QMetaType::Bool, QMC::DefaultPropertyFlags, 0),
         // property 'activeWorkspace'
-        QtMocHelpers::PropertyData<QString>(38, QMetaType::QString, QMC::DefaultPropertyFlags, 1),
+        QtMocHelpers::PropertyData<QString>(43, QMetaType::QString, QMC::DefaultPropertyFlags, 1),
+        // property 'availableWorkspaces'
+        QtMocHelpers::PropertyData<QStringList>(44, QMetaType::QStringList, QMC::DefaultPropertyFlags, 2),
         // property 'activeGroupTabs'
-        QtMocHelpers::PropertyData<QVariantMap>(39, 0x80000000 | 40, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 2),
+        QtMocHelpers::PropertyData<QVariantMap>(45, 0x80000000 | 46, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 3),
     };
     QtMocHelpers::UintData qt_enums {
     };
@@ -179,17 +201,22 @@ void artflow::PanelManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c
         switch (_id) {
         case 0: _t->dockStateChanged(); break;
         case 1: _t->workspaceChanged(); break;
-        case 2: _t->activeTabChanged(); break;
-        case 3: _t->loadWorkspace((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 4: _t->togglePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 5: _t->collapseDock((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 6: _t->reorderPanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[4]))); break;
-        case 7: _t->movePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[4]))); break;
-        case 8: _t->movePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3]))); break;
-        case 9: _t->movePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 10: _t->movePanelToFloat((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<qreal>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<qreal>>(_a[3]))); break;
-        case 11: _t->setActiveTab((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 12: _t->setDockCollapsedByName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2]))); break;
+        case 2: _t->workspacesChanged(); break;
+        case 3: _t->activeTabChanged(); break;
+        case 4: _t->loadWorkspace((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 5: _t->registerWorkspace((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 6: _t->deleteWorkspace((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 7: _t->resetCurrentWorkspace(); break;
+        case 8: _t->reloadCurrentWorkspace(); break;
+        case 9: _t->togglePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 10: _t->collapseDock((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 11: _t->reorderPanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[4]))); break;
+        case 12: _t->movePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[4]))); break;
+        case 13: _t->movePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3]))); break;
+        case 14: _t->movePanel((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 15: _t->movePanelToFloat((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<qreal>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<qreal>>(_a[3]))); break;
+        case 16: _t->setActiveTab((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 17: _t->setDockCollapsedByName((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<bool>>(_a[2]))); break;
         default: ;
         }
     }
@@ -198,7 +225,9 @@ void artflow::PanelManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c
             return;
         if (QtMocHelpers::indexOfMethod<void (PanelManager::*)()>(_a, &PanelManager::workspaceChanged, 1))
             return;
-        if (QtMocHelpers::indexOfMethod<void (PanelManager::*)()>(_a, &PanelManager::activeTabChanged, 2))
+        if (QtMocHelpers::indexOfMethod<void (PanelManager::*)()>(_a, &PanelManager::workspacesChanged, 2))
+            return;
+        if (QtMocHelpers::indexOfMethod<void (PanelManager::*)()>(_a, &PanelManager::activeTabChanged, 3))
             return;
     }
     if (_c == QMetaObject::RegisterPropertyMetaType) {
@@ -228,7 +257,8 @@ void artflow::PanelManager::qt_static_metacall(QObject *_o, QMetaObject::Call _c
         case 9: *reinterpret_cast<bool*>(_v) = _t->rightCollapsed2(); break;
         case 10: *reinterpret_cast<bool*>(_v) = _t->bottomCollapsed(); break;
         case 11: *reinterpret_cast<QString*>(_v) = _t->activeWorkspace(); break;
-        case 12: *reinterpret_cast<QVariantMap*>(_v) = _t->activeGroupTabs(); break;
+        case 12: *reinterpret_cast<QStringList*>(_v) = _t->availableWorkspaces(); break;
+        case 13: *reinterpret_cast<QVariantMap*>(_v) = _t->activeGroupTabs(); break;
         default: break;
         }
     }
@@ -253,20 +283,20 @@ int artflow::PanelManager::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 13)
+        if (_id < 18)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 13;
+        _id -= 18;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 13)
+        if (_id < 18)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 13;
+        _id -= 18;
     }
     if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty
             || _c == QMetaObject::RegisterPropertyMetaType) {
         qt_static_metacall(this, _c, _id, _a);
-        _id -= 13;
+        _id -= 14;
     }
     return _id;
 }
@@ -284,8 +314,14 @@ void artflow::PanelManager::workspaceChanged()
 }
 
 // SIGNAL 2
-void artflow::PanelManager::activeTabChanged()
+void artflow::PanelManager::workspacesChanged()
 {
     QMetaObject::activate(this, &staticMetaObject, 2, nullptr);
+}
+
+// SIGNAL 3
+void artflow::PanelManager::activeTabChanged()
+{
+    QMetaObject::activate(this, &staticMetaObject, 3, nullptr);
 }
 QT_WARNING_POP

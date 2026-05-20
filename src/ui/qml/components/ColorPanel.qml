@@ -1,12 +1,16 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Dialogs
 import ArtFlow 1.0
 
 Item {
     id: root
+
+    // --- SIZING FOR RESPONSIVENESS IN DOCKS ---
+    width: parent ? parent.width : 300
+    height: parent ? parent.height : 600
 
     // --- PROPERTIES ---
     property var targetCanvas: null
@@ -26,19 +30,60 @@ Item {
 
     property bool internalUpdate: false
 
-    onActiveSlotChanged: {
-        if (!internalUpdate) {
-            internalUpdate = true
-            isTransparent = false
-            var col = (activeSlot === 0 ? slot0Color : slot1Color)
-            h = col.hsvHue < 0 ? 0 : col.hsvHue
-            s = col.hsvSaturation
-            v = col.hsvValue
-            if (targetCanvas) targetCanvas.brushColor = col
-            internalUpdate = false
+    // --- HARMONY VARIABLES ---
+    property string harmonyMode: "Complementary"
+    property var harmonyColors: []
+
+    // --- EVENTS & CALLBACKS ---
+    Component.onCompleted: {
+        h = currentColor.hsvHue < 0 ? 0 : currentColor.hsvHue
+        s = currentColor.hsvSaturation
+        v = currentColor.hsvValue
+        a = currentColor.a
+        slot0Color = currentColor
+        if (viewStack.currentIndex === 3) {
+            updateHarmony()
         }
     }
 
+    onCurrentColorChanged: {
+        if (!internalUpdate) {
+            internalUpdate = true
+            h = currentColor.hsvHue < 0 ? 0 : currentColor.hsvHue
+            s = currentColor.hsvSaturation
+            v = currentColor.hsvValue
+            a = currentColor.a
+            if (activeSlot === 0) slot0Color = currentColor
+            else slot1Color = currentColor
+            internalUpdate = false
+            if (viewStack.currentIndex === 3) {
+                updateHarmony()
+            }
+        }
+    }
+
+    onHChanged: {
+        if (viewStack.currentIndex === 3) {
+            updateHarmony()
+        }
+    }
+    onSChanged: {
+        if (viewStack.currentIndex === 3) {
+            updateHarmony()
+        }
+    }
+    onVChanged: {
+        if (viewStack.currentIndex === 3) {
+            updateHarmony()
+        }
+    }
+    onHarmonyModeChanged: {
+        if (viewStack.currentIndex === 3) {
+            updateHarmony()
+        }
+    }
+
+    // --- FUNCTIONS ---
     function updateColor() {
         if (internalUpdate) return
         internalUpdate = true
@@ -59,17 +104,49 @@ Item {
             h = c.hsvHue < 0 ? 0 : c.hsvHue
             s = c.hsvSaturation
             v = c.hsvValue
+            a = c.a
             if (activeSlot === 0) slot0Color = c
             else slot1Color = c
             if (targetCanvas) targetCanvas.brushColor = c
             colorSelected(c)
             internalUpdate = false
+            updateHarmony()
         }
     }
 
     function addToHistory() {
-        if (!backend) return
-        backend.addToHistory(root.currentColor)
+        var c = root.currentColor
+        if (colorHarmony.isInList(c, backend.history)) {
+            return
+        }
+        backend.addToHistory(c)
+    }
+
+    function getCMYK() {
+        return colorHarmony.rgbToCMYK(root.currentColor)
+    }
+
+    function setCMYK(c, m, y, k) {
+        var col = colorHarmony.cmykToRGB(c, m, y, k)
+        root.currentColor = col
+        root.h = col.hsvHue < 0 ? 0 : col.hsvHue
+        root.s = col.hsvSaturation
+        root.v = col.hsvValue
+        if (root.targetCanvas) root.targetCanvas.brushColor = col
+    }
+
+    function updateHarmony() {
+        if (typeof colorHarmony !== "undefined") {
+            harmonyColors = colorHarmony.getHarmonyColors(root.h, root.s, root.v, harmonyMode)
+        }
+    }
+
+    function copyToClipboard(text) {
+        var tempInput = Qt.createQmlObject('import QtQuick; TextInput { visible: false }', root)
+        tempInput.text = text
+        tempInput.selectAll()
+        tempInput.copy()
+        tempInput.destroy()
     }
 
     signal colorSelected(color newColor)
@@ -80,7 +157,7 @@ Item {
         activeColor: root.currentColor
     }
 
-    // ── MAIN LAYOUT ──────────────────────────────────────────
+    // --- BACKGROUND PANEL ---
     Rectangle {
         anchors.fill: parent
         color: "#111113"
@@ -88,17 +165,16 @@ Item {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 10
-            spacing: 6
+            spacing: 8
 
-            // ── 1. HEADER: Dual Wells + Hex + Alpha ──────────
+            // ── 1. HEADER: DUAL WELLS + HEX + ALPHA ──
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 72
+                Layout.preferredHeight: 74
 
-                // Background card
                 Rectangle {
                     anchors.fill: parent
-                    radius: 10
+                    radius: 12
                     color: "#0e0e11"
                     border.color: "#222228"
                     border.width: 1
@@ -106,63 +182,62 @@ Item {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 10
+                    anchors.margins: 8
+                    spacing: 8
 
-                    // ── Dual color wells ──
+                    // Dual wells
                     Item {
-                        width: 56; height: 52
+                        width: 58; height: 54
                         Layout.alignment: Qt.AlignVCenter
 
-                        // Background slot (inactive)
+                        // Background slot
                         Rectangle {
                             id: bgSlot
-                            width: 34; height: 34; radius: 6
-                            x: activeSlot === 0 ? 22 : 0
+                            width: 32; height: 32; radius: 8
+                            x: activeSlot === 0 ? 24 : 0
                             y: 18
                             z: activeSlot === 0 ? 1 : 2
                             color: activeSlot === 0 ? root.slot1Color : root.slot0Color
-                            border.color: "#333"
+                            border.color: "#2E2E35"
                             border.width: 1.5
-                            scale: activeSlot === 0 ? 0.88 : 1.0
-                            opacity: 0.75
+                            scale: activeSlot === 0 ? 0.85 : 1.0
+                            opacity: 0.7
 
                             Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-                            Behavior on scale { NumberAnimation { duration: 200 } }
-
+                            Behavior on scale { NumberAnimation { duration: 150 } }
                             MouseArea { anchors.fill: parent; onClicked: root.activeSlot = (root.activeSlot === 0 ? 1 : 0) }
                         }
 
-                        // Foreground slot (active)
+                        // Foreground slot
                         Rectangle {
                             id: fgSlot
-                            width: 38; height: 38; radius: 8
-                            x: activeSlot === 0 ? 0 : 18
-                            y: activeSlot === 0 ? 0 : 0
+                            width: 36; height: 36; radius: 9
+                            x: activeSlot === 0 ? 0 : 20
+                            y: 2
                             z: activeSlot === 0 ? 2 : 1
                             color: activeSlot === 0 ? root.slot0Color : root.slot1Color
                             border.color: "white"
                             border.width: 2
 
-                            layer.enabled: true
+                            layer.enabled: false
                             layer.effect: MultiEffect {
-                                shadowEnabled: true; shadowBlur: 12
-                                shadowColor: fgSlot.color; shadowOpacity: 0.5; shadowVerticalOffset: 3
+                                shadowEnabled: true; shadowBlur: 10
+                                shadowColor: fgSlot.color; shadowOpacity: 0.45; shadowVerticalOffset: 2
                             }
 
                             Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-
                             MouseArea { anchors.fill: parent; onClicked: root.activeSlot = (root.activeSlot === 0 ? 1 : 0) }
                         }
 
-                        // Swap button
+                        // Swap color well button
                         Rectangle {
-                            width: 16; height: 16; radius: 8
-                            color: "#1a1a1f"; border.color: "#444"; border.width: 1
+                            width: 18; height: 18; radius: 9
+                            color: "#1c1c22"; border.color: "#3A3A42"; border.width: 1
                             anchors.bottom: parent.bottom; anchors.right: parent.right
                             z: 10
-                            Text { text: "⇄"; color: "#aaa"; font.pixelSize: 8; anchors.centerIn: parent }
+                            Text { text: "⇄"; color: "#aaa"; font.pixelSize: 10; font.weight: Font.Bold; anchors.centerIn: parent }
                             MouseArea {
+                                id: swapMa
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
                                     var tmp = root.slot0Color
@@ -173,35 +248,37 @@ Item {
                                     root.h = col.hsvHue < 0 ? 0 : col.hsvHue
                                     root.s = col.hsvSaturation
                                     root.v = col.hsvValue
+                                    root.a = col.a
                                     if (root.targetCanvas) root.targetCanvas.brushColor = col
                                     root.internalUpdate = false
+                                    root.updateHarmony()
                                 }
                             }
-                            ToolTip.visible: parent.children[2].containsMouse; ToolTip.text: "Intercambiar colores"
+                            ToolTip.visible: swapMa.containsMouse; ToolTip.text: "Swap Color Slots"
                         }
                     }
 
-                    // ── Right side: Hex + Alpha ──
+                    // Hex input + Alpha
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 6
+                        spacing: 4
 
-                        // Hex input
+                        // Hex Input Row
                         Rectangle {
                             Layout.fillWidth: true
                             height: 28; radius: 6
-                            color: hexField.activeFocus ? "#1a1a22" : "#181820"
-                            border.color: hexField.activeFocus ? root.accentColor : "#2a2a35"
+                            color: hexField.activeFocus ? "#1a1a24" : "#141418"
+                            border.color: hexField.activeFocus ? root.accentColor : "#2a2a32"
                             border.width: hexField.activeFocus ? 1.5 : 1
 
                             RowLayout {
-                                anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 6; spacing: 4
+                                anchors.fill: parent
+                                anchors.leftMargin: 6; anchors.rightMargin: 4
+                                spacing: 4
 
                                 Text {
                                     text: "#"
-                                    color: "#555"; font.pixelSize: 11; font.family: "Monospace"
-                                    font.weight: Font.Bold
-                                    Layout.alignment: Qt.AlignVCenter
+                                    color: "#5e5e6a"; font.pixelSize: 11; font.family: "Monospace"; font.weight: Font.Bold
                                 }
 
                                 TextInput {
@@ -211,36 +288,47 @@ Item {
                                         var c = root.activeSlot === 0 ? root.slot0Color : root.slot1Color
                                         return c.toString().substring(1).toUpperCase()
                                     }
-                                    color: "#f0f0f5"; font.pixelSize: 11; font.family: "Monospace"
-                                    font.weight: Font.Bold
+                                    color: "#f5f5fa"; font.pixelSize: 11; font.family: "Monospace"; font.weight: Font.Bold
                                     maximumLength: 8
                                     selectByMouse: true
                                     verticalAlignment: TextInput.AlignVCenter
 
                                     onAccepted: root.setFromHex(text)
                                     onEditingFinished: root.setFromHex(text)
-
-                                    Keys.onEscapePressed: { text = (root.activeSlot === 0 ? root.slot0Color : root.slot1Color).toString().substring(1).toUpperCase(); focus = false }
+                                    Keys.onEscapePressed: {
+                                        text = (root.activeSlot === 0 ? root.slot0Color : root.slot1Color).toString().substring(1).toUpperCase()
+                                        focus = false
+                                    }
                                 }
 
-                                // Eyedropper button
+                                // Copy Hex
                                 Rectangle {
-                                    width: 20; height: 20; radius: 4
-                                    color: pipetteMa.containsMouse ? "#252530" : "transparent"
-                                    Layout.alignment: Qt.AlignVCenter
-
+                                    width: 22; height: 22; radius: 4
+                                    color: copyHexMa.containsMouse ? "#22222b" : "transparent"
                                     Image {
-                                        source: "image://icons/eyedropper.svg"
-                                        width: 13; height: 13; anchors.centerIn: parent
-                                        opacity: 0.7; smooth: true; mipmap: true
-                                        sourceSize: Qt.size(32, 32)
+                                        source: "image://icons/copy.svg"
+                                        width: 13; height: 13; anchors.centerIn: parent; opacity: copyHexMa.containsMouse ? 1.0 : 0.6
                                     }
                                     MouseArea {
-                                        id: pipetteMa; anchors.fill: parent; hoverEnabled: true
-                                        cursorShape: Qt.CrossCursor
+                                        id: copyHexMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.copyToClipboard("#" + hexField.text)
+                                    }
+                                    ToolTip.visible: copyHexMa.containsMouse; ToolTip.text: "Copy Hex Code"
+                                }
+
+                                // Eyedropper
+                                Rectangle {
+                                    width: 22; height: 22; radius: 4
+                                    color: pipetteMa.containsMouse ? "#22222b" : "transparent"
+                                    Image {
+                                        source: "image://icons/eyedropper.svg"
+                                        width: 13; height: 13; anchors.centerIn: parent; opacity: pipetteMa.containsMouse ? 1.0 : 0.6
+                                    }
+                                    MouseArea {
+                                        id: pipetteMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: { if (root.targetCanvas) root.targetCanvas.currentTool = "eyedropper" }
                                     }
-                                    ToolTip.visible: pipetteMa.containsMouse; ToolTip.text: "Cuentagotas (E)"; ToolTip.delay: 400
+                                    ToolTip.visible: pipetteMa.containsMouse; ToolTip.text: "Eyedropper Tool"
                                 }
                             }
                         }
@@ -248,20 +336,23 @@ Item {
                         // Alpha slider
                         Item {
                             Layout.fillWidth: true
-                            height: 22
+                            height: 20
 
-                            // Checkerboard bg (transparency indicator)
+                            // Checkerboard background
                             Canvas {
-                                anchors.fill: parent; antialiasing: false
+                                anchors.fill: parent
+                                antialiasing: false
                                 onPaint: {
                                     var ctx = getContext("2d")
-                                    var sz = 5
-                                    for (var xi = 0; xi < width; xi += sz)
-                                        for (var yi = 0; yi < height; yi += sz)
-                                            ctx.fillStyle = ((xi + yi) / sz) % 2 === 0 ? "#555" : "#333"
+                                    var sz = 4
+                                    for (var xi = 0; xi < width; xi += sz) {
+                                        for (var yi = 0; yi < height; yi += sz) {
+                                            ctx.fillStyle = ((xi + yi) / sz) % 2 === 0 ? "#444" : "#222"
                                             ctx.fillRect(xi, yi, sz, sz)
+                                        }
+                                    }
                                 }
-                                layer.enabled: true
+                                layer.enabled: false
                                 layer.effect: MultiEffect { maskEnabled: true; maskSource: alphaSliderBg }
                             }
 
@@ -270,7 +361,6 @@ Item {
                                 anchors.fill: parent; radius: 5; visible: false
                             }
 
-                            // Color gradient overlay
                             Rectangle {
                                 anchors.fill: parent; radius: 5
                                 gradient: Gradient {
@@ -278,18 +368,17 @@ Item {
                                     GradientStop { position: 0.0; color: "transparent" }
                                     GradientStop { position: 1.0; color: Qt.hsva(root.h, root.s, root.v, 1.0) }
                                 }
-                                border.color: "#25FFFFFF"; border.width: 1
+                                border.color: "#18ffffff"; border.width: 1
                             }
 
                             // Knob
                             Rectangle {
-                                width: 16; height: 16; radius: 8
-                                color: "white"
-                                border.color: "#555"; border.width: 1.5
+                                width: 14; height: 14; radius: 7
+                                color: "white"; border.color: "#444"; border.width: 1
                                 x: root.a * (parent.width - width)
                                 anchors.verticalCenter: parent.verticalCenter
-                                layer.enabled: true
-                                layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 5; shadowColor: "#80000000" }
+                                layer.enabled: false
+                                layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 4; shadowColor: "#90000000" }
                             }
 
                             MouseArea {
@@ -298,109 +387,118 @@ Item {
                                 onPressed: updateA(mouse)
                                 onPositionChanged: if (pressed) updateA(mouse)
                             }
-
-                            Text {
-                                anchors.right: parent.right; anchors.rightMargin: 4
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: Math.round(root.a * 100) + "%"
-                                color: root.a < 0.5 ? "#aaa" : "#222"
-                                font.pixelSize: 8; font.weight: Font.Bold
-                            }
                         }
                     }
                 }
             }
 
-            // ── 2. MODE TABS ────────────────────────────────────
-            Row {
+            // ── 2. MODE TABS (TOP NAVIGATION) ──
+            Item {
                 Layout.fillWidth: true
-                spacing: 0
+                height: 38
 
-                Repeater {
-                    model: [
-                        { icon: "grid_pattern.svg", tip: "Cuadro de Color", idx: 0 },
-                        { icon: "shape.svg",         tip: "Rueda de Color", idx: 1 },
-                        { icon: "sliders.svg",       tip: "Deslizadores HSV", idx: 2 },
-                        { icon: "palette.svg",       tip: "Paletas", idx: 3 }
-                    ]
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#16161a"
+                    radius: 10
+                    border.color: "#222228"
+                    border.width: 1
+                }
 
-                    Item {
-                        width: parent.width / 4
-                        height: 36
+                Row {
+                    anchors.fill: parent
+                    spacing: 0
 
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 2
-                            radius: 8
-                            color: viewStack.currentIndex === modelData.idx
-                                ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.2)
-                                : (modeMa.containsMouse ? "#1a1a1f" : "transparent")
-                            border.color: viewStack.currentIndex === modelData.idx ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"
-                            border.width: 1
+                    Repeater {
+                        model: [
+                            { icon: "grid_pattern.svg", tip: "Color Box", idx: 0 },
+                            { icon: "shape.svg",         tip: "Color Disc", idx: 1 },
+                            { icon: "sliders.svg",       tip: "Sliders", idx: 2 },
+                            { icon: "ghost.svg",         tip: "Harmony", idx: 3 },
+                            { icon: "palette.svg",       tip: "Library", idx: 4 }
+                        ]
 
-                            Behavior on color { ColorAnimation { duration: 150 } }
+                        Item {
+                            width: parent.width / 5
+                            height: 38
 
-                            Image {
-                                source: "image://icons/" + modelData.icon
-                                width: 16; height: 16
-                                anchors.centerIn: parent
-                                opacity: viewStack.currentIndex === modelData.idx ? 1.0 : 0.4
-                                smooth: true; mipmap: true; sourceSize: Qt.size(32, 32)
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: 3
+                                radius: 8
+                                color: viewStack.currentIndex === modelData.idx
+                                    ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.15)
+                                    : (modeMa.containsMouse ? "#202028" : "transparent")
+                                border.color: viewStack.currentIndex === modelData.idx ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.4) : "transparent"
+                                border.width: 1
+                                Behavior on color { ColorAnimation { duration: 150 } }
 
-                                // Colorize active icon with accent
-                                layer.enabled: viewStack.currentIndex === modelData.idx
-                                layer.effect: MultiEffect { colorizationColor: root.accentColor; colorization: 0.8 }
+                                Image {
+                                    source: "image://icons/" + modelData.icon
+                                    width: 16; height: 16
+                                    anchors.centerIn: parent
+                                    opacity: viewStack.currentIndex === modelData.idx ? 1.0 : 0.5
+                                    smooth: true; mipmap: true
 
-                                Behavior on opacity { NumberAnimation { duration: 150 } }
+                                    layer.enabled: viewStack.currentIndex === modelData.idx
+                                    layer.effect: MultiEffect { colorizationColor: root.accentColor; colorization: 0.9 }
+                                }
+
+                                MouseArea {
+                                    id: modeMa
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
+                                    onClicked: viewStack.currentIndex = modelData.idx
+                                }
+
+                                ToolTip.visible: modeMa.containsMouse; ToolTip.text: modelData.tip; ToolTip.delay: 350
                             }
-
-                            MouseArea {
-                                id: modeMa
-                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-                                onClicked: viewStack.currentIndex = modelData.idx
-                            }
-
-                            ToolTip.visible: modeMa.containsMouse; ToolTip.text: modelData.tip; ToolTip.delay: 400
                         }
                     }
                 }
             }
 
-            // Active mode indicator bar
+            // Slidable active bar
             Item {
                 Layout.fillWidth: true; height: 2
                 Rectangle {
-                    width: parent.width / 4
+                    width: parent.width / 5
                     height: 2; radius: 1
                     color: root.accentColor
-                    x: viewStack.currentIndex * parent.width / 4
+                    x: viewStack.currentIndex * parent.width / 5
 
-                    Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutQuart } }
-
-                    layer.enabled: true
-                    layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 8; shadowColor: root.accentColor }
+                    Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutQuart } }
+                    layer.enabled: false
+                    layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 6; shadowColor: root.accentColor }
                 }
             }
 
-            // ── 3. MAIN VIEWS ──────────────────────────────────
+            // ── 3. MAIN STACK LAYOUT ──
             StackLayout {
                 id: viewStack
-                Layout.fillWidth: true; Layout.fillHeight: true; Layout.topMargin: 4
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 currentIndex: 0
+
+                onCurrentIndexChanged: {
+                    if (currentIndex === 3) {
+                        root.updateHarmony()
+                    }
+                }
 
                 // ── VIEW 0: COLOR BOX ──
                 Item {
                     ColumnLayout {
-                        anchors.fill: parent; spacing: 10
+                        anchors.fill: parent
+                        spacing: 8
 
                         // SV Square
                         Rectangle {
                             id: svSquare
                             Layout.fillWidth: true; Layout.fillHeight: true
                             radius: 12
-                            color: Qt.hsva(root.h, 1, 1, 1)
+                            color: viewStack.currentIndex === 0 ? Qt.hsva(root.h, 1, 1, 1) : "black"
 
-                            // White gradient (left-right)
+                            // Gradients
                             Rectangle {
                                 anchors.fill: parent; radius: 12
                                 gradient: Gradient {
@@ -409,7 +507,6 @@ Item {
                                     GradientStop { position: 1; color: "transparent" }
                                 }
                             }
-                            // Black gradient (top-bottom)
                             Rectangle {
                                 anchors.fill: parent; radius: 12
                                 gradient: Gradient {
@@ -418,24 +515,23 @@ Item {
                                     GradientStop { position: 1; color: "black" }
                                 }
                             }
-                            // Border
                             Rectangle {
                                 anchors.fill: parent; radius: 12
-                                color: "transparent"; border.color: "#25FFFFFF"; border.width: 1
+                                color: "transparent"; border.color: "#25ffffff"; border.width: 1
                             }
 
-                            // Cursor ring
+                            // Cursor
                             Rectangle {
-                                width: 20; height: 20; radius: 10
-                                color: "transparent"; border.color: "white"; border.width: 2.5
-                                x: (root.s * svSquare.width) - 10
-                                y: ((1.0 - root.v) * svSquare.height) - 10
+                                width: 18; height: 18; radius: 9
+                                color: "transparent"; border.color: "white"; border.width: 2
+                                x: ((viewStack.currentIndex === 0 ? root.s : 0.0) * svSquare.width) - 9
+                                y: ((1.0 - (viewStack.currentIndex === 0 ? root.v : 0.0)) * svSquare.height) - 9
                                 Rectangle {
-                                    anchors.centerIn: parent; width: 14; height: 14; radius: 7
+                                    anchors.centerIn: parent; width: 12; height: 12; radius: 6
                                     color: "transparent"; border.color: "black"; border.width: 1
                                 }
-                                layer.enabled: true
-                                layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 6; shadowColor: "#80000000" }
+                                layer.enabled: viewStack.currentIndex === 0
+                                layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 5; shadowColor: "#90000000" }
                             }
 
                             MouseArea {
@@ -451,9 +547,9 @@ Item {
                             }
                         }
 
-                        // Hue Slider
+                        // Hue slider
                         Item {
-                            Layout.fillWidth: true; height: 28
+                            Layout.fillWidth: true; height: 26
 
                             Rectangle {
                                 anchors.centerIn: parent; width: parent.width; height: 10; radius: 5
@@ -467,23 +563,21 @@ Item {
                                     GradientStop { position: 0.833; color: "#FF00FF" }
                                     GradientStop { position: 1.000; color: "#FF0000" }
                                 }
-                                border.color: "#20FFFFFF"; border.width: 1
+                                border.color: "#18ffffff"; border.width: 1
                             }
 
-                            // Hue Knob
                             Rectangle {
-                                width: 22; height: 22; radius: 11
+                                width: 18; height: 18; radius: 9
                                 color: "white"; border.color: "#444"; border.width: 1
-                                x: (root.h * parent.width) - 11
+                                x: ((viewStack.currentIndex === 0 ? root.h : 0.0) * parent.width) - 9
                                 anchors.verticalCenter: parent.verticalCenter
-
                                 Rectangle {
-                                    anchors.centerIn: parent; width: 16; height: 16; radius: 8
-                                    color: Qt.hsva(root.h, 1, 1, 1)
-                                    border.color: "#66000000"; border.width: 1
+                                    anchors.centerIn: parent; width: 12; height: 12; radius: 6
+                                    color: viewStack.currentIndex === 0 ? Qt.hsva(root.h, 1, 1, 1) : "black"
+                                    border.color: "#50000000"; border.width: 1
                                 }
-                                layer.enabled: true
-                                layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 8; shadowColor: "#80000000" }
+                                layer.enabled: viewStack.currentIndex === 0
+                                layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 6; shadowColor: "#90000000" }
                             }
 
                             MouseArea {
@@ -494,61 +588,21 @@ Item {
                                 onReleased: root.addToHistory()
                             }
                         }
-
-                        // Color preview strip + recent colors
-                        RowLayout {
-                            Layout.fillWidth: true; spacing: 6
-
-                            // Current color preview
-                            Rectangle {
-                                width: 32; height: 24; radius: 6
-                                color: root.activeSlot === 0 ? root.slot0Color : root.slot1Color
-                                border.color: "#30FFFFFF"; border.width: 1
-                                layer.enabled: true
-                                layer.effect: MultiEffect {
-                                    shadowEnabled: true; shadowBlur: 8
-                                    shadowColor: root.currentColor; shadowOpacity: 0.4; shadowVerticalOffset: 2
-                                }
-                            }
-
-                            // History swatches
-                            Repeater {
-                                model: backend ? backend.colorHistory : []
-                                Rectangle {
-                                    width: 20; height: 20; radius: 5
-                                    color: modelData
-                                    border.color: "#20FFFFFF"; border.width: 1
-                                    Behavior on scale { NumberAnimation { duration: 100 } }
-                                    MouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                        onPressed: parent.scale = 0.85
-                                        onReleased: parent.scale = 1.0
-                                        onClicked: {
-                                            var c = Qt.color(modelData)
-                                            root.h = c.hsvHue < 0 ? 0 : c.hsvHue
-                                            root.s = c.hsvSaturation
-                                            root.v = c.hsvValue
-                                            root.updateColor()
-                                        }
-                                    }
-                                }
-                            }
-
-                            Item { Layout.fillWidth: true }
-                        }
                     }
                 }
 
-                // ── VIEW 1: COLOR WHEEL ──
+                // ── VIEW 1: COLOR DISC (WHEEL) ──
                 Item {
                     Item {
-                        width: Math.min(parent.width, parent.height) * 0.96
+                        width: Math.min(parent.width, parent.height) * 0.95
                         height: width
                         anchors.centerIn: parent
 
+                        // Conical hue ring
                         Canvas {
-                            id: hueRingCanvas
-                            anchors.fill: parent; antialiasing: true
+                            id: wheelCanvas
+                            anchors.fill: parent
+                            antialiasing: true
                             onPaint: {
                                 var ctx = getContext("2d")
                                 ctx.reset()
@@ -570,13 +624,13 @@ Item {
                             onWidthChanged: requestPaint()
                         }
 
-                        // Hue ring knob indicator
+                        // Hue Ring Selector
                         Rectangle {
                             width: 14; height: 14; radius: 7
-                            color: "transparent"; border.color: "white"; border.width: 2.5
-                            x: (parent.width / 2) + (parent.width * 0.45) * Math.cos(root.h * 2 * Math.PI) - 7
-                            y: (parent.height / 2) - (parent.height * 0.45) * Math.sin(root.h * 2 * Math.PI) - 7
-                            layer.enabled: true
+                            color: "transparent"; border.color: "white"; border.width: 2
+                            x: (parent.width / 2) + (parent.width * 0.45) * Math.cos((viewStack.currentIndex === 1 ? root.h : 0.0) * 2 * Math.PI) - 7
+                            y: (parent.height / 2) - (parent.height * 0.45) * Math.sin((viewStack.currentIndex === 1 ? root.h : 0.0) * 2 * Math.PI) - 7
+                            layer.enabled: viewStack.currentIndex === 1
                             layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 4; shadowColor: "#aa000000" }
                         }
 
@@ -595,14 +649,15 @@ Item {
                             }
                             onPressed: upWheel(mouse)
                             onPositionChanged: if (pressed) upWheel(mouse)
+                            onReleased: root.addToHistory()
                         }
 
-                        // SV inner square (circular clip)
+                        // Inner SV Circle/Square
                         Rectangle {
-                            width: parent.width * 0.72; height: width
+                            width: parent.width * 0.70; height: width
                             radius: width / 2
                             anchors.centerIn: parent
-                            color: Qt.hsva(root.h, 1, 1, 1)
+                            color: viewStack.currentIndex === 1 ? Qt.hsva(root.h, 1, 1, 1) : "black"
                             clip: true
 
                             Rectangle {
@@ -622,12 +677,12 @@ Item {
                                 }
                             }
 
-                            // Crosshair knob
+                            // SV Crosshair
                             Rectangle {
-                                width: 20; height: 20; radius: 10
-                                border.color: "white"; border.width: 2.5; color: "transparent"
-                                x: (root.s * parent.width) - 10
-                                y: ((1.0 - root.v) * parent.height) - 10
+                                width: 16; height: 16; radius: 8
+                                border.color: "white"; border.width: 2; color: "transparent"
+                                x: ((viewStack.currentIndex === 1 ? root.s : 0.0) * parent.width) - 8
+                                y: ((1.0 - (viewStack.currentIndex === 1 ? root.v : 0.0)) * parent.height) - 8
                             }
 
                             MouseArea {
@@ -639,69 +694,281 @@ Item {
                                 }
                                 onPressed: upSV(mouse)
                                 onPositionChanged: if (pressed) upSV(mouse)
+                                onReleased: root.addToHistory()
                             }
                         }
                     }
                 }
 
-                // ── VIEW 2: HSV SLIDERS ──
+                // ── VIEW 2: IMPROVED COLOR SLIDERS ──
+                Item {
+                    Flickable {
+                        anchors.fill: parent
+                        contentHeight: sliderCol.implicitHeight
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+
+                        ColumnLayout {
+                            id: sliderCol
+                            width: parent.width
+                            spacing: 8
+
+                            // 1. HSB GROUP
+                            Rectangle {
+                                Layout.fillWidth: true; Layout.preferredHeight: 114
+                                color: "#151518"; radius: 10; border.color: "#22222a"; border.width: 1
+                                ColumnLayout {
+                                    anchors.fill: parent; anchors.margins: 10; spacing: 4
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "H"; value: viewStack.currentIndex === 2 ? root.h * 360 : 0.0; maxValue: 360; unit: "°"
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => { root.h = val / 360; root.updateColor() }
+                                    }
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "S"; value: viewStack.currentIndex === 2 ? root.s : 0.0; maxValue: 1.0; unit: "%"
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => { root.s = val; root.updateColor() }
+                                    }
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "V"; value: viewStack.currentIndex === 2 ? root.v : 0.0; maxValue: 1.0; unit: "%"
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => { root.v = val; root.updateColor() }
+                                    }
+                                }
+                            }
+
+                            // 2. RGB GROUP
+                            Rectangle {
+                                Layout.fillWidth: true; Layout.preferredHeight: 114
+                                color: "#151518"; radius: 10; border.color: "#22222a"; border.width: 1
+                                ColumnLayout {
+                                    anchors.fill: parent; anchors.margins: 10; spacing: 4
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "R"; value: viewStack.currentIndex === 2 ? root.currentColor.r * 255 : 0.0; maxValue: 255; unit: ""
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => {
+                                            var c = root.currentColor; var newCol = Qt.rgba(val / 255, c.g, c.b, root.a)
+                                            root.currentColor = newCol
+                                            root.h = newCol.hsvHue < 0 ? 0 : newCol.hsvHue
+                                            root.s = newCol.hsvSaturation
+                                            root.v = newCol.hsvValue
+                                            if (root.targetCanvas) root.targetCanvas.brushColor = newCol
+                                        }
+                                    }
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "G"; value: viewStack.currentIndex === 2 ? root.currentColor.g * 255 : 0.0; maxValue: 255; unit: ""
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => {
+                                            var c = root.currentColor; var newCol = Qt.rgba(c.r, val / 255, c.b, root.a)
+                                            root.currentColor = newCol
+                                            root.h = newCol.hsvHue < 0 ? 0 : newCol.hsvHue
+                                            root.s = newCol.hsvSaturation
+                                            root.v = newCol.hsvValue
+                                            if (root.targetCanvas) root.targetCanvas.brushColor = newCol
+                                        }
+                                    }
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "B"; value: viewStack.currentIndex === 2 ? root.currentColor.b * 255 : 0.0; maxValue: 255; unit: ""
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => {
+                                            var c = root.currentColor; var newCol = Qt.rgba(c.r, c.g, val / 255, root.a)
+                                            root.currentColor = newCol
+                                            root.h = newCol.hsvHue < 0 ? 0 : newCol.hsvHue
+                                            root.s = newCol.hsvSaturation
+                                            root.v = newCol.hsvValue
+                                            if (root.targetCanvas) root.targetCanvas.brushColor = newCol
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 3. CMYK GROUP
+                            Rectangle {
+                                Layout.fillWidth: true; Layout.preferredHeight: 144
+                                color: "#151518"; radius: 10; border.color: "#22222a"; border.width: 1
+                                ColumnLayout {
+                                    anchors.fill: parent; anchors.margins: 10; spacing: 4
+                                    property var cmyk: viewStack.currentIndex === 2 ? root.getCMYK() : {"c": 0.0, "m": 0.0, "y": 0.0, "k": 0.0}
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "C"; value: viewStack.currentIndex === 2 ? parent.cmyk.c : 0.0; maxValue: 1.0; unit: "%"
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => root.setCMYK(val, parent.cmyk.m, parent.cmyk.y, parent.cmyk.k)
+                                    }
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "M"; value: viewStack.currentIndex === 2 ? parent.cmyk.m : 0.0; maxValue: 1.0; unit: "%"
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, val, parent.cmyk.y, parent.cmyk.k)
+                                    }
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "Y"; value: viewStack.currentIndex === 2 ? parent.cmyk.y : 0.0; maxValue: 1.0; unit: "%"
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, parent.cmyk.m, val, parent.cmyk.k)
+                                    }
+                                    ImprovedColorSlider {
+                                        Layout.fillWidth: true; label: "K"; value: viewStack.currentIndex === 2 ? parent.cmyk.k : 0.0; maxValue: 1.0; unit: "%"
+                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, parent.cmyk.m, parent.cmyk.y, val)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── VIEW 3: COLOR HARMONY ──
                 Item {
                     ColumnLayout {
-                        anchors.fill: parent; anchors.margins: 2; spacing: 14
+                        anchors.fill: parent
+                        spacing: 8
 
-                        // H Slider
-                        _ColorSliderRow { label: "H"; unit: "°"; displayValue: Math.round(root.h * 360); minVal: 0; maxVal: 360
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0.000; color: "#FF0000" } GradientStop { position: 0.166; color: "#FFFF00" }
-                                GradientStop { position: 0.333; color: "#00FF00" } GradientStop { position: 0.500; color: "#00FFFF" }
-                                GradientStop { position: 0.666; color: "#0000FF" } GradientStop { position: 0.833; color: "#FF00FF" }
-                                GradientStop { position: 1.000; color: "#FF0000" }
+                        // Harmony mode dropdown selector
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 32
+                            color: "#161618"; radius: 8; border.color: "#2c2c34"; border.width: 1
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 10; anchors.rightMargin: 10
+
+                                Text {
+                                    text: "Harmony: " + root.harmonyMode
+                                    color: "#f0f0f5"; font.pixelSize: 11; font.weight: Font.Bold
+                                }
+                                Item { Layout.fillWidth: true }
+                                Text { text: "▼"; color: "#8E8E93"; font.pixelSize: 9 }
                             }
-                            normalizedValue: root.h
-                            onMoved: (nv) => { root.h = nv; root.updateColor() }
+
+                            MouseArea {
+                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                onClicked: harmonyMenu.open()
+                            }
+
+                            Menu {
+                                id: harmonyMenu
+                                MenuItem { text: "Complementary"; onTriggered: root.harmonyMode = "Complementary" }
+                                MenuItem { text: "Split Complementary"; onTriggered: root.harmonyMode = "Split Complementary" }
+                                MenuItem { text: "Analogous"; onTriggered: root.harmonyMode = "Analogous" }
+                                MenuItem { text: "Triadic"; onTriggered: root.harmonyMode = "Triadic" }
+                                MenuItem { text: "Square"; onTriggered: root.harmonyMode = "Square" }
+                            }
                         }
 
-                        // S Slider
-                        _ColorSliderRow { label: "S"; unit: "%"; displayValue: Math.round(root.s * 100); minVal: 0; maxVal: 100
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0; color: Qt.hsva(root.h, 0, root.v, 1) }
-                                GradientStop { position: 1; color: Qt.hsva(root.h, 1, root.v, 1) }
+                        // Draggable Harmony Disc
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            Rectangle {
+                                id: harmonyDisc
+                                width: Math.min(parent.width, parent.height) * 0.95; height: width
+                                anchors.centerIn: parent
+                                radius: width / 2; clip: true
+                                color: "transparent"
+
+                                Canvas {
+                                    anchors.fill: parent
+                                    antialiasing: true; smooth: true
+                                    onPaint: {
+                                        var ctx = getContext("2d")
+                                        var cx = width / 2, cy = height / 2, r = width / 2
+                                        ctx.reset()
+                                        ctx.clearRect(0, 0, width, height)
+
+                                        var hueGrad = ctx.createConicalGradient(cx, cy, 0)
+                                        for (var i = 0; i <= 1.0; i += 0.1) {
+                                            hueGrad.addColorStop(i, Qt.hsva(i, 1, 1, 1))
+                                        }
+                                        ctx.fillStyle = hueGrad
+                                        ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fill()
+
+                                        var satGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+                                        satGrad.addColorStop(0, "white")
+                                        satGrad.addColorStop(1, "transparent")
+                                        ctx.fillStyle = satGrad
+                                        ctx.fill()
+                                    }
+                                }
+
+                                // Dark overlay representing brightness / V
+                                Rectangle { anchors.fill: parent; radius: parent.radius; color: "black"; opacity: 1.0 - root.v }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    function handleMouse(m) {
+                                        var dx = m.x - width / 2, dy = m.y - height / 2
+                                        var theta = Math.atan2(dy, dx)
+                                        var hVal = -theta / (2 * Math.PI); if (hVal < 0) hVal += 1.0
+                                        var dist = Math.sqrt(dx * dx + dy * dy)
+                                        var sVal = Math.min(1.0, dist / (width / 2))
+                                        root.h = hVal; root.s = sVal; root.updateColor()
+                                    }
+                                    onPressed: handleMouse(mouse)
+                                    onPositionChanged: if (pressed) handleMouse(mouse)
+                                    onReleased: root.addToHistory()
+                                }
+
+                                // Secondary harmony reticles
+                                Repeater {
+                                    model: viewStack.currentIndex === 3 ? root.harmonyColors.length - 1 : 0
+                                    Rectangle {
+                                        property color col: viewStack.currentIndex === 3 ? root.harmonyColors[index + 1] : "black"
+                                        property real ang: -((col.hsvHue < 0 ? 0 : col.hsvHue) * 2 * Math.PI)
+                                        width: 18; height: 18; radius: 9; color: "transparent"; border.color: "white"; border.width: 1.5; opacity: 0.75
+                                        x: (harmonyDisc.width / 2) + ((viewStack.currentIndex === 3 ? root.s : 0.0) * harmonyDisc.width / 2 * Math.cos(ang)) - 9
+                                        y: (harmonyDisc.height / 2) + ((viewStack.currentIndex === 3 ? root.s : 0.0) * harmonyDisc.height / 2 * Math.sin(ang)) - 9
+                                    }
+                                }
+
+                                // Primary active reticle
+                                Rectangle {
+                                    width: 26; height: 26; radius: 13; color: "transparent"; border.color: "white"; border.width: 2.5
+                                    property real ang: -((viewStack.currentIndex === 3 ? root.h : 0.0) * 2 * Math.PI)
+                                    x: (harmonyDisc.width / 2) + ((viewStack.currentIndex === 3 ? root.s : 0.0) * harmonyDisc.width / 2 * Math.cos(ang)) - 13
+                                    y: (harmonyDisc.height / 2) + ((viewStack.currentIndex === 3 ? root.s : 0.0) * harmonyDisc.height / 2 * Math.sin(ang)) - 13
+
+                                    layer.enabled: viewStack.currentIndex === 3
+                                    layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 8; shadowColor: "#90000000" }
+
+                                    Rectangle { anchors.centerIn: parent; width: 18; height: 18; radius: 9; color: "transparent"; border.color: "black"; border.width: 1 }
+                                }
                             }
-                            normalizedValue: root.s
-                            onMoved: (nv) => { root.s = nv; root.updateColor() }
                         }
 
-                        // V Slider
-                        _ColorSliderRow { label: "V"; unit: "%"; displayValue: Math.round(root.v * 100); minVal: 0; maxVal: 100
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0; color: "black" }
-                                GradientStop { position: 1; color: Qt.hsva(root.h, root.s, 1, 1) }
-                            }
-                            normalizedValue: root.v
-                            onMoved: (nv) => { root.v = nv; root.updateColor() }
-                        }
+                        // Brightness slider (V) for gamut display
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 18
 
-                        // A Slider
-                        _ColorSliderRow { label: "A"; unit: "%"; displayValue: Math.round(root.a * 100); minVal: 0; maxVal: 100
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0; color: "transparent" }
-                                GradientStop { position: 1; color: Qt.hsva(root.h, root.s, root.v, 1) }
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: 4; radius: 5
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0; color: "black" }
+                                    GradientStop { position: 1; color: viewStack.currentIndex === 3 ? Qt.hsva(root.h, root.s, 1.0, 1.0) : "black" }
+                                }
                             }
-                            normalizedValue: root.a
-                            onMoved: (nv) => { root.a = nv; root.updateColor() }
-                        }
 
-                        Item { Layout.fillHeight: true }
+                            Rectangle {
+                                x: (viewStack.currentIndex === 3 ? root.v : 0.0) * (parent.width - 16)
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 16; height: 16; radius: 8; color: "white"; border.color: root.accentColor; border.width: 2
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onPressed: uiV(mouse)
+                                onPositionChanged: if (pressed) uiV(mouse)
+                                onReleased: root.addToHistory()
+                                function uiV(m) { root.v = Math.max(0, Math.min(1.0, m.x / width)); root.updateColor() }
+                            }
+                        }
                     }
                 }
 
-                // ── VIEW 3: PALETTES ──
+                // ── VIEW 4: PALETTES (LIBRARY) ──
                 Item {
-                    id: palettesView3
+                    id: palettesView
 
                     property var paletteCategories: [
                         { name: "Sunsets",
@@ -731,154 +998,340 @@ Item {
                     ]
 
                     property int selectedCategory: 0
+                    property var extractedColors: []
+                    property bool showImagePanel: false
+                    property bool isExtracting: false
+
+                    function extractColors(imgSource) {
+                        palettesView.isExtracting = true
+                        palettesView.extractedColors = []
+                        Qt.callLater(function() {
+                            var src = imgSource || imgPreview.source
+                            var colors = backend.extractColorsFromImage(src.toString(), 15)
+                            palettesView.extractedColors = colors
+                            palettesView.isExtracting = false
+                        })
+                    }
 
                     ColumnLayout {
-                        anchors.fill: parent; spacing: 6
+                        anchors.fill: parent
+                        spacing: 8
 
-                        // Category tabs
+                        // Category Tabs Horizontal Row
                         Flickable {
-                            Layout.fillWidth: true; height: 26
-                            contentWidth: catRow.implicitWidth; clip: true
+                            Layout.fillWidth: true; Layout.preferredHeight: 30
+                            contentWidth: tabRow.implicitWidth; clip: true
                             flickableDirection: Flickable.HorizontalFlick
 
                             Row {
-                                id: catRow; spacing: 4
+                                id: tabRow; spacing: 5
                                 Repeater {
-                                    model: palettesView3.paletteCategories
+                                    model: palettesView.paletteCategories.length + 1
                                     Rectangle {
-                                        property bool isAct: palettesView3.selectedCategory === index
-                                        height: 24; width: catLbl.implicitWidth + 16; radius: 12
-                                        color: isAct ? root.accentColor : "#202025"
-                                        border.color: isAct ? "transparent" : "#333"; border.width: 1
-                                        Behavior on color { ColorAnimation { duration: 160 } }
+                                        property bool isImg: index === palettesView.paletteCategories.length
+                                        property bool isActive: isImg ? palettesView.showImagePanel
+                                                                      : (!palettesView.showImagePanel && palettesView.selectedCategory === index)
+                                        height: 28; width: cl.implicitWidth + 14; radius: 14
+                                        color: isActive ? root.accentColor : "#1A1A22"
+                                        border.color: isActive ? "transparent" : "#2A2A35"
+                                        border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 150 } }
 
                                         Text {
-                                            id: catLbl
-                                            text: modelData.name
-                                            font.pixelSize: 9; font.weight: Font.Bold
-                                            color: "white"; anchors.centerIn: parent
+                                            id: cl
+                                            text: isImg ? "🖼 Image" : palettesView.paletteCategories[index].name
+                                            font.pixelSize: 10; font.weight: Font.Bold; color: "white"; anchors.centerIn: parent
                                         }
+
                                         MouseArea {
                                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                            onClicked: palettesView3.selectedCategory = index
+                                            onClicked: {
+                                                if (isImg) {
+                                                    palettesView.showImagePanel = true
+                                                } else {
+                                                    palettesView.showImagePanel = false
+                                                    palettesView.selectedCategory = index
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
 
-                        // Swatches grid
-                        GridView {
-                            id: p3Grid
+                        // Themed Swatches Grid View
+                        Item {
+                            visible: !palettesView.showImagePanel
                             Layout.fillWidth: true; Layout.fillHeight: true
-                            clip: true
-                            model: palettesView3.paletteCategories[palettesView3.selectedCategory].colors
-                            property int cols: 5
-                            cellWidth: Math.floor(width / cols); cellHeight: cellWidth
 
-                            delegate: Item {
-                                width: p3Grid.cellWidth; height: p3Grid.cellHeight
+                            GridView {
+                                id: themedGrid
+                                anchors.fill: parent; clip: true
+                                model: palettesView.paletteCategories[palettesView.selectedCategory].colors
+                                cellWidth: Math.floor(width / 5); cellHeight: cellWidth
 
-                                Rectangle {
-                                    id: pSwatch
-                                    anchors.fill: parent; anchors.margins: 3
-                                    radius: 7; color: modelData
-                                    border.color: "#20FFFFFF"; border.width: 1
+                                delegate: Item {
+                                    width: themedGrid.cellWidth; height: themedGrid.cellHeight
+                                    Rectangle {
+                                        id: swatchRect
+                                        anchors.fill: parent; anchors.margins: 4; radius: 8; color: modelData
+                                        border.color: "#20FFFFFF"; border.width: 1
 
-                                    layer.enabled: true
-                                    layer.effect: MultiEffect {
-                                        shadowEnabled: true; shadowBlur: 8
-                                        shadowColor: modelData; shadowOpacity: 0.4; shadowVerticalOffset: 2
-                                    }
+                                        layer.enabled: false
+                                        layer.effect: MultiEffect {
+                                            shadowEnabled: true; shadowBlur: 8
+                                            shadowColor: modelData; shadowOpacity: 0.45; shadowVerticalOffset: 2
+                                        }
 
-                                    Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutBack } }
+                                        Behavior on scale { NumberAnimation { duration: 100 } }
 
-                                    MouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                        onPressed: pSwatch.scale = 0.8
-                                        onReleased: pSwatch.scale = 1.0
-                                        onClicked: {
-                                            var c = Qt.color(modelData)
-                                            root.h = c.hsvHue < 0 ? 0 : c.hsvHue
-                                            root.s = c.hsvSaturation
-                                            root.v = c.hsvValue
-                                            root.updateColor()
+                                        MouseArea {
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onPressed: swatchRect.scale = 0.85
+                                            onReleased: swatchRect.scale = 1.0
+                                            onClicked: {
+                                                var c = Qt.color(modelData)
+                                                root.h = c.hsvHue < 0 ? 0 : c.hsvHue
+                                                root.s = c.hsvSaturation
+                                                root.v = c.hsvValue
+                                                root.updateColor()
+                                                root.addToHistory()
+                                            }
                                         }
                                     }
                                 }
+                            }
+                        }
+
+                        // Image Extraction Panel
+                        Item {
+                            visible: palettesView.showImagePanel
+                            Layout.fillWidth: true; Layout.fillHeight: true
+
+                            ColumnLayout {
+                                anchors.fill: parent; spacing: 6
+
+                                // Interactive Image Drop/Click Area
+                                Rectangle {
+                                    Layout.fillWidth: true; Layout.fillHeight: true
+                                    radius: 12; color: "#131318"; border.color: dropMa.containsMouse ? root.accentColor : "#25252f"; border.width: 1
+                                    clip: true
+
+                                    Column {
+                                        anchors.centerIn: parent; spacing: 6; visible: imgPreview.source == ""
+                                        Image { source: "image://icons/image.svg"; width: 28; height: 28; anchors.horizontalCenter: parent.horizontalCenter; opacity: 0.3 }
+                                        Text { text: "Click to select image"; color: "#666"; font.pixelSize: 11; anchors.horizontalCenter: parent.horizontalCenter }
+                                    }
+
+                                    Image {
+                                        id: imgPreview; anchors.fill: parent; fillMode: Image.PreserveAspectFit; source: ""; visible: source != ""
+                                        onStatusChanged: { if (status === Image.Ready) palettesView.extractColors(source) }
+                                    }
+
+                                    MouseArea {
+                                        id: dropMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onClicked: imgFileDlg.open()
+                                    }
+                                }
+
+                                // Status label
+                                Text {
+                                    text: palettesView.isExtracting ? "🔍 Analyzing image..." :
+                                          palettesView.extractedColors.length > 0 ? "✅ Extracted colors (" + palettesView.extractedColors.length + ")" : "Select image to extract palette"
+                                    color: palettesView.isExtracting ? root.accentColor : "#888"; font.pixelSize: 10; Layout.alignment: Qt.AlignHCenter
+                                }
+
+                                // Extracted colors GridView
+                                GridView {
+                                    id: extractGrid
+                                    Layout.fillWidth: true; Layout.preferredHeight: 90
+                                    clip: true; model: palettesView.extractedColors
+                                    cellWidth: Math.floor(width / 5); cellHeight: cellWidth
+
+                                    delegate: Item {
+                                        width: extractGrid.cellWidth; height: extractGrid.cellHeight
+                                        Rectangle {
+                                            id: exRect; anchors.fill: parent; anchors.margins: 4; radius: 8; color: modelData
+                                            border.color: "#20FFFFFF"; border.width: 1
+
+                                            layer.enabled: false
+                                            layer.effect: MultiEffect {
+                                                shadowEnabled: true; shadowBlur: 6
+                                                shadowColor: modelData; shadowOpacity: 0.4
+                                            }
+
+                                            Behavior on scale { NumberAnimation { duration: 100 } }
+
+                                            MouseArea {
+                                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                onPressed: exRect.scale = 0.85
+                                                onReleased: exRect.scale = 1.0
+                                                onClicked: {
+                                                    var c = Qt.color(modelData)
+                                                    root.h = c.hsvHue < 0 ? 0 : c.hsvHue
+                                                    root.s = c.hsvSaturation
+                                                    root.v = c.hsvValue
+                                                    root.updateColor()
+                                                    root.addToHistory()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // File Dialog
+                        FileDialog {
+                            id: imgFileDlg
+                            title: "Select Image"
+                            nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp *.webp *.gif)"]
+                            fileMode: FileDialog.OpenFile
+                            onAccepted: {
+                                palettesView.extractedColors = []
+                                imgPreview.source = ""
+                                imgPreview.source = selectedFile
                             }
                         }
                     }
                 }
             }
-        }
-    }
 
-    // ── REUSABLE: Color Slider Row ─────────────────────────
-    component _ColorSliderRow : Item {
-        id: _csr
-        Layout.fillWidth: true
-        height: 32
-
-        property string label: "H"
-        property string unit: ""
-        property int displayValue: 0
-        property int minVal: 0
-        property int maxVal: 100
-        property real normalizedValue: 0.0
-        property Gradient gradient: Gradient {}
-
-        signal moved(real normalizedValue)
-
-        RowLayout {
-            anchors.fill: parent; spacing: 8
-
-            Text {
-                text: _csr.label
-                color: "#888"; font.pixelSize: 11; font.weight: Font.Bold
-                font.family: "Monospace"
-                Layout.preferredWidth: 12
-                Layout.alignment: Qt.AlignVCenter
-            }
-
-            // Slider track
+            // ── 4. FOOTER (SHADES / HISTORY / PALETTES) ──
             Item {
-                Layout.fillWidth: true; height: 26
+                Layout.fillWidth: true
+                Layout.preferredHeight: 120
 
                 Rectangle {
-                    id: _csrTrack
-                    anchors.centerIn: parent; width: parent.width; height: 8; radius: 4
-                    gradient: _csr.gradient
-                    border.color: "#20FFFFFF"; border.width: 1
+                    anchors.fill: parent
+                    radius: 12
+                    color: "#0f0f12"
+                    border.color: "#222228"
+                    border.width: 1
                 }
 
-                // Knob
-                Rectangle {
-                    width: 20; height: 20; radius: 10
-                    color: "white"; border.color: "#555"; border.width: 1
-                    x: _csr.normalizedValue * (parent.width - width)
-                    anchors.verticalCenter: parent.verticalCenter
-                    scale: _csrMa.pressed ? 1.15 : 1.0
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 6
 
-                    Behavior on scale { NumberAnimation { duration: 80 } }
-                    layer.enabled: true
-                    layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 6; shadowColor: "#80000000" }
+                    // Footer navigation row
+                    RowLayout {
+                        Layout.fillWidth: true; Layout.preferredHeight: 28; spacing: 4
+                        Repeater {
+                            model: viewStack.currentIndex === 3
+                                ? [{ n: "Harmony Color", x: 0 }, { n: "Color History", x: 1 }, { n: "My Palettes", x: 2 }]
+                                : [{ n: "Shades", x: 0 }, { n: "History", x: 1 }, { n: "Palettes", x: 2 }]
+
+                            delegate: Rectangle {
+                                Layout.fillWidth: true; Layout.preferredHeight: 26; radius: 13
+                                color: footStack.currentIndex === modelData.x ? root.accentColor : "#17171d"
+                                border.color: footStack.currentIndex === modelData.x ? "transparent" : "#282830"
+                                border.width: 1
+
+                                Text {
+                                    text: modelData.n
+                                    anchors.centerIn: parent
+                                    color: "white"
+                                    font.pixelSize: 10
+                                    font.weight: Font.Bold
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: footStack.currentIndex = modelData.x
+                                }
+                            }
+                        }
+                    }
+
+                    // Content layout
+                    StackLayout {
+                        id: footStack
+                        Layout.fillWidth: true; Layout.fillHeight: true
+
+                        // 0: SHADES / HARMONY SWATCHES
+                        Item {
+                            RowLayout {
+                                anchors.fill: parent; spacing: 4
+                                Repeater {
+                                    model: viewStack.currentIndex === 3 ? root.harmonyColors.length : 10
+                                    Rectangle {
+                                        Layout.fillWidth: true; Layout.fillHeight: true; radius: 8
+                                        color: viewStack.currentIndex === 3 ? root.harmonyColors[index] : (footStack.currentIndex === 0 ? Qt.hsva(root.h, root.s, (index + 1) / 10.0, 1.0) : "black")
+                                        border.color: "#1cffffff"; border.width: 1
+
+                                        // Active Indicator
+                                        Rectangle {
+                                            anchors.fill: parent; anchors.margins: -1.5; radius: 9.5; color: "transparent"
+                                            border.color: "white"; border.width: 1.5; visible: viewStack.currentIndex === 3 && root.currentColor === parent.color
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            onClicked: {
+                                                if (viewStack.currentIndex === 3) {
+                                                    var col = parent.color
+                                                    root.h = col.hsvHue < 0 ? 0 : col.hsvHue
+                                                    root.s = col.hsvSaturation
+                                                    root.v = col.hsvValue
+                                                    root.updateColor()
+                                                    root.addToHistory()
+                                                } else {
+                                                    root.v = (index + 1) / 10.0
+                                                    root.updateColor()
+                                                }
+                                            }
+                                            onPressed: parent.scale = 0.92
+                                            onReleased: parent.scale = 1.0
+                                        }
+                                        Behavior on scale { NumberAnimation { duration: 100 } }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 1: HISTORY (Dynamic Swatches from C++ backend)
+                        Item {
+                            Flickable {
+                                anchors.fill: parent
+                                contentWidth: histFlow.implicitWidth; clip: true
+                                flickableDirection: Flickable.HorizontalFlick
+
+                                Flow {
+                                    id: histFlow; anchors.verticalCenter: parent.verticalCenter; spacing: 6
+                                    Repeater {
+                                        model: backend.history
+                                        Rectangle {
+                                            id: histRec; width: 28; height: 28; radius: 6; color: modelData; border.color: "#25FFFFFF"; border.width: 1
+                                            Behavior on scale { NumberAnimation { duration: 100 } }
+                                            MouseArea {
+                                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                onPressed: histRec.scale = 0.85
+                                                onReleased: histRec.scale = 1.0
+                                                onClicked: {
+                                                    var c = Qt.color(modelData)
+                                                    root.h = c.hsvHue < 0 ? 0 : c.hsvHue
+                                                    root.s = c.hsvSaturation
+                                                    root.v = c.hsvValue
+                                                    root.updateColor()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2: MY PALETTES
+                        Item {
+                            Text {
+                                text: "Select color and paint to add to history"
+                                color: "#555"; font.pixelSize: 10; font.weight: Font.Bold; anchors.centerIn: parent
+                            }
+                        }
+                    }
                 }
-
-                MouseArea {
-                    id: _csrMa; anchors.fill: parent
-                    function upV(m) { _csr.moved(Math.max(0, Math.min(1, m.x / width))) }
-                    onPressed: upV(mouse)
-                    onPositionChanged: if (pressed) upV(mouse)
-                }
-            }
-
-            Text {
-                text: _csr.displayValue + _csr.unit
-                color: "#ccc"; font.pixelSize: 10; font.family: "Monospace"
-                Layout.preferredWidth: 38
-                Layout.alignment: Qt.AlignVCenter
-                horizontalAlignment: Text.AlignRight
             }
         }
     }

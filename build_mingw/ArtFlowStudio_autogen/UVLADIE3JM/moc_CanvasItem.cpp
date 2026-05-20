@@ -248,6 +248,9 @@ template <> constexpr inline auto CanvasItem::qt_create_metaobjectdata<qt_meta_t
         "fromIndex",
         "toIndex",
         "mergeDown",
+        "selectPixels",
+        "invertLayerColors",
+        "toggleReference",
         "getFolderCount",
         "getFirstCreatedFolderStableId",
         "renameLayer",
@@ -827,270 +830,282 @@ template <> constexpr inline auto CanvasItem::qt_create_metaobjectdata<qt_meta_t
         QtMocHelpers::MethodData<void(int)>(209, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::Int, 80 },
         }}),
+        // Method 'selectPixels'
+        QtMocHelpers::MethodData<void(int)>(210, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 80 },
+        }}),
+        // Method 'invertLayerColors'
+        QtMocHelpers::MethodData<void(int)>(211, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 80 },
+        }}),
+        // Method 'toggleReference'
+        QtMocHelpers::MethodData<void(int)>(212, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 80 },
+        }}),
         // Method 'getFolderCount'
-        QtMocHelpers::MethodData<int() const>(210, 2, QMC::AccessPublic, QMetaType::Int),
+        QtMocHelpers::MethodData<int() const>(213, 2, QMC::AccessPublic, QMetaType::Int),
         // Method 'getFirstCreatedFolderStableId'
-        QtMocHelpers::MethodData<int() const>(211, 2, QMC::AccessPublic, QMetaType::Int),
+        QtMocHelpers::MethodData<int() const>(214, 2, QMC::AccessPublic, QMetaType::Int),
         // Method 'renameLayer'
-        QtMocHelpers::MethodData<void(int, const QString &)>(212, 2, QMC::AccessPublic, QMetaType::Void, {{
+        QtMocHelpers::MethodData<void(int, const QString &)>(215, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::Int, 80 }, { QMetaType::QString, 92 },
         }}),
         // Method 'applyEffect'
-        QtMocHelpers::MethodData<void(int, const QString &, const QVariantMap &)>(213, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Int, 80 }, { QMetaType::QString, 214 }, { 0x80000000 | 215, 216 },
+        QtMocHelpers::MethodData<void(int, const QString &, const QVariantMap &)>(216, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Int, 80 }, { QMetaType::QString, 217 }, { 0x80000000 | 218, 219 },
         }}),
         // Method 'get_brush_preview'
-        QtMocHelpers::MethodData<QString(const QString &)>(217, 2, QMC::AccessPublic, QMetaType::QString, {{
-            { QMetaType::QString, 218 },
+        QtMocHelpers::MethodData<QString(const QString &)>(220, 2, QMC::AccessPublic, QMetaType::QString, {{
+            { QMetaType::QString, 221 },
         }}),
         // Method 'getBrushesForCategory'
-        QtMocHelpers::MethodData<QVariantList(const QString &)>(219, 2, QMC::AccessPublic, 0x80000000 | 34, {{
+        QtMocHelpers::MethodData<QVariantList(const QString &)>(222, 2, QMC::AccessPublic, 0x80000000 | 34, {{
             { QMetaType::QString, 76 },
         }}),
         // Method 'getBrushCategories'
-        QtMocHelpers::MethodData<QVariantList()>(220, 2, QMC::AccessPublic, 0x80000000 | 34),
+        QtMocHelpers::MethodData<QVariantList()>(223, 2, QMC::AccessPublic, 0x80000000 | 34),
         // Method 'getBrushCategoryNames'
-        QtMocHelpers::MethodData<QStringList()>(221, 2, QMC::AccessPublic, QMetaType::QStringList),
+        QtMocHelpers::MethodData<QStringList()>(224, 2, QMC::AccessPublic, QMetaType::QStringList),
         // Method 'beginBrushEdit'
-        QtMocHelpers::MethodData<void(const QString &)>(222, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 218 },
+        QtMocHelpers::MethodData<void(const QString &)>(225, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 221 },
         }}),
         // Method 'cancelBrushEdit'
-        QtMocHelpers::MethodData<void()>(223, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::MethodData<void()>(226, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'applyBrushEdit'
-        QtMocHelpers::MethodData<void()>(224, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::MethodData<void()>(227, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'saveAsCopyBrush'
-        QtMocHelpers::MethodData<void(const QString &)>(225, 2, QMC::AccessPublic, QMetaType::Void, {{
+        QtMocHelpers::MethodData<void(const QString &)>(228, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::QString, 189 },
         }}),
         // Method 'resetBrushToDefault'
-        QtMocHelpers::MethodData<void()>(226, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::MethodData<void()>(229, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'getBrushProperty'
-        QtMocHelpers::MethodData<QVariant(const QString &, const QString &)>(227, 2, QMC::AccessPublic, 0x80000000 | 228, {{
+        QtMocHelpers::MethodData<QVariant(const QString &, const QString &)>(230, 2, QMC::AccessPublic, 0x80000000 | 231, {{
             { QMetaType::QString, 76 }, { QMetaType::QString, 77 },
         }}),
         // Method 'setBrushProperty'
-        QtMocHelpers::MethodData<void(const QString &, const QString &, const QVariant &)>(229, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 76 }, { QMetaType::QString, 77 }, { 0x80000000 | 228, 230 },
+        QtMocHelpers::MethodData<void(const QString &, const QString &, const QVariant &)>(232, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 76 }, { QMetaType::QString, 77 }, { 0x80000000 | 231, 233 },
         }}),
         // Method 'getBrushCategoryProperties'
-        QtMocHelpers::MethodData<QVariantMap(const QString &)>(231, 2, QMC::AccessPublic, 0x80000000 | 215, {{
+        QtMocHelpers::MethodData<QVariantMap(const QString &)>(234, 2, QMC::AccessPublic, 0x80000000 | 218, {{
             { QMetaType::QString, 76 },
         }}),
         // Method 'clearPreviewPad'
-        QtMocHelpers::MethodData<void()>(232, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::MethodData<void()>(235, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'resizePreviewPad'
-        QtMocHelpers::MethodData<void(int, int)>(233, 2, QMC::AccessPublic, QMetaType::Void, {{
+        QtMocHelpers::MethodData<void(int, int)>(236, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::Int, 114 }, { QMetaType::Int, 115 },
         }}),
         // Method 'previewPadBeginStroke'
-        QtMocHelpers::MethodData<void(float, float, float)>(234, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Float, 31 }, { QMetaType::Float, 32 }, { QMetaType::Float, 235 },
+        QtMocHelpers::MethodData<void(float, float, float)>(237, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Float, 31 }, { QMetaType::Float, 32 }, { QMetaType::Float, 238 },
         }}),
         // Method 'previewPadContinueStroke'
-        QtMocHelpers::MethodData<void(float, float, float)>(236, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::Float, 31 }, { QMetaType::Float, 32 }, { QMetaType::Float, 235 },
+        QtMocHelpers::MethodData<void(float, float, float)>(239, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::Float, 31 }, { QMetaType::Float, 32 }, { QMetaType::Float, 238 },
         }}),
         // Method 'previewPadEndStroke'
-        QtMocHelpers::MethodData<void()>(237, 2, QMC::AccessPublic, QMetaType::Void),
+        QtMocHelpers::MethodData<void()>(240, 2, QMC::AccessPublic, QMetaType::Void),
         // Method 'getPreviewPadImage'
-        QtMocHelpers::MethodData<QString()>(238, 2, QMC::AccessPublic, QMetaType::QString),
+        QtMocHelpers::MethodData<QString()>(241, 2, QMC::AccessPublic, QMetaType::QString),
         // Method 'getStampPreview'
-        QtMocHelpers::MethodData<QString()>(239, 2, QMC::AccessPublic, QMetaType::QString),
+        QtMocHelpers::MethodData<QString()>(242, 2, QMC::AccessPublic, QMetaType::QString),
         // Method 'getCanvasPreview'
-        QtMocHelpers::MethodData<QString()>(240, 2, QMC::AccessPublic, QMetaType::QString),
+        QtMocHelpers::MethodData<QString()>(243, 2, QMC::AccessPublic, QMetaType::QString),
         // Method 'sampleColorFromImage'
-        QtMocHelpers::MethodData<QString(const QString &, int, int, int, int)>(241, 2, QMC::AccessPublic, QMetaType::QString, {{
-            { QMetaType::QString, 242 }, { QMetaType::Int, 31 }, { QMetaType::Int, 32 }, { QMetaType::Int, 243 },
-            { QMetaType::Int, 244 },
+        QtMocHelpers::MethodData<QString(const QString &, int, int, int, int)>(244, 2, QMC::AccessPublic, QMetaType::QString, {{
+            { QMetaType::QString, 245 }, { QMetaType::Int, 31 }, { QMetaType::Int, 32 }, { QMetaType::Int, 246 },
+            { QMetaType::Int, 247 },
         }}),
         // Method 'loadReference'
-        QtMocHelpers::MethodData<QString(const QString &)>(245, 2, QMC::AccessPublic, QMetaType::QString, {{
+        QtMocHelpers::MethodData<QString(const QString &)>(248, 2, QMC::AccessPublic, QMetaType::QString, {{
             { QMetaType::QString, 105 },
         }}),
         // Method 'createNewBrush'
-        QtMocHelpers::MethodData<void(const QString &, const QString &)>(246, 2, QMC::AccessPublic, QMetaType::Void, {{
+        QtMocHelpers::MethodData<void(const QString &, const QString &)>(249, 2, QMC::AccessPublic, QMetaType::Void, {{
             { QMetaType::QString, 92 }, { QMetaType::QString, 76 },
         }}),
         // Method 'deleteBrush'
-        QtMocHelpers::MethodData<bool(const QString &)>(247, 2, QMC::AccessPublic, QMetaType::Bool, {{
+        QtMocHelpers::MethodData<bool(const QString &)>(250, 2, QMC::AccessPublic, QMetaType::Bool, {{
             { QMetaType::QString, 92 },
         }}),
         // Method 'duplicateBrush'
-        QtMocHelpers::MethodData<QString(const QString &)>(248, 2, QMC::AccessPublic, QMetaType::QString, {{
+        QtMocHelpers::MethodData<QString(const QString &)>(251, 2, QMC::AccessPublic, QMetaType::QString, {{
             { QMetaType::QString, 92 },
         }}),
         // Method 'renameBrush'
-        QtMocHelpers::MethodData<bool(const QString &, const QString &)>(249, 2, QMC::AccessPublic, QMetaType::Bool, {{
-            { QMetaType::QString, 250 }, { QMetaType::QString, 189 },
+        QtMocHelpers::MethodData<bool(const QString &, const QString &)>(252, 2, QMC::AccessPublic, QMetaType::Bool, {{
+            { QMetaType::QString, 253 }, { QMetaType::QString, 189 },
         }}),
         // Method 'isBuiltInBrush'
-        QtMocHelpers::MethodData<bool(const QString &) const>(251, 2, QMC::AccessPublic, QMetaType::Bool, {{
+        QtMocHelpers::MethodData<bool(const QString &) const>(254, 2, QMC::AccessPublic, QMetaType::Bool, {{
             { QMetaType::QString, 92 },
         }}),
         // Method 'getAvailableTipTextures'
-        QtMocHelpers::MethodData<QVariantList() const>(252, 2, QMC::AccessPublic, 0x80000000 | 34),
+        QtMocHelpers::MethodData<QVariantList() const>(255, 2, QMC::AccessPublic, 0x80000000 | 34),
         // Method 'setTipTextureForBrush'
-        QtMocHelpers::MethodData<void(const QString &, const QString &)>(253, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 218 }, { QMetaType::QString, 254 },
+        QtMocHelpers::MethodData<void(const QString &, const QString &)>(256, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 221 }, { QMetaType::QString, 257 },
         }}),
         // Method 'setGrainTextureForBrush'
-        QtMocHelpers::MethodData<void(const QString &, const QString &)>(255, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { QMetaType::QString, 218 }, { QMetaType::QString, 254 },
+        QtMocHelpers::MethodData<void(const QString &, const QString &)>(258, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { QMetaType::QString, 221 }, { QMetaType::QString, 257 },
         }}),
         // Method 'setCurvePoints'
-        QtMocHelpers::MethodData<void(const QVariantList &)>(256, 2, QMC::AccessPublic, QMetaType::Void, {{
-            { 0x80000000 | 34, 257 },
+        QtMocHelpers::MethodData<void(const QVariantList &)>(259, 2, QMC::AccessPublic, QMetaType::Void, {{
+            { 0x80000000 | 34, 260 },
         }}),
     };
     QtMocHelpers::UintData qt_properties {
         // property 'brushSize'
-        QtMocHelpers::PropertyData<int>(258, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 1),
+        QtMocHelpers::PropertyData<int>(261, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 1),
         // property 'brushColor'
-        QtMocHelpers::PropertyData<QColor>(259, 0x80000000 | 67, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 2),
+        QtMocHelpers::PropertyData<QColor>(262, 0x80000000 | 67, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag | QMC::StdCppSet, 2),
         // property 'brushOpacity'
-        QtMocHelpers::PropertyData<float>(260, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 3),
+        QtMocHelpers::PropertyData<float>(263, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 3),
         // property 'brushFlow'
-        QtMocHelpers::PropertyData<float>(261, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 4),
+        QtMocHelpers::PropertyData<float>(264, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 4),
         // property 'brushHardness'
-        QtMocHelpers::PropertyData<float>(262, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 5),
+        QtMocHelpers::PropertyData<float>(265, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 5),
         // property 'brushSpacing'
-        QtMocHelpers::PropertyData<float>(263, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 6),
+        QtMocHelpers::PropertyData<float>(266, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 6),
         // property 'brushStabilization'
-        QtMocHelpers::PropertyData<float>(264, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 7),
+        QtMocHelpers::PropertyData<float>(267, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 7),
         // property 'brushStreamline'
-        QtMocHelpers::PropertyData<float>(265, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 8),
+        QtMocHelpers::PropertyData<float>(268, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 8),
         // property 'brushGrain'
-        QtMocHelpers::PropertyData<float>(266, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 9),
+        QtMocHelpers::PropertyData<float>(269, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 9),
         // property 'brushWetness'
-        QtMocHelpers::PropertyData<float>(267, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 10),
+        QtMocHelpers::PropertyData<float>(270, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 10),
         // property 'brushSmudge'
-        QtMocHelpers::PropertyData<float>(268, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 11),
+        QtMocHelpers::PropertyData<float>(271, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 11),
         // property 'impastoShininess'
-        QtMocHelpers::PropertyData<float>(269, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 12),
+        QtMocHelpers::PropertyData<float>(272, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 12),
         // property 'impastoStrength'
-        QtMocHelpers::PropertyData<float>(270, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 13),
+        QtMocHelpers::PropertyData<float>(273, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 13),
         // property 'lightAngle'
-        QtMocHelpers::PropertyData<float>(271, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 13),
+        QtMocHelpers::PropertyData<float>(274, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 13),
         // property 'lightElevation'
-        QtMocHelpers::PropertyData<float>(272, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 13),
+        QtMocHelpers::PropertyData<float>(275, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 13),
         // property 'brushRoundness'
-        QtMocHelpers::PropertyData<float>(273, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 14),
+        QtMocHelpers::PropertyData<float>(276, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 14),
         // property 'zoomLevel'
-        QtMocHelpers::PropertyData<float>(274, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 15),
+        QtMocHelpers::PropertyData<float>(277, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 15),
         // property 'layerModel'
-        QtMocHelpers::PropertyData<QVariantList>(275, 0x80000000 | 34, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 31),
+        QtMocHelpers::PropertyData<QVariantList>(278, 0x80000000 | 34, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 31),
         // property 'currentTool'
-        QtMocHelpers::PropertyData<QString>(276, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 16),
+        QtMocHelpers::PropertyData<QString>(279, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 16),
         // property 'canvasWidth'
-        QtMocHelpers::PropertyData<int>(277, QMetaType::Int, QMC::DefaultPropertyFlags, 17),
+        QtMocHelpers::PropertyData<int>(280, QMetaType::Int, QMC::DefaultPropertyFlags, 17),
         // property 'canvasHeight'
-        QtMocHelpers::PropertyData<int>(278, QMetaType::Int, QMC::DefaultPropertyFlags, 18),
+        QtMocHelpers::PropertyData<int>(281, QMetaType::Int, QMC::DefaultPropertyFlags, 18),
         // property 'viewOffset'
-        QtMocHelpers::PropertyData<QPointF>(279, 0x80000000 | 280, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 19),
+        QtMocHelpers::PropertyData<QPointF>(282, 0x80000000 | 283, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 19),
         // property 'activeLayerIndex'
-        QtMocHelpers::PropertyData<int>(281, QMetaType::Int, QMC::DefaultPropertyFlags, 20),
+        QtMocHelpers::PropertyData<int>(284, QMetaType::Int, QMC::DefaultPropertyFlags, 20),
         // property 'isTransforming'
-        QtMocHelpers::PropertyData<bool>(282, QMetaType::Bool, QMC::DefaultPropertyFlags, 21),
+        QtMocHelpers::PropertyData<bool>(285, QMetaType::Bool, QMC::DefaultPropertyFlags, 21),
         // property 'brushAngle'
-        QtMocHelpers::PropertyData<float>(283, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 23),
+        QtMocHelpers::PropertyData<float>(286, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 23),
         // property 'cursorRotation'
-        QtMocHelpers::PropertyData<float>(284, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 24),
+        QtMocHelpers::PropertyData<float>(287, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 24),
         // property 'currentProjectPath'
-        QtMocHelpers::PropertyData<QString>(285, QMetaType::QString, QMC::DefaultPropertyFlags, 25),
+        QtMocHelpers::PropertyData<QString>(288, QMetaType::QString, QMC::DefaultPropertyFlags, 25),
         // property 'currentProjectName'
-        QtMocHelpers::PropertyData<QString>(286, QMetaType::QString, QMC::DefaultPropertyFlags, 26),
+        QtMocHelpers::PropertyData<QString>(289, QMetaType::QString, QMC::DefaultPropertyFlags, 26),
         // property 'symmetryEnabled'
-        QtMocHelpers::PropertyData<bool>(287, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 50),
+        QtMocHelpers::PropertyData<bool>(290, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 50),
         // property 'symmetryMode'
-        QtMocHelpers::PropertyData<int>(288, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 51),
+        QtMocHelpers::PropertyData<int>(291, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 51),
         // property 'symmetrySegments'
-        QtMocHelpers::PropertyData<int>(289, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 52),
+        QtMocHelpers::PropertyData<int>(292, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 52),
         // property 'brushTip'
-        QtMocHelpers::PropertyData<QString>(290, QMetaType::QString, QMC::DefaultPropertyFlags, 27),
+        QtMocHelpers::PropertyData<QString>(293, QMetaType::QString, QMC::DefaultPropertyFlags, 27),
         // property 'canvas_preview'
-        QtMocHelpers::PropertyData<QString>(291, QMetaType::QString, QMC::DefaultPropertyFlags, 0),
+        QtMocHelpers::PropertyData<QString>(294, QMetaType::QString, QMC::DefaultPropertyFlags, 0),
         // property 'isEraser'
-        QtMocHelpers::PropertyData<bool>(292, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 30),
+        QtMocHelpers::PropertyData<bool>(295, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 30),
         // property 'isFlippedH'
-        QtMocHelpers::PropertyData<bool>(293, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 35),
+        QtMocHelpers::PropertyData<bool>(296, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 35),
         // property 'isFlippedV'
-        QtMocHelpers::PropertyData<bool>(294, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 36),
+        QtMocHelpers::PropertyData<bool>(297, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 36),
         // property 'canvasRotation'
-        QtMocHelpers::PropertyData<float>(295, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 37),
+        QtMocHelpers::PropertyData<float>(298, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 37),
         // property 'canvasScale'
-        QtMocHelpers::PropertyData<float>(296, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable, 15),
+        QtMocHelpers::PropertyData<float>(299, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable, 15),
         // property 'canvasOffset'
-        QtMocHelpers::PropertyData<QPointF>(297, 0x80000000 | 280, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag, 19),
+        QtMocHelpers::PropertyData<QPointF>(300, 0x80000000 | 283, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag, 19),
         // property 'transformBox'
-        QtMocHelpers::PropertyData<QRectF>(298, 0x80000000 | 299, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 60),
+        QtMocHelpers::PropertyData<QRectF>(301, 0x80000000 | 302, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 60),
         // property 'pressureCurvePoints'
-        QtMocHelpers::PropertyData<QVariantList>(300, 0x80000000 | 34, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag, 57),
+        QtMocHelpers::PropertyData<QVariantList>(303, 0x80000000 | 34, QMC::DefaultPropertyFlags | QMC::Writable | QMC::EnumOrFlag, 57),
         // property 'availableBrushes'
-        QtMocHelpers::PropertyData<QVariantList>(301, 0x80000000 | 34, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 32),
+        QtMocHelpers::PropertyData<QVariantList>(304, 0x80000000 | 34, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 32),
         // property 'activeBrushName'
-        QtMocHelpers::PropertyData<QString>(302, QMetaType::QString, QMC::DefaultPropertyFlags, 33),
+        QtMocHelpers::PropertyData<QString>(305, QMetaType::QString, QMC::DefaultPropertyFlags, 33),
         // property 'brushTipImage'
-        QtMocHelpers::PropertyData<QString>(303, QMetaType::QString, QMC::DefaultPropertyFlags, 34),
+        QtMocHelpers::PropertyData<QString>(306, QMetaType::QString, QMC::DefaultPropertyFlags, 34),
         // property 'brushCategories'
-        QtMocHelpers::PropertyData<QVariantList>(304, 0x80000000 | 34, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 44),
+        QtMocHelpers::PropertyData<QVariantList>(307, 0x80000000 | 34, QMC::DefaultPropertyFlags | QMC::EnumOrFlag, 44),
         // property 'isEditingBrush'
-        QtMocHelpers::PropertyData<bool>(305, QMetaType::Bool, QMC::DefaultPropertyFlags, 61),
+        QtMocHelpers::PropertyData<bool>(308, QMetaType::Bool, QMC::DefaultPropertyFlags, 61),
         // property 'hasSelection'
-        QtMocHelpers::PropertyData<bool>(306, QMetaType::Bool, QMC::DefaultPropertyFlags, 38),
+        QtMocHelpers::PropertyData<bool>(309, QMetaType::Bool, QMC::DefaultPropertyFlags, 38),
         // property 'selectionAddMode'
-        QtMocHelpers::PropertyData<int>(307, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 39),
+        QtMocHelpers::PropertyData<int>(310, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 39),
         // property 'selectionThreshold'
-        QtMocHelpers::PropertyData<float>(308, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 40),
+        QtMocHelpers::PropertyData<float>(311, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 40),
         // property 'isSelectionModeActive'
-        QtMocHelpers::PropertyData<bool>(309, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 41),
+        QtMocHelpers::PropertyData<bool>(312, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 41),
         // property 'lassoMode'
-        QtMocHelpers::PropertyData<int>(310, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 42),
+        QtMocHelpers::PropertyData<int>(313, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 42),
         // property 'isImporting'
-        QtMocHelpers::PropertyData<bool>(311, QMetaType::Bool, QMC::DefaultPropertyFlags, 45),
+        QtMocHelpers::PropertyData<bool>(314, QMetaType::Bool, QMC::DefaultPropertyFlags, 45),
         // property 'importProgress'
-        QtMocHelpers::PropertyData<float>(312, QMetaType::Float, QMC::DefaultPropertyFlags, 46),
+        QtMocHelpers::PropertyData<float>(315, QMetaType::Float, QMC::DefaultPropertyFlags, 46),
         // property 'isLiquifying'
-        QtMocHelpers::PropertyData<bool>(313, QMetaType::Bool, QMC::DefaultPropertyFlags, 53),
+        QtMocHelpers::PropertyData<bool>(316, QMetaType::Bool, QMC::DefaultPropertyFlags, 53),
         // property 'transformMode'
-        QtMocHelpers::PropertyData<int>(314, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 22),
+        QtMocHelpers::PropertyData<int>(317, QMetaType::Int, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 22),
         // property 'sizeByPressure'
-        QtMocHelpers::PropertyData<bool>(315, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 47),
+        QtMocHelpers::PropertyData<bool>(318, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 47),
         // property 'opacityByPressure'
-        QtMocHelpers::PropertyData<bool>(316, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 48),
+        QtMocHelpers::PropertyData<bool>(319, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 48),
         // property 'flowByPressure'
-        QtMocHelpers::PropertyData<bool>(317, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 49),
+        QtMocHelpers::PropertyData<bool>(320, QMetaType::Bool, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 49),
         // property 'panelGutterSize'
-        QtMocHelpers::PropertyData<float>(318, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 54),
+        QtMocHelpers::PropertyData<float>(321, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 54),
         // property 'panelBorderStyle'
-        QtMocHelpers::PropertyData<QString>(319, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 55),
+        QtMocHelpers::PropertyData<QString>(322, QMetaType::QString, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 55),
         // property 'panelBorderWidth'
-        QtMocHelpers::PropertyData<float>(320, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 56),
+        QtMocHelpers::PropertyData<float>(323, QMetaType::Float, QMC::DefaultPropertyFlags | QMC::Writable | QMC::StdCppSet, 56),
     };
     QtMocHelpers::UintData qt_enums {
         // enum 'ToolType'
-        QtMocHelpers::EnumData<enum ToolType>(321, 321, QMC::EnumIsScoped).add({
-            {  322, ToolType::Pen },
-            {  323, ToolType::Eraser },
-            {  324, ToolType::Lasso },
-            {  325, ToolType::MagneticLasso },
-            {  326, ToolType::RectSelect },
-            {  327, ToolType::EllipseSelect },
-            {  328, ToolType::MagicWand },
-            {  329, ToolType::Transform },
-            {  330, ToolType::Eyedropper },
-            {  331, ToolType::Hand },
-            {  332, ToolType::Fill },
-            {  333, ToolType::Shape },
-            {  334, ToolType::PanelCut },
-            {  335, ToolType::Liquify },
+        QtMocHelpers::EnumData<enum ToolType>(324, 324, QMC::EnumIsScoped).add({
+            {  325, ToolType::Pen },
+            {  326, ToolType::Eraser },
+            {  327, ToolType::Lasso },
+            {  328, ToolType::MagneticLasso },
+            {  329, ToolType::RectSelect },
+            {  330, ToolType::EllipseSelect },
+            {  331, ToolType::MagicWand },
+            {  332, ToolType::Transform },
+            {  333, ToolType::Eyedropper },
+            {  334, ToolType::Hand },
+            {  335, ToolType::Fill },
+            {  336, ToolType::Shape },
+            {  337, ToolType::PanelCut },
+            {  338, ToolType::Liquify },
         }),
         // enum 'TransformSubMode'
-        QtMocHelpers::EnumData<enum TransformSubMode>(336, 336, QMC::EnumFlags{}).add({
-            {  337, TransformSubMode::Free },
-            {  338, TransformSubMode::Perspective },
-            {  339, TransformSubMode::Warp },
-            {  340, TransformSubMode::Mesh },
+        QtMocHelpers::EnumData<enum TransformSubMode>(339, 339, QMC::EnumFlags{}).add({
+            {  340, TransformSubMode::Free },
+            {  341, TransformSubMode::Perspective },
+            {  342, TransformSubMode::Warp },
+            {  343, TransformSubMode::Mesh },
         }),
     };
     return QtMocHelpers::metaObjectData<CanvasItem, qt_meta_tag_ZN10CanvasItemE_t>(QMC::MetaObjectFlag{}, qt_stringData,
@@ -1289,59 +1304,62 @@ void CanvasItem::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, 
         case 149: _t->duplicateLayer((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
         case 150: _t->moveLayer((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2]))); break;
         case 151: _t->mergeDown((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
-        case 152: { int _r = _t->getFolderCount();
+        case 152: _t->selectPixels((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 153: _t->invertLayerColors((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 154: _t->toggleReference((*reinterpret_cast<std::add_pointer_t<int>>(_a[1]))); break;
+        case 155: { int _r = _t->getFolderCount();
             if (_a[0]) *reinterpret_cast<int*>(_a[0]) = std::move(_r); }  break;
-        case 153: { int _r = _t->getFirstCreatedFolderStableId();
+        case 156: { int _r = _t->getFirstCreatedFolderStableId();
             if (_a[0]) *reinterpret_cast<int*>(_a[0]) = std::move(_r); }  break;
-        case 154: _t->renameLayer((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 155: _t->applyEffect((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QVariantMap>>(_a[3]))); break;
-        case 156: { QString _r = _t->get_brush_preview((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 157: _t->renameLayer((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 158: _t->applyEffect((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QVariantMap>>(_a[3]))); break;
+        case 159: { QString _r = _t->get_brush_preview((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
-        case 157: { QVariantList _r = _t->getBrushesForCategory((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 160: { QVariantList _r = _t->getBrushesForCategory((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QVariantList*>(_a[0]) = std::move(_r); }  break;
-        case 158: { QVariantList _r = _t->getBrushCategories();
+        case 161: { QVariantList _r = _t->getBrushCategories();
             if (_a[0]) *reinterpret_cast<QVariantList*>(_a[0]) = std::move(_r); }  break;
-        case 159: { QStringList _r = _t->getBrushCategoryNames();
+        case 162: { QStringList _r = _t->getBrushCategoryNames();
             if (_a[0]) *reinterpret_cast<QStringList*>(_a[0]) = std::move(_r); }  break;
-        case 160: _t->beginBrushEdit((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 161: _t->cancelBrushEdit(); break;
-        case 162: _t->applyBrushEdit(); break;
-        case 163: _t->saveAsCopyBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
-        case 164: _t->resetBrushToDefault(); break;
-        case 165: { QVariant _r = _t->getBrushProperty((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])));
+        case 163: _t->beginBrushEdit((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 164: _t->cancelBrushEdit(); break;
+        case 165: _t->applyBrushEdit(); break;
+        case 166: _t->saveAsCopyBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1]))); break;
+        case 167: _t->resetBrushToDefault(); break;
+        case 168: { QVariant _r = _t->getBrushProperty((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])));
             if (_a[0]) *reinterpret_cast<QVariant*>(_a[0]) = std::move(_r); }  break;
-        case 166: _t->setBrushProperty((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QVariant>>(_a[3]))); break;
-        case 167: { QVariantMap _r = _t->getBrushCategoryProperties((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 169: _t->setBrushProperty((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<QVariant>>(_a[3]))); break;
+        case 170: { QVariantMap _r = _t->getBrushCategoryProperties((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QVariantMap*>(_a[0]) = std::move(_r); }  break;
-        case 168: _t->clearPreviewPad(); break;
-        case 169: _t->resizePreviewPad((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2]))); break;
-        case 170: _t->previewPadBeginStroke((*reinterpret_cast<std::add_pointer_t<float>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[3]))); break;
-        case 171: _t->previewPadContinueStroke((*reinterpret_cast<std::add_pointer_t<float>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[3]))); break;
-        case 172: _t->previewPadEndStroke(); break;
-        case 173: { QString _r = _t->getPreviewPadImage();
+        case 171: _t->clearPreviewPad(); break;
+        case 172: _t->resizePreviewPad((*reinterpret_cast<std::add_pointer_t<int>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2]))); break;
+        case 173: _t->previewPadBeginStroke((*reinterpret_cast<std::add_pointer_t<float>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[3]))); break;
+        case 174: _t->previewPadContinueStroke((*reinterpret_cast<std::add_pointer_t<float>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<float>>(_a[3]))); break;
+        case 175: _t->previewPadEndStroke(); break;
+        case 176: { QString _r = _t->getPreviewPadImage();
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
-        case 174: { QString _r = _t->getStampPreview();
+        case 177: { QString _r = _t->getStampPreview();
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
-        case 175: { QString _r = _t->getCanvasPreview();
+        case 178: { QString _r = _t->getCanvasPreview();
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
-        case 176: { QString _r = _t->sampleColorFromImage((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[4])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[5])));
+        case 179: { QString _r = _t->sampleColorFromImage((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[2])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[3])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[4])),(*reinterpret_cast<std::add_pointer_t<int>>(_a[5])));
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
-        case 177: { QString _r = _t->loadReference((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 180: { QString _r = _t->loadReference((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
-        case 178: _t->createNewBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 179: { bool _r = _t->deleteBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 181: _t->createNewBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 182: { bool _r = _t->deleteBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<bool*>(_a[0]) = std::move(_r); }  break;
-        case 180: { QString _r = _t->duplicateBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 183: { QString _r = _t->duplicateBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<QString*>(_a[0]) = std::move(_r); }  break;
-        case 181: { bool _r = _t->renameBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])));
+        case 184: { bool _r = _t->renameBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2])));
             if (_a[0]) *reinterpret_cast<bool*>(_a[0]) = std::move(_r); }  break;
-        case 182: { bool _r = _t->isBuiltInBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
+        case 185: { bool _r = _t->isBuiltInBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])));
             if (_a[0]) *reinterpret_cast<bool*>(_a[0]) = std::move(_r); }  break;
-        case 183: { QVariantList _r = _t->getAvailableTipTextures();
+        case 186: { QVariantList _r = _t->getAvailableTipTextures();
             if (_a[0]) *reinterpret_cast<QVariantList*>(_a[0]) = std::move(_r); }  break;
-        case 184: _t->setTipTextureForBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 185: _t->setGrainTextureForBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
-        case 186: _t->setCurvePoints((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
+        case 187: _t->setTipTextureForBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 188: _t->setGrainTextureForBrush((*reinterpret_cast<std::add_pointer_t<QString>>(_a[1])),(*reinterpret_cast<std::add_pointer_t<QString>>(_a[2]))); break;
+        case 189: _t->setCurvePoints((*reinterpret_cast<std::add_pointer_t<QVariantList>>(_a[1]))); break;
         default: ;
         }
     }
@@ -1614,14 +1632,14 @@ int CanvasItem::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 187)
+        if (_id < 190)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 187;
+        _id -= 190;
     }
     if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 187)
+        if (_id < 190)
             *reinterpret_cast<QMetaType *>(_a[0]) = QMetaType();
-        _id -= 187;
+        _id -= 190;
     }
     if (_c == QMetaObject::ReadProperty || _c == QMetaObject::WriteProperty
             || _c == QMetaObject::ResetProperty || _c == QMetaObject::BindableProperty

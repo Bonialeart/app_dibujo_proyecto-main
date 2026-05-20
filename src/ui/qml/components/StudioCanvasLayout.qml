@@ -27,6 +27,13 @@ Item {
     property real wsMenuX: 0
     property real wsMenuY: 0
 
+    property bool winMenuOpen: false
+    property real winMenuX: 0
+    property real winMenuY: 0
+    property bool wsSubMenuOpen: false
+    property real wsSubMenuX: 0
+    property real wsSubMenuY: 0
+
     signal switchToEssential()
     
     function loadWorkspace(name) { panelManager.loadWorkspace(name) }
@@ -758,6 +765,49 @@ Item {
             }
             
             Item { width: 8; visible: studioLayout.showTopWorkspaceSwitcher }
+
+            // --- VENTANA MENU BUTTON ---
+            Rectangle {
+                id: ventanaBtn
+                width: 90; height: 26; radius: 6
+                color: ventMa.containsMouse || studioLayout.winMenuOpen ? "#2a2a30" : "#1a1a1f"
+                border.color: ventMa.containsMouse || studioLayout.winMenuOpen ? Qt.lighter(accentColor, 1.2) : "#333"
+                border.width: 1
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    spacing: 4
+                    
+                    Text { text: "🗔"; color: "#aaa"; font.pixelSize: 12 }
+                    Text {
+                        text: "Ventana"
+                        color: "white"
+                        font.pixelSize: 11
+                        font.weight: Font.DemiBold
+                        Layout.fillWidth: true
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                    Text { text: "▾"; color: "#aaa"; font.pixelSize: 12 }
+                }
+                
+                MouseArea {
+                    id: ventMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        var pt = ventanaBtn.mapToItem(studioLayout, 0, ventanaBtn.height + 6)
+                        studioLayout.winMenuX = pt.x
+                        studioLayout.winMenuY = pt.y
+                        studioLayout.winMenuOpen = !studioLayout.winMenuOpen
+                        studioLayout.wsSubMenuOpen = false
+                    }
+                }
+            }
+
+            Item { width: 8; visible: true }
             
             // Mode switch
             Rectangle {
@@ -1066,21 +1116,25 @@ Item {
         }
     }
     
-    // --- CUSTOM FLOATING DROPDOWN FOR WORKSPACES ---
+    // --- CUSTOM FLOATING DROPDOWN FOR WORKSPACES & WINDOW MENUS ---
     // Guaranteed to be on top of EVERYTHING via z-index and root containment
     
     // 1. Invisible fullscreen dismisser
     MouseArea {
         anchors.fill: parent
-        z: 9998
-        visible: studioLayout.wsMenuOpen
-        onClicked: studioLayout.wsMenuOpen = false
+        z: 9997
+        visible: studioLayout.wsMenuOpen || studioLayout.winMenuOpen || studioLayout.wsSubMenuOpen
+        onClicked: {
+            studioLayout.wsMenuOpen = false
+            studioLayout.winMenuOpen = false
+            studioLayout.wsSubMenuOpen = false
+        }
     }
     
-    // 2. The Floating Menu itself
+    // 2. The Original Floating Workspaces Menu
     Rectangle {
         id: customWsMenu
-        z: 9999
+        z: 9998
         visible: studioLayout.wsMenuOpen
         x: studioLayout.wsMenuX
         y: studioLayout.wsMenuY
@@ -1106,7 +1160,7 @@ Item {
             spacing: 4
             
             Repeater {
-                model: ["Ilustración", "Manga/Comic", "Animación"]
+                model: panelManager.availableWorkspaces
                 delegate: Rectangle {
                     width: parent.width
                     height: 32
@@ -1125,7 +1179,6 @@ Item {
                         anchors.leftMargin: 28
                     }
                     
-                    // Checkmark indicator for active workspace instead of a line
                     Text {
                         visible: modelData === panelManager.activeWorkspace
                         text: "✓"
@@ -1146,6 +1199,591 @@ Item {
                             panelManager.loadWorkspace(modelData)
                             studioLayout.wsMenuOpen = false
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. The Custom "Ventana" Dropdown Menu
+    Rectangle {
+        id: customWinMenu
+        z: 9998
+        visible: studioLayout.winMenuOpen
+        x: studioLayout.winMenuX
+        y: studioLayout.winMenuY
+        width: 220
+        height: winMenuCol.height + 16
+        color: "#18181c"
+        border.color: "#3a3a40"
+        border.width: 1
+        radius: 8
+        
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowBlur: 24
+            shadowColor: "#88000000"
+            shadowVerticalOffset: 4
+        }
+        
+        Column {
+            id: winMenuCol
+            width: parent.width - 12
+            anchors.centerIn: parent
+            spacing: 2
+            
+            // Item 1: Espacio de trabajo (Workspace submenu trigger)
+            Rectangle {
+                id: wsSubMenuTrigger
+                width: parent.width
+                height: 30
+                radius: 6
+                color: wsTriggerMa.containsMouse || studioLayout.wsSubMenuOpen ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                border.color: wsTriggerMa.containsMouse || studioLayout.wsSubMenuOpen ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                border.width: 1
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    Text {
+                        text: "Espacio de trabajo"
+                        color: wsTriggerMa.containsMouse || studioLayout.wsSubMenuOpen ? "white" : "#ddd"
+                        font.pixelSize: 12
+                        font.weight: Font.Medium
+                        Layout.fillWidth: true
+                    }
+                    Text {
+                        text: "▶"
+                        color: "#888"
+                        font.pixelSize: 10
+                    }
+                }
+                
+                MouseArea {
+                    id: wsTriggerMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: toggleSubMenu()
+                    onEntered: toggleSubMenu()
+                    
+                    function toggleSubMenu() {
+                        var pt = wsSubMenuTrigger.mapToItem(studioLayout, wsSubMenuTrigger.width + 4, -8)
+                        studioLayout.wsSubMenuX = pt.x
+                        studioLayout.wsSubMenuY = pt.y
+                        studioLayout.wsSubMenuOpen = true
+                    }
+                }
+            }
+            
+            // Separator
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: "#2d2d34"
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+            
+            // Checklist of Panels
+            Repeater {
+                model: [
+                    { id: "color", name: "Color" },
+                    { id: "layers", name: "Capas" },
+                    { id: "brushes", name: "Pinceles" },
+                    { id: "settings", name: "Configuración de Pincel" },
+                    { id: "toolsettings", name: "Propiedades de Herramienta" },
+                    { id: "navigator", name: "Navegador" },
+                    { id: "history", name: "Historial" },
+                    { id: "reference", name: "Referencia" },
+                    { id: "info", name: "Info" },
+                    { id: "timeline", name: "Línea de tiempo" }
+                ]
+                
+                delegate: Rectangle {
+                    width: parent.width
+                    height: 30
+                    radius: 6
+                    color: panelToggleMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                    border.color: panelToggleMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                    border.width: 1
+                    
+                    function checkIsVisible(pid) {
+                        var models = [
+                            panelManager.leftDockModel,
+                            panelManager.leftDockModel2,
+                            panelManager.rightDockModel,
+                            panelManager.rightDockModel2,
+                            panelManager.bottomDockModel,
+                            panelManager.floatingModel
+                        ]
+                        for (var i = 0; i < models.length; i++) {
+                            var m = models[i];
+                            if (!m) continue;
+                            var idx = m.findById(pid);
+                            if (idx >= 0) {
+                                return m.get(idx).visible;
+                            }
+                        }
+                        return false;
+                    }
+                    
+                    Text {
+                        text: modelData.name
+                        color: panelToggleMa.containsMouse ? "white" : "#ddd"
+                        font.pixelSize: 12
+                        font.weight: Font.Medium
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 28
+                    }
+                    
+                    Text {
+                        visible: checkIsVisible(modelData.id)
+                        text: "✓"
+                        color: accentColor
+                        font.pixelSize: 14
+                        font.weight: Font.Bold
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 8
+                    }
+                    
+                    MouseArea {
+                        id: panelToggleMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            panelManager.togglePanel(modelData.id)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 4. The Workspace Submenu (Flyout)
+    Rectangle {
+        id: customWsSubMenu
+        z: 9999
+        visible: studioLayout.winMenuOpen && studioLayout.wsSubMenuOpen
+        x: studioLayout.wsSubMenuX
+        y: studioLayout.wsSubMenuY
+        width: 240
+        height: wsSubCol.height + 16
+        color: "#18181c"
+        border.color: "#3a3a40"
+        border.width: 1
+        radius: 8
+        
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowBlur: 24
+            shadowColor: "#88000000"
+            shadowVerticalOffset: 4
+        }
+        
+        Column {
+            id: wsSubCol
+            width: parent.width - 12
+            anchors.centerIn: parent
+            spacing: 2
+            
+            // Volver a la disposición básica
+            Rectangle {
+                width: parent.width; height: 30; radius: 6
+                color: resetMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                border.color: resetMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                border.width: 1
+                Text {
+                    text: "Volver a la disposición básica"
+                    color: resetMa.containsMouse ? "white" : "#ddd"
+                    font.pixelSize: 12
+                    anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 8
+                }
+                MouseArea {
+                    id: resetMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        panelManager.resetCurrentWorkspace()
+                        studioLayout.winMenuOpen = false
+                        studioLayout.wsSubMenuOpen = false
+                    }
+                }
+            }
+            
+            // Volver a cargar espacio de trabajo
+            Rectangle {
+                width: parent.width; height: 30; radius: 6
+                color: reloadMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                border.color: reloadMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                border.width: 1
+                Text {
+                    text: "Volver a cargar espacio de trabajo"
+                    color: reloadMa.containsMouse ? "white" : "#ddd"
+                    font.pixelSize: 12
+                    anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 8
+                }
+                MouseArea {
+                    id: reloadMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        panelManager.reloadCurrentWorkspace()
+                        studioLayout.winMenuOpen = false
+                        studioLayout.wsSubMenuOpen = false
+                    }
+                }
+            }
+            
+            // Registrar espacio de trabajo
+            Rectangle {
+                width: parent.width; height: 30; radius: 6
+                color: regMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                border.color: regMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                border.width: 1
+                Text {
+                    text: "Registrar espacio de trabajo..."
+                    color: regMa.containsMouse ? "white" : "#ddd"
+                    font.pixelSize: 12
+                    anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 8
+                }
+                MouseArea {
+                    id: regMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        studioLayout.winMenuOpen = false
+                        studioLayout.wsSubMenuOpen = false
+                        registerWorkspaceDialog.open()
+                    }
+                }
+            }
+            
+            // Gestionar espacios de trabajo
+            Rectangle {
+                width: parent.width; height: 30; radius: 6
+                color: manageMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                border.color: manageMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                border.width: 1
+                Text {
+                    text: "Gestionar espacios de trabajo..."
+                    color: manageMa.containsMouse ? "white" : "#ddd"
+                    font.pixelSize: 12
+                    anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 8
+                }
+                MouseArea {
+                    id: manageMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        studioLayout.winMenuOpen = false
+                        studioLayout.wsSubMenuOpen = false
+                        manageWorkspacesDialog.open()
+                    }
+                }
+            }
+            
+            // Separator
+            Rectangle {
+                width: parent.width; height: 1; color: "#2d2d34"
+            }
+            
+            // List of available workspaces
+            Repeater {
+                model: panelManager.availableWorkspaces
+                delegate: Rectangle {
+                    width: parent.width; height: 30; radius: 6
+                    color: wsItMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                    border.color: wsItMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                    border.width: 1
+                    
+                    Text {
+                        text: modelData
+                        color: modelData === panelManager.activeWorkspace ? accentColor : (wsItMa.containsMouse ? "white" : "#ddd")
+                        font.pixelSize: 12
+                        font.weight: modelData === panelManager.activeWorkspace ? Font.Bold : Font.Medium
+                        anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 28
+                    }
+                    
+                    Text {
+                        visible: modelData === panelManager.activeWorkspace
+                        text: "✓"
+                        color: accentColor
+                        font.pixelSize: 14
+                        font.weight: Font.Bold
+                        anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 8
+                    }
+                    
+                    MouseArea {
+                        id: wsItMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            panelManager.loadWorkspace(modelData)
+                            studioLayout.winMenuOpen = false
+                            studioLayout.wsSubMenuOpen = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 5. Register Workspace Dialog
+    Dialog {
+        id: registerWorkspaceDialog
+        title: "Registrar espacio de trabajo"
+        anchors.centerIn: parent
+        width: 320
+        modal: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        
+        background: Rectangle {
+            color: "#18181c"
+            border.color: "#3a3a40"
+            border.width: 1
+            radius: 12
+            
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowBlur: 24
+                shadowColor: "#bb000000"
+            }
+        }
+        
+        header: Rectangle {
+            color: "#111114"
+            height: 40
+            radius: 12
+            clip: true
+            Text {
+                text: "Registrar espacio de trabajo"
+                color: "white"
+                font.pixelSize: 14
+                font.weight: Font.Bold
+                anchors.centerIn: parent
+            }
+            Rectangle { width: parent.width; height: 1; color: "#2d2d34"; anchors.bottom: parent.bottom }
+        }
+        
+        contentItem: ColumnLayout {
+            spacing: 12
+            anchors.margins: 12
+            
+            Text {
+                text: "Nombre del espacio de trabajo:"
+                color: "#aaa"
+                font.pixelSize: 12
+            }
+            
+            TextField {
+                id: wsNameInput
+                Layout.fillWidth: true
+                color: "white"
+                font.pixelSize: 13
+                placeholderText: "Mi Espacio Personal"
+                placeholderTextColor: "#555"
+                selectByMouse: true
+                
+                background: Rectangle {
+                    color: "#0a0a0d"
+                    border.color: wsNameInput.activeFocus ? accentColor : "#3a3a40"
+                    border.width: 1
+                    radius: 6
+                }
+                
+                onAccepted: {
+                    if (wsNameInput.text.trim() !== "") {
+                        panelManager.registerWorkspace(wsNameInput.text.trim())
+                        wsNameInput.text = ""
+                        registerWorkspaceDialog.close()
+                    }
+                }
+            }
+            
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                Layout.topMargin: 8
+                
+                Item { Layout.fillWidth: true }
+                
+                Rectangle {
+                    width: 80; height: 28; radius: 6
+                    color: "transparent"
+                    border.color: "#3a3a40"
+                    border.width: 1
+                    Text { text: "Cancelar"; color: "#aaa"; font.pixelSize: 12; anchors.centerIn: parent }
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: registerWorkspaceDialog.close()
+                    }
+                }
+                
+                Rectangle {
+                    width: 80; height: 28; radius: 6
+                    color: wsNameInput.text.trim() === "" ? "#333" : (regBtnMa.containsMouse ? Qt.lighter(accentColor, 1.1) : accentColor)
+                    opacity: wsNameInput.text.trim() === "" ? 0.5 : 1.0
+                    Text { text: "Aceptar"; color: "white"; font.pixelSize: 12; font.weight: Font.Bold; anchors.centerIn: parent }
+                    MouseArea {
+                        id: regBtnMa
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        enabled: wsNameInput.text.trim() !== ""
+                        onClicked: {
+                            panelManager.registerWorkspace(wsNameInput.text.trim())
+                            wsNameInput.text = ""
+                            registerWorkspaceDialog.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 6. Manage Workspaces Dialog
+    Dialog {
+        id: manageWorkspacesDialog
+        title: "Gestionar espacios de trabajo"
+        anchors.centerIn: parent
+        width: 360
+        height: 380
+        modal: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        
+        background: Rectangle {
+            color: "#18181c"
+            border.color: "#3a3a40"
+            border.width: 1
+            radius: 12
+            
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowBlur: 24
+                shadowColor: "#bb000000"
+            }
+        }
+        
+        header: Rectangle {
+            color: "#111114"
+            height: 40
+            radius: 12
+            clip: true
+            Text {
+                text: "Gestionar espacios de trabajo"
+                color: "white"
+                font.pixelSize: 14
+                font.weight: Font.Bold
+                anchors.centerIn: parent
+            }
+            Rectangle { width: parent.width; height: 1; color: "#2d2d34"; anchors.bottom: parent.bottom }
+        }
+        
+        contentItem: ColumnLayout {
+            spacing: 12
+            anchors.margins: 12
+            
+            Text {
+                text: "Espacios de trabajo personalizados:"
+                color: "#aaa"
+                font.pixelSize: 12
+                Layout.topMargin: 4
+            }
+            
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                
+                ListView {
+                    id: customWsListView
+                    model: panelManager.availableWorkspaces
+                    spacing: 4
+                    delegate: Item {
+                        width: customWsListView.width
+                        height: visible ? 34 : 0
+                        visible: modelData !== "Ilustración" && modelData !== "Manga/Comic" && modelData !== "Animación"
+                        clip: true
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "#111114"
+                            border.color: "#2d2d34"
+                            border.width: 1
+                            radius: 6
+                            
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                
+                                Text {
+                                    text: modelData
+                                    color: "white"
+                                    font.pixelSize: 12
+                                    font.weight: Font.DemiBold
+                                    Layout.fillWidth: true
+                                }
+                                
+                                Rectangle {
+                                    width: 24; height: 24; radius: 4
+                                    color: trashMa.containsMouse ? "#d9534f" : "#2a2a30"
+                                    border.color: trashMa.containsMouse ? "#d43f3a" : "#3a3a40"
+                                    border.width: 1
+                                    
+                                    Text {
+                                        text: "✕"
+                                        color: "white"
+                                        font.pixelSize: 11
+                                        anchors.centerIn: parent
+                                    }
+                                    
+                                    MouseArea {
+                                        id: trashMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            panelManager.deleteWorkspace(modelData)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Text {
+                visible: {
+                    var avail = panelManager.availableWorkspaces;
+                    var hasCustom = false;
+                    for (var i = 0; i < avail.length; i++) {
+                        if (avail[i] !== "Ilustración" && avail[i] !== "Manga/Comic" && avail[i] !== "Animación") {
+                            hasCustom = true;
+                            break;
+                        }
+                    }
+                    return !hasCustom;
+                }
+                text: "No hay espacios de trabajo personalizados."
+                color: "#555"
+                font.pixelSize: 12
+                font.italic: true
+                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignHCenter
+            }
+            
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+                
+                Item { Layout.fillWidth: true }
+                
+                Rectangle {
+                    width: 80; height: 28; radius: 6
+                    color: accentColor
+                    Text { text: "Cerrar"; color: "white"; font.pixelSize: 12; font.weight: Font.Bold; anchors.centerIn: parent }
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: manageWorkspacesDialog.close()
                     }
                 }
             }

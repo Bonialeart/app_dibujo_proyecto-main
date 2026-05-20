@@ -7,6 +7,8 @@
 #include <QObject>
 #include <QString>
 
+class QSettings;
+
 namespace artflow {
 
 /**
@@ -42,6 +44,9 @@ class PanelManager : public QObject {
   Q_PROPERTY(
       QString activeWorkspace READ activeWorkspace NOTIFY workspaceChanged)
 
+  // Available workspaces list
+  Q_PROPERTY(QStringList availableWorkspaces READ availableWorkspaces NOTIFY workspacesChanged)
+
   // Active group tabs (QML reads this to know which tab is selected in a group)
   Q_PROPERTY(
       QVariantMap activeGroupTabs READ activeGroupTabs NOTIFY activeTabChanged)
@@ -65,12 +70,25 @@ public:
   bool bottomCollapsed() const { return m_bottomCollapsed; }
 
   QString activeWorkspace() const { return m_activeWorkspace; }
+  QStringList availableWorkspaces() const;
   QVariantMap activeGroupTabs() const;
 
   // --- Q_INVOKABLE methods called from QML ---
 
-  // Load a predefined workspace layout
+  // Load a predefined or custom workspace layout
   Q_INVOKABLE void loadWorkspace(const QString &name);
+
+  // Register current layout as a new custom workspace
+  Q_INVOKABLE void registerWorkspace(const QString &name);
+
+  // Delete a custom workspace
+  Q_INVOKABLE void deleteWorkspace(const QString &name);
+
+  // Reset the current workspace to its default layout
+  Q_INVOKABLE void resetCurrentWorkspace();
+
+  // Reload the current workspace to its last saved layout
+  Q_INVOKABLE void reloadCurrentWorkspace();
 
   // Toggle panel visibility (smart: opens dock if closed, switches tab, etc.)
   Q_INVOKABLE void togglePanel(const QString &panelId);
@@ -100,6 +118,7 @@ public:
 signals:
   void dockStateChanged();
   void workspaceChanged();
+  void workspacesChanged();
   void activeTabChanged();
 
 private:
@@ -123,6 +142,15 @@ private:
   static PanelInfo makePanel(const QString &id, const QString &name,
                              const QString &icon, const QString &source);
 
+  // Auto-save the current layout state
+  void autoSave();
+
+  // Load a saved layout by group name, returns true if successful
+  bool loadLayoutHelper(const QString &groupName, QSettings &settings);
+
+  // Catalog of standard panels
+  QMap<QString, PanelInfo> createCatalog() const;
+
   // --- Data ---
   PanelListModel *m_leftDock;
   PanelListModel *m_leftDock2;
@@ -138,6 +166,7 @@ private:
   bool m_bottomCollapsed = true;
 
   QString m_activeWorkspace;
+  QStringList m_customWorkspaces;
   QMap<QString, QString> m_activeGroupTabs;
 };
 

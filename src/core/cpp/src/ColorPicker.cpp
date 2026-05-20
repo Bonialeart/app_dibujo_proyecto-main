@@ -24,7 +24,6 @@ ColorPicker::ColorPicker(QObject *parent)
   // Setup callbacks
   m_impl->setOnColorChanged([this](const Color &c) {
     emit activeColorChanged();
-    emit historyChanged();
   });
 }
 
@@ -41,7 +40,6 @@ void ColorPicker::setActiveColor(const QColor &color) {
 
   m_impl->setActiveColor(c);
   emit activeColorChanged();
-  emit historyChanged();
 }
 
 QColor ColorPicker::secondaryColor() const {

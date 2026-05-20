@@ -53,7 +53,7 @@ public:
   int count() const;
 
   // Find panel index by id, returns -1 if not found
-  int findById(const QString &panelId) const;
+  Q_INVOKABLE int findById(const QString &panelId) const;
 
   // Visibility helpers
   bool hasAnyVisible() const;

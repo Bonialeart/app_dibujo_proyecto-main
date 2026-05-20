@@ -108,7 +108,7 @@ Item {
                 border.color: "#FFFFFF"
                 border.width: 2
                 
-                layer.enabled: true
+                layer.enabled: false
                 layer.effect: MultiEffect {
                     shadowEnabled: true
                     shadowBlur: 10
