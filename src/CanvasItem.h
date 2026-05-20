@@ -163,6 +163,9 @@ public:
                  setOpacityByPressure NOTIFY opacityByPressureChanged)
   Q_PROPERTY(bool flowByPressure READ flowByPressure WRITE setFlowByPressure
                  NOTIFY flowByPressureChanged)
+  Q_PROPERTY(float panelGutterSize READ panelGutterSize WRITE setPanelGutterSize NOTIFY panelGutterSizeChanged)
+  Q_PROPERTY(QString panelBorderStyle READ panelBorderStyle WRITE setPanelBorderStyle NOTIFY panelBorderStyleChanged)
+  Q_PROPERTY(float panelBorderWidth READ panelBorderWidth WRITE setPanelBorderWidth NOTIFY panelBorderWidthChanged)
 
   enum TransformSubMode { Free, Perspective, Warp, Mesh };
   Q_ENUM(TransformSubMode)
@@ -233,9 +236,15 @@ public:
   bool sizeByPressure() const { return m_sizeByPressure; }
   bool opacityByPressure() const { return m_opacityByPressure; }
   bool flowByPressure() const { return m_flowByPressure; }
+  float panelGutterSize() const { return m_panelGutterSize; }
+  QString panelBorderStyle() const { return m_panelBorderStyle; }
+  float panelBorderWidth() const { return m_panelBorderWidth; }
 
   // Setters
   void setBrushSize(int size);
+  void setPanelGutterSize(float size);
+  void setPanelBorderStyle(const QString &style);
+  void setPanelBorderWidth(float width);
   void setBrushColor(const QColor &color);
   void setBrushOpacity(float opacity);
   void setBrushFlow(float flow);
@@ -365,6 +374,8 @@ public:
                                             const QString &coverColor);
   Q_INVOKABLE QString create_new_page(const QString &folderPath,
                                       const QString &pageName);
+  Q_INVOKABLE bool duplicatePage(const QString &sourcePath);
+  Q_INVOKABLE bool reorderPages(const QString &folderPath, const QVariantList &newPathsOrder);
   Q_INVOKABLE bool exportPageImage(const QString &projectPath,
                                    const QString &outputPath,
                                    const QString &format);
@@ -387,11 +398,14 @@ public:
   Q_INVOKABLE void addLayer();
   Q_INVOKABLE void addGroup();
   Q_INVOKABLE void moveLayerToGroup(int layerId, int groupId);
+  Q_INVOKABLE void groupLayersOrMoveToGroup(int draggedLayerId, int targetLayerId);
   Q_INVOKABLE void toggleGroupExpanded(int index);
   Q_INVOKABLE void removeLayer(int index);
   Q_INVOKABLE void duplicateLayer(int index);
   Q_INVOKABLE void moveLayer(int fromIndex, int toIndex);
   Q_INVOKABLE void mergeDown(int index);
+  Q_INVOKABLE int getFolderCount() const;
+  Q_INVOKABLE int getFirstCreatedFolderStableId() const;
   Q_INVOKABLE void renameLayer(int index, const QString &name);
   Q_INVOKABLE void applyEffect(int index, const QString &effect,
                                const QVariantMap &params);
@@ -512,6 +526,9 @@ signals:
   void symmetryModeChanged();
   void symmetrySegmentsChanged();
   void isLiquifyingChanged();
+  void panelGutterSizeChanged();
+  void panelBorderStyleChanged();
+  void panelBorderWidthChanged();
 
   void pressureCurvePointsChanged(); // SEÑAL AÑADIDA
   void strokeStarted(const QColor &color);
@@ -720,7 +737,14 @@ private:
   QPointF m_panelCutEndPos;
   bool m_isPanelCutting = false;
   float m_panelGutterSize = 25.0f; // Tamaño del gutter (espacio entre paneles)
+  QString m_panelBorderStyle = "solid";
+  float m_panelBorderWidth = 4.0f;
   void executePanelCut(const QPointF &p1, const QPointF &p2);
+  artflow::Layer* getActiveBasePanel(int *outIndex = nullptr) const;
+  void drawActivePanelOverlay(QPainter *painter);
+  void drawStylizedBorder(QPainter &painter, const QPointF &p1, const QPointF &p2, const QString &style, float width);
+  QRectF getLayerBoundingRect(artflow::Layer *layer);
+  bool lineIntersectsRect(const QLineF &line, const QRectF &rect);
 
   enum class TransformMode { None, Move, Scale, Rotate };
   TransformMode m_transformMode = TransformMode::None;

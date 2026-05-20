@@ -15,6 +15,8 @@ Item {
     property string panelIcon: ""         // Icon name for iconPath()
     property bool panelVisible: false
     property color accentColor: "#6366f1"
+    property bool isDockable: false
+    property bool isDocked: false
 
     // Size constraints
     property real minWidth: 200
@@ -37,7 +39,6 @@ Item {
 
     // ── Internal State ──
     property int panelZ: 100
-    property bool _initialized: false
     property bool _minimized: false
 
     // Use iconPath from mainWindow context
@@ -50,21 +51,14 @@ Item {
     opacity: panelVisible ? 1.0 : 0.0
     scale: panelVisible ? 1.0 : 0.92
 
-    // Bind position to initial values (breaks when dragged)
+    // Bind position & dimensions to initial values (breaks when dragged/resized)
     x: initialX
     y: initialY
+    width: defaultWidth
+    height: defaultHeight
 
     Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
     Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutBack } }
-
-    // Initialize dimensions (position is bound via x: initialX / y: initialY)
-    Component.onCompleted: {
-        if (!_initialized) {
-            root.width = defaultWidth
-            root.height = defaultHeight
-            _initialized = true
-        }
-    }
 
     // ── PANEL BODY ──
     Item {
@@ -162,6 +156,36 @@ Item {
                         elide: Text.ElideRight
                     }
 
+                    // ── Pin/Dock Button ──
+                    Rectangle {
+                        visible: root.isDockable
+                        Layout.preferredWidth: 22
+                        Layout.preferredHeight: 22
+                        radius: 6
+                        color: dockMouse.containsMouse ? "#22ffffff" : "transparent"
+
+                        Text {
+                            text: root.isDocked ? "🔓" : "📌"
+                            color: dockMouse.containsMouse ? "#ddd" : "#888"
+                            font.pixelSize: 11
+                            anchors.centerIn: parent
+                        }
+
+                        MouseArea {
+                            id: dockMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.isDocked = !root.isDocked
+                            }
+                        }
+
+                        ToolTip.visible: dockMouse.containsMouse
+                        ToolTip.text: root.isDocked ? "Desanclar panel" : "Anclar a la izquierda"
+                        ToolTip.delay: 600
+                    }
+
                     // ── Minimize Button ──
                     Rectangle {
                         Layout.preferredWidth: 22
@@ -224,6 +248,7 @@ Item {
                 // ── Drag Handler ──
                 MouseArea {
                     id: dragArea
+                    enabled: !root.isDocked
                     anchors.fill: parent
                     anchors.rightMargin: 60  // Leave space for buttons
                     cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
@@ -277,14 +302,36 @@ Item {
         // Minimized state: collapse height
         states: [
             State {
+                name: "docked"
+                when: root.isDocked
+                PropertyChanges {
+                    target: root
+                    x: 16 * (typeof uiScale !== 'undefined' ? uiScale : 1.0)
+                    y: 76 * (typeof uiScale !== 'undefined' ? uiScale : 1.0)
+                    width: root.defaultWidth
+                    height: (parent ? parent.height - 92 * (typeof uiScale !== 'undefined' ? uiScale : 1.0) : 500)
+                }
+            },
+            State {
                 name: "minimized"
-                when: root._minimized
+                when: root._minimized && !root.isDocked
                 PropertyChanges { target: root; height: 36 }
             },
             State {
                 name: "normal"
-                when: !root._minimized
+                when: !root._minimized && !root.isDocked
                 PropertyChanges { target: root; height: panel._savedHeight > 0 ? panel._savedHeight : root.defaultHeight }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                from: "*"; to: "docked"
+                NumberAnimation { properties: "x,y,width,height"; duration: 250; easing.type: Easing.OutCubic }
+            },
+            Transition {
+                from: "docked"; to: "normal"
+                NumberAnimation { properties: "x,y,width,height"; duration: 250; easing.type: Easing.OutCubic }
             }
         ]
 
@@ -338,7 +385,7 @@ Item {
             anchors.bottomMargin: panel.edgeSize
             width: panel.edgeSize
             cursorShape: Qt.SizeHorCursor
-            visible: !root._minimized
+            visible: !root._minimized && !root.isDocked
             
             property real startX: 0
             property real startW: 0
@@ -372,7 +419,7 @@ Item {
             anchors.rightMargin: panel.edgeSize
             height: panel.edgeSize
             cursorShape: Qt.SizeVerCursor
-            visible: !root._minimized
+            visible: !root._minimized && !root.isDocked
             
             property real startY: 0
             property real startH: 0
@@ -403,7 +450,7 @@ Item {
             anchors.rightMargin: panel.edgeSize
             height: panel.edgeSize
             cursorShape: Qt.SizeVerCursor
-            visible: !root._minimized
+            visible: !root._minimized && !root.isDocked
             
             property real startY: 0
             property real startH: 0
@@ -435,7 +482,7 @@ Item {
             width: panel.edgeSize * 2
             height: panel.edgeSize * 2
             cursorShape: Qt.SizeFDiagCursor
-            visible: !root._minimized
+            visible: !root._minimized && !root.isDocked
             
             property real startX: 0
             property real startY: 0
@@ -466,7 +513,7 @@ Item {
             width: panel.edgeSize * 2
             height: panel.edgeSize * 2
             cursorShape: Qt.SizeBDiagCursor
-            visible: !root._minimized
+            visible: !root._minimized && !root.isDocked
             
             property real startX: 0
             property real startY: 0
@@ -502,7 +549,7 @@ Item {
             width: panel.edgeSize * 2
             height: panel.edgeSize * 2
             cursorShape: Qt.SizeBDiagCursor
-            visible: !root._minimized
+            visible: !root._minimized && !root.isDocked
             
             property real startX: 0
             property real startY: 0
@@ -537,7 +584,7 @@ Item {
             width: panel.edgeSize * 2
             height: panel.edgeSize * 2
             cursorShape: Qt.SizeFDiagCursor
-            visible: !root._minimized
+            visible: !root._minimized && !root.isDocked
             
             property real startX: 0
             property real startY: 0

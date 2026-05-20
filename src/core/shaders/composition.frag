@@ -16,6 +16,7 @@ uniform float uZoom;         // Zoom level
 uniform sampler2D uMask;     // Clipping Mask Texture
 uniform int uHasMask;        // 1 if masked, 0 otherwise
 uniform float uIsPreview;    // 1.0 if drawing, 0.0 otherwise
+uniform int uDrawPanelBorderOnly; // 1 to draw only the panel border pixels of uSource
 
 // Setup Constants derived from C++ BlendMode enum
 const int MODE_NORMAL = 0;
@@ -92,6 +93,16 @@ void main() {
     // Sample Textures
     vec4 S = texture(uSource, layerUV);
     vec4 D = texture(uBackdrop, vTexCoord);
+
+    // If we only want the panel border:
+    if (uDrawPanelBorderOnly == 1) {
+        // A pixel is part of the border if it is opaque and not white
+        bool isBorder = (S.a > 0.01) && (S.r < 0.98 || S.g < 0.98 || S.b < 0.98);
+        if (!isBorder) {
+            fragColor = D;
+            return;
+        }
+    }
 
     // If source is empty, return dest
     if (S.a <= 0.0) {

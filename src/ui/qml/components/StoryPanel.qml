@@ -11,6 +11,8 @@ Item {
     property string currentFolderPath: ""
     property color accentColor: "#6366f1"
     property bool isCompactMode: width < 200
+    property alias pagesModel: pagesModel
+    property string filterText: ""
     
     signal pageSelected(string path)
     
@@ -164,6 +166,179 @@ Item {
                 }
             }
         }
+
+        // ═══════════════ VIEW MODE SELECTOR (Obsidian Glassmorphic Row) ═══════════════
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 38
+            color: "transparent"
+            Layout.leftMargin: 10; Layout.rightMargin: 10
+            Layout.topMargin: 6; Layout.bottomMargin: 2
+            
+            Rectangle {
+                anchors.fill: parent
+                radius: 10
+                color: Qt.rgba(20/255, 20/255, 25/255, 0.6)
+                border.color: Qt.rgba(255, 255, 255, 0.05)
+                border.width: 1
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    spacing: 2
+                    
+                    // Button 1: Single Page
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        radius: 8
+                        color: (mainWindow.comicMode === "single") ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : "transparent"
+                        border.color: (mainWindow.comicMode === "single") ? root.accentColor : "transparent"
+                        border.width: 1
+                        
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        
+                        Text {
+                            text: root.isCompactMode ? "📄" : "📄 Única"
+                            color: (mainWindow.comicMode === "single") ? "white" : "#888"
+                            font.pixelSize: 10; font.bold: true
+                            anchors.centerIn: parent
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mainWindow.comicMode = "single"
+                        }
+                    }
+                    
+                    // Button 2: Webtoon Continuous Stack
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        radius: 8
+                        color: (mainWindow.comicMode === "webtoon") ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : "transparent"
+                        border.color: (mainWindow.comicMode === "webtoon") ? root.accentColor : "transparent"
+                        border.width: 1
+                        
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        
+                        Text {
+                            text: root.isCompactMode ? "🎞️" : "🎞️ Webtoon"
+                            color: (mainWindow.comicMode === "webtoon") ? "white" : "#888"
+                            font.pixelSize: 10; font.bold: true
+                            anchors.centerIn: parent
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mainWindow.comicMode = "webtoon"
+                        }
+                    }
+                    
+                    // Button 3: Double Spread
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        radius: 8
+                        color: (mainWindow.comicMode === "double") ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : "transparent"
+                        border.color: (mainWindow.comicMode === "double") ? root.accentColor : "transparent"
+                        border.width: 1
+                        
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        
+                        Text {
+                            text: root.isCompactMode ? "📖" : "📖 Doble"
+                            color: (mainWindow.comicMode === "double") ? "white" : "#888"
+                            font.pixelSize: 10; font.bold: true
+                            anchors.centerIn: parent
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mainWindow.comicMode = "double"
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ═══════════════ SEARCH / FILTER BAR ═══════════════
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 36
+            color: "transparent"
+            Layout.leftMargin: 10; Layout.rightMargin: 10
+            Layout.topMargin: 4; Layout.bottomMargin: 4
+            
+            Rectangle {
+                anchors.fill: parent
+                radius: 8
+                color: "#16161a"
+                border.color: searchInput.activeFocus ? accentColor : "#2a2a30"
+                border.width: 1
+                
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 8; anchors.rightMargin: 8
+                    spacing: 6
+                    
+                    Text {
+                        text: "🔍"
+                        color: searchInput.activeFocus ? accentColor : "#555"
+                        font.pixelSize: 11
+                    }
+                    
+                    TextInput {
+                        id: searchInput
+                        Layout.fillWidth: true
+                        color: "white"
+                        font.pixelSize: 11
+                        selectByMouse: true
+                        clip: true
+                        
+                        // Handle placeholder
+                        Text {
+                            text: "Buscar página..."
+                            color: "#555"
+                            font.pixelSize: 11
+                            visible: parent.text === "" && !parent.activeFocus
+                            anchors.fill: parent
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                        
+                        onTextChanged: {
+                            root.filterText = text
+                        }
+                    }
+                    
+                    // Clear button
+                    Rectangle {
+                        width: 16; height: 16; radius: 8
+                        color: "#222"
+                        visible: searchInput.text !== ""
+                        
+                        Text {
+                            text: "×"
+                            color: "#888"
+                            font.pixelSize: 10
+                            font.bold: true
+                            anchors.centerIn: parent
+                            anchors.verticalCenterOffset: -1
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                searchInput.text = ""
+                            }
+                        }
+                    }
+                }
+            }
+        }
         
         // ═══════════════ PAGES LIST ═══════════════
         ListView {
@@ -175,6 +350,7 @@ Item {
             spacing: 8
             topMargin: 12; bottomMargin: 12
             leftMargin: 10; rightMargin: 10
+            cacheBuffer: 1000
             
             // Smooth scrolling
             flickDeceleration: 4000
@@ -194,7 +370,10 @@ Item {
             delegate: Item {
                 id: pageDelegate
                 width: pagesList.width - 20
-                height: isCompactMode ? 100 : 150
+                property bool matchesSearch: root.filterText === "" || (model.name && model.name.toLowerCase().indexOf(root.filterText.toLowerCase()) !== -1)
+                visible: matchesSearch
+                height: matchesSearch ? (isCompactMode ? 100 : 150) : 0
+                clip: true
                 
                 property bool isCurrent: targetCanvas ? 
                     (targetCanvas.currentProjectPath === model.realPath || 
@@ -204,7 +383,8 @@ Item {
                 // Card Container
                 Rectangle {
                     id: pageCard
-                    anchors.fill: parent
+                    width: parent.width
+                    height: parent.height
                     radius: 12
                     color: isCurrent ? "#1a1a24" : (isHovered ? "#151518" : "#111114")
                     border.color: isCurrent ? accentColor : (isHovered ? "#333" : "#1e1e22")
@@ -370,6 +550,69 @@ Item {
                                     ToolTip.delay: 400
                                 }
                                 
+                                // Duplicate page
+                                Rectangle {
+                                    width: 26; height: 22; radius: 5
+                                    color: duplicateMa.containsMouse ? "#222a22" : "#1a1a1e"
+                                    border.color: duplicateMa.containsMouse ? "#22aa22" : "#333"
+                                    border.width: 1
+                                    
+                                    Text {
+                                        text: "📑"
+                                        color: duplicateMa.containsMouse ? "#44ff44" : "#aaa"
+                                        font.pixelSize: 10
+                                        anchors.centerIn: parent
+                                    }
+                                    
+                                    MouseArea {
+                                        id: duplicateMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (targetCanvas.duplicatePage(model.realPath || model.path)) {
+                                                root.refresh()
+                                            }
+                                        }
+                                    }
+                                    
+                                    ToolTip.visible: duplicateMa.containsMouse
+                                    ToolTip.text: "Duplicate page"
+                                    ToolTip.delay: 400
+                                }
+                                
+                                // Rename page
+                                Rectangle {
+                                    width: 26; height: 22; radius: 5
+                                    color: renameMa.containsMouse ? "#222a36" : "#1a1a1e"
+                                    border.color: renameMa.containsMouse ? accentColor : "#333"
+                                    border.width: 1
+                                    
+                                    Text {
+                                        text: "✏️"
+                                        font.pixelSize: 10
+                                        anchors.centerIn: parent
+                                    }
+                                    
+                                    MouseArea {
+                                        id: renameMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            renameDialog.targetPath = model.realPath || model.path
+                                            renameDialog.oldName = model.name || ""
+                                            renameDialog.newNameText = model.name || ""
+                                            renameDialog.isCurrentPage = pageDelegate.isCurrent
+                                            renameDialog.open()
+                                        }
+                                    }
+                                    
+                                    ToolTip.visible: renameMa.containsMouse
+                                    ToolTip.text: "Rename page"
+                                    ToolTip.delay: 400
+                                }
+                                
                                 // Delete page
                                 Rectangle {
                                     width: 26; height: 22; radius: 5
@@ -402,6 +645,60 @@ Item {
                             }
                             
                             Item { Layout.fillHeight: true }
+                        }
+                        
+                        // Drag handle
+                        Rectangle {
+                            id: handleRect
+                            Layout.preferredWidth: 20
+                            Layout.fillHeight: true
+                            color: "transparent"
+                            visible: isHovered || isCurrent || dragHandleMa.dragActive
+                            
+                            Text {
+                                text: "⋮⋮"
+                                color: dragHandleMa.containsMouse ? accentColor : "#444"
+                                font.pixelSize: 14
+                                font.bold: true
+                                anchors.centerIn: parent
+                            }
+                            
+                            MouseArea {
+                                id: dragHandleMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.SizeAllCursor
+                                property bool dragActive: false
+                                drag.target: pageCard
+                                drag.axis: Drag.YAxis
+                                
+                                onPressed: {
+                                    dragActive = true
+                                    pageDelegate.z = 1000
+                                }
+                                
+                                onReleased: {
+                                    dragActive = false
+                                    pageDelegate.z = 1
+                                    pageCard.y = 0
+                                    var newPathsOrder = []
+                                    for (var i = 0; i < pagesModel.count; ++i) {
+                                        newPathsOrder.push(pagesModel.get(i).realPath || pagesModel.get(i).path)
+                                    }
+                                    targetCanvas.reorderPages(currentFolderPath, newPathsOrder)
+                                    root.refresh()
+                                }
+                                
+                                onPositionChanged: {
+                                    if (drag.active) {
+                                        var centerY = pageDelegate.y + pageCard.y + pageCard.height / 2
+                                        var targetIdx = pagesList.indexAt(pagesList.width / 2, centerY)
+                                        if (targetIdx !== -1 && targetIdx !== index) {
+                                            pagesModel.move(index, targetIdx, 1)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     
@@ -695,6 +992,141 @@ Item {
             }
             
             targetCanvas.exportAllPages(currentFolderPath, folder, exportFormat)
+        }
+    }
+
+    // ═══════════════ RENAME PAGE DIALOG ═══════════════
+    Popup {
+        id: renameDialog
+        anchors.centerIn: parent
+        width: Math.min(parent.width - 24, 260)
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        
+        property string targetPath: ""
+        property string oldName: ""
+        property alias newNameText: renameInput.text
+        property bool isCurrentPage: false
+
+        background: Rectangle {
+            color: "#e8121216"
+            radius: 14
+            border.color: Qt.rgba(1, 1, 1, 0.12)
+            border.width: 1
+
+            // Outer drop shadow
+            Rectangle {
+                anchors.fill: parent; anchors.margins: -10
+                z: -1; radius: 24
+                color: "black"; opacity: 0.5
+            }
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+            anchors.fill: parent
+            anchors.margins: 10
+
+            Text {
+                text: "Renombrar Página"
+                color: "white"
+                font.pixelSize: 13
+                font.bold: true
+                Layout.alignment: Qt.AlignHCenter
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 34
+                color: "#1e1e24"
+                radius: 8
+                border.color: renameInput.activeFocus ? accentColor : "#3a3a42"
+                border.width: 1
+
+                TextInput {
+                    id: renameInput
+                    anchors.fill: parent
+                    anchors.leftMargin: 10; anchors.rightMargin: 10
+                    verticalAlignment: TextInput.AlignVCenter
+                    color: "white"
+                    font.pixelSize: 12
+                    selectByMouse: true
+                    clip: true
+                    
+                    Keys.onReturnPressed: {
+                        renameDialog.accept()
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                // Cancel Button
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    radius: 6
+                    color: cancelMa.containsMouse ? "#2a2a30" : "#1a1a1e"
+                    border.color: "#333"
+                    border.width: 1
+                    
+                    Text {
+                        text: "Cancelar"
+                        color: "#aaa"; font.pixelSize: 11
+                        anchors.centerIn: parent
+                    }
+
+                    MouseArea {
+                        id: cancelMa
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: renameDialog.close()
+                    }
+                }
+
+                // Confirm Button
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    radius: 6
+                    color: confirmMa.containsMouse ? accentColor : Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.7)
+                    
+                    Text {
+                        text: "Aceptar"
+                        color: "white"; font.pixelSize: 11; font.bold: true
+                        anchors.centerIn: parent
+                    }
+
+                    MouseArea {
+                        id: confirmMa
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: renameDialog.accept()
+                    }
+                }
+            }
+        }
+
+        function accept() {
+            var cleanNewName = newNameText.trim()
+            if (cleanNewName !== "" && cleanNewName !== oldName) {
+                var pathStr = targetPath
+                var isCur = isCurrentPage
+                var lastSlash = pathStr.lastIndexOf("/")
+                if (lastSlash === -1) lastSlash = pathStr.lastIndexOf("\\")
+                var baseDir = pathStr.substring(0, lastSlash)
+                var ext = pathStr.substring(pathStr.lastIndexOf("."))
+                var newPath = baseDir + "/" + cleanNewName + ext
+                
+                if (targetCanvas.rename_item(pathStr, cleanNewName)) {
+                    if (isCur) {
+                        targetCanvas.load_file_path(newPath)
+                    }
+                    root.refresh()
+                }
+            }
+            renameDialog.close()
         }
     }
 }

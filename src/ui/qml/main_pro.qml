@@ -116,6 +116,9 @@ Window {
     property color themeAccent: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.themeAccent : "#6366f1"
     property real uiScale: (preferencesManager !== undefined && preferencesManager !== null && preferencesManager.uiScale) ? preferencesManager.uiScale : 1.0
     
+    readonly property bool showRightToolbar: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showRightToolbar : true
+    readonly property bool showRightColorSelector: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showRightColorSelector : true
+    
     readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey"
     
     // Global Colors
@@ -138,6 +141,7 @@ Window {
     property bool showShapes: false
     property bool showStoryPanel: false
     property bool isStoryProject: false
+    property string comicMode: "single" // "single", "webtoon", "double"
     property bool showAnimationBar: false
     property bool useAdvancedTimeline: false
     onUseAdvancedTimelineChanged: {
@@ -803,6 +807,250 @@ Window {
                 id: canvasPage
                 Rectangle { anchors.fill: parent; color: "#121214" }
 
+                // --- MULTI-PAGE VIEWPORT OVERLAYS (Webtoon & Doble Página) ---
+                Repeater {
+                    id: comicPageOverlays
+                    model: (isStoryProject && storyPanelInternal) ? storyPanelInternal.pagesModel : null
+                    
+                    delegate: Item {
+                        id: pageOverlayDelegate
+                        
+                        property int activeIdx: storyPanelInternal.selectedPageIndex
+                        property bool isActive: (index === activeIdx)
+                        
+                        property bool isPartner: {
+                            if (comicMode !== "double") return false;
+                            if (isActive) return false;
+                            if (activeIdx === 0) return false;
+                            if (activeIdx % 2 === 1) {
+                                return index === activeIdx + 1;
+                            } else {
+                                return index === activeIdx - 1;
+                            }
+                        }
+                        
+                        visible: {
+                            if (!isProjectActive) return false;
+                            if (comicMode === "webtoon") return !isActive;
+                            if (comicMode === "double") return isPartner;
+                            return false;
+                        }
+                        
+                        x: {
+                            if (comicMode === "webtoon") {
+                                return mainCanvas.viewOffset.x * mainCanvas.zoomLevel;
+                            } else if (comicMode === "double") {
+                                var isRightPartner = (index === activeIdx + 1);
+                                if (isRightPartner) {
+                                    return (mainCanvas.viewOffset.x + mainCanvas.canvasWidth) * mainCanvas.zoomLevel;
+                                } else {
+                                    return (mainCanvas.viewOffset.x - mainCanvas.canvasWidth) * mainCanvas.zoomLevel;
+                                }
+                            }
+                            return 0;
+                        }
+                        
+                        y: {
+                            if (comicMode === "webtoon") {
+                                return (mainCanvas.viewOffset.y + (index - activeIdx) * mainCanvas.canvasHeight) * mainCanvas.zoomLevel;
+                            } else {
+                                return mainCanvas.viewOffset.y * mainCanvas.zoomLevel;
+                            }
+                        }
+                        
+                        width: mainCanvas.canvasWidth * mainCanvas.zoomLevel
+                        height: mainCanvas.canvasHeight * mainCanvas.zoomLevel
+                        z: -2
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "white"
+                            radius: 4
+                            
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                shadowEnabled: true
+                                shadowColor: "black"
+                                shadowBlur: 0.1
+                                shadowHorizontalOffset: 0
+                                shadowVerticalOffset: 2
+                                shadowOpacity: 0.15
+                            }
+                        }
+                        
+                        Image {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            source: model.preview || ""
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            cache: true
+                            
+                            Column {
+                                visible: (model.preview || "") === ""
+                                anchors.centerIn: parent
+                                spacing: 8
+                                
+                                Text {
+                                    text: "Página " + (index + 1)
+                                    color: "#ccc"
+                                    font.pixelSize: 16; font.bold: true
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                }
+                                Text {
+                                    text: "Vacía - Toca para dibujar"
+                                    color: "#ddd"
+                                    font.pixelSize: 11
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                }
+                            }
+                        }
+                        
+                        Rectangle {
+                            anchors.top: parent.top; anchors.left: parent.left
+                            anchors.margins: 12
+                            width: 32; height: 20; radius: 6
+                            color: Qt.rgba(0.05, 0.05, 0.08, 0.8)
+                            border.color: Qt.rgba(1, 1, 1, 0.15)
+                            border.width: 1
+                            
+                            Text {
+                                text: "P. " + (index + 1)
+                                color: "white"
+                                font.pixelSize: 10; font.bold: true
+                                anchors.centerIn: parent
+                            }
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            
+                            onClicked: {
+                                var oldIdx = activeIdx;
+                                var newIdx = index;
+                                var deltaX = 0;
+                                var deltaY = 0;
+                                
+                                if (comicMode === "webtoon") {
+                                    deltaY = (newIdx - oldIdx) * mainCanvas.canvasHeight;
+                                } else if (comicMode === "double") {
+                                    var isRight = (newIdx === oldIdx + 1);
+                                    deltaX = isRight ? mainCanvas.canvasWidth : -mainCanvas.canvasWidth;
+                                }
+                                
+                                mainCanvas.canvasOffset = Qt.point(
+                                    mainCanvas.viewOffset.x + deltaX,
+                                    mainCanvas.viewOffset.y + deltaY
+                                );
+                                
+                                var path = model.realPath || model.path;
+                                if (mainCanvas.currentProjectPath !== "") {
+                                    mainCanvas.saveProject(mainCanvas.currentProjectPath);
+                                }
+                                mainCanvas.load_file_path(path);
+                                storyPanelInternal.refresh();
+                            }
+                        }
+                    }
+                }
+
+                // --- WEBTOON SLICE GUIDES ---
+                Repeater {
+                    id: comicSliceGuides
+                    model: (isStoryProject && comicMode === "webtoon" && storyPanelInternal) ? (storyPanelInternal.pagesModel.count - 1) : 0
+                    
+                    delegate: Rectangle {
+                        property int activeIdx: storyPanelInternal.selectedPageIndex
+                        visible: isProjectActive
+                        
+                        x: mainCanvas.viewOffset.x * mainCanvas.zoomLevel
+                        y: (mainCanvas.viewOffset.y + (index + 1 - activeIdx) * mainCanvas.canvasHeight) * mainCanvas.zoomLevel - 1
+                        width: mainCanvas.canvasWidth * mainCanvas.zoomLevel
+                        height: 2
+                        color: "#ff007f"
+                        opacity: 0.75
+                        z: 10
+                        
+                        Rectangle {
+                            anchors.fill: parent
+                            color: "transparent"
+                            border.color: "#ff007f"
+                            border.width: 1
+                        }
+                        
+                        Rectangle {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 65; height: 18; radius: 5
+                            color: "#ff007f"
+                            
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                shadowEnabled: true
+                                shadowColor: "#ff007f"
+                                shadowBlur: 0.3
+                                shadowOpacity: 0.5
+                            }
+                            
+                            Text {
+                                text: "CORTE " + (index + 1)
+                                color: "white"
+                                font.pixelSize: 8; font.bold: true
+                                anchors.centerIn: parent
+                            }
+                        }
+                        
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 80; height: 18; radius: 5
+                            color: Qt.rgba(0.05, 0.05, 0.08, 0.8)
+                            border.color: "#ff007f"
+                            border.width: 1
+                            
+                            Text {
+                                text: "1280px Standard"
+                                color: "#ff007f"
+                                font.pixelSize: 8; font.bold: true
+                                anchors.centerIn: parent
+                            }
+                        }
+                    }
+                }
+
+                // --- DOUBLE PAGE SPREAD CENTRAL GUTTER CREASE ---
+                Rectangle {
+                    id: comicGutterCrease
+                    property int activeIdx: (isStoryProject && storyPanelInternal) ? storyPanelInternal.selectedPageIndex : -1
+                    visible: isProjectActive && comicMode === "double" && activeIdx > 0
+                    
+                    x: {
+                        if (activeIdx % 2 === 1) {
+                            return (mainCanvas.viewOffset.x + mainCanvas.canvasWidth) * mainCanvas.zoomLevel - 15;
+                        } else {
+                            return (mainCanvas.viewOffset.x) * mainCanvas.zoomLevel - 15;
+                        }
+                    }
+                    
+                    y: mainCanvas.viewOffset.y * mainCanvas.zoomLevel
+                    width: 30
+                    height: mainCanvas.canvasHeight * mainCanvas.zoomLevel
+                    z: 20
+                    
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 0.48; color: Qt.rgba(0, 0, 0, 0.35) }
+                        GradientStop { position: 0.5; color: Qt.rgba(0, 0, 0, 0.65) }
+                        GradientStop { position: 0.52; color: Qt.rgba(0, 0, 0, 0.35) }
+                        GradientStop { position: 1.0; color: "transparent" }
+                    }
+                }
+
                 // DRAWING CANVAS
                 QCanvasItem {
                     id: mainCanvas
@@ -1369,6 +1617,232 @@ Window {
                 }
 
 
+                // ── Smart Panel Studio: Property HUD ──
+                Rectangle {
+                    id: panelCutBar
+                    visible: isProjectActive && mainCanvas.currentTool === "panel_cut"
+                    anchors.bottom: parent.bottom; anchors.bottomMargin: 30
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    
+                    // Glassmorphic styling
+                    width: panelCutRow.width + 32
+                    height: 56; radius: 28
+                    color: "#e61a1a1e"
+                    border.color: "#3e3e42"
+                    border.width: 1
+                    z: 500
+                    
+                    opacity: visible ? 1 : 0
+                    Behavior on opacity { NumberAnimation { duration: 250 } }
+                    
+                    // State for 3D Overflow
+                    property bool is3DOverflowActive: mainCanvas.activeLayerIndex >= 0 ? !mainCanvas.isLayerClipped(mainCanvas.activeLayerIndex) : false
+                    
+                    Connections {
+                        target: mainCanvas
+                        function onActiveLayerIndexChanged() {
+                            panelCutBar.is3DOverflowActive = mainCanvas.activeLayerIndex >= 0 ? !mainCanvas.isLayerClipped(mainCanvas.activeLayerIndex) : false;
+                        }
+                    }
+                    
+                    Row {
+                        id: panelCutRow
+                        anchors.centerIn: parent
+                        spacing: 16
+                        
+                        // Badge / Title
+                        Row {
+                            spacing: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            Text {
+                                text: "⚡ Snapping"
+                                color: colorAccent; font.pixelSize: 12; font.bold: true
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Rectangle {
+                                width: 8; height: 8; radius: 4
+                                color: "#30d158" // neon green
+                                anchors.verticalCenter: parent.verticalCenter
+                                SequentialAnimation on opacity {
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 0.3; duration: 800 }
+                                    NumberAnimation { to: 1.0; duration: 800 }
+                                }
+                            }
+                        }
+                        
+                        Rectangle { width: 1; height: 28; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        
+                        // Gutter Control
+                        Row {
+                            spacing: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            Text {
+                                text: "Gutter: " + Math.round(mainCanvas.panelGutterSize) + "px"
+                                color: "#bbb"; font.pixelSize: 11; font.weight: Font.Medium
+                                width: 75; anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Slider {
+                                id: gutterSlider
+                                width: 100; height: 24
+                                from: 0; to: 80; value: mainCanvas.panelGutterSize
+                                anchors.verticalCenter: parent.verticalCenter
+                                onMoved: mainCanvas.panelGutterSize = value
+                                
+                                background: Rectangle {
+                                    y: (parent.height - height) / 2
+                                    width: parent.width; height: 6; radius: 3
+                                    color: "#252528"
+                                    Rectangle {
+                                        width: gutterSlider.visualPosition * parent.width
+                                        height: parent.height; radius: 3
+                                        color: colorAccent
+                                    }
+                                }
+                                handle: Rectangle {
+                                    x: gutterSlider.visualPosition * (gutterSlider.width - width)
+                                    y: (gutterSlider.height - height) / 2
+                                    width: 14; height: 14; radius: 7
+                                    color: gutterSlider.pressed ? "#fff" : "#eee"
+                                    border.color: "#1a1a1c"; border.width: 2
+                                }
+                            }
+                        }
+                        
+                        Rectangle { width: 1; height: 28; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        
+                        // Border Width Control
+                        Row {
+                            spacing: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            Text {
+                                text: "Width: " + Math.round(mainCanvas.panelBorderWidth) + "px"
+                                color: "#bbb"; font.pixelSize: 11; font.weight: Font.Medium
+                                width: 75; anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Slider {
+                                id: borderWidthSlider
+                                width: 100; height: 24
+                                from: 1; to: 15; value: mainCanvas.panelBorderWidth
+                                anchors.verticalCenter: parent.verticalCenter
+                                onMoved: mainCanvas.panelBorderWidth = value
+                                
+                                background: Rectangle {
+                                    y: (parent.height - height) / 2
+                                    width: parent.width; height: 6; radius: 3
+                                    color: "#252528"
+                                    Rectangle {
+                                        width: borderWidthSlider.visualPosition * parent.width
+                                        height: parent.height; radius: 3
+                                        color: colorAccent
+                                    }
+                                }
+                                handle: Rectangle {
+                                    x: borderWidthSlider.visualPosition * (borderWidthSlider.width - width)
+                                    y: (borderWidthSlider.height - height) / 2
+                                    width: 14; height: 14; radius: 7
+                                    color: borderWidthSlider.pressed ? "#fff" : "#eee"
+                                    border.color: "#1a1a1c"; border.width: 2
+                                }
+                            }
+                        }
+                        
+                        Rectangle { width: 1; height: 28; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        
+                        // Style Picker
+                        Row {
+                            id: styleRow
+                            spacing: 6
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            property var styles: ["solid", "sketchy", "double", "dotted", "blurry", "invisible"]
+                            property var labels: ["Solid", "Sketchy", "Double", "Dotted", "Blurry", "Invisible"]
+                            
+                            Repeater {
+                                model: 6
+                                Rectangle {
+                                    width: 58; height: 26; radius: 13
+                                    color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? colorAccent : (styleMa.containsMouse ? "#252528" : "transparent")
+                                    border.color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? "transparent" : "#3e3e42"
+                                    border.width: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? 0 : 1
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    
+                                    Text {
+                                        text: styleRow.labels[index]
+                                        color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? "#fff" : "#aaa"
+                                        font.pixelSize: 10; font.weight: Font.DemiBold
+                                        anchors.centerIn: parent
+                                    }
+                                    
+                                    MouseArea {
+                                        id: styleMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: mainCanvas.panelBorderStyle = styleRow.styles[index]
+                                    }
+                                    ToolTip.visible: styleMa.containsMouse
+                                    ToolTip.text: "Apply " + styleRow.labels[index] + " style to cut and borders"
+                                    ToolTip.delay: 400
+                                }
+                            }
+                        }
+                        
+                        Rectangle { width: 1; height: 28; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        
+                        // 3D Panel Breaker Toggle
+                        Rectangle {
+                            id: breakerBtn
+                            width: 120; height: 32; radius: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { 
+                                    position: 0.0 
+                                    color: panelCutBar.is3DOverflowActive ? "#34c759" : "#252528" 
+                                }
+                                GradientStop { 
+                                    position: 1.0 
+                                    color: panelCutBar.is3DOverflowActive ? "#30d158" : "#2a2a30" 
+                                }
+                            }
+                            border.color: panelCutBar.is3DOverflowActive ? "transparent" : "#3e3e42"
+                            border.width: panelCutBar.is3DOverflowActive ? 0 : 1
+                            
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 6
+                                Text {
+                                    text: panelCutBar.is3DOverflowActive ? "💥 3D Breaker On" : "💥 3D Breaker Off"
+                                    color: "#fff"
+                                    font.pixelSize: 11; font.bold: true
+                                }
+                            }
+                            
+                            MouseArea {
+                                id: breakerMa
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (mainCanvas.activeLayerIndex >= 0) {
+                                        mainCanvas.toggleClipping(mainCanvas.activeLayerIndex);
+                                        panelCutBar.is3DOverflowActive = !mainCanvas.isLayerClipped(mainCanvas.activeLayerIndex);
+                                        toastManager.show(panelCutBar.is3DOverflowActive ? "3D Overflow Activated: Layer can bleed outside margins" : "3D Overflow Deactivated: Drawing is confined to panel", "info");
+                                    } else {
+                                        toastManager.show("Select a valid drawing layer first", "warning");
+                                    }
+                                }
+                            }
+                            ToolTip.visible: breakerMa.containsMouse
+                            ToolTip.text: "Allow active layer artwork to overlap and spill over the panel borders"
+                            ToolTip.delay: 400
+                        }
+                    }
+                }
+
+
                 // --- CONTEXT BAR (APPLY/CANCEL TRANSFORM) ---
                 Rectangle {
                     id: contextBar
@@ -1412,7 +1886,6 @@ Window {
                         ListElement { name: "rect"; label: "Rectangle"; icon: "shapes.svg" },
                         ListElement { name: "ellipse"; label: "Ellipse"; icon: "shapes.svg" },
                         ListElement { name: "line"; label: "Line"; icon: "shapes.svg" },
-                        ListElement { name: "panel_cut"; label: "Cuchilla Escisión"; icon: "panel_single.svg" },
                         ListElement { name: "panel_single"; label: "Panel: Full"; icon: "panel_single.svg" },
                         ListElement { name: "panel_2col"; label: "Panel: 2 Columns"; icon: "panel_2col.svg" },
                         ListElement { name: "panel_2row"; label: "Panel: 2 Rows"; icon: "panel_2row.svg" },
@@ -1459,12 +1932,17 @@ Window {
 
                     ListElement { name: "picker"; icon: "picker.svg"; label: "Eyedropper"; subTools: [] }
                     ListElement { name: "hand"; icon: "hand.svg"; label: "Hand"; subTools: [] }
+                    ListElement { name: "panel_cut"; icon: "panel_cut.svg"; label: "Cuchilla Escisión"; subTools: [] }
                 }
 
                 property int activeToolIdx: 7 // Default to Brush (was 4/Move)
                 
                 onActiveToolIdxChanged: {
                     if (canvasPage.altPressed) return // Don't reset if switching via ALT
+                    
+                    if (typeof comicOverlay !== "undefined" && comicOverlay) {
+                        comicOverlay.stopShapeDrawing()
+                    }
                     
                     var toolData = toolsModel.get(activeToolIdx)
                     if (toolData && toolData.subTools && toolData.subTools.count > 0) {
@@ -1492,6 +1970,7 @@ Window {
                             if (mainCanvas.isSelectionModeActive) mainCanvas.currentTool = "lasso"
                         }
                         if (toolData.name === "move") mainCanvas.currentTool = "move"
+                        if (toolData.name === "panel_cut") mainCanvas.currentTool = "panel_cut"
                     }
                     
                     // UX IMPROVEMENT: Close panels when picking a tool
@@ -1567,7 +2046,7 @@ Window {
                     radius: 26 * uiScale
                     border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4)
                     border.width: 1.5
-                    visible: isProjectActive && !isZenMode && !isStudioMode && !(showAnimationBar && useAdvancedTimeline)
+                    visible: isProjectActive && !isZenMode && !isStudioMode && !(showAnimationBar && useAdvancedTimeline) && mainWindow.showRightToolbar
                     z: 1100
 
                     // Inner highlight for 3D feel
@@ -1746,26 +2225,26 @@ Window {
                                                 mainWindow.showBrushSettings = false
                                                 mainWindow.showShapes = false
                                                 
-                                                // Backend Mapping
                                                 // Backend Mapping - Pass EXACT names to Python for Filter Logic
                                                 var toolName = model.name
-                                                 if (toolName === "pen") mainCanvas.currentTool = "pen"
-                                                 else if (toolName === "pencil") mainCanvas.currentTool = "pencil"
-                                                 else if (toolName === "brush") mainCanvas.currentTool = "brush"
-                                                 else if (toolName === "airbrush") mainCanvas.currentTool = "airbrush"
-                                                 else if (toolName === "eraser") mainCanvas.currentTool = "eraser"
-                                                 else if (toolName === "fill") mainCanvas.currentTool = "fill"
-                                                 else if (toolName === "picker") mainCanvas.currentTool = "picker" 
-                                                 else if (toolName === "hand") mainCanvas.currentTool = "hand"
-                                                 else if (toolName === "selection") mainCanvas.currentTool = "selection"
-                                                 else if (toolName === "lasso") mainCanvas.currentTool = "lasso"
-                                                 else if (toolName === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
-                                                 else if (toolName === "move") mainCanvas.currentTool = "move"
-                                                 else if (toolName === "shapes") {
-                                                     mainCanvas.currentTool = "shape"
-                                                     mainWindow.showShapes = true
-                                                 }
-                                                 else mainCanvas.currentTool = "hand"
+                                                if (toolName === "pen") mainCanvas.currentTool = "pen"
+                                                else if (toolName === "pencil") mainCanvas.currentTool = "pencil"
+                                                else if (toolName === "brush") mainCanvas.currentTool = "brush"
+                                                else if (toolName === "airbrush") mainCanvas.currentTool = "airbrush"
+                                                else if (toolName === "eraser") mainCanvas.currentTool = "eraser"
+                                                else if (toolName === "fill") mainCanvas.currentTool = "fill"
+                                                else if (toolName === "picker") mainCanvas.currentTool = "picker" 
+                                                else if (toolName === "hand") mainCanvas.currentTool = "hand"
+                                                else if (toolName === "selection") mainCanvas.currentTool = "selection"
+                                                else if (toolName === "lasso") mainCanvas.currentTool = "lasso"
+                                                else if (toolName === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
+                                                else if (toolName === "move") mainCanvas.currentTool = "move"
+                                                else if (toolName === "shapes") {
+                                                    mainCanvas.currentTool = "shape"
+                                                    mainWindow.showShapes = true
+                                                }
+                                                else if (toolName === "panel_cut") mainCanvas.currentTool = "panel_cut"
+                                                else mainCanvas.currentTool = "hand"
                                             }
                                         }
                                     }
@@ -1779,156 +2258,163 @@ Window {
                         }
 
                         // --- PREMIUM DUAL COLOR TOOLBAR BUTTON ---
-                        Item { width: 1; height: 8 * uiScale } // Spacer
-                        Rectangle { width: 32 * uiScale; height: 1; color: "#333"; anchors.horizontalCenter: parent.horizontalCenter }
-                        Item { width: 1; height: 12 * uiScale } // Spacer
-
-                        Item {
-                            width: 52 * uiScale; height: 72 * uiScale // Increased height for the 3rd orb
+                        Column {
+                            id: dualColorGroup
                             anchors.horizontalCenter: parent.horizontalCenter
+                            visible: mainWindow.showRightColorSelector
+                            spacing: 0
                             
-                            // 1. Dual Color Overlap Item
+                            Item { width: 1; height: 8 * uiScale } // Spacer
+                            Rectangle { width: 32 * uiScale; height: 1; color: "#333"; anchors.horizontalCenter: parent.horizontalCenter }
+                            Item { width: 1; height: 12 * uiScale } // Spacer
+
                             Item {
-                                width: 44 * uiScale; height: 44 * uiScale; anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
+                                width: 52 * uiScale; height: 72 * uiScale // Increased height for the 3rd orb
+                                anchors.horizontalCenter: parent.horizontalCenter
                                 
-                                // Slot 1 (Secondary/Back)
-                                Rectangle {
-                                    id: barWell1
-                                    width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
-                                    anchors.right: parent.right; anchors.bottom: parent.bottom
-                                    color: colorStudioDialog.slot1Color
-                                    border.color: "#333"
-                                    border.width: 1
-                                    z: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 5 : 1
-                                    scale: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 1.2 : 1.0
-                                    opacity: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 1.0 : 0.7
+                                // 1. Dual Color Overlap Item
+                                Item {
+                                    width: 44 * uiScale; height: 44 * uiScale; anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
                                     
-                                    Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                                    Behavior on opacity { NumberAnimation { duration: 200 } }
-                                    
+                                    // Slot 1 (Secondary/Back)
                                     Rectangle {
-                                        anchors.fill: parent; radius: 13; border.color: colorAccent; border.width: 2; color: "transparent"
-                                        visible: colorStudioDialog.activeSlot === 1 && mainWindow.showColor && !colorStudioDialog.isTransparent
+                                        id: barWell1
+                                        width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
+                                        anchors.right: parent.right; anchors.bottom: parent.bottom
+                                        color: colorStudioDialog.slot1Color
+                                        border.color: "#333"
+                                        border.width: 1
+                                        z: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 5 : 1
+                                        scale: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 1.2 : 1.0
+                                        opacity: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 1.0 : 0.7
+                                        
+                                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                        Behavior on opacity { NumberAnimation { duration: 200 } }
+                                        
+                                        Rectangle {
+                                            anchors.fill: parent; radius: 13; border.color: colorAccent; border.width: 2; color: "transparent"
+                                            visible: colorStudioDialog.activeSlot === 1 && mainWindow.showColor && !colorStudioDialog.isTransparent
+                                        }
+                                        
+                                        MouseArea {
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                mainCanvas.isEraser = false
+                                                if (colorStudioDialog.activeSlot !== 1) {
+                                                    colorStudioDialog.activeSlot = 1
+                                                    mainCanvas.brushColor = colorStudioDialog.slot1Color
+                                                } else {
+                                                    mainWindow.showColor = !mainWindow.showColor
+                                                }
+                                            }
+                                        }
                                     }
                                     
+                                    // Slot 0 (Primary/Front)
+                                    Rectangle {
+                                        id: barWell0
+                                        width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
+                                        anchors.left: parent.left; anchors.top: parent.top
+                                        color: colorStudioDialog.slot0Color
+                                        border.color: "#333"
+                                        border.width: 1
+                                        z: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 5 : 2
+                                        scale: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 1.2 : 1.0
+                                        opacity: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 1.0 : 0.7
+
+                                        Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                        Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                                        Rectangle {
+                                            anchors.fill: parent; radius: 13; border.color: colorAccent; border.width: 2; color: "transparent"
+                                            visible: colorStudioDialog.activeSlot === 0 && mainWindow.showColor && !colorStudioDialog.isTransparent
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                mainCanvas.isEraser = false
+                                                if (colorStudioDialog.activeSlot !== 0) {
+                                                    colorStudioDialog.activeSlot = 0
+                                                    mainCanvas.brushColor = colorStudioDialog.slot0Color
+                                                } else {
+                                                    mainWindow.showColor = !mainWindow.showColor
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // 2. Transparency Orb (Clip Studio Style - Rediseño Premium)
+                                Rectangle {
+                                    id: transWell
+                                    width: 22 * uiScale; height: 22 * uiScale; radius: 11 * uiScale
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 6 * uiScale
+                                    anchors.bottom: parent.bottom
+                                    anchors.bottomMargin: 4 * uiScale
+                                    clip: true
+                                    
+                                    color: "#252528"
+                                    border.color: colorStudioDialog.isTransparent ? colorAccent : Qt.rgba(1, 1, 1, 0.2)
+                                    border.width: colorStudioDialog.isTransparent ? 1.5 : 1
+                                    
+                                    scale: colorStudioDialog.isTransparent ? 1.15 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                    
+                                    // Internal Shadow/Depth
+                                    Rectangle {
+                                        anchors.fill: parent; anchors.margins: 1; radius: width/2
+                                        color: "transparent"; border.color: Qt.rgba(0,0,0,0.3); border.width: 1; z: 5
+                                    }
+
+                                    // Checkerboard Pattern Background
+                                    Canvas {
+                                        anchors.fill: parent
+                                        opacity: colorStudioDialog.isTransparent ? 1.0 : 0.4
+                                        onPaint: {
+                                            var ctx = getContext("2d");
+                                            ctx.clearRect(0, 0, width, height);
+                                            
+                                            // Create Circular Clip for perfect perfection
+                                            ctx.beginPath();
+                                            ctx.arc(width/2, height/2, width/2, 0, 2*Math.PI);
+                                            ctx.clip();
+                                            
+                                            var sz = 4 * uiScale;
+                                            ctx.fillStyle = "#ffffff";
+                                            ctx.fillRect(0,0,width,height);
+                                            ctx.fillStyle = "#d0d0d0";
+                                            for(var y=0; y<height; y+=sz) {
+                                                for(var x=0; x<width; x+=sz) {
+                                                    if (((x+y)/sz)%2 === 0) ctx.fillRect(x,y,sz,sz);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Premium Glass Glow & Inner Highlight
+                                    Rectangle {
+                                        anchors.fill: parent; radius: width/2
+                                        gradient: Gradient {
+                                            GradientStop { position: 0.0; color: Qt.rgba(1,1,1, colorStudioDialog.isTransparent ? 0.3 : 0.1) }
+                                            GradientStop { position: 0.6; color: "transparent" }
+                                            GradientStop { position: 1.0; color: Qt.rgba(0,0,0,0.1) }
+                                        }
+                                        visible: true
+                                    }
+
                                     MouseArea {
                                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            mainCanvas.isEraser = false
-                                            if (colorStudioDialog.activeSlot !== 1) {
-                                                colorStudioDialog.activeSlot = 1
-                                                mainCanvas.brushColor = colorStudioDialog.slot1Color
-                                            } else {
-                                                mainWindow.showColor = !mainWindow.showColor
-                                            }
+                                            mainCanvas.isEraser = !mainCanvas.isEraser
                                         }
                                     }
+                                    
+                                    ToolTip.visible: transHover.containsMouse
+                                    ToolTip.text: "Transparency (Brush Eraser Mode)"
+                                    MouseArea { id: transHover; anchors.fill: parent; hoverEnabled: true; enabled: false }
                                 }
-                                
-                                // Slot 0 (Primary/Front)
-                                Rectangle {
-                                    id: barWell0
-                                    width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
-                                    anchors.left: parent.left; anchors.top: parent.top
-                                    color: colorStudioDialog.slot0Color
-                                    border.color: "#333"
-                                    border.width: 1
-                                    z: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 5 : 2
-                                    scale: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 1.2 : 1.0
-                                    opacity: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 1.0 : 0.7
-
-                                    Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-                                    Behavior on opacity { NumberAnimation { duration: 200 } }
-
-                                    Rectangle {
-                                        anchors.fill: parent; radius: 13; border.color: colorAccent; border.width: 2; color: "transparent"
-                                        visible: colorStudioDialog.activeSlot === 0 && mainWindow.showColor && !colorStudioDialog.isTransparent
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            mainCanvas.isEraser = false
-                                            if (colorStudioDialog.activeSlot !== 0) {
-                                                colorStudioDialog.activeSlot = 0
-                                                mainCanvas.brushColor = colorStudioDialog.slot0Color
-                                            } else {
-                                                mainWindow.showColor = !mainWindow.showColor
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 2. Transparency Orb (Clip Studio Style - Rediseño Premium)
-                            Rectangle {
-                                id: transWell
-                                width: 22 * uiScale; height: 22 * uiScale; radius: 11 * uiScale
-                                anchors.right: parent.right
-                                anchors.rightMargin: 6 * uiScale
-                                anchors.bottom: parent.bottom
-                                anchors.bottomMargin: 4 * uiScale
-                                clip: true
-                                
-                                color: "#252528"
-                                border.color: colorStudioDialog.isTransparent ? colorAccent : Qt.rgba(1, 1, 1, 0.2)
-                                border.width: colorStudioDialog.isTransparent ? 1.5 : 1
-                                
-                                scale: colorStudioDialog.isTransparent ? 1.15 : 1.0
-                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                                
-                                // Internal Shadow/Depth
-                                Rectangle {
-                                    anchors.fill: parent; anchors.margins: 1; radius: width/2
-                                    color: "transparent"; border.color: Qt.rgba(0,0,0,0.3); border.width: 1; z: 5
-                                }
-
-                                // Checkerboard Pattern Background
-                                Canvas {
-                                    anchors.fill: parent
-                                    opacity: colorStudioDialog.isTransparent ? 1.0 : 0.4
-                                    onPaint: {
-                                        var ctx = getContext("2d");
-                                        ctx.clearRect(0, 0, width, height);
-                                        
-                                        // Create Circular Clip for perfect perfection
-                                        ctx.beginPath();
-                                        ctx.arc(width/2, height/2, width/2, 0, 2*Math.PI);
-                                        ctx.clip();
-                                        
-                                        var sz = 4 * uiScale;
-                                        ctx.fillStyle = "#ffffff";
-                                        ctx.fillRect(0,0,width,height);
-                                        ctx.fillStyle = "#d0d0d0";
-                                        for(var y=0; y<height; y+=sz) {
-                                            for(var x=0; x<width; x+=sz) {
-                                                if (((x+y)/sz)%2 === 0) ctx.fillRect(x,y,sz,sz);
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                // Premium Glass Glow & Inner Highlight
-                                Rectangle {
-                                    anchors.fill: parent; radius: width/2
-                                    gradient: Gradient {
-                                        GradientStop { position: 0.0; color: Qt.rgba(1,1,1, colorStudioDialog.isTransparent ? 0.3 : 0.1) }
-                                        GradientStop { position: 0.6; color: "transparent" }
-                                        GradientStop { position: 1.0; color: Qt.rgba(0,0,0,0.1) }
-                                    }
-                                    visible: true
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        mainCanvas.isEraser = !mainCanvas.isEraser
-                                    }
-                                }
-                                
-                                ToolTip.visible: transHover.containsMouse
-                                ToolTip.text: "Transparency (Brush Eraser Mode)"
-                                MouseArea { id: transHover; anchors.fill: parent; hoverEnabled: true; enabled: false }
                             }
                         }
                     }
@@ -2847,6 +3333,16 @@ Window {
                                 active: showAnimationBar
                                 activeColor: colorAccent
                                 onClicked: showAnimationBar = !showAnimationBar
+                            }
+
+                            // Story Manager Toggle
+                            TopBarButton {
+                                iconSource: iconPath("comic.svg")
+                                tooltip: showStoryPanel ? "Ocultar Story Manager" : "Abrir Story Manager"
+                                active: showStoryPanel
+                                activeColor: colorAccent
+                                visible: isStoryProject
+                                onClicked: showStoryPanel = !showStoryPanel
                             }
 
                             // Separator
@@ -3840,6 +4336,8 @@ Window {
                     panelVisible: showStoryPanel && isStoryProject && isProjectActive && !isStudioMode
                     panelTitle: "Story Manager"
                     panelIcon: "comic.svg"
+                    isDockable: true
+                    isDocked: true
                     accentColor: colorAccent
                     initialX: 20
                     initialY: 80
@@ -7647,7 +8145,7 @@ Window {
                 }
                 
                 ProSliderHorizontal {
-                    id: gutterSlider
+                    id: popupGutterSlider
                     width: parent.width
                     label: ""
                     value: (panelSettingsPopup.gutterValue - 5) / (100 - 5)

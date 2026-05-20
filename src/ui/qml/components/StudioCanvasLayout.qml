@@ -16,6 +16,12 @@ Item {
     property bool isProjectActive: false
     property bool isZenMode: false
     
+    readonly property bool showTopProjectInfo: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showTopProjectInfo : true
+    readonly property bool showTopBrushControls: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showTopBrushControls : true
+    readonly property bool showTopActionButtons: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showTopActionButtons : true
+    readonly property bool showTopSymmetryUndoRedo: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showTopSymmetryUndoRedo : true
+    readonly property bool showTopWorkspaceSwitcher: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showTopWorkspaceSwitcher : true
+    
     // Custom Dropdown State
     property bool wsMenuOpen: false
     property real wsMenuX: 0
@@ -249,28 +255,33 @@ Item {
             anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
             spacing: 12
             
-            // Project Info
-            Text {
-                text: mainCanvas ? (mainCanvas.currentProjectName || "Untitled") : "Untitled"
-                color: "#999"; font.pixelSize: 13; font.weight: Font.DemiBold
-            }
-            Item { width: 4 }
-            Rectangle { width: 1; height: 16; color: "#333" }
-            Item { width: 4 }
-            
-            Text {
-                text: mainCanvas ? Math.round((mainCanvas.zoomLevel || 1.0) * 100) + "%" : "100%"
-                color: "#777"; font.pixelSize: 11; font.family: "Monospace"
-            }
-            Text {
-                text: mainCanvas ? (mainCanvas.canvasWidth || 1920) + " × " + (mainCanvas.canvasHeight || 1080) : "1920 × 1080"
-                color: "#777"; font.pixelSize: 11; font.family: "Monospace"
+            // Project Info Group
+            RowLayout {
+                visible: studioLayout.showTopProjectInfo
+                spacing: 12
+                Text {
+                    text: mainCanvas ? (mainCanvas.currentProjectName || "Untitled") : "Untitled"
+                    color: "#999"; font.pixelSize: 13; font.weight: Font.DemiBold
+                }
+                Item { width: 4 }
+                Rectangle { width: 1; height: 16; color: "#333" }
+                Item { width: 4 }
+                
+                Text {
+                    text: mainCanvas ? Math.round((mainCanvas.zoomLevel || 1.0) * 100) + "%" : "100%"
+                    color: "#777"; font.pixelSize: 11; font.family: "Monospace"
+                }
+                Text {
+                    text: mainCanvas ? (mainCanvas.canvasWidth || 1920) + " × " + (mainCanvas.canvasHeight || 1080) : "1920 × 1080"
+                    color: "#777"; font.pixelSize: 11; font.family: "Monospace"
+                }
             }
             
             Item { Layout.fillWidth: true }
             
             // --- BRUSH CONTROLS ---
             RowLayout {
+                visible: studioLayout.showTopBrushControls
                 spacing: 8
                 
                 // --- Premium Size Scrubber ---
@@ -608,10 +619,11 @@ Item {
                 }
             }
             
-            Item { width: 16 }
+            Item { width: 16; visible: studioLayout.showTopBrushControls }
             
             // --- ACTION BUTTONS ---
             RowLayout {
+                visible: studioLayout.showTopActionButtons
                 spacing: 6
                 
                 Rectangle {
@@ -645,64 +657,69 @@ Item {
                 }
             }
             
-            Item { width: 16 }
+            Item { width: 16; visible: studioLayout.showTopActionButtons }
             
-            // Symmetry
-            Rectangle {
-                width: 32; height: 24; radius: 6
-                color: mainCanvas && mainCanvas.symmetryEnabled ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.3) : (symMa.containsMouse ? "#1c1c20" : "transparent")
-                border.color: mainCanvas && mainCanvas.symmetryEnabled ? accentColor : (symMa.containsMouse ? "#333" : "transparent")
+            // Symmetry & Undo/Redo Group
+            RowLayout {
+                visible: studioLayout.showTopSymmetryUndoRedo
+                spacing: 8
                 
-                Text { 
-                    text: mainCanvas ? (mainCanvas.symmetryMode === 0 ? "◫" : mainCanvas.symmetryMode === 1 ? "⬒" : mainCanvas.symmetryMode === 2 ? "⊞" : "⎈") : "◫"
-                    color: mainCanvas && mainCanvas.symmetryEnabled ? accentColor : "#888"
-                    font.pixelSize: 16; anchors.centerIn: parent
-                }
-                
-                MouseArea {
-                    id: symMa
-                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    onClicked: (mouse) => {
-                        if (!mainCanvas) return;
-                        if (mouse.button === Qt.RightButton) {
-                            mainCanvas.symmetryMode = (mainCanvas.symmetryMode + 1) % 4;
-                            mainCanvas.symmetryEnabled = true;
-                        } else {
-                            mainCanvas.symmetryEnabled = !mainCanvas.symmetryEnabled;
+                // Symmetry
+                Rectangle {
+                    width: 32; height: 24; radius: 6
+                    color: mainCanvas && mainCanvas.symmetryEnabled ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.3) : (symMa.containsMouse ? "#1c1c20" : "transparent")
+                    border.color: mainCanvas && mainCanvas.symmetryEnabled ? accentColor : (symMa.containsMouse ? "#333" : "transparent")
+                    
+                    Text { 
+                        text: mainCanvas ? (mainCanvas.symmetryMode === 0 ? "◫" : mainCanvas.symmetryMode === 1 ? "⬒" : mainCanvas.symmetryMode === 2 ? "⊞" : "⎈") : "◫"
+                        color: mainCanvas && mainCanvas.symmetryEnabled ? accentColor : "#888"
+                        font.pixelSize: 16; anchors.centerIn: parent
+                    }
+                    
+                    MouseArea {
+                        id: symMa
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: (mouse) => {
+                            if (!mainCanvas) return;
+                            if (mouse.button === Qt.RightButton) {
+                                mainCanvas.symmetryMode = (mainCanvas.symmetryMode + 1) % 4;
+                                mainCanvas.symmetryEnabled = true;
+                            } else {
+                                mainCanvas.symmetryEnabled = !mainCanvas.symmetryEnabled;
+                            }
                         }
                     }
+                    ToolTip.visible: symMa.containsMouse
+                    ToolTip.text: "Simetría (Click: On/Off | Click Derecho: Modo)"
                 }
-                ToolTip.visible: symMa.containsMouse
-                ToolTip.text: "Simetría (Click: On/Off | Click Derecho: Modo)"
-            }
-            
-            Item { width: 8 }
-
-            // Undo/Redo
-            Row {
-                spacing: 4
-                Rectangle {
-                    width: 24; height: 24; radius: 6
-                    color: undoMa.containsMouse ? "#1c1c20" : "transparent"
-                    border.color: undoMa.containsMouse ? "#333" : "transparent"
-                    Text { text: "↶"; color: "#888"; font.pixelSize: 14; anchors.centerIn: parent }
-                    MouseArea { id: undoMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (mainCanvas) mainCanvas.undo() }
-                }
-                Rectangle {
-                    width: 24; height: 24; radius: 6
-                    color: redoMa.containsMouse ? "#1c1c20" : "transparent"
-                    border.color: redoMa.containsMouse ? "#333" : "transparent"
-                    Text { text: "↷"; color: "#888"; font.pixelSize: 14; anchors.centerIn: parent }
-                    MouseArea { id: redoMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (mainCanvas) mainCanvas.redo() }
+                
+                // Undo/Redo
+                Row {
+                    spacing: 4
+                    Rectangle {
+                        width: 24; height: 24; radius: 6
+                        color: undoMa.containsMouse ? "#1c1c20" : "transparent"
+                        border.color: undoMa.containsMouse ? "#333" : "transparent"
+                        Text { text: "↶"; color: "#888"; font.pixelSize: 14; anchors.centerIn: parent }
+                        MouseArea { id: undoMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (mainCanvas) mainCanvas.undo() }
+                    }
+                    Rectangle {
+                        width: 24; height: 24; radius: 6
+                        color: redoMa.containsMouse ? "#1c1c20" : "transparent"
+                        border.color: redoMa.containsMouse ? "#333" : "transparent"
+                        Text { text: "↷"; color: "#888"; font.pixelSize: 14; anchors.centerIn: parent }
+                        MouseArea { id: redoMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if (mainCanvas) mainCanvas.redo() }
+                    }
                 }
             }
             
-            Item { width: 8 }
+            Item { width: 8; visible: studioLayout.showTopSymmetryUndoRedo }
             
             // --- WORKSPACES SWITCHER ---
             Rectangle {
                 id: workspaceBtn
+                visible: studioLayout.showTopWorkspaceSwitcher
                 width: 140; height: 26; radius: 6
                 color: wsMa.containsMouse || studioLayout.wsMenuOpen ? "#2a2a30" : "#1a1a1f"
                 border.color: wsMa.containsMouse || studioLayout.wsMenuOpen ? Qt.lighter(accentColor, 1.2) : "#333"
@@ -740,7 +757,7 @@ Item {
                 }
             }
             
-            Item { width: 8 }
+            Item { width: 8; visible: studioLayout.showTopWorkspaceSwitcher }
             
             // Mode switch
             Rectangle {

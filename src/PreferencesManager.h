@@ -61,6 +61,15 @@ class PreferencesManager : public QObject {
   Q_PROPERTY(QVariantMap shortcuts READ shortcuts WRITE setShortcuts NOTIFY
                  shortcutsChanged)
 
+  // --- CUSTOM UI VISIBILITY PREFERENCES ---
+  Q_PROPERTY(bool showTopProjectInfo READ showTopProjectInfo WRITE setShowTopProjectInfo NOTIFY settingsChanged)
+  Q_PROPERTY(bool showTopBrushControls READ showTopBrushControls WRITE setShowTopBrushControls NOTIFY settingsChanged)
+  Q_PROPERTY(bool showTopActionButtons READ showTopActionButtons WRITE setShowTopActionButtons NOTIFY settingsChanged)
+  Q_PROPERTY(bool showTopSymmetryUndoRedo READ showTopSymmetryUndoRedo WRITE setShowTopSymmetryUndoRedo NOTIFY settingsChanged)
+  Q_PROPERTY(bool showTopWorkspaceSwitcher READ showTopWorkspaceSwitcher WRITE setShowTopWorkspaceSwitcher NOTIFY settingsChanged)
+  Q_PROPERTY(bool showRightToolbar READ showRightToolbar WRITE setShowRightToolbar NOTIFY settingsChanged)
+  Q_PROPERTY(bool showRightColorSelector READ showRightColorSelector WRITE setShowRightColorSelector NOTIFY settingsChanged)
+
 public:
   static PreferencesManager *instance();
 
@@ -122,6 +131,29 @@ public:
   }
   bool multitouchUndoRedoEnabled() const {
     return m_settings->value("multitouch_undo_redo_enabled", true).toBool();
+  }
+
+  // --- UI VISIBILITY GETTERS ---
+  bool showTopProjectInfo() const {
+    return m_settings->value("show_top_project_info", true).toBool();
+  }
+  bool showTopBrushControls() const {
+    return m_settings->value("show_top_brush_controls", true).toBool();
+  }
+  bool showTopActionButtons() const {
+    return m_settings->value("show_top_action_buttons", true).toBool();
+  }
+  bool showTopSymmetryUndoRedo() const {
+    return m_settings->value("show_top_symmetry_undo_redo", true).toBool();
+  }
+  bool showTopWorkspaceSwitcher() const {
+    return m_settings->value("show_top_workspace_switcher", true).toBool();
+  }
+  bool showRightToolbar() const {
+    return m_settings->value("show_right_toolbar", true).toBool();
+  }
+  bool showRightColorSelector() const {
+    return m_settings->value("show_right_color_selector", true).toBool();
   }
 
   QVariantList pressureCurve() const {
@@ -305,6 +337,50 @@ public slots:
   void setMultitouchUndoRedoEnabled(bool enabled) {
     if (multitouchUndoRedoEnabled() != enabled) {
       m_settings->setValue("multitouch_undo_redo_enabled", enabled);
+      emit settingsChanged();
+    }
+  }
+
+  // --- UI VISIBILITY SETTERS ---
+  void setShowTopProjectInfo(bool show) {
+    if (showTopProjectInfo() != show) {
+      m_settings->setValue("show_top_project_info", show);
+      emit settingsChanged();
+    }
+  }
+  void setShowTopBrushControls(bool show) {
+    if (showTopBrushControls() != show) {
+      m_settings->setValue("show_top_brush_controls", show);
+      emit settingsChanged();
+    }
+  }
+  void setShowTopActionButtons(bool show) {
+    if (showTopActionButtons() != show) {
+      m_settings->setValue("show_top_action_buttons", show);
+      emit settingsChanged();
+    }
+  }
+  void setShowTopSymmetryUndoRedo(bool show) {
+    if (showTopSymmetryUndoRedo() != show) {
+      m_settings->setValue("show_top_symmetry_undo_redo", show);
+      emit settingsChanged();
+    }
+  }
+  void setShowTopWorkspaceSwitcher(bool show) {
+    if (showTopWorkspaceSwitcher() != show) {
+      m_settings->setValue("show_top_workspace_switcher", show);
+      emit settingsChanged();
+    }
+  }
+  void setShowRightToolbar(bool show) {
+    if (showRightToolbar() != show) {
+      m_settings->setValue("show_right_toolbar", show);
+      emit settingsChanged();
+    }
+  }
+  void setShowRightColorSelector(bool show) {
+    if (showRightColorSelector() != show) {
+      m_settings->setValue("show_right_color_selector", show);
       emit settingsChanged();
     }
   }

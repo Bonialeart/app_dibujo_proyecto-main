@@ -310,8 +310,59 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
   m_compFBOA->release();
 
   artflow::Layer *clippingBase = nullptr;
+  GLuint clippingBaseTexID = 0;
   QOpenGLFramebufferObject *currentBackdrop = m_compFBOA;
   QOpenGLFramebufferObject *nextBackdrop = m_compFBOB;
+
+  auto drawBorderOnTop = [&](artflow::Layer *panelL, GLuint panelTexID) {
+    if (!panelL || panelTexID == 0)
+      return;
+
+    nextBackdrop->bind();
+    f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
+    m_compositionShader->bind();
+
+    f->glActiveTexture(GL_TEXTURE0);
+    f->glBindTexture(GL_TEXTURE_2D, currentBackdrop->texture());
+    m_compositionShader->setUniformValue("uBackdrop", 0);
+
+    f->glActiveTexture(GL_TEXTURE1);
+    f->glBindTexture(GL_TEXTURE_2D, panelTexID);
+    m_compositionShader->setUniformValue("uSource", 1);
+
+    m_compositionShader->setUniformValue("uHasMask", 0);
+    m_compositionShader->setUniformValue("uOpacity", panelL->opacity);
+    m_compositionShader->setUniformValue("uMode", (int)artflow::BlendMode::Normal);
+    m_compositionShader->setUniformValue("uDrawPanelBorderOnly", 1);
+
+    // Identity-like transforms for FBO-to-FBO composition
+    m_compositionShader->setUniformValue(
+        "uScreenSize", QVector2D(m_canvasWidth, m_canvasHeight));
+    m_compositionShader->setUniformValue(
+        "uLayerSize", QVector2D(m_canvasWidth, m_canvasHeight));
+    m_compositionShader->setUniformValue("uViewOffset", QVector2D(0, 0));
+    m_compositionShader->setUniformValue("uZoom", 1.0f);
+    m_compositionShader->setUniformValue("uIsPreview", 0.0f);
+
+    GLfloat vertices[] = {-1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1,
+                          -1, 1,  0, 1, 1, -1, 1, 0, 1,  1, 1, 1};
+
+    m_compositionShader->enableAttributeArray(0);
+    m_compositionShader->enableAttributeArray(1);
+    m_compositionShader->setAttributeArray(0, GL_FLOAT, vertices, 2,
+                                           4 * sizeof(GLfloat));
+    m_compositionShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2,
+                                           4 * sizeof(GLfloat));
+
+    f->glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    m_compositionShader->disableAttributeArray(0);
+    m_compositionShader->disableAttributeArray(1);
+    m_compositionShader->release();
+    nextBackdrop->release();
+
+    std::swap(currentBackdrop, nextBackdrop);
+  };
 
   for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
     artflow::Layer *layer = m_layerManager->getLayer(i);
@@ -319,8 +370,12 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
       continue;
 
     artflow::Layer *maskLayer = (layer->clipped) ? clippingBase : nullptr;
-    if (!layer->clipped)
+    if (!layer->clipped) {
+      if (clippingBase && QString::fromStdString(clippingBase->name).startsWith("Panel ", Qt::CaseInsensitive)) {
+        drawBorderOnTop(clippingBase, clippingBaseTexID);
+      }
       clippingBase = layer;
+    }
 
     // Get Source Texture
     GLuint sourceTexID = 0;
@@ -373,6 +428,10 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
       sourceTexID = tex->textureId();
     }
 
+    if (!layer->clipped) {
+      clippingBaseTexID = sourceTexID;
+    }
+
     // Blend into nextBackdrop
     nextBackdrop->bind();
     f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
@@ -402,6 +461,7 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
 
     m_compositionShader->setUniformValue("uOpacity", layer->opacity);
     m_compositionShader->setUniformValue("uMode", (int)layer->blendMode);
+    m_compositionShader->setUniformValue("uDrawPanelBorderOnly", 0);
 
     // Identity-like transforms for FBO-to-FBO composition
     m_compositionShader->setUniformValue(
@@ -430,6 +490,10 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
     nextBackdrop->release();
 
     std::swap(currentBackdrop, nextBackdrop);
+  }
+
+  if (clippingBase && QString::fromStdString(clippingBase->name).startsWith("Panel ", Qt::CaseInsensitive)) {
+    drawBorderOnTop(clippingBase, clippingBaseTexID);
   }
 
   // Store the final composited texture ID for the blit shader
@@ -982,6 +1046,27 @@ void CanvasItem::paint(QPainter *painter) {
                 // Draw the clipped group over the canvas
                 cpuPainter.setOpacity(1.0f);
                 cpuPainter.drawImage(dirtyUnion.topLeft(), groupImg);
+
+                // Draw panel border on top of the clipped artwork
+                if (QString::fromStdString(baseLayer->name).startsWith("Panel ", Qt::CaseInsensitive)) {
+                  QImage borderImg = baseImg.copy(dirtyUnion);
+                  for (int y = 0; y < borderImg.height(); ++y) {
+                    QRgb *row = reinterpret_cast<QRgb*>(borderImg.scanLine(y));
+                    for (int x = 0; x < borderImg.width(); ++x) {
+                      QRgb px = row[x];
+                      int alpha = qAlpha(px);
+                      int r = qRed(px);
+                      int g = qGreen(px);
+                      int b = qBlue(px);
+                      // If it's a fill pixel (white/light), make it transparent
+                      if (alpha > 0 && r >= 250 && g >= 250 && b >= 250) {
+                        row[x] = qRgba(0, 0, 0, 0);
+                      }
+                    }
+                  }
+                  cpuPainter.setOpacity(baseLayer->opacity);
+                  cpuPainter.drawImage(dirtyUnion.topLeft(), borderImg);
+                }
               } else {
                 // Base layer invisible, just clear dirty flags for clipped
                 // layers
@@ -1008,6 +1093,7 @@ void CanvasItem::paint(QPainter *painter) {
         painter->setRenderHint(QPainter::SmoothPixmapTransform,
                                m_zoomLevel < 1.0f);
         painter->drawImage(targetRect, m_cachedCanvasImage);
+        drawActivePanelOverlay(painter);
       }
     }
 
@@ -1069,6 +1155,55 @@ void CanvasItem::paint(QPainter *painter) {
     QPen gutterPen(QColor(255, 0, 0, 50), m_panelGutterSize, Qt::SolidLine);
     painter->setPen(gutterPen);
     painter->drawLine(m_panelCutStartPos, m_panelCutEndPos);
+
+    // Draw HUD text bubble near m_panelCutEndPos
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    painter->setRenderHint(QPainter::TextAntialiasing);
+    
+    double dx = m_panelCutEndPos.x() - m_panelCutStartPos.x();
+    double dy = m_panelCutEndPos.y() - m_panelCutStartPos.y();
+    double dist = std::hypot(dx, dy);
+    if (dist > 5.0) {
+      double deg = std::atan2(dy, dx) * 180.0 / M_PI;
+      if (deg < 0) deg += 360.0;
+      
+      bool snapped = false;
+      double snappedDeg = deg;
+      double minDiff = 360.0;
+      std::vector<double> targets = { 0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360 };
+      for (double target : targets) {
+          double diff = std::abs(deg - target);
+          if (diff < minDiff) {
+              minDiff = diff;
+              snappedDeg = target;
+          }
+      }
+      if (minDiff <= 5.0) {
+          snapped = true;
+          deg = snappedDeg;
+      }
+      
+      QString text = QString::number(deg, 'f', 0) + "°";
+      if (snapped) text += " (Snap)";
+      
+      QFont font("Inter", 11);
+      painter->setFont(font);
+      QFontMetrics fm(font);
+      QRectF textRect = fm.boundingRect(text);
+      textRect.adjust(-8, -4, 8, 4);
+      
+      QPointF hudPos = m_panelCutEndPos + QPointF(20.0f / m_zoomLevel, 20.0f / m_zoomLevel);
+      textRect.moveCenter(hudPos);
+      
+      painter->setBrush(QColor(20, 20, 25, 220));
+      painter->setPen(QPen(snapped ? QColor(52, 199, 89) : QColor(140, 140, 150), 1.2f / m_zoomLevel));
+      painter->drawRoundedRect(textRect, 6.0f / m_zoomLevel, 6.0f / m_zoomLevel);
+      
+      painter->setPen(snapped ? QColor(52, 199, 89) : Qt::white);
+      painter->drawText(textRect, Qt::AlignCenter, text);
+    }
+    painter->restore();
 
     painter->restore();
   }
@@ -2606,6 +2741,29 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 
   if (m_tool == ToolType::PanelCut && m_isPanelCutting) {
     QPointF canvasPos = screenToCanvas(event->position());
+    double dx = canvasPos.x() - m_panelCutStartPos.x();
+    double dy = canvasPos.y() - m_panelCutStartPos.y();
+    double dist = std::hypot(dx, dy);
+    if (dist > 5.0) {
+      double deg = std::atan2(dy, dx) * 180.0 / M_PI;
+      if (deg < 0) deg += 360.0;
+      
+      double snappedDeg = deg;
+      double minDiff = 360.0;
+      std::vector<double> targets = { 0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360 };
+      for (double target : targets) {
+          double diff = std::abs(deg - target);
+          if (diff < minDiff) {
+              minDiff = diff;
+              snappedDeg = target;
+          }
+      }
+      
+      if (minDiff <= 5.0) {
+          double snappedRad = snappedDeg * M_PI / 180.0;
+          canvasPos = m_panelCutStartPos + QPointF(dist * std::cos(snappedRad), dist * std::sin(snappedRad));
+      }
+    }
     m_panelCutEndPos = canvasPos;
     update();
     return;
@@ -2760,6 +2918,29 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
   }
   if (m_tool == ToolType::PanelCut && m_isPanelCutting) {
     QPointF canvasPos = screenToCanvas(event->position());
+    double dx = canvasPos.x() - m_panelCutStartPos.x();
+    double dy = canvasPos.y() - m_panelCutStartPos.y();
+    double dist = std::hypot(dx, dy);
+    if (dist > 5.0) {
+      double deg = std::atan2(dy, dx) * 180.0 / M_PI;
+      if (deg < 0) deg += 360.0;
+      
+      double snappedDeg = deg;
+      double minDiff = 360.0;
+      std::vector<double> targets = { 0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360 };
+      for (double target : targets) {
+          double diff = std::abs(deg - target);
+          if (diff < minDiff) {
+              minDiff = diff;
+              snappedDeg = target;
+          }
+      }
+      
+      if (minDiff <= 5.0) {
+          double snappedRad = snappedDeg * M_PI / 180.0;
+          canvasPos = m_panelCutStartPos + QPointF(dist * std::cos(snappedRad), dist * std::sin(snappedRad));
+      }
+    }
     m_panelCutEndPos = canvasPos;
     m_isPanelCutting = false;
 
@@ -3340,6 +3521,118 @@ QPointF CanvasItem::mirrorPoint(const QPointF &pt, int mirrorIndex,
     return QPointF(center.x() + nx, center.y() + ny);
   }
   return pt;
+}
+
+void CanvasItem::setPanelGutterSize(float size) {
+  if (m_panelGutterSize == size) return;
+  m_panelGutterSize = size;
+  emit panelGutterSizeChanged();
+  update();
+}
+
+void CanvasItem::setPanelBorderStyle(const QString &style) {
+  if (m_panelBorderStyle == style) return;
+  m_panelBorderStyle = style;
+  emit panelBorderStyleChanged();
+  update();
+}
+
+void CanvasItem::setPanelBorderWidth(float width) {
+  if (m_panelBorderWidth == width) return;
+  m_panelBorderWidth = width;
+  emit panelBorderWidthChanged();
+  update();
+}
+
+void CanvasItem::drawStylizedBorder(QPainter &painter, const QPointF &p1, const QPointF &p2, const QString &style, float width) {
+  if (style == "invisible") {
+    return;
+  }
+
+  painter.save();
+  painter.setRenderHint(QPainter::Antialiasing);
+
+  QPen pen(Qt::black, width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+
+  if (style == "dotted") {
+    pen.setStyle(Qt::DashLine);
+    painter.setPen(pen);
+    painter.drawLine(p1, p2);
+  } else if (style == "double") {
+    QLineF line(p1, p2);
+    float len = line.length();
+    if (len > 0) {
+      float nx = -line.dy() / len;
+      float ny = line.dx() / len;
+      QPointF shift(nx * (width * 0.6f + 1.5f), ny * (width * 0.6f + 1.5f));
+
+      pen.setWidthF(width * 0.7f);
+      painter.setPen(pen);
+      painter.drawLine(p1 + shift, p2 + shift);
+      painter.drawLine(p1 - shift, p2 - shift);
+    }
+  } else if (style == "blurry") {
+    QLineF line(p1, p2);
+    for (int w = static_cast<int>(width * 2.5f); w >= 1; w -= 2) {
+      float opacity = (1.0f - static_cast<float>(w) / (width * 2.5f)) * 0.4f;
+      QPen softPen(QColor(0, 0, 0, static_cast<int>(opacity * 255)), w, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+      painter.setPen(softPen);
+      painter.drawLine(p1, p2);
+    }
+    pen.setWidthF(width * 0.8f);
+    painter.setPen(pen);
+    painter.drawLine(p1, p2);
+  } else if (style == "sketchy") {
+    QLineF line(p1, p2);
+    float length = line.length();
+    if (length > 0) {
+      int segments = std::max(5, static_cast<int>(length / 12.0f));
+
+      auto getNoise = [](int seed) -> double {
+        return static_cast<double>((seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff - 0.5;
+      };
+
+      QPainterPath path1;
+      path1.moveTo(p1);
+      for (int i = 1; i <= segments; ++i) {
+        double t = static_cast<double>(i) / segments;
+        QPointF pt = line.pointAt(t);
+        if (i < segments) {
+          double noise = getNoise(i * 13) * (width * 0.4f);
+          QPointF normal(-line.dy() / length, line.dx() / length);
+          pt += normal * noise;
+        }
+        path1.lineTo(pt);
+      }
+
+      QPainterPath path2;
+      path2.moveTo(p1);
+      for (int i = 1; i <= segments; ++i) {
+        double t = static_cast<double>(i) / segments;
+        QPointF pt = line.pointAt(t);
+        if (i < segments) {
+          double noise = getNoise(i * 37) * (width * 0.5f);
+          QPointF normal(-line.dy() / length, line.dx() / length);
+          pt += normal * noise;
+        }
+        path2.lineTo(pt);
+      }
+
+      QPen pen1(Qt::black, width * 0.8f, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+      painter.setPen(pen1);
+      painter.drawPath(path1);
+
+      QPen pen2(QColor(40, 40, 40, 180), width * 0.4f, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+      painter.setPen(pen2);
+      painter.drawPath(path2);
+    }
+  } else {
+    pen.setWidthF(width);
+    painter.setPen(pen);
+    painter.drawLine(p1, p2);
+  }
+
+  painter.restore();
 }
 
 void CanvasItem::setBrushSize(int size) {
@@ -4146,9 +4439,48 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
   if (!activeLayer || !activeLayer->buffer)
     return;
 
-  // Si la capa actual está en blanco, inicializamos un Panel Maestro primero
+  int activeIdx = m_layerManager->getActiveLayerIndex();
+  int basePanelIdx = -1;
+
+  // Escaneo dinámico de arriba a abajo de todos los paneles para encontrar el intersecado
+  QLineF cutLine(p1, p2);
+  for (int i = m_layerManager->getLayerCount() - 1; i >= 0; --i) {
+    Layer *layer = m_layerManager->getLayer(i);
+    if (!layer || layer->clipped || layer->type != Layer::Type::Drawing)
+      continue;
+
+    // Ignorar capas de fondo/papel
+    QString name = QString::fromStdString(layer->name).toLower();
+    if (name.contains("background") || name.contains("fondo") || name.contains("papel"))
+      continue;
+
+    QRectF bounds = getLayerBoundingRect(layer);
+    if (bounds.isValid() && !bounds.isEmpty()) {
+      if (lineIntersectsRect(cutLine, bounds)) {
+        basePanelIdx = i;
+        break;
+      }
+    }
+  }
+
+  // Fallback al panel base de la capa activa si no se detectó intersección
+  if (basePanelIdx == -1) {
+    basePanelIdx = activeIdx;
+    while (basePanelIdx >= 0 && m_layerManager->getLayer(basePanelIdx)->clipped) {
+      basePanelIdx--;
+    }
+    if (basePanelIdx < 0) {
+      basePanelIdx = activeIdx;
+    }
+  }
+
+  Layer *basePanelLayer = m_layerManager->getLayer(basePanelIdx);
+  if (!basePanelLayer || !basePanelLayer->buffer)
+    return;
+
+  // Si el panel base está en blanco, lo inicializamos primero
   bool isBlank = true;
-  const uint8_t *ptr = activeLayer->buffer->data();
+  const uint8_t *ptr = basePanelLayer->buffer->data();
   size_t bytes = m_canvasWidth * m_canvasHeight * 4;
   for (size_t i = 3; i < bytes; i += 4) {
     if (ptr[i] > 0) {
@@ -4164,17 +4496,24 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
     QPainter p(&baseImg);
     p.setRenderHint(QPainter::Antialiasing);
     p.fillRect(50, 50, m_canvasWidth - 100, m_canvasHeight - 100, Qt::white);
-    p.setPen(QPen(Qt::black, 4));
-    p.drawRect(50, 50, m_canvasWidth - 100, m_canvasHeight - 100);
+    
+    QPointF topLeft(50, 50);
+    QPointF topRight(m_canvasWidth - 50, 50);
+    QPointF bottomRight(m_canvasWidth - 50, m_canvasHeight - 50);
+    QPointF bottomLeft(50, m_canvasHeight - 50);
+
+    drawStylizedBorder(p, topLeft, topRight, m_panelBorderStyle, m_panelBorderWidth);
+    drawStylizedBorder(p, topRight, bottomRight, m_panelBorderStyle, m_panelBorderWidth);
+    drawStylizedBorder(p, bottomRight, bottomLeft, m_panelBorderStyle, m_panelBorderWidth);
+    drawStylizedBorder(p, bottomLeft, topLeft, m_panelBorderStyle, m_panelBorderWidth);
     p.end();
   } else {
-    baseImg = QImage(activeLayer->buffer->data(), m_canvasWidth, m_canvasHeight,
+    baseImg = QImage(basePanelLayer->buffer->data(), m_canvasWidth, m_canvasHeight,
                      QImage::Format_RGBA8888_Premultiplied)
                   .copy();
   }
 
   // Geometría del corte
-  QLineF cutLine(p1, p2);
   float dx = p2.x() - p1.x();
   float dy = p2.y() - p1.y();
   float len = std::hypot(dx, dy);
@@ -4202,7 +4541,6 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
 
   QImage copyA = baseImg.copy();
   QImage copyB = baseImg.copy();
-  QPen borderPen(Qt::black, 4.0f, Qt::SolidLine, Qt::SquareCap, Qt::MiterJoin);
 
   // Generar Panel A
   QPainter pa(&copyA);
@@ -4212,9 +4550,14 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
   pPathB.addPolygon(polyB);
   pa.fillPath(pPathB, Qt::transparent);
   pa.setCompositionMode(QPainter::CompositionMode_SourceOver);
-  pa.setPen(borderPen);
-  pa.drawLine(lineA);
+  drawStylizedBorder(pa, lineA.p1(), lineA.p2(), m_panelBorderStyle, m_panelBorderWidth);
   pa.end();
+
+  // Recortar Panel A estrictamente dentro de los límites del panel original baseImg
+  QPainter paMask(&copyA);
+  paMask.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+  paMask.drawImage(0, 0, baseImg);
+  paMask.end();
 
   // Generar Panel B
   QPainter pb(&copyB);
@@ -4224,40 +4567,105 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
   pPathA.addPolygon(polyA);
   pb.fillPath(pPathA, Qt::transparent);
   pb.setCompositionMode(QPainter::CompositionMode_SourceOver);
-  pb.setPen(borderPen);
-  pb.drawLine(lineB);
+  drawStylizedBorder(pb, lineB.p1(), lineB.p2(), m_panelBorderStyle, m_panelBorderWidth);
   pb.end();
 
-  // 1. Actualizar Capa Activa -> Panel 1
-  activeLayer->buffer->loadRawData(copyA.constBits());
-  activeLayer->name = "Panel 1";
-  activeLayer->dirty = true;
-  int activeIdx = m_layerManager->getActiveLayerIndex();
+  // Recortar Panel B estrictamente dentro de los límites del panel original baseImg
+  QPainter pbMask(&copyB);
+  pbMask.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+  pbMask.drawImage(0, 0, baseImg);
+  pbMask.end();
 
-  // 2. Crear Art 1 (Clipped a Panel 1)
-  m_layerManager->addLayer("Art 1");
-  int art1Idx = m_layerManager->getLayerCount() - 1;
-  m_layerManager->moveLayer(art1Idx, activeIdx + 1);
-  m_layerManager->getLayer(activeIdx + 1)->clipped = true;
+  // Encontrar el número secuencial más alto para evitar nombres duplicados
+  int maxPanelNum = 0;
+  for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+    QString name = QString::fromStdString(m_layerManager->getLayer(i)->name);
+    if (name.startsWith("Panel ", Qt::CaseInsensitive)) {
+      bool ok;
+      int num = name.mid(6).toInt(&ok);
+      if (ok && num > maxPanelNum) maxPanelNum = num;
+    } else if (name.startsWith("Art ", Qt::CaseInsensitive)) {
+      bool ok;
+      int num = name.mid(4).toInt(&ok);
+      if (ok && num > maxPanelNum) maxPanelNum = num;
+    }
+  }
+  int nextNum1 = maxPanelNum + 1;
+  int nextNum2 = maxPanelNum + 2;
 
-  // 3. Crear Panel 2
-  m_layerManager->addLayer("Panel 2");
-  int p2Idx = m_layerManager->getLayerCount() - 1;
-  m_layerManager->moveLayer(p2Idx, activeIdx + 2);
-  Layer *panel2 = m_layerManager->getLayer(activeIdx + 2);
-  panel2->buffer->loadRawData(copyB.constBits());
-  panel2->dirty = true;
+  QString panel1Name = QString("Panel %1").arg(nextNum1);
+  QString art1Name = QString("Art %1").arg(nextNum1);
+  QString panel2Name = QString("Panel %2").arg(nextNum2);
+  QString art2Name = QString("Art %2").arg(nextNum2);
 
-  // 4. Crear Art 2 (Clipped a Panel 2)
-  m_layerManager->addLayer("Art 2");
-  int art2Idx = m_layerManager->getLayerCount() - 1;
-  m_layerManager->moveLayer(art2Idx, activeIdx + 3);
-  Layer *art2 = m_layerManager->getLayer(activeIdx + 3);
-  art2->clipped = true;
+  // 1. Actualizar Capa Base del Panel
+  basePanelLayer->buffer->loadRawData(copyA.constBits());
+  basePanelLayer->name = panel1Name.toStdString();
+  basePanelLayer->dirty = true;
 
-  // Focus the first Art layer to let user start drawing immediately
-  m_activeLayerIndex = activeIdx + 1;
-  m_layerManager->setActiveLayer(m_activeLayerIndex);
+  // Actualizar el nombre de la capa de dibujo activa si estaba seleccionada una de arte
+  if (activeIdx != basePanelIdx) {
+    Layer *activeArtLayer = m_layerManager->getLayer(activeIdx);
+    if (activeArtLayer) {
+      activeArtLayer->name = art1Name.toStdString();
+      activeArtLayer->dirty = true;
+    }
+  }
+
+  // Buscar el final de las capas acopladas (clipped) al Panel base
+  int lastClippedIdx = basePanelIdx;
+  while (lastClippedIdx + 1 < m_layerManager->getLayerCount() &&
+         m_layerManager->getLayer(lastClippedIdx + 1)->clipped) {
+    lastClippedIdx++;
+  }
+
+  int targetFocusIdx = -1;
+
+  if (lastClippedIdx == basePanelIdx) {
+    // Caso B: No hay capas de dibujo vinculadas. Creamos Art 1 y el Panel 2 + Art 2.
+    m_layerManager->addLayer(art1Name.toStdString());
+    int art1Idx = m_layerManager->getLayerCount() - 1;
+    m_layerManager->moveLayer(art1Idx, basePanelIdx + 1);
+    m_layerManager->getLayer(basePanelIdx + 1)->clipped = true;
+
+    m_layerManager->addLayer(panel2Name.toStdString());
+    int p2Idx = m_layerManager->getLayerCount() - 1;
+    m_layerManager->moveLayer(p2Idx, basePanelIdx + 2);
+    Layer *panel2 = m_layerManager->getLayer(basePanelIdx + 2);
+    panel2->buffer->loadRawData(copyB.constBits());
+    panel2->dirty = true;
+
+    m_layerManager->addLayer(art2Name.toStdString());
+    int art2Idx = m_layerManager->getLayerCount() - 1;
+    m_layerManager->moveLayer(art2Idx, basePanelIdx + 3);
+    Layer *art2 = m_layerManager->getLayer(basePanelIdx + 3);
+    art2->clipped = true;
+    art2->dirty = true;
+
+    targetFocusIdx = basePanelIdx + 3; // Foco en la nueva capa Art 2
+  } else {
+    // Caso A: Ya existen capas de dibujo acopladas. Las dejamos en Panel 1, y creamos Panel 2 + Art 2.
+    m_layerManager->addLayer(panel2Name.toStdString());
+    int p2Idx = m_layerManager->getLayerCount() - 1;
+    m_layerManager->moveLayer(p2Idx, lastClippedIdx + 1);
+    Layer *panel2 = m_layerManager->getLayer(lastClippedIdx + 1);
+    panel2->buffer->loadRawData(copyB.constBits());
+    panel2->dirty = true;
+
+    m_layerManager->addLayer(art2Name.toStdString());
+    int art2Idx = m_layerManager->getLayerCount() - 1;
+    m_layerManager->moveLayer(art2Idx, lastClippedIdx + 2);
+    Layer *art2 = m_layerManager->getLayer(lastClippedIdx + 2);
+    art2->clipped = true;
+    art2->dirty = true;
+
+    targetFocusIdx = lastClippedIdx + 2; // Foco en la nueva capa Art 2
+  }
+
+  if (targetFocusIdx != -1) {
+    m_activeLayerIndex = targetFocusIdx;
+    m_layerManager->setActiveLayer(m_activeLayerIndex);
+  }
 
   updateLayersList();
   update();
@@ -4616,29 +5024,200 @@ void CanvasItem::fitToView() {
 }
 
 void CanvasItem::addLayer() {
+  if (!m_layerManager) return;
+
+  int activeIdx = m_layerManager->getActiveLayerIndex();
+  int totalLayers = m_layerManager->getLayerCount();
+  artflow::Layer *activeLayer = m_layerManager->getLayer(activeIdx);
+
+  bool shouldClip = false;
+  int targetIdx = totalLayers; // default: top of the stack
+
+  if (activeLayer) {
+    QString activeName = QString::fromStdString(activeLayer->name);
+    if (activeLayer->clipped) {
+      shouldClip = true;
+      targetIdx = activeIdx + 1;
+    } else if (activeName.startsWith("Panel ", Qt::CaseInsensitive)) {
+      shouldClip = true;
+      targetIdx = activeIdx + 1;
+    } else {
+      // Normal layer: insert right above active layer
+      shouldClip = false;
+      targetIdx = activeIdx + 1;
+    }
+  }
+
+  if (targetIdx < 0) targetIdx = 0;
+  if (targetIdx > totalLayers) targetIdx = totalLayers;
+
   m_layerManager->addLayer("New Layer");
-  setActiveLayer(m_layerManager->getLayerCount() - 1);
+  int newCount = m_layerManager->getLayerCount();
+  int newLayerIdx = newCount - 1;
+
+  artflow::Layer *newLayer = m_layerManager->getLayer(newLayerIdx);
+  if (newLayer) {
+    newLayer->clipped = shouldClip;
+  }
+
+  if (newLayerIdx != targetIdx) {
+    m_layerManager->moveLayer(newLayerIdx, targetIdx);
+  }
+
+  setActiveLayer(targetIdx);
   update();
 }
 
 void CanvasItem::addGroup() {
+  if (!m_layerManager) return;
+
+  int activeIdx = m_layerManager->getActiveLayerIndex();
+  int totalLayers = m_layerManager->getLayerCount();
+
+  int targetIdx = activeIdx + 1;
+  if (targetIdx < 0) targetIdx = 0;
+  if (targetIdx > totalLayers) targetIdx = totalLayers;
+
   m_layerManager->addLayer("New Group", artflow::Layer::Type::Group);
-  setActiveLayer(m_layerManager->getLayerCount() - 1);
+  int newCount = m_layerManager->getLayerCount();
+  int newLayerIdx = newCount - 1;
+
+  if (newLayerIdx != targetIdx) {
+    m_layerManager->moveLayer(newLayerIdx, targetIdx);
+  }
+
+  setActiveLayer(targetIdx);
   update();
+}
+
+int CanvasItem::getFolderCount() const {
+  if (!m_layerManager) return 0;
+  int count = 0;
+  for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+    artflow::Layer *l = m_layerManager->getLayer(i);
+    if (l && l->type == artflow::Layer::Type::Group) {
+      count++;
+    }
+  }
+  return count;
+}
+
+int CanvasItem::getFirstCreatedFolderStableId() const {
+  if (!m_layerManager) return -1;
+  int minStableId = -1;
+  for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+    artflow::Layer *l = m_layerManager->getLayer(i);
+    if (l && l->type == artflow::Layer::Type::Group) {
+      if (minStableId == -1 || (int)l->stableId < minStableId) {
+        minStableId = (int)l->stableId;
+      }
+    }
+  }
+  return minStableId;
+}
+
+artflow::Layer* CanvasItem::getActiveBasePanel(int *outIndex) const {
+  if (!m_layerManager) return nullptr;
+  int activeIdx = m_layerManager->getActiveLayerIndex();
+  artflow::Layer *activeLayer = m_layerManager->getLayer(activeIdx);
+  if (!activeLayer) return nullptr;
+
+  // Trace down to find the clipping base
+  int baseIdx = activeIdx;
+  while (baseIdx >= 0) {
+    artflow::Layer *l = m_layerManager->getLayer(baseIdx);
+    if (!l) break;
+    if (!l->clipped) {
+      QString name = QString::fromStdString(l->name);
+      if (name.startsWith("Panel ", Qt::CaseInsensitive)) {
+        if (outIndex) *outIndex = baseIdx;
+        return l;
+      }
+      break; // It's a non-clipped layer but not a panel (e.g. background or standard layer)
+    }
+    baseIdx--;
+  }
+  return nullptr;
+}
+
+void CanvasItem::drawActivePanelOverlay(QPainter *painter) {
+  if (!m_layerManager)
+    return;
+
+  int panelIdx = -1;
+  artflow::Layer *basePanelLayer = getActiveBasePanel(&panelIdx);
+  if (!basePanelLayer || !basePanelLayer->buffer)
+    return;
+
+  int cw = m_canvasWidth;
+  int ch = m_canvasHeight;
+
+  // 1. Create the periwinkle mask overlay (outside the active panel)
+  QImage overlayImg(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+  overlayImg.fill(QColor(115, 120, 230, 70));
+
+  QImage maskImg(basePanelLayer->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
+
+  QPainter op(&overlayImg);
+  op.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+  op.drawImage(0, 0, maskImg);
+  op.end();
+
+  // 2. Create the 2px dilated indigo border outline
+  QImage coloredMask(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+  coloredMask.fill(QColor(90, 95, 245, 230));
+  {
+    QPainter cp(&coloredMask);
+    cp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    cp.drawImage(0, 0, maskImg);
+  }
+
+  QImage borderImg(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+  borderImg.fill(Qt::transparent);
+  {
+    QPainter bp(&borderImg);
+    bp.drawImage(-2, 0, coloredMask);
+    bp.drawImage(2, 0, coloredMask);
+    bp.drawImage(0, -2, coloredMask);
+    bp.drawImage(0, 2, coloredMask);
+    bp.drawImage(-1, -1, coloredMask);
+    bp.drawImage(1, -1, coloredMask);
+    bp.drawImage(-1, 1, coloredMask);
+    bp.drawImage(1, 1, coloredMask);
+    bp.drawImage(0, 0, coloredMask);
+
+    bp.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    bp.drawImage(0, 0, maskImg);
+  }
+
+  // 3. Draw the overlay and the border onto the canvas coordinate system!
+  painter->save();
+  painter->translate(m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel);
+  painter->scale(m_zoomLevel, m_zoomLevel);
+
+  painter->drawImage(0, 0, overlayImg);
+  painter->drawImage(0, 0, borderImg);
+
+  painter->restore();
 }
 
 void CanvasItem::moveLayerToGroup(int layerId, int groupId) {
   // layerId and groupId are the layer indices (as exposed in the model)
   int count = m_layerManager->getLayerCount();
 
-  // layerModel is in reversed order (last layer is index 0 in UI, but highest
-  // index in manager). Convert UI IDs back to manager indices.
-  int fromManagerIdx = (count - 1) - layerId;
-  int groupManagerIdx = (count - 1) - groupId;
+  // The IDs passed from QML are already direct manager indices (layerId and groupId).
+  int fromManagerIdx = layerId;
+  int groupManagerIdx = groupId;
 
   if (fromManagerIdx < 0 || fromManagerIdx >= count || groupManagerIdx < 0 ||
       groupManagerIdx >= count) {
     qWarning() << "moveLayerToGroup: invalid indices" << layerId << groupId;
+    return;
+  }
+
+  // Block moving the background layer (index 0) into a group
+  if (fromManagerIdx == 0) {
+    qWarning() << "Blocking moveLayerToGroup: Cannot move background layer to a group.";
     return;
   }
 
@@ -4648,18 +5227,26 @@ void CanvasItem::moveLayerToGroup(int layerId, int groupId) {
     return;
   }
 
+  if (getFolderCount() >= 2) {
+    int firstFolderStableId = getFirstCreatedFolderStableId();
+    if (firstFolderStableId != -1 && (int)grpLayer->stableId != firstFolderStableId) {
+      qWarning() << "Blocking moveLayerToGroup: Target folder is not the first created folder.";
+      return;
+    }
+  }
+
   artflow::Layer *layerToMove = m_layerManager->getLayer(fromManagerIdx);
   if (layerToMove) {
     layerToMove->parentId = (int)grpLayer->stableId;
   }
 
-  // We want the layer to be placed immediately below the group in the manager
-  // stack (which means just below groupManagerIdx — i.e. at groupManagerIdx-1).
-  // The UI shows layers in reverse, so "inside the group" visually means the
-  // layer is at a lower manager index than the group.
-  int destManagerIdx = groupManagerIdx - 1;
-  if (destManagerIdx < 0)
-    destManagerIdx = 0;
+  // We want to place the layer right before the group in the manager's list
+  // so that it visually appears immediately inside/under the group in the UI.
+  // When 'from < group', erasing 'from' causes 'group' to shift left by 1. So we insert at group - 1.
+  // When 'from > group', erasing 'from' doesn't shift 'group'. So we insert at group.
+  int destManagerIdx = (fromManagerIdx < groupManagerIdx) ? (groupManagerIdx - 1) : groupManagerIdx;
+  if (destManagerIdx < 1)
+    destManagerIdx = 1;
 
   if (destManagerIdx != fromManagerIdx) {
     m_layerManager->moveLayer(fromManagerIdx, destManagerIdx);
@@ -4675,9 +5262,115 @@ void CanvasItem::moveLayerToGroup(int layerId, int groupId) {
   update();
 }
 
+void CanvasItem::groupLayersOrMoveToGroup(int draggedLayerId, int targetLayerId) {
+  int count = m_layerManager->getLayerCount();
+  int draggedManagerIdx = draggedLayerId;
+  int targetManagerIdx = targetLayerId;
+
+  if (draggedManagerIdx < 0 || draggedManagerIdx >= count || targetManagerIdx < 0 ||
+      targetManagerIdx >= count) {
+    qWarning() << "groupLayersOrMoveToGroup: invalid indices" << draggedLayerId << targetLayerId;
+    return;
+  }
+
+  // Block grouping if either layer is the background layer (index 0)
+  if (draggedManagerIdx == 0 || targetManagerIdx == 0) {
+    qWarning() << "Blocking groupLayersOrMoveToGroup: Cannot group background layer.";
+    return;
+  }
+
+  artflow::Layer *targetLayer = m_layerManager->getLayer(targetManagerIdx);
+  if (!targetLayer) return;
+
+  if (targetLayer->type == artflow::Layer::Type::Group) {
+    if (getFolderCount() >= 2) {
+      int firstFolderStableId = getFirstCreatedFolderStableId();
+      if (firstFolderStableId != -1 && (int)targetLayer->stableId != firstFolderStableId) {
+        qWarning() << "Blocking groupLayersOrMoveToGroup: Target folder is not the first created folder.";
+        return;
+      }
+    }
+    moveLayerToGroup(draggedLayerId, targetLayerId);
+    return;
+  }
+
+  // If the target layer is already inside a group, simply move the dragged layer into that existing group.
+  if (targetLayer->parentId != -1) {
+    int parentManagerIdx = -1;
+    for (int i = 0; i < count; ++i) {
+      if ((int)m_layerManager->getLayer(i)->stableId == targetLayer->parentId) {
+        parentManagerIdx = i;
+        break;
+      }
+    }
+    if (parentManagerIdx != -1) {
+      if (getFolderCount() >= 2) {
+        int firstFolderStableId = getFirstCreatedFolderStableId();
+        if (firstFolderStableId != -1 && targetLayer->parentId != firstFolderStableId) {
+          qWarning() << "Blocking groupLayersOrMoveToGroup: Parent folder is not the first created folder.";
+          return;
+        }
+      }
+      moveLayerToGroup(draggedLayerId, parentManagerIdx);
+      return;
+    }
+  }
+
+  // Target is NOT a group and NOT in a group, so we create a new group and put both inside.
+  if (getFolderCount() >= 2) {
+    qWarning() << "Blocking groupLayersOrMoveToGroup: Cannot create new folder because there are already 2 or more folders.";
+    return;
+  }
+
+  artflow::Layer *draggedLayer = m_layerManager->getLayer(draggedManagerIdx);
+  if (!draggedLayer) return;
+
+  // Create the new group
+  m_layerManager->addLayer("New Group", artflow::Layer::Type::Group);
+  int newGroupManagerIdx = m_layerManager->getLayerCount() - 1;
+  artflow::Layer *newGroupLayer = m_layerManager->getLayer(newGroupManagerIdx);
+
+  if (!newGroupLayer) return;
+
+  // Set parent IDs
+  draggedLayer->parentId = (int)newGroupLayer->stableId;
+  targetLayer->parentId = (int)newGroupLayer->stableId;
+
+  auto getIdxByStableId = [&](uint32_t id) -> int {
+      for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+          if (m_layerManager->getLayer(i)->stableId == id) return i;
+      }
+      return -1;
+  };
+
+  auto moveLayerAfter = [&](uint32_t layerToMove, uint32_t layerRef) {
+      int from = getIdxByStableId(layerToMove);
+      int ref = getIdxByStableId(layerRef);
+      if (from == -1 || ref == -1 || from == ref) return;
+      
+      int targetIdx = (from < ref) ? ref : (ref + 1);
+      if (from != targetIdx) {
+          m_layerManager->moveLayer(from, targetIdx);
+      }
+  };
+
+  // Place Group immediately above Target
+  moveLayerAfter(newGroupLayer->stableId, targetLayer->stableId);
+  
+  // Place Dragged immediately above Target (which pushes Group up one level)
+  // The final order bottom-to-top will be: Target, Dragged, Group
+  moveLayerAfter(draggedLayer->stableId, targetLayer->stableId);
+
+  // Set active layer to the newly created group
+  setActiveLayer(getIdxByStableId(newGroupLayer->stableId));
+
+  updateLayersList();
+  update();
+}
+
 void CanvasItem::toggleGroupExpanded(int index) {
   int count = m_layerManager->getLayerCount();
-  int managerIdx = (count - 1) - index;
+  int managerIdx = index;
 
   if (managerIdx < 0 || managerIdx >= count)
     return;
@@ -4710,6 +5403,16 @@ void CanvasItem::duplicateLayer(int index) {
 }
 
 void CanvasItem::moveLayer(int fromIndex, int toIndex) {
+  // Prevent background layer (index 0) from being moved
+  if (fromIndex == 0) {
+    return;
+  }
+
+  // Prevent other layers from moving to index 0 (clamp to 1)
+  if (toIndex == 0) {
+    toIndex = 1;
+  }
+
   if (fromIndex == toIndex)
     return;
 
@@ -4732,6 +5435,13 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
         moved->parentId = (int)neighborAbove->stableId;
       } else {
         moved->parentId = neighborAbove->parentId;
+      }
+
+      if (moved->parentId != -1 && getFolderCount() >= 2) {
+        int firstFolderStableId = getFirstCreatedFolderStableId();
+        if (firstFolderStableId != -1 && moved->parentId != firstFolderStableId) {
+          moved->parentId = -1;
+        }
       }
     } else {
       moved->parentId = -1;
@@ -5149,12 +5859,17 @@ QVariantList CanvasItem::get_sketchbook_pages(const QString &folderPath) {
 
     QFile f(info.absoluteFilePath());
     if (f.open(QIODevice::ReadOnly)) {
-      QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-      if (!doc.isNull() && doc.object().contains("thumbnail")) {
-        item["preview"] =
-            "data:image/png;base64," + doc.object()["thumbnail"].toString();
-      }
+      QByteArray data = f.readAll();
       f.close();
+      int index = data.indexOf("\"thumbnail\":\"");
+      if (index == -1) index = data.indexOf("\"thumbnail\": \"");
+      if (index != -1) {
+        int startPos = index + (data.at(index + 12) == ' ' ? 14 : 13);
+        int endPos = data.indexOf('"', startPos);
+        if (endPos != -1) {
+          item["preview"] = "data:image/png;base64," + QString::fromLatin1(data.mid(startPos, endPos - startPos));
+        }
+      }
     }
     results.append(item);
   }
@@ -5296,6 +6011,157 @@ QString CanvasItem::create_new_page(const QString &folderPath,
   }
 
   return "";
+}
+
+bool CanvasItem::duplicatePage(const QString &sourcePath) {
+  QString localPath = sourcePath;
+  if (localPath.startsWith("file:///"))
+    localPath = QUrl(sourcePath).toLocalFile();
+
+  QFileInfo fileInfo(localPath);
+  if (!fileInfo.exists()) {
+    qDebug() << "[Comic] duplicatePage: source file does not exist:" << localPath;
+    return false;
+  }
+
+  QDir dir = fileInfo.dir();
+  QString baseName = fileInfo.completeBaseName(); // e.g. "Page_002"
+  
+  int lastUnderscore = baseName.lastIndexOf('_');
+  QString prefix = "Page";
+  int sourceNum = 0;
+  bool ok = false;
+  
+  if (lastUnderscore != -1) {
+    prefix = baseName.left(lastUnderscore);
+    sourceNum = baseName.mid(lastUnderscore + 1).toInt(&ok);
+  }
+
+  QFileInfoList existing = dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Name);
+
+  if (lastUnderscore == -1 || !ok) {
+    int nextNum = existing.size() + 1;
+    QString destFileName = QString("Page_%1.stxf").arg(nextNum, 3, 10, QChar('0'));
+    QString destPath = dir.absoluteFilePath(destFileName);
+    return QFile::copy(localPath, destPath);
+  }
+
+  // Shift pages starting from the highest index down to sourceNum + 1.
+  for (int i = existing.size(); i >= sourceNum + 1; --i) {
+    QString oldFileName = QString("%1_%2.stxf").arg(prefix).arg(i, 3, 10, QChar('0'));
+    QString newFileName = QString("%1_%2.stxf").arg(prefix).arg(i + 1, 3, 10, QChar('0'));
+    
+    QString oldPath = dir.absoluteFilePath(oldFileName);
+    QString newPath = dir.absoluteFilePath(newFileName);
+    
+    if (QFile::exists(oldPath)) {
+      if (!QFile::rename(oldPath, newPath)) {
+        qDebug() << "[Comic] duplicatePage: failed to rename" << oldPath << "to" << newPath;
+        return false;
+      }
+    }
+  }
+
+  QString destFileName = QString("%1_%2.stxf").arg(prefix).arg(sourceNum + 1, 3, 10, QChar('0'));
+  QString destPath = dir.absoluteFilePath(destFileName);
+
+  if (!QFile::copy(localPath, destPath)) {
+    qDebug() << "[Comic] duplicatePage: failed to copy" << localPath << "to" << destPath;
+    return false;
+  }
+
+  QFile destFile(destPath);
+  if (destFile.open(QIODevice::ReadWrite)) {
+    QJsonDocument doc = QJsonDocument::fromJson(destFile.readAll());
+    if (!doc.isNull() && doc.isObject()) {
+      QJsonObject obj = doc.object();
+      obj["title"] = prefix + " " + QString::number(sourceNum + 1);
+      obj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+      
+      destFile.seek(0);
+      destFile.resize(0);
+      destFile.write(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+    }
+    destFile.close();
+  }
+
+  qDebug() << "[Comic] Page duplicated successfully to:" << destPath;
+  return true;
+}
+
+bool CanvasItem::reorderPages(const QString &folderPath, const QVariantList &newPathsOrder) {
+  QString localFolder = folderPath;
+  if (localFolder.startsWith("file:///"))
+    localFolder = QUrl(folderPath).toLocalFile();
+
+  QDir dir(localFolder);
+  if (!dir.exists()) {
+    qDebug() << "[Comic] reorderPages: folder does not exist:" << localFolder;
+    return false;
+  }
+
+  QStringList resolvedPaths;
+  for (const QVariant &varPath : newPathsOrder) {
+    QString p = varPath.toString();
+    if (p.startsWith("file:///"))
+      p = QUrl(p).toLocalFile();
+    resolvedPaths.append(p);
+  }
+
+  QStringList tempPaths;
+  for (int i = 0; i < resolvedPaths.size(); ++i) {
+    QString srcPath = resolvedPaths[i];
+    QFileInfo srcInfo(srcPath);
+    if (!srcInfo.exists()) {
+      qDebug() << "[Comic] reorderPages: source file does not exist:" << srcPath;
+      return false;
+    }
+    
+    QString tempName = QString("reorder_temp_%1_%2.stxf.tmp").arg(QDateTime::currentMSecsSinceEpoch()).arg(i);
+    QString tempPath = dir.absoluteFilePath(tempName);
+    
+    if (!QFile::rename(srcPath, tempPath)) {
+      qDebug() << "[Comic] reorderPages: failed to rename" << srcPath << "to temp" << tempPath;
+      for (const QString &t : tempPaths) {
+        QFile::remove(t);
+      }
+      return false;
+    }
+    tempPaths.append(tempPath);
+  }
+
+  for (int i = 0; i < tempPaths.size(); ++i) {
+    QString tempPath = tempPaths[i];
+    QString finalFileName = QString("Page_%1.stxf").arg(i + 1, 3, 10, QChar('0'));
+    QString finalPath = dir.absoluteFilePath(finalFileName);
+    
+    if (QFile::exists(finalPath)) {
+      QFile::remove(finalPath);
+    }
+    
+    if (!QFile::rename(tempPath, finalPath)) {
+      qDebug() << "[Comic] reorderPages: failed to rename temp" << tempPath << "to final" << finalPath;
+      return false;
+    }
+
+    QFile destFile(finalPath);
+    if (destFile.open(QIODevice::ReadWrite)) {
+      QJsonDocument doc = QJsonDocument::fromJson(destFile.readAll());
+      if (!doc.isNull() && doc.isObject()) {
+        QJsonObject obj = doc.object();
+        obj["title"] = QString("Page %1").arg(i + 1);
+        obj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+        
+        destFile.seek(0);
+        destFile.resize(0);
+        destFile.write(QJsonDocument(obj).toJson(QJsonDocument::Compact));
+      }
+      destFile.close();
+    }
+  }
+
+  qDebug() << "[Comic] Pages reordered successfully in:" << localFolder;
+  return true;
 }
 
 bool CanvasItem::exportPageImage(const QString &projectPath,
@@ -6089,10 +6955,12 @@ void CanvasItem::drawPanelLayout(const QString &layoutType, int gutterPx,
     pPainter.setCompositionMode(QPainter::CompositionMode_Source);
     pPainter.fillRect(rect, Qt::white);
 
-    // 2. Draw black border (Alpha 255)
+    // 2. Draw stylized border (Alpha 255)
     pPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-    pPainter.setPen(borderPen);
-    pPainter.drawRect(rect);
+    drawStylizedBorder(pPainter, rect.topLeft(), rect.topRight(), m_panelBorderStyle, m_panelBorderWidth);
+    drawStylizedBorder(pPainter, rect.topRight(), rect.bottomRight(), m_panelBorderStyle, m_panelBorderWidth);
+    drawStylizedBorder(pPainter, rect.bottomRight(), rect.bottomLeft(), m_panelBorderStyle, m_panelBorderWidth);
+    drawStylizedBorder(pPainter, rect.bottomLeft(), rect.topLeft(), m_panelBorderStyle, m_panelBorderWidth);
     pPainter.end();
 
     pLayer->buffer->loadRawData(pImg.constBits());
@@ -8126,6 +8994,7 @@ void CanvasItem::blendWithShader(QPainter *painter, artflow::Layer *layer,
 
   m_compositionShader->setUniformValue("uOpacity", layer->opacity);
   m_compositionShader->setUniformValue("uMode", (int)layer->blendMode);
+  m_compositionShader->setUniformValue("uDrawPanelBorderOnly", 0);
 
   m_compositionShader->setUniformValue("uScreenSize", QVector2D(w, h));
   m_compositionShader->setUniformValue(
@@ -8611,4 +9480,39 @@ WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
     return params;
 }
 
+QRectF CanvasItem::getLayerBoundingRect(artflow::Layer *layer) {
+  if (!layer || !layer->buffer)
+    return QRectF();
+  int x = 0, y = 0, w = 0, h = 0;
+  if (layer->buffer->getContentBounds(x, y, w, h)) {
+    return QRectF(x, y, w, h);
+  }
+  return QRectF();
+}
 
+bool CanvasItem::lineIntersectsRect(const QLineF &line, const QRectF &rect) {
+  if (rect.isEmpty())
+    return false;
+
+  // 1. Check if either endpoint is inside the rect
+  if (rect.contains(line.p1()) || rect.contains(line.p2()))
+    return true;
+
+  // 2. Check intersection with the 4 boundary segments of the rectangle
+  QLineF top(rect.topLeft(), rect.topRight());
+  QLineF bottom(rect.bottomLeft(), rect.bottomRight());
+  QLineF left(rect.topLeft(), rect.bottomLeft());
+  QLineF right(rect.topRight(), rect.bottomRight());
+
+  QPointF intersectPoint;
+  if (line.intersects(top, &intersectPoint) == QLineF::BoundedIntersection)
+    return true;
+  if (line.intersects(bottom, &intersectPoint) == QLineF::BoundedIntersection)
+    return true;
+  if (line.intersects(left, &intersectPoint) == QLineF::BoundedIntersection)
+    return true;
+  if (line.intersects(right, &intersectPoint) == QLineF::BoundedIntersection)
+    return true;
+
+  return false;
+}

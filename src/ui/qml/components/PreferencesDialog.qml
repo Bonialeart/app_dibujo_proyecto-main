@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import QtQuick.Effects
 import "../Translations.js" as Trans
 
 Popup {
@@ -52,6 +53,13 @@ Popup {
     property bool tempTouchGestures: true
     property bool tempTouchEyedropper: true
     property bool tempMultitouchUndoRedo: true
+    property bool tempShowTopProjectInfo: true
+    property bool tempShowTopBrushControls: true
+    property bool tempShowTopActionButtons: true
+    property bool tempShowTopSymmetryUndoRedo: true
+    property bool tempShowTopWorkspaceSwitcher: true
+    property bool tempShowRightToolbar: true
+    property bool tempShowRightColorSelector: true
 
     readonly property string lang: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
@@ -72,6 +80,13 @@ Popup {
             tempTouchGestures = preferencesManager.touchGesturesEnabled
             tempTouchEyedropper = preferencesManager.touchEyedropperEnabled
             tempMultitouchUndoRedo = preferencesManager.multitouchUndoRedoEnabled
+            tempShowTopProjectInfo = preferencesManager.showTopProjectInfo
+            tempShowTopBrushControls = preferencesManager.showTopBrushControls
+            tempShowTopActionButtons = preferencesManager.showTopActionButtons
+            tempShowTopSymmetryUndoRedo = preferencesManager.showTopSymmetryUndoRedo
+            tempShowTopWorkspaceSwitcher = preferencesManager.showTopWorkspaceSwitcher
+            tempShowRightToolbar = preferencesManager.showRightToolbar
+            tempShowRightColorSelector = preferencesManager.showRightColorSelector
         }
     }
     
@@ -91,7 +106,13 @@ Popup {
             preferencesManager.touchGesturesEnabled = tempTouchGestures
             preferencesManager.touchEyedropperEnabled = tempTouchEyedropper
             preferencesManager.multitouchUndoRedoEnabled = tempMultitouchUndoRedo
-            
+            preferencesManager.showTopProjectInfo = tempShowTopProjectInfo
+            preferencesManager.showTopBrushControls = tempShowTopBrushControls
+            preferencesManager.showTopActionButtons = tempShowTopActionButtons
+            preferencesManager.showTopSymmetryUndoRedo = tempShowTopSymmetryUndoRedo
+            preferencesManager.showTopWorkspaceSwitcher = tempShowTopWorkspaceSwitcher
+            preferencesManager.showRightToolbar = tempShowRightToolbar
+            preferencesManager.showRightColorSelector = tempShowRightColorSelector
             
             toastManager.show(root.qs("saved"), "success")
         }
@@ -385,6 +406,52 @@ Popup {
                                     }
                                 }
                             }
+
+                            SettingsGroup {
+                                title: "Personalización de Interfaz"
+                                description: "Configura la visibilidad de los elementos en la barra de información superior y la barra de herramientas del lado derecho."
+                                
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+                                    
+                                    CheckBoxOption {
+                                        text: "Mostrar información del proyecto (Barra superior)"
+                                        checked: root.tempShowTopProjectInfo
+                                        onCheckedChanged: root.tempShowTopProjectInfo = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar controles de pincel (Barra superior)"
+                                        checked: root.tempShowTopBrushControls
+                                        onCheckedChanged: root.tempShowTopBrushControls = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar botones de acción rápida (Barra superior)"
+                                        checked: root.tempShowTopActionButtons
+                                        onCheckedChanged: root.tempShowTopActionButtons = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar controles de simetría y deshacer/rehacer (Barra superior)"
+                                        checked: root.tempShowTopSymmetryUndoRedo
+                                        onCheckedChanged: root.tempShowTopSymmetryUndoRedo = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar selector de espacio de trabajo (Barra superior)"
+                                        checked: root.tempShowTopWorkspaceSwitcher
+                                        onCheckedChanged: root.tempShowTopWorkspaceSwitcher = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar barra de herramientas derecha (Barra lateral)"
+                                        checked: root.tempShowRightToolbar
+                                        onCheckedChanged: root.tempShowRightToolbar = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar selector de color dual (Barra lateral)"
+                                        checked: root.tempShowRightColorSelector
+                                        onCheckedChanged: root.tempShowRightColorSelector = checked
+                                    }
+                                }
+                            }
                         }
                     }
                     
@@ -430,7 +497,7 @@ Popup {
                                 title: "Memory"
                                 
                                 Label { text: "Undo Levels: " + undoSlider.value; color: colorText }
-                                Slider {
+                                PremiumSlider {
                                     id: undoSlider
                                     from: 10; to: 200; stepSize: 1
                                     value: root.tempUndoLevels
@@ -439,7 +506,7 @@ Popup {
                                 }
                                 
                                 Label { text: "Memory Usage Limit: " + memSlider.value + "%"; color: colorText }
-                                Slider {
+                                PremiumSlider {
                                     id: memSlider
                                     from: 20; to: 90; value: root.tempMemLimit
                                     stepSize: 5
@@ -612,10 +679,9 @@ Popup {
                                 RowLayout {
                                     Layout.leftMargin: 24
                                     Text { text: "Length of keypress to switch tools:"; color: colorTextMuted }
-                                    TextField { 
-                                        text: root.tempSwitchDelay.toString(); palette.text: "white"; palette.base: colorInput
+                                    PremiumTextField { 
+                                        text: root.tempSwitchDelay.toString()
                                         Layout.preferredWidth: 60
-                                        background: Rectangle { color: colorInput; border.color: colorBorder; radius: 4 }
                                         onTextChanged: {
                                             var val = parseInt(text)
                                             if (!isNaN(val)) root.tempSwitchDelay = val
@@ -629,9 +695,9 @@ Popup {
                                 title: "Options"
                                 RowLayout {
                                     Text { text: "Minimum drag distance:"; color: colorTextMuted; Layout.preferredWidth: 150 }
-                                    TextField { 
-                                        text: root.tempDragDist.toString(); Layout.preferredWidth: 60; color: "white"
-                                        background: Rectangle { color: colorInput; border.color: colorBorder; radius: 4 }
+                                    PremiumTextField { 
+                                        text: root.tempDragDist.toString()
+                                        Layout.preferredWidth: 60
                                         onTextChanged: {
                                             var val = parseInt(text)
                                             if (!isNaN(val)) root.tempDragDist = val
@@ -741,26 +807,109 @@ Popup {
     }
     
     component CheckBoxOption : CheckBox {
+        id: cbControl
         text: ""
+        hoverEnabled: true
+        
         contentItem: Text {
-            text: parent.text
+            text: cbControl.text
             color: colorText
             font.pixelSize: 13
+            font.weight: cbControl.checked ? Font.DemiBold : Font.Normal
             verticalAlignment: Text.AlignVCenter
-            leftPadding: parent.indicator.width + 12
+            leftPadding: cbControl.indicator.width + 12
+            
+            Behavior on color { ColorAnimation { duration: 150 } }
         }
+        
         indicator: Rectangle {
-            implicitWidth: 18; implicitHeight: 18
-            x: parent.leftPadding; y: parent.height / 2 - height / 2
-            radius: 4
-            color: parent.checked ? colorAccent : "transparent"
-            border.color: parent.checked ? colorAccent : "#777"
+            implicitWidth: 20; implicitHeight: 20
+            x: cbControl.leftPadding; y: cbControl.height / 2 - height / 2
+            radius: 5
+            color: cbControl.checked ? colorAccent : (cbControl.hovered ? (isDark ? "#2a2a2e" : "#f3f4f6") : "transparent")
+            border.color: cbControl.checked ? colorAccent : (cbControl.hovered ? colorAccent : (isDark ? "#555" : "#bbb"))
+            border.width: 1.5
+            
+            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on border.color { ColorAnimation { duration: 150 } }
             
             Text {
-                visible: parent.parent.checked
-                text: "✓"; color: "white"; font.pixelSize: 12
+                visible: cbControl.checked
+                text: "✓"
+                color: "white"
+                font.pixelSize: 12
+                font.bold: true
                 anchors.centerIn: parent
+                
+                scale: cbControl.checked ? 1.0 : 0.5
+                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
             }
+            
+            scale: cbControl.hovered || cbControl.pressed ? 1.05 : 1.0
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+        }
+    }
+
+    component PremiumSlider : Slider {
+        id: sliderControl
+        hoverEnabled: true
+        
+        background: Rectangle {
+            x: sliderControl.leftPadding
+            y: sliderControl.topPadding + (sliderControl.availableHeight - height) / 2
+            width: sliderControl.availableWidth
+            height: 6
+            radius: 3
+            color: isDark ? "#2d2d30" : "#e5e7eb"
+            
+            Rectangle {
+                width: sliderControl.visualPosition * parent.width
+                height: parent.height
+                color: colorAccent
+                radius: 3
+            }
+        }
+        
+        handle: Rectangle {
+            x: sliderControl.leftPadding + sliderControl.visualPosition * (sliderControl.availableWidth - width)
+            y: sliderControl.topPadding + (sliderControl.availableHeight - height) / 2
+            width: 16; height: 16; radius: 8
+            color: sliderControl.pressed ? "white" : (sliderControl.hovered ? "#f3f4f6" : "#ffffff")
+            border.color: sliderControl.pressed ? colorAccent : (sliderControl.hovered ? colorAccent : (isDark ? "#555" : "#ccc"))
+            border.width: 2
+            
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowBlur: 4
+                shadowColor: Qt.rgba(0, 0, 0, 0.3)
+                shadowVerticalOffset: 1
+            }
+            
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+            scale: sliderControl.hovered || sliderControl.pressed ? 1.15 : 1.0
+        }
+    }
+
+    component PremiumTextField : TextField {
+        id: tfControl
+        color: colorText
+        font.pixelSize: 13
+        selectByMouse: true
+        hoverEnabled: true
+        verticalAlignment: TextInput.AlignVCenter
+        leftPadding: 10; rightPadding: 10
+        palette.text: colorText
+        palette.base: "transparent"
+        
+        background: Rectangle {
+            color: tfControl.activeFocus ? (isDark ? "#121214" : "#ffffff") : colorInput
+            border.color: tfControl.activeFocus ? colorAccent : (tfControl.hovered ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.5) : colorBorder)
+            border.width: tfControl.activeFocus ? 1.5 : 1
+            radius: 6
+            
+            Behavior on border.color { ColorAnimation { duration: 150 } }
+            Behavior on color { ColorAnimation { duration: 150 } }
         }
     }
 }
