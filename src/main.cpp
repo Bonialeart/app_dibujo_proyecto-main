@@ -16,6 +16,7 @@
 #include <fstream>
 #include <iostream>
 #include <QWindow>
+#include <QQuickWindow>
 #include <windows.h>
 #include "WintabManager.h"
 
@@ -28,6 +29,10 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 
 int main(int argc, char *argv[]) {
   qInstallMessageHandler(myMessageOutput);
+
+  // Forza a Qt Quick/QRhi a usar el backend de OpenGL bajo Qt 6,
+  // asegurando consistencia absoluta con los contextos compartidos y FBOs en C++.
+  QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
   // FORZAR DRIVERS DE TABLETA (Wintab):
   // Activamos esto porque Windows Ink no está enviando eventos correctamente.

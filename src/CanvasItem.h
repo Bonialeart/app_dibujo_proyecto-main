@@ -307,6 +307,7 @@ public:
   Q_INVOKABLE bool saveProject(const QString &path);
   Q_INVOKABLE bool saveProjectAs(const QString &path);
   Q_INVOKABLE bool exportImage(const QString &path, const QString &format);
+  Q_INVOKABLE bool importImageAsLayer(const QString &path);
   Q_INVOKABLE bool importABR(const QString &path);
   Q_INVOKABLE void updateTransformProperties(float x, float y, float scale,
                                              float rotation, float w, float h);

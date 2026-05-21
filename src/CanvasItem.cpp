@@ -6453,10 +6453,108 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
   return success;
 }
 
-bool CanvasItem::importABR(const QString &path) {
-  // ── Resolve local path ─────────────────────────────────────────────────────
+bool CanvasItem::importImageAsLayer(const QString &path) {
+  if (!m_layerManager)
+    return false;
+
+  int canvasW = m_canvasWidth;
+  int canvasH = m_canvasHeight;
+  if (canvasW <= 0 || canvasH <= 0) {
+    emit notificationRequested("Canvas sin tamaño válido", "error");
+    return false;
+  }
+
+  // Resolve file:/// URL → local path robustly
   QString localPath = path;
-  if (localPath.startsWith("file:///"))
+  if (localPath.startsWith("file:", Qt::CaseInsensitive))
+    localPath = QUrl(path).toLocalFile();
+
+  // ── Load the image (PNG, JPG, BMP, TIFF, WebP …) ─────────────────────────
+  QImage src;
+  if (!src.load(localPath)) {
+    qWarning() << "[importImageAsLayer] Failed to load:" << localPath;
+    emit notificationRequested("No se pudo cargar la imagen", "error");
+    return false;
+  }
+
+  // ── Build a canvas-sized RGBA8888_Premultiplied image (transparent background) ──
+  // The source image is scaled to fit inside the canvas keeping aspect ratio,
+  // then centred on a transparent canvas-sized image.
+  QImage canvas(canvasW, canvasH, QImage::Format_RGBA8888_Premultiplied);
+  canvas.fill(Qt::transparent);
+
+  QImage scaled = src.scaled(canvasW, canvasH,
+                              Qt::KeepAspectRatio,
+                              Qt::SmoothTransformation)
+                     .convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+
+  int offsetX = (canvasW - scaled.width())  / 2;
+  int offsetY = (canvasH - scaled.height()) / 2;
+
+  // Blit the scaled image into the transparent canvas with direct copy (Source mode)
+  QPainter p(&canvas);
+  p.setCompositionMode(QPainter::CompositionMode_Source);
+  p.drawImage(offsetX, offsetY, scaled);
+  p.end();
+
+  // ── Smart Layer Stacking and Comic Panel integration ──────────────────────
+  int activeIdx = m_layerManager->getActiveLayerIndex();
+  int totalLayers = m_layerManager->getLayerCount();
+  artflow::Layer *activeLayer = m_layerManager->getLayer(activeIdx);
+
+  bool shouldClip = false;
+  int targetIdx = totalLayers; // default: top of the stack
+
+  if (activeLayer) {
+    QString activeName = QString::fromStdString(activeLayer->name);
+    if (activeLayer->clipped) {
+      shouldClip = true;
+      targetIdx = activeIdx + 1;
+    } else if (activeName.startsWith("Panel ", Qt::CaseInsensitive)) {
+      shouldClip = true;
+      targetIdx = activeIdx + 1;
+    } else {
+      shouldClip = false;
+      targetIdx = activeIdx + 1;
+    }
+  }
+
+  if (targetIdx < 0) targetIdx = 0;
+  if (targetIdx > totalLayers) targetIdx = totalLayers;
+
+  // ── Add the new layer and load its pixel data ──────────────────────────────
+  int addedIdx = m_layerManager->addLayer("Imported Image");
+  Layer *layer = m_layerManager->getLayer(addedIdx);
+  if (!layer || !layer->buffer) {
+    emit notificationRequested("Error al crear la capa", "error");
+    return false;
+  }
+
+  // loadRawData is a single memcpy-style bulk load
+  layer->buffer->loadRawData(canvas.constBits());
+  layer->clipped = shouldClip;
+  layer->markDirty();
+
+  // Move layer to the correct contextual stacking position
+  if (addedIdx != targetIdx) {
+    m_layerManager->moveLayer(addedIdx, targetIdx);
+  }
+
+  // Make this the active layer with full QML signal synchronization
+  setActiveLayer(targetIdx);
+
+  QString baseName = QFileInfo(localPath).fileName();
+  emit notificationRequested("✓ Imagen importada: " + baseName, "success");
+  qDebug() << "[importImageAsLayer] OK -" << localPath
+           << "→ layer" << targetIdx
+           << "(" << canvasW << "x" << canvasH << ") | clipped:" << shouldClip;
+  return true;
+}
+
+bool CanvasItem::importABR(const QString &path) {
+  // ── Resolve local path robustly ───────────────────────────────────────────
+  QString localPath = path;
+  if (localPath.startsWith("file:", Qt::CaseInsensitive))
     localPath = QUrl(path).toLocalFile();
   if (localPath.isEmpty() || !QFile::exists(localPath)) {
     emit notificationRequested("Archivo ABR no encontrado: " + localPath, "error");

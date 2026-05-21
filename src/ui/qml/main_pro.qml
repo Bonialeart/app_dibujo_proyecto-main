@@ -87,6 +87,7 @@ Window {
 
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["New Project"] ? mainWindow.sm["New Project"] : "Ctrl+N"; onActivated: newProjectDialog.open() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Open Project"] ? mainWindow.sm["Open Project"] : "Ctrl+O"; onActivated: openProjectDialog.open() }
+    Shortcut { sequence: "Ctrl+I"; onActivated: importImageDialog.open() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Save"] ? mainWindow.sm["Save"] : "Ctrl+S"; onActivated: mainWindow.saveProjectAndRefresh() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Undo"] ? mainWindow.sm["Undo"] : "Ctrl+Z"; onActivated: mainCanvas.undo() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Redo"] ? mainWindow.sm["Redo"] : "Ctrl+Y"; onActivated: mainCanvas.redo() }
@@ -588,6 +589,8 @@ Window {
                         { text: "Open Project...", shortcut: mainWindow.sm && mainWindow.sm["Open Project"] ? mainWindow.sm["Open Project"] : "Ctrl+O", action: function() { openProjectDialog.open() } },
                         { text: "Save", shortcut: mainWindow.sm && mainWindow.sm["Save"] ? mainWindow.sm["Save"] : "Ctrl+S", action: function() { mainWindow.saveProjectAndRefresh() } },
                         { text: "Save As...", shortcut: "Ctrl+Shift+S", action: function() { saveProjectDialog.open() } },
+                        { isSeparator: true },
+                        { text: "Import Image...", shortcut: "Ctrl+I", action: function() { importImageDialog.open() } },
                         { text: "Export Image...", shortcut: "Ctrl+E", action: function() { exportImageDialog.open() } },
                         { text: "Export All Pages...", shortcut: "", action: function() { if (isStoryProject && currentStoryPath !== "") { comicExportAllDialog.open() } } },
                         { isSeparator: true },
@@ -3318,6 +3321,25 @@ Window {
                                 }
                             }
 
+                            // Animation Timeline Toggle (moved from right)
+                            TopBarButton {
+                                iconSource: iconPath("animation.svg")
+                                tooltip: showAnimationBar ? "Cerrar Timeline" : "Abrir Timeline de Animación"
+                                active: showAnimationBar
+                                activeColor: colorAccent
+                                onClicked: showAnimationBar = !showAnimationBar
+                            }
+
+                            // Studio Mode Toggle (moved from right)
+                            TopBarButton {
+                                iconSource: iconPath("studio.svg")
+                                tooltip: "Modo Studio"
+                                onClicked: {
+                                    modeChangeConfirmDialog.targetMode = "studio"
+                                    modeChangeConfirmDialog.open()
+                                }
+                            }
+
                             // Separator
                             Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
 
@@ -3426,15 +3448,6 @@ Window {
                                 onClicked: { showLayers = !showLayers; showColor = false; showBrush = false; showBrushSettings = false }
                             }
 
-                            // Animation Timeline Toggle
-                            TopBarButton {
-                                iconSource: iconPath("animation.svg")
-                                tooltip: showAnimationBar ? "Cerrar Timeline" : "Abrir Timeline de Animación"
-                                active: showAnimationBar
-                                activeColor: colorAccent
-                                onClicked: showAnimationBar = !showAnimationBar
-                            }
-
                             // Story Manager Toggle
                             TopBarButton {
                                 iconSource: iconPath("comic.svg")
@@ -3443,19 +3456,6 @@ Window {
                                 activeColor: colorAccent
                                 visible: isStoryProject
                                 onClicked: showStoryPanel = !showStoryPanel
-                            }
-
-                            // Separator
-                            Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
-
-                            // Studio Mode Toggle (icon-only)
-                            TopBarButton {
-                                iconSource: iconPath("studio.svg")
-                                tooltip: "Modo Studio"
-                                onClicked: {
-                                    modeChangeConfirmDialog.targetMode = "studio"
-                                    modeChangeConfirmDialog.open()
-                                }
                             }
 
                             // Color Swatch (special — not TopBarButton)
@@ -7791,6 +7791,32 @@ Window {
                 toastManager.show("Brushes imported successfully", "success")
             } else {
                 toastManager.show("Import failed or no brushes found", "error")
+            }
+        }
+    }
+
+    // ─── Import Image as Layer ───────────────────────────────────────────────
+    FileDialog {
+        id: importImageDialog
+        title: "Import Image as Layer"
+        nameFilters: [
+            "Image Files (*.png *.jpg *.jpeg *.bmp *.tiff *.tif *.gif *.webp)",
+            "PNG Image (*.png)",
+            "JPEG Image (*.jpg *.jpeg)",
+            "All Files (*)"
+        ]
+        onAccepted: {
+            // Need an active project so the canvas has a valid size
+            if (!isProjectActive) {
+                toastManager.show("Abre o crea un proyecto antes de importar", "warning")
+                return
+            }
+            // Make sure we are on the drawing page
+            currentPage = 1
+            if (mainCanvas.importImageAsLayer(selectedFile.toString())) {
+                // success — toast is shown by C++
+            } else {
+                toastManager.show("Import failed – formato no soportado o archivo no encontrado", "error")
             }
         }
     }
