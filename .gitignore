@@ -1,36 +1,59 @@
-# Entornos virtuales
+# Entornos virtuales de Python
 .venv/
 venv/
 env/
+__pycache__/
+*.pyc
 
-# Compilados de C++ y Build
-build/
+# Compilados de C++ y Binarios
 *.obj
+*.o
+*.a
+*.lib
 *.exe
 *.dll
 *.so
 *.dylib
 
-# Archivos de Qt instalados localmente
+# Archivos de Qt instalados localmente, cachés y proyectos
 Qt/
 .qmake.stash
+.qtcreator/
+*.user
 
-# Python cache
-__pycache__/
-*.pyc
+# Carpetas de Compilación Local
+build/
+build*/
+build_mingw/
+cmake-build-*/
 
-# Archivos de IDE
+# Archivos y carpetas de configuración de IDEs
 .vscode/
 .idea/
 .vs/
-*.user
 
-# Logs y temporales
+# Logs y Archivos Temporales (.txt / .log / .tmp)
 *.log
 *.tmp
-build_mingw/
+*_log.txt
+*_err.txt
+*_out.txt
+*log.txt
+*err.txt
+*out.txt
+out.txt
+debug_*.txt
+debug-*.txt
+diff.txt
 app_err.txt
 app_out.txt
 debug_curve.txt
-diff.txt
+debug_err.txt
+debug_out.txt
+debug_output.txt
+launch_err.txt
+launch_out.txt
+qml_log.txt
+run_log.txt
+
 
