@@ -1973,13 +1973,13 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     // Lee desde la capa CPU (img) - RAPIDO, sin GPU readback.
     // Muestrea el color existente bajo el pincel y lo usa como el color
     // que "carga" el pincel, creando el efecto de arrastrar y fusionar.
-    bool isWaterBlend = false; // Disabled to let high-performance GPU blending operate natively
+    bool isWaterBlend = (settings.type == BrushSettings::Type::Oil);
     if (isWaterBlend) {
         int sampleRadius = std::max(4, (int)(settings.size * 0.40f));
         int cx = (int)canvasPos.x();
         int cy = (int)canvasPos.y();
 
-        // Usar img (capa CPU) — rápido, correcto para workflow watercolor
+        // Usar img (capa CPU) — rápido, correcto para workflow
         float rSum = 0, gSum = 0, bSum = 0, aSum = 0;
         int count = 0;
         for (int sy = std::max(0, cy - sampleRadius);
@@ -2004,6 +2004,12 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
             }
         }
 
+        // Inicializar smudge color fresco al inicio del trazo con el color original del pincel al 100% de carga
+        if (!m_smudgeColorValid) {
+            m_smudgeColor = QVector4D(settings.color.redF(), settings.color.greenF(), settings.color.blueF(), 1.0f);
+            m_smudgeColorValid = true;
+        }
+
         if (count > 0 && aSum > 0.05f) {
             float invC = 1.0f / count;
             float sR = std::clamp(rSum * invC, 0.0f, 1.0f);
@@ -2011,40 +2017,24 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
             float sB = std::clamp(bSum * invC, 0.0f, 1.0f);
             float sA = std::clamp(aSum * invC, 0.0f, 1.0f);
 
-            // Smudge persistente: mezcla entre dabs (igual a Krita Color Smudge)
-            if (!m_smudgeColorValid) {
-                m_smudgeColor = QVector4D(sR, sG, sB, sA);
-                m_smudgeColorValid = true;
-            } else {
-                float p = m_smudgePersistence; // 0.82 default
-                m_smudgeColor.setX(m_smudgeColor.x() * p + sR * (1.0f - p));
-                m_smudgeColor.setY(m_smudgeColor.y() * p + sG * (1.0f - p));
-                m_smudgeColor.setZ(m_smudgeColor.z() * p + sB * (1.0f - p));
-                m_smudgeColor.setW(m_smudgeColor.w() * p + sA * (1.0f - p));
-            }
-
-            // Pintar el smudge color con opacidad proporcional al pigmento del canvas
-            settings.color = QColor::fromRgbF(
-                m_smudgeColor.x(), m_smudgeColor.y(), m_smudgeColor.z());
-            settings.opacity = std::clamp(sA * settings.bleed * 0.90f, 0.0f, 0.92f);
-            settings.hardness = 0.05f;  // Muy suave para difuminar bien
-
-            // CRUCIAL: resetear dilution para que el shader NO entre en modo agua
-            // (el modo agua del shader sobreescribia el color calculado aqui)
-            settings.dilution = 0.05f;
-            settings.wetness  = 0.10f;
-        } else {
-            // Sin pigmento bajo el pincel: no pintar nada
-            settings.opacity = 0.0f;
-            settings.dilution = 0.0f;
+            // Contaminación progresiva: se ensucia según colorPickup
+            float contamination = settings.colorPickup;
+            m_smudgeColor.setX(m_smudgeColor.x() * (1.0f - contamination) + sR * contamination);
+            m_smudgeColor.setY(m_smudgeColor.y() * (1.0f - contamination) + sG * contamination);
+            m_smudgeColor.setZ(m_smudgeColor.z() * (1.0f - contamination) + sB * contamination);
+            m_smudgeColor.setW(m_smudgeColor.w() * (1.0f - contamination) + sA * contamination);
         }
+
+        // El color cargado en el pincel (ensuciado o limpio) es enviado al motor
+        settings.color = QColor::fromRgbF(
+            m_smudgeColor.x(), m_smudgeColor.y(), m_smudgeColor.z());
     }
     // ─── FIN WATER BLENDER ───────────────────────────────────────
 
     m_brushEngine->paintStroke(
         &fboPainter2, m_lastPos, canvasPos, effectivePressure, settings, tilt,
         velocityFactor, m_pingFBO->texture(), settings.wetness,
-        settings.dilution, settings.smudge);
+        settings.dilution, settings.smudge, m_pingFBO, m_pongFBO);
 
 
     if (m_symmetryEnabled && !m_symmetryEngines.empty()) {
@@ -2057,7 +2047,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
         m_symmetryEngines[iter]->paintStroke(
             &fboPainter2, p1, p2, effectivePressure, settings, tilt,
             velocityFactor, m_pingFBO->texture(), settings.wetness,
-            settings.dilution, settings.smudge);
+            settings.dilution, settings.smudge, m_pingFBO, m_pongFBO);
 
         // EXPANDIR DIRTY RECT para incluir el trazo simétrico
         QRectF symRect(p1, p2);
@@ -2093,7 +2083,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
             m_pingFBO->width() != m_canvasWidth ||
             m_pingFBO->height() != m_canvasHeight) {
             m_watercolorEngine->beginSession(m_canvasWidth, m_canvasHeight, gl,
-                                             0 /* grain tex id */); // TODO: pasar grano
+                                             settings.grainTextureID);
         }
 
         // El dab ya fue pintado en m_pingFBO por el motor normal.
@@ -2168,7 +2158,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
       m_brushEngine->paintStroke(
           &predPainter, canvasPos, m_predictedPos, effectivePressure,
-          predSettings, tilt, velocityFactor, m_predictionFBO->texture(),
+          predSettings, tilt, velocityFactor, m_pingFBO->texture(),
           settings.wetness, settings.dilution, settings.smudge);
 
       if (m_symmetryEnabled && !m_symmetryEngines.empty()) {
@@ -2180,7 +2170,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
                                    m_symmetryEngines.size(), center);
           m_symmetryEngines[iter]->paintStroke(
               &predPainter, p1, p2, effectivePressure, predSettings, tilt,
-              velocityFactor, m_predictionFBO->texture(), settings.wetness,
+              velocityFactor, m_pingFBO->texture(), settings.wetness,
               settings.dilution, settings.smudge);
         }
       }

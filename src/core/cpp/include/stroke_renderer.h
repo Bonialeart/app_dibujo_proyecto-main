@@ -94,6 +94,7 @@ public:
     float size;
     float rotation;
     float colorR, colorG, colorB, colorA;
+    float paintLoad;
   };
 
   void renderStrokeInstanced(

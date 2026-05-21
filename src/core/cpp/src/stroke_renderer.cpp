@@ -203,24 +203,29 @@ void StrokeRenderer::initialize() {
   m_instanceVbo.bind();
 
   glEnableVertexAttribArray(2); // Inst Pos
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
                         (void *)(0));
   glVertexAttribDivisor(2, 1);
 
   glEnableVertexAttribArray(3); // Inst Size
-  glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+  glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
                         (void *)(2 * sizeof(float)));
   glVertexAttribDivisor(3, 1);
 
   glEnableVertexAttribArray(4); // Inst Rotation
-  glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+  glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
                         (void *)(3 * sizeof(float)));
   glVertexAttribDivisor(4, 1);
 
   glEnableVertexAttribArray(5); // Inst Color
-  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+  glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
                         (void *)(4 * sizeof(float)));
   glVertexAttribDivisor(5, 1);
+
+  glEnableVertexAttribArray(6); // Inst Paint Load
+  glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, 9 * sizeof(float),
+                        (void *)(8 * sizeof(float)));
+  glVertexAttribDivisor(6, 1);
   m_instanceVbo.release();
 
   m_vao.release();
@@ -413,7 +418,7 @@ void StrokeRenderer::renderStroke(
   m_program->setUniformValue("brokenColor", brokenColor);
 
   if ((wetness > 0.01f || smudge > 0.01f || bloomEnabled || mixing > 0.01f ||
-       impastoEnabled) &&
+       impastoEnabled || type == 5) &&
       canvasTexId != 0) {
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, canvasTexId);
@@ -620,7 +625,7 @@ void StrokeRenderer::renderStrokeInstanced(
   m_program->setUniformValue("brokenColor", brokenColor);
 
   if ((wetness > 0.01f || smudge > 0.01f || bloomEnabled || mixing > 0.01f ||
-       impastoEnabled) &&
+       impastoEnabled || type == 5) &&
       canvasTexId != 0) {
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, canvasTexId);

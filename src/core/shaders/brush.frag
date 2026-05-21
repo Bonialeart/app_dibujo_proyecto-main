@@ -16,6 +16,7 @@ in vec2 vPos;
 in float vSize;
 in float vRot;
 in vec2 vWorldPos;
+in float vPaintLoad;
 
 // === Brush Tip (Shape Texture) — Local UV Mapping ===
 uniform sampler2D tipTexture;
@@ -491,6 +492,29 @@ void main() {
                 finalRGB.r += temperatureShift * 0.1;
                 finalRGB.b -= temperatureShift * 0.1;
             }
+        }
+    }
+
+    if (brushType == 5) {
+        // --- PHYSICAL OIL PAINT SIMULATION ---
+        float effPaintLoad = (instanced == 1) ? vPaintLoad : loading;
+        if (canvasSize.x > 1.0) {
+            vec2 screenPos = gl_FragCoord.xy / canvasSize;
+            vec4 canvasColor = texture(canvasTexture, screenPos);
+            vec3 canvasRGB = canvasColor.a > 0.001 ? canvasColor.rgb / canvasColor.a : vec3(1.0);
+            
+            // Simular la mezcla física de pigmentos usando Kubelka-Munk
+            vec3 mixedColor = mixColorsKM(canvasRGB, effColor.rgb, effPaintLoad);
+            
+            // El arrastre (smudge) depende de la humedad (wetness)
+            finalRGB = mix(effColor.rgb, mixedColor, wetness);
+            
+            // Calcular el alfa resultante
+            baseAlpha = max(canvasColor.a, shapeAlpha * effPaintLoad) * effColor.a * flow;
+        } else {
+            // Safe fallback when no canvas is present (e.g. preset previews)
+            finalRGB = effColor.rgb;
+            baseAlpha = shapeAlpha * effPaintLoad * effColor.a * flow;
         }
     }
 

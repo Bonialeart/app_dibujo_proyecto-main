@@ -187,144 +187,120 @@ vec4 paintDab() {
 // ============================================================================
 // MODO 1: SPREAD WET — Difusión del pigmento en zonas húmedas
 // ============================================================================
-// Cada cierto tiempo (controlado por CPU) se ejecuta esta pasada:
-//   • En cada pixel húmedo, el pigmento "fluye" hacia los vecinos menos húmedos
-//   • El tide-mark (borde oscuro) se forma en la frontera húmedo/seco
-//   • El bloom ocurre cuando agua limpia rodea pigmento húmedo
+// Simula la difusión física del pigmento que fluye y se expande con el agua,
+// limitada por la fricción/resistencia de la textura rugosa del papel (grain).
+// También genera tide-marks (fringing) en las fronteras húmedo/seco.
 // ============================================================================
 vec4 spreadWet() {
-    vec4 center    = texture(uCanvas, vTexCoord);
-    vec4 wetCenter = texture(uWetMap, vTexCoord);
+    vec4 centerCenter = texture(uCanvas, vTexCoord);
+    vec4 wetCenter    = texture(uWetMap, vTexCoord);
 
     float wetness = wetCenter.r;
     if (wetness < 0.01) {
-        return center; // Zona seca — sin cambios
+        return centerCenter; // Zona seca — sin cambios
     }
 
-    // Muestrear vecinos en las 8 direcciones (brújula) para detectar gradiente
-    float step = 1.5; // En píxeles — mayor = más expansión pero menos detalle
-    vec4 n  = sampleOffset(uCanvas, vTexCoord, vec2( 0,  step));
-    vec4 s  = sampleOffset(uCanvas, vTexCoord, vec2( 0, -step));
-    vec4 e  = sampleOffset(uCanvas, vTexCoord, vec2( step,  0));
-    vec4 w  = sampleOffset(uCanvas, vTexCoord, vec2(-step,  0));
-    vec4 ne = sampleOffset(uCanvas, vTexCoord, vec2( step,  step));
-    vec4 nw = sampleOffset(uCanvas, vTexCoord, vec2(-step,  step));
-    vec4 se = sampleOffset(uCanvas, vTexCoord, vec2( step, -step));
-    vec4 sw = sampleOffset(uCanvas, vTexCoord, vec2(-step, -step));
+    vec2 texelSize = 1.0 / uCanvasSize;
 
-    vec4 wn  = sampleOffset(uWetMap, vTexCoord, vec2( 0,  step));
-    vec4 ws  = sampleOffset(uWetMap, vTexCoord, vec2( 0, -step));
-    vec4 we  = sampleOffset(uWetMap, vTexCoord, vec2( step,  0));
-    vec4 ww  = sampleOffset(uWetMap, vTexCoord, vec2(-step,  0));
+    // Muestrear vecinos en cruz
+    vec4 upCanvas    = texture(uCanvas, vTexCoord + vec2(0.0, texelSize.y));
+    vec4 downCanvas  = texture(uCanvas, vTexCoord - vec2(0.0, texelSize.y));
+    vec4 leftCanvas  = texture(uCanvas, vTexCoord - vec2(texelSize.x, 0.0));
+    vec4 rightCanvas = texture(uCanvas, vTexCoord + vec2(texelSize.x, 0.0));
 
-    // Centro de masa del pigmento vecino (pesado por humedad)
-    float totalWet = wn.r + ws.r + we.r + ww.r + 0.001;
-    vec3 avgNeighborRGB = (n.rgb * wn.r + s.rgb * ws.r +
-                           e.rgb * we.r + w.rgb * ww.r) / totalWet;
-    float avgNeighborA = (n.a * wn.r + s.a * ws.r +
-                          e.a * we.r + w.a * ww.r) / totalWet;
+    vec4 upWet    = texture(uWetMap, vTexCoord + vec2(0.0, texelSize.y));
+    vec4 downWet  = texture(uWetMap, vTexCoord - vec2(0.0, texelSize.y));
+    vec4 leftWet  = texture(uWetMap, vTexCoord - vec2(texelSize.x, 0.0));
+    vec4 rightWet = texture(uWetMap, vTexCoord + vec2(texelSize.x, 0.0));
 
-    // ── TIDE-MARK / BORDE DE SECADO ──
-    // En la frontera húmedo/seco, el pigmento se concentra
-    // Detectar si algún vecino está seco
-    float minNeighborWet = min(min(wn.r, ws.r), min(we.r, ww.r));
-    bool atDryBorder = (minNeighborWet < 0.08 && wetness > 0.1);
-
-    // Cuánto fluye el pigmento hacia afuera
-    float spreadStrength = wetness * uBleed * (1.0 - wetCenter.g);  // Más fresco = más expansión
-
-    // Acumular pigmento recibido de vecinos más húmedos
-    vec3 incomingRGB = vec3(0.0);
-    float incomingA  = 0.0;
-
-    // Cada vecino más húmedo "empuja" pigmento hacia este pixel
-    float pushN = max(0.0, wn.r - wetness) * uBleed;
-    float pushS = max(0.0, ws.r - wetness) * uBleed;
-    float pushE = max(0.0, we.r - wetness) * uBleed;
-    float pushW = max(0.0, ww.r - wetness) * uBleed;
-
-    float totalPush = pushN + pushS + pushE + pushW;
-
-    if (totalPush > 0.001) {
-        incomingRGB = (n.rgb * pushN + s.rgb * pushS +
-                       e.rgb * pushE + w.rgb * pushW) / totalPush;
-        incomingA   = (n.a * pushN + s.a * pushS +
-                       e.a * pushE + w.a * pushW) / totalPush;
-
-        // Fusión del pigmento entrante con el existente
-        float blend = clamp(totalPush * 0.3, 0.0, 0.5);
-        vec3 centerRGB_unp = center.a > 0.001 ? center.rgb / center.a : vec3(1.0);
-        vec3 incomRGB_unp  = incomingA > 0.001 ? incomingRGB / incomingA : vec3(1.0);
-
-        vec3 blendedRGB = mixKubelkaMunk(centerRGB_unp, incomRGB_unp, blend);
-        float blendedA  = center.a + incomingA * blend * (1.0 - center.a);
-
-        center = vec4(blendedRGB * blendedA, blendedA);
+    // ── GRANO DE PAPEL (textura de grano del papel) ──
+    float paperGrain = 0.5; // Valor neutro
+    if (uGrainIntensity > 0.001) {
+        vec4 grainSamp = texture(uGrainTexture, vTexCoord * 5.0);
+        paperGrain = dot(grainSamp.rgb, vec3(0.299, 0.587, 0.114));
     }
 
-    // ── CONCENTRACIÓN EN BORDE (Tide-mark) ──
-    // Cuando el borde está cerca de zona seca, concentrar el pigmento
-    if (atDryBorder && uEdgeDarkening > 0.01) {
-        // El pigmento se acumula físicamente en la frontera de tensión superficial
-        float concentration = uEdgeDarkening * wetness * (1.0 - wetCenter.g);
-        // Oscurecer RGB (más pigmento = más absorción de luz)
-        vec3 centerRGB_unp = center.a > 0.001 ? center.rgb / center.a : vec3(1.0);
-        centerRGB_unp = centerRGB_unp * (1.0 - concentration * 0.4);  // Oscurecer
-        float extraA = center.a + concentration * 0.25 * (1.0 - center.a);
-        center = vec4(centerRGB_unp * extraA, extraA);
+    // 1. Simulación de difusión de pigmento (Paso 2 del algoritmo)
+    // El pigmento tiende a fluir hacia donde hay más agua, pesado por humedad
+    float totalWet = upWet.r + downWet.r + leftWet.r + rightWet.r + 0.001;
+
+    // Despremutiplicar colores vecinos para mezclar colores reales de pigmento
+    vec3 upRGB    = upCanvas.a > 0.001 ? upCanvas.rgb / upCanvas.a : vec3(0.0);
+    vec3 downRGB  = downCanvas.a > 0.001 ? downCanvas.rgb / downCanvas.a : vec3(0.0);
+    vec3 leftRGB  = leftCanvas.a > 0.001 ? leftCanvas.rgb / leftCanvas.a : vec3(0.0);
+    vec3 rightRGB = rightCanvas.a > 0.001 ? rightCanvas.rgb / rightCanvas.a : vec3(0.0);
+
+    vec3 avgPigment = (upRGB * upWet.r + downRGB * downWet.r + leftRGB * leftWet.r + rightRGB * rightWet.r) / totalWet;
+    float avgAlpha  = (upCanvas.a * upWet.r + downCanvas.a * downWet.r + leftCanvas.a * leftWet.r + rightCanvas.a * rightWet.r) / totalWet;
+
+    // Rugosidad del papel (paperGrain) actúa como un obstáculo para la difusión del pigmento (flowResistance)
+    float flowResistance = paperGrain * uGrainIntensity * 0.5;
+    
+    // Tasa de difusión escalada por el sangrado (uBleed) y la frescura del agua (1.0 - edad)
+    float diffusionRate = uBleed * (1.0 - wetCenter.g);
+    float effectiveRate = clamp(diffusionRate * (1.0 - flowResistance), 0.0, 1.0);
+
+    vec3 centerRGB_unp = centerCenter.a > 0.001 ? centerCenter.rgb / centerCenter.a : vec3(0.0);
+
+    // Mezcla realista de pigmentos estilo Kubelka-Munk
+    vec3 newPigment = mixKubelkaMunk(centerRGB_unp, avgPigment, effectiveRate);
+    float newAlpha  = mix(centerCenter.a, avgAlpha, effectiveRate);
+
+    // 2. Efecto de borde de acumulación (Watercolor Fringe / Tide-mark) (Paso 3 del algoritmo)
+    // El pigmento se acumula donde el gradiente de agua cae drásticamente (el borde del charco)
+    float waterGradient = length(vec2(rightWet.r - leftWet.r, upWet.r - downWet.r));
+    if (waterGradient > 0.05 && wetness > 0.02 && uEdgeDarkening > 0.01) {
+        float fringeFactor = waterGradient * 0.20 * uEdgeDarkening;
+        newPigment *= (1.0 - fringeFactor * 0.5); // Oscurece el color (el pigmento se acumula)
+        newAlpha = min(newAlpha * (1.0 + fringeFactor), 1.0); // Aumenta la opacidad/densidad
     }
 
-    // ── BACKRUN / BLOOM ──
-    // Si hay agua limpia (baja densidad de pigmento) rodeando pigmento húmedo,
-    // el agua "empuja" el pigmento hacia afuera creando el efecto bloom
-    vec3 centerRGBnorm = center.a > 0.001 ? center.rgb / center.a : vec3(1.0);
-    float centerLum = luminance(centerRGBnorm);
-    float neighborLum = luminance(avgNeighborRGB.rgb / max(avgNeighborA, 0.001));
-
-    if (neighborLum < centerLum - 0.1 && wetness > 0.3 && avgNeighborA < center.a * 0.6) {
-        // El pigmento en el interior se separa hacia el borde (capillaridad)
-        float bloom = (centerLum - neighborLum) * wetness * uBleed * 0.3;
-        float newA = min(center.a + bloom * 0.15, 1.0);
-        center = vec4(centerRGBnorm * newA, newA);
-    }
-
-    return clamp(center, 0.0, 1.0);
+    // Devolver color premultiplicado para compositing correcto en FBO
+    return clamp(vec4(newPigment * newAlpha, newAlpha), 0.0, 1.0);
 }
 
 // ============================================================================
-// MODO 2: DRY STEP — Avanzar el proceso de secado
+// MODO 2: DRY STEP — Difusión de agua y evaporación progresiva
 // ============================================================================
-// Esta pasada solo opera sobre el WetMap:
-//   • La humedad disminuye con el tiempo y la absorción del papel
-//   • En los bordes de la zona húmeda el secado es más rápido
-//   • Devuelve el nuevo estado del WetMap en fragColor
+// Realiza dos operaciones sobre el mapa de humedad (uWetMap):
+//   1. El agua fluye/se suaviza a los vecinos menos húmedos (difusión).
+//   2. El agua se evapora gradualmente según la velocidad de secado.
 // ============================================================================
 vec4 dryStep() {
-    vec4 wetSample = texture(uWetMap, vTexCoord);
-    float wetness = wetSample.r;
-    float secAge  = wetSample.g;
+    vec4 centerWet = texture(uWetMap, vTexCoord);
+    float wetness = centerWet.r;
+    float secAge  = centerWet.g;
 
     if (wetness < 0.001) {
-        return vec4(0.0, 0.0, 0.0, 1.0); // Ya seco
+        return vec4(0.0, 0.0, 0.0, 1.0); // Ya completamente seco
     }
 
-    // Detectar si estamos en el borde (vecinos menos húmedos) — los bordes secan antes
-    float wn = texture(uWetMap, vTexCoord + vec2(0,  1) / uCanvasSize).r;
-    float ws = texture(uWetMap, vTexCoord + vec2(0, -1) / uCanvasSize).r;
-    float we = texture(uWetMap, vTexCoord + vec2( 1, 0) / uCanvasSize).r;
-    float ww = texture(uWetMap, vTexCoord + vec2(-1, 0) / uCanvasSize).r;
-    float minNeighbor = min(min(wn, ws), min(we, ww));
+    vec2 texelSize = 1.0 / uCanvasSize;
+    float upWet    = texture(uWetMap, vTexCoord + vec2(0.0, texelSize.y)).r;
+    float downWet  = texture(uWetMap, vTexCoord - vec2(0.0, texelSize.y)).r;
+    float leftWet  = texture(uWetMap, vTexCoord - vec2(texelSize.x, 0.0)).r;
+    float rightWet = texture(uWetMap, vTexCoord + vec2(texelSize.x, 0.0)).r;
 
-    // Los bordes secan hasta 2x más rápido
+    // 1. Simulación de flujo de agua (Paso 1 del algoritmo: Promedio de humedad vecina)
+    float avgWater = (upWet + downWet + leftWet + rightWet) / 4.0;
+    
+    // Suavizado/difusión de la humedad
+    float newWetness = mix(wetness, avgWater, uBleed * 0.25);
+
+    // 2. Evaporación (Secado progresivo del charco)
+    // Se evapora alrededor de un 2% base por ciclo, escalado por dryingRate y absorción
+    float evaporation = 0.02 * uDryingRate * uAbsorption;
+
+    // Los bordes exteriores secan más rápido
+    float minNeighbor = min(min(upWet, downWet), min(leftWet, rightWet));
     float borderMult = (wetness - minNeighbor) > 0.15 ? 1.8 : 1.0;
 
-    // Evaporación base
-    float dryAmount = uDryingRate * uAbsorption * borderMult * 0.016; // ~1 frame a 60fps
+    newWetness = newWetness * (1.0 - evaporation * borderMult);
+    newWetness = max(0.0, newWetness);
 
-    float newWetness = max(0.0, wetness - dryAmount);
-    float newAge     = min(1.0, secAge + dryAmount * 0.5); // El pigmento "envejece"
+    // Avanzar la edad del pigmento húmedo
+    float newAge = min(1.0, secAge + evaporation * borderMult * 0.5);
 
-    // R=humedad actual, G=edad del pigmento, B=sin uso, A=1
     return vec4(newWetness, newAge, 0.0, 1.0);
 }
 

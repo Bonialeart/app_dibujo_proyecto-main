@@ -3,6 +3,7 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
+#include <QOpenGLFramebufferObject>
 #include <QFileInfo>
 #include <QImage>
 #include <QMap>
@@ -86,6 +87,33 @@ static uint32_t loadTexture(const QString &name) {
     }
   }
 
+  if (!img.isNull() && img.hasAlphaChannel()) {
+    double totalLum = 0.0;
+    int count = 0;
+    for (int y = 0; y < img.height(); ++y) {
+      for (int x = 0; x < img.width(); ++x) {
+        QRgb px = img.pixel(x, y);
+        int a = qAlpha(px);
+        if (a > 10) {
+          double lum = 0.299 * qRed(px) + 0.587 * qGreen(px) + 0.114 * qBlue(px);
+          totalLum += lum;
+          count++;
+        }
+      }
+    }
+    double avgLum = count > 0 ? (totalLum / count) : 255.0;
+    if (avgLum < 128.0) {
+      qDebug() << "BrushEngine: Detected dark brush tip texture on transparent background. Converting to white tip.";
+      for (int y = 0; y < img.height(); ++y) {
+        for (int x = 0; x < img.width(); ++x) {
+          QRgb px = img.pixel(x, y);
+          int a = qAlpha(px);
+          img.setPixel(x, y, qRgba(255, 255, 255, a));
+        }
+      }
+    }
+  }
+
   // Convert to format OpenGL understands well
   QImage glImg =
       img.convertToFormat(QImage::Format_RGBA8888).flipped(Qt::Vertical);
@@ -143,6 +171,33 @@ static QImage getTextureImage(const QString &name) {
     }
   } else {
     bool hasAlpha = img.hasAlphaChannel();
+    if (hasAlpha) {
+      double totalLum = 0.0;
+      int count = 0;
+      for (int y = 0; y < img.height(); ++y) {
+        for (int x = 0; x < img.width(); ++x) {
+          QRgb px = img.pixel(x, y);
+          int a = qAlpha(px);
+          if (a > 10) {
+            double lum = 0.299 * qRed(px) + 0.587 * qGreen(px) + 0.114 * qBlue(px);
+            totalLum += lum;
+            count++;
+          }
+        }
+      }
+      double avgLum = count > 0 ? (totalLum / count) : 255.0;
+      if (avgLum < 128.0) {
+        qDebug() << "BrushEngine: getTextureImage detected dark brush tip texture on transparent background. Converting to white tip.";
+        for (int y = 0; y < img.height(); ++y) {
+          for (int x = 0; x < img.width(); ++x) {
+            QRgb px = img.pixel(x, y);
+            int a = qAlpha(px);
+            img.setPixel(x, y, qRgba(255, 255, 255, a));
+          }
+        }
+      }
+    }
+
     img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     for (int y = 0; y < img.height(); ++y) {
       QRgb *scanline = reinterpret_cast<QRgb *>(img.scanLine(y));
@@ -245,7 +300,9 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
                               const QPointF &currentPoint, float pressure,
                               const BrushSettings &settings, float tilt,
                               float velocity, uint32_t canvasTexId,
-                              float wetness, float dilution, float smudge) {
+                              float wetness, float dilution, float smudge,
+                              QOpenGLFramebufferObject *pingFBO,
+                              QOpenGLFramebufferObject *pongFBO) {
   if (!painter)
     return;
 
@@ -450,6 +507,13 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
         dab.colorG = finalColor.greenF();
         dab.colorB = finalColor.blueF();
         dab.colorA = finalColor.alphaF();
+        
+        float dabPaintLoad = 1.0f;
+        if (settings.type == BrushSettings::Type::Oil) {
+          dabPaintLoad = std::max(0.0f, 1.0f - totalDist * settings.depletionRate);
+        }
+        dab.paintLoad = dabPaintLoad;
+
         instancedDabs.push_back(dab);
       }
 
@@ -457,38 +521,90 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     }
 
     if (!instancedDabs.empty()) {
-      m_renderer->renderStrokeInstanced(
-          instancedDabs, effectivePressure, settings.hardness,
-          static_cast<int>(settings.type), m_renderer->viewportWidth(),
-          m_renderer->viewportHeight(), grainTexID,
-          (grainTexID != 0 && settings.useTexture),
-          settings.textureScale * scaleFactor, settings.textureIntensity,
-          tipTexID, (tipTexID != 0), tilt, velocity, settings.flow, canvasTexId,
-          wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
-          settings.dryingTime, settings.wetOnWetMultiplier,
-          settings.granulation, settings.pigmentFlow, settings.staining,
-          settings.separation, settings.bloomEnabled, settings.bloomIntensity,
-          settings.bloomRadius, settings.bloomThreshold,
-          settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
-          settings.edgeDarkeningWidth, settings.textureRevealEnabled,
-          settings.textureRevealIntensity,
-          settings.textureRevealPressureInfluence, settings.mixing,
-          settings.loading, settings.depletionRate, settings.dirtyMixing,
-          settings.colorPickup, settings.blendOnly, settings.scrapeThrough,
-          settings.impastoEnabled, settings.impastoDepth, settings.impastoShine,
-          settings.impastoTextureStrength, settings.impastoEdgeBuildup,
-          settings.impastoDirectionalRidges, settings.impastoSmoothing,
-          settings.impastoPreserveExisting, settings.bristlesEnabled,
-          settings.bristleCount, settings.bristleStiffness,
-          settings.bristleClumping, settings.bristleFanSpread,
-          settings.bristleIndividualVariation, settings.bristleDryBrushEffect,
-          settings.bristleSoftness, settings.bristlePointTaper,
-          settings.smudgeStrength, settings.smudgePressureInfluence,
-          settings.smudgeLength, settings.smudgeGaussianBlur,
-          settings.smudgeSmear, settings.canvasAbsorption,
-          settings.canvasSkipValleys, settings.canvasCatchPeaks,
-          settings.temperatureShift, settings.brokenColor,
-          settings.type == BrushSettings::Type::Eraser);
+      bool useSequentialPingPong = (pingFBO && pongFBO &&
+                                    (settings.type == BrushSettings::Type::Oil ||
+                                     settings.smudge > 0.01f ||
+                                     settings.wetness > 0.01f));
+
+      if (useSequentialPingPong) {
+        // Render each dab sequentially with blit-per-dab to achieve true ping-pong double buffering
+        for (size_t i = 0; i < instancedDabs.size(); ++i) {
+          const auto &dab = instancedDabs[i];
+
+          m_renderer->renderStroke(
+              dab.x, dab.y, dab.size, effectivePressure, settings.hardness,
+              QColor::fromRgbF(dab.colorR, dab.colorG, dab.colorB, dab.colorA),
+              static_cast<int>(settings.type), m_renderer->viewportWidth(),
+              m_renderer->viewportHeight(), grainTexID,
+              (grainTexID != 0 && settings.useTexture),
+              settings.textureScale * scaleFactor, settings.textureIntensity,
+              tipTexID, (tipTexID != 0), dab.rotation, tilt, velocity, settings.flow,
+              pingFBO->texture(), // Read from pingFBO
+              wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
+              settings.dryingTime, settings.wetOnWetMultiplier,
+              settings.granulation, settings.pigmentFlow, settings.staining,
+              settings.separation, settings.bloomEnabled, settings.bloomIntensity,
+              settings.bloomRadius, settings.bloomThreshold,
+              settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
+              settings.edgeDarkeningWidth, settings.textureRevealEnabled,
+              settings.textureRevealIntensity,
+              settings.textureRevealPressureInfluence, settings.mixing,
+              dab.paintLoad, // Pass per-dab paintLoad as the loading uniform
+              settings.depletionRate, settings.dirtyMixing,
+              settings.colorPickup, settings.blendOnly, settings.scrapeThrough,
+              settings.impastoEnabled, settings.impastoDepth, settings.impastoShine,
+              settings.impastoTextureStrength, settings.impastoEdgeBuildup,
+              settings.impastoDirectionalRidges, settings.impastoSmoothing,
+              settings.impastoPreserveExisting, settings.bristlesEnabled,
+              settings.bristleCount, settings.bristleStiffness,
+              settings.bristleClumping, settings.bristleFanSpread,
+              settings.bristleIndividualVariation, settings.bristleDryBrushEffect,
+              settings.bristleSoftness, settings.bristlePointTaper,
+              settings.smudgeStrength, settings.smudgePressureInfluence,
+              settings.smudgeLength, settings.smudgeGaussianBlur,
+              settings.smudgeSmear, settings.canvasAbsorption,
+              settings.canvasSkipValleys, settings.canvasCatchPeaks,
+              settings.temperatureShift, settings.brokenColor,
+              settings.type == BrushSettings::Type::Eraser);
+
+          // Blit the result from pongFBO (write target) back to pingFBO (read target)
+          QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
+        }
+      } else {
+        // Fast instanced path for standard/dry brushes
+        m_renderer->renderStrokeInstanced(
+            instancedDabs, effectivePressure, settings.hardness,
+            static_cast<int>(settings.type), m_renderer->viewportWidth(),
+            m_renderer->viewportHeight(), grainTexID,
+            (grainTexID != 0 && settings.useTexture),
+            settings.textureScale * scaleFactor, settings.textureIntensity,
+            tipTexID, (tipTexID != 0), tilt, velocity, settings.flow, canvasTexId,
+            wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
+            settings.dryingTime, settings.wetOnWetMultiplier,
+            settings.granulation, settings.pigmentFlow, settings.staining,
+            settings.separation, settings.bloomEnabled, settings.bloomIntensity,
+            settings.bloomRadius, settings.bloomThreshold,
+            settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
+            settings.edgeDarkeningWidth, settings.textureRevealEnabled,
+            settings.textureRevealIntensity,
+            settings.textureRevealPressureInfluence, settings.mixing,
+            settings.loading, settings.depletionRate, settings.dirtyMixing,
+            settings.colorPickup, settings.blendOnly, settings.scrapeThrough,
+            settings.impastoEnabled, settings.impastoDepth, settings.impastoShine,
+            settings.impastoTextureStrength, settings.impastoEdgeBuildup,
+            settings.impastoDirectionalRidges, settings.impastoSmoothing,
+            settings.impastoPreserveExisting, settings.bristlesEnabled,
+            settings.bristleCount, settings.bristleStiffness,
+            settings.bristleClumping, settings.bristleFanSpread,
+            settings.bristleIndividualVariation, settings.bristleDryBrushEffect,
+            settings.bristleSoftness, settings.bristlePointTaper,
+            settings.smudgeStrength, settings.smudgePressureInfluence,
+            settings.smudgeLength, settings.smudgeGaussianBlur,
+            settings.smudgeSmear, settings.canvasAbsorption,
+            settings.canvasSkipValleys, settings.canvasCatchPeaks,
+            settings.temperatureShift, settings.brokenColor,
+            settings.type == BrushSettings::Type::Eraser);
+      }
     }
     // Update state
     m_accumulatedDistance += dist;
@@ -791,6 +907,13 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
       dab.colorG = finalColor.greenF();
       dab.colorB = finalColor.blueF();
       dab.colorA = finalColor.alphaF();
+      
+      float dabPaintLoad = 1.0f;
+      if (m_currentSettings.type == BrushSettings::Type::Oil) {
+        dabPaintLoad = std::max(0.0f, 1.0f - totalDist * m_currentSettings.depletionRate);
+      }
+      dab.paintLoad = dabPaintLoad;
+
       instancedDabs.push_back(dab);
     }
     coveredDist += spacing;

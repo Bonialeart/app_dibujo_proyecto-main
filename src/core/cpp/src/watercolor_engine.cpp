@@ -258,26 +258,31 @@ void WatercolorEngine::performSpread() {
         return;
     }
 
-    // Verificar si todavía hay humedad significativa
-    // (simplificado: asumir que hay humedad mientras el timer corre)
-
+    // ── PASADA A: Difusión de Pigmento en el Lienzo (Mode 1) ──
     m_gl->glActiveTexture(GL_TEXTURE0);
-    m_gl->glBindTexture(GL_TEXTURE_2D, m_lastCanvasFBOOut->texture());
+    m_gl->glBindTexture(GL_TEXTURE_2D, m_lastCanvasFBOOut->texture()); // Canvas lectura
     m_gl->glActiveTexture(GL_TEXTURE1);
-    m_gl->glBindTexture(GL_TEXTURE_2D, m_wetMapFBO_A->texture());
+    m_gl->glBindTexture(GL_TEXTURE_2D, m_wetMapFBO_A->texture());       // WetMap lectura
     m_gl->glActiveTexture(GL_TEXTURE2);
-    m_gl->glBindTexture(GL_TEXTURE_2D, 0); // No hay dab en este paso
+    m_gl->glBindTexture(GL_TEXTURE_2D, 0);                             // Sin Dab
+    m_gl->glActiveTexture(GL_TEXTURE3);
+    if (m_grainTexId) {
+        m_gl->glBindTexture(GL_TEXTURE_2D, m_grainTexId);              // Textura de grano de papel
+    } else {
+        m_gl->glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     m_shader->bind();
-    m_shader->setUniformValue("uCanvas",       0);
-    m_shader->setUniformValue("uWetMap",       1);
-    m_shader->setUniformValue("uBrushDab",     2);
-    m_shader->setUniformValue("uBleed",        m_lastParams.bleed);
-    m_shader->setUniformValue("uEdgeDarkening",m_lastParams.edgeDarkening);
-    m_shader->setUniformValue("uCanvasSize",   QVector2D(m_width, m_height));
-    m_shader->setUniformValue("uMode",         1);  // Spread Wet
+    m_shader->setUniformValue("uCanvas",         0);
+    m_shader->setUniformValue("uWetMap",         1);
+    m_shader->setUniformValue("uBrushDab",       2);
+    m_shader->setUniformValue("uGrainTexture",   3);
+    m_shader->setUniformValue("uBleed",          m_lastParams.bleed);
+    m_shader->setUniformValue("uEdgeDarkening",  m_lastParams.edgeDarkening);
+    m_shader->setUniformValue("uGrainIntensity", m_lastParams.grainIntensity);
+    m_shader->setUniformValue("uCanvasSize",     QVector2D(m_width, m_height));
+    m_shader->setUniformValue("uMode",           1);  // Spread Wet
 
-    // Escribir el resultado del spread en m_spreadFBO, luego copiar al canvas
     m_spreadFBO->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
     m_gl->glDisable(GL_BLEND);
@@ -285,30 +290,32 @@ void WatercolorEngine::performSpread() {
     m_spreadFBO->release();
     m_shader->release();
 
-    // Blit del spread de vuelta al canvasFBOout
+    // Guardar el resultado del lienzo de vuelta a m_lastCanvasFBOOut
     QOpenGLFramebufferObject::blitFramebuffer(m_lastCanvasFBOOut, m_spreadFBO);
 
-    emit wetMapUpdated();
-}
-
-// ========================== DRY STEP (SECADO) ================================
-// Se llama cada ~2.5s. Reduce la humedad del WetMap.
-// ============================================================================
-
-void WatercolorEngine::performDryStep() {
-    if (!m_initialized || !m_shader) return;
-
+    // ── PASADA B: Difusión y Evaporación de Agua en WetMap (Mode 2) ──
     m_gl->glActiveTexture(GL_TEXTURE0);
     m_gl->glBindTexture(GL_TEXTURE_2D, 0);
     m_gl->glActiveTexture(GL_TEXTURE1);
-    m_gl->glBindTexture(GL_TEXTURE_2D, m_wetMapFBO_A->texture());
+    m_gl->glBindTexture(GL_TEXTURE_2D, m_wetMapFBO_A->texture());       // WetMap lectura
+    m_gl->glActiveTexture(GL_TEXTURE2);
+    m_gl->glBindTexture(GL_TEXTURE_2D, 0);
+    m_gl->glActiveTexture(GL_TEXTURE3);
+    if (m_grainTexId) {
+        m_gl->glBindTexture(GL_TEXTURE_2D, m_grainTexId);              // Grano para fricción/absorción
+    } else {
+        m_gl->glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     m_shader->bind();
-    m_shader->setUniformValue("uWetMap",     1);
-    m_shader->setUniformValue("uDryingRate", m_lastParams.dryingRate);
-    m_shader->setUniformValue("uAbsorption", m_lastParams.absorption);
-    m_shader->setUniformValue("uCanvasSize", QVector2D(m_width, m_height));
-    m_shader->setUniformValue("uMode",       2);  // Dry Step
+    m_shader->setUniformValue("uWetMap",         1);
+    m_shader->setUniformValue("uGrainTexture",   3);
+    m_shader->setUniformValue("uBleed",          m_lastParams.bleed);
+    m_shader->setUniformValue("uDryingRate",     m_lastParams.dryingRate);
+    m_shader->setUniformValue("uAbsorption",     m_lastParams.absorption);
+    m_shader->setUniformValue("uGrainIntensity", m_lastParams.grainIntensity);
+    m_shader->setUniformValue("uCanvasSize",     QVector2D(m_width, m_height));
+    m_shader->setUniformValue("uMode",           2);  // Dry Step (Difusión + Evaporación de Agua)
 
     m_wetMapFBO_B->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
@@ -317,14 +324,19 @@ void WatercolorEngine::performDryStep() {
     m_wetMapFBO_B->release();
     m_shader->release();
 
+    // Intercambiar el WetMap (A = nuevo estado simulado)
     std::swap(m_wetMapFBO_A, m_wetMapFBO_B);
 
-    // Si el wetmap está casi seco, detener timers para ahorrar GPU
-    // (En una implementación completa leeríamos el FBO para verificar)
-    // Por ahora, detener el spread después de 30s de inactividad
-    // (manejado por el contador en performSpread)
-
     emit wetMapUpdated();
+}
+
+// ========================== DRY STEP (SECADO) ================================
+// Se ejecutaba a intervalos de 2.5s, pero ahora el secado y flujo continuo
+// de agua ocurren en performSpread() cada 80ms de manera mucho más fluida.
+// ============================================================================
+
+void WatercolorEngine::performDryStep() {
+    // No-op: el secado progresivo realista ya está integrado en la simulación de 80ms
 }
 
 // ========================== UTILIDADES PRIVADAS ==============================

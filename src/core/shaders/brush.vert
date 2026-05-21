@@ -5,10 +5,12 @@ layout(location = 2) in vec2 instPos;
 layout(location = 3) in float instSize;
 layout(location = 4) in float instRot;
 layout(location = 5) in vec4 instColor;
+layout(location = 6) in float instPaintLoad;
 
 uniform mat4 projectionMatrix;
 uniform mat4 modelMatrix;
 uniform int instanced;
+uniform float paintLoad;
 
 out vec2 TexCoords;
 out vec4 vColor;
@@ -16,6 +18,7 @@ out vec2 vPos;
 out float vSize;
 out float vRot;
 out vec2 vWorldPos;
+out float vPaintLoad;
 
 void main() {
     if (instanced == 1) {
@@ -43,10 +46,12 @@ void main() {
         vSize = instSize;
         vRot = instRot;
         vWorldPos = worldPos;
+        vPaintLoad = instPaintLoad;
     } else {
         vec4 worldPosVec = modelMatrix * vec4(position, 0.0, 1.0);
         gl_Position = projectionMatrix * worldPosVec;
         TexCoords = texCoords;
         vWorldPos = worldPosVec.xy;
+        vPaintLoad = paintLoad;
     }
 }

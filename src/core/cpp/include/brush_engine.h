@@ -13,6 +13,8 @@
 
 #include <QString>
 
+class QOpenGLFramebufferObject;
+
 namespace artflow {
 
 // Legacy Color struct for compatibility
@@ -246,7 +248,9 @@ public:
                    const BrushSettings &settings, float tilt = 0.0f,
                    float velocity = 0.0f, uint32_t canvasTexId = 0,
                    float wetness = 0.0f, float dilution = 0.0f,
-                   float smudge = 0.0f);
+                   float smudge = 0.0f,
+                   QOpenGLFramebufferObject *pingFBO = nullptr,
+                   QOpenGLFramebufferObject *pongFBO = nullptr);
 
   // Compatibility methods for CanvasItem integration
   void setBrush(const BrushSettings &settings); // Implemented in cpp or inline
