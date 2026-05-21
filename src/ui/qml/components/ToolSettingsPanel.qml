@@ -79,6 +79,45 @@ Item {
                         // Custom styling here...
                     }
                 }
+
+                // Stabilizer Mode Selection
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: root.currentTool === "Brush" || root.currentTool === "Eraser"
+                    
+                    Text { text: "Algoritmo de Suavizado"; color: "#999"; font.pixelSize: 11 }
+                    
+                    RowLayout {
+                        spacing: 4
+                        Layout.fillWidth: true
+                        Repeater {
+                            model: ["Doble EMA", "WMA", "Lazy Mouse"]
+                            delegate: Rectangle {
+                                Layout.fillWidth: true
+                                height: 28; radius: 4
+                                color: (targetCanvas && targetCanvas.brushStabilizerMode === (index + 1)) ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.2) : "#16161a"
+                                border.color: (targetCanvas && targetCanvas.brushStabilizerMode === (index + 1)) ? accentColor : "#2a2a2d"
+                                
+                                Text {
+                                    text: modelData
+                                    anchors.centerIn: parent
+                                    color: (targetCanvas && targetCanvas.brushStabilizerMode === (index + 1)) ? "white" : "#999"
+                                    font.pixelSize: 10; font.weight: Font.DemiBold
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        if(targetCanvas) {
+                                            targetCanvas.brushStabilizerMode = index + 1
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 // Example setting: Symmetry
                 ColumnLayout {

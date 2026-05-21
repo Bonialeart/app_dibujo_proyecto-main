@@ -129,7 +129,7 @@ static QCursor loadCustomSvgCursor(const QString &fileName, int hotX = 16, int h
 CanvasItem::CanvasItem(QQuickItem *parent)
     : QQuickPaintedItem(parent), m_brushSize(20), m_brushColor(Qt::black),
       m_brushOpacity(1.0f), m_brushFlow(1.0f), m_brushHardness(0.8f),
-      m_brushSpacing(0.1f), m_brushStabilization(0.2f), m_brushStreamline(0.0f),
+      m_brushSpacing(0.1f), m_brushStabilization(0.2f), m_brushStabilizerMode(1), m_brushStreamline(0.0f),
 
       m_brushGrain(0.0f), m_brushWetness(0.0f), m_brushSmudge(0.0f),
       m_brushRoundness(1.0f), m_zoomLevel(1.0f), m_currentToolStr("brush"),
@@ -1630,9 +1630,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   if (!layer || !layer->visible || layer->locked)
     return;
 
-  // --- STABILIZATION: Procreate "StreamLine" Style (Double EMA) ---
-  // Un modelo de Doble Media Móvil Exponencial (Nested EMA) da ese efecto
-  // "sabroso", fluido y elástico ("buttery smooth") al dibujar.
+  // --- STABILIZATION MULTI-MODE ---
   QPointF targetPos = pos;
   float effectivePressure = pressure;
 
@@ -1640,48 +1638,99 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     float strength = std::clamp(m_brushStabilization, 0.0f, 1.0f);
 
     if (strength > 0.01f) {
-      if (m_stabPosQueue.empty()) {
+      if (m_brushStabilizerMode == 1) {
+        // --- MODE 1: Double EMA (existing streamline stabilizer) ---
+        if (m_stabPosQueue.empty()) {
+          m_stabilizedPos = pos;
+          effectivePressure = pressure;
+          m_stabPosQueue.push_back(pos);
+          m_stabPosQueue.push_back(pos);
+          m_stabPresQueue.clear();
+          m_stabPresQueue.push_back(pressure);
+        }
+
+        float mass = std::pow(strength, 0.65f) * 0.92f;
+        QPointF ema1 = m_stabPosQueue[0] * mass + pos * (1.0f - mass);
+        QPointF ema2 = m_stabPosQueue[1] * mass + ema1 * (1.0f - mass);
+
+        m_stabPosQueue[0] = ema1;
+        m_stabPosQueue[1] = ema2;
+        m_stabilizedPos = ema2;
+
+        float prevPres = m_stabPresQueue.front();
+        effectivePressure = prevPres * mass + pressure * (1.0f - mass);
+        m_stabPresQueue.front() = effectivePressure;
+
+        targetPos = m_stabilizedPos;
+      }
+      else if (m_brushStabilizerMode == 2) {
+        // --- MODE 2: Weighted Moving Average (WMA) ---
+        int N = std::max(2, static_cast<int>(strength * 30.0f));
+        m_stabPosQueue.push_back(pos);
+        m_stabPresQueue.push_back(pressure);
+        while (m_stabPosQueue.size() > static_cast<size_t>(N)) {
+          m_stabPosQueue.pop_front();
+          m_stabPresQueue.pop_front();
+        }
+
+        double totalWeight = 0.0;
+        double sumX = 0.0;
+        double sumY = 0.0;
+        double sumPres = 0.0;
+        int size = m_stabPosQueue.size();
+        for (int i = 0; i < size; ++i) {
+          double weight = static_cast<double>(i + 1);
+          totalWeight += weight;
+          sumX += m_stabPosQueue[i].x() * weight;
+          sumY += m_stabPosQueue[i].y() * weight;
+          sumPres += m_stabPresQueue[i] * weight;
+        }
+
+        if (totalWeight > 0.0) {
+          m_stabilizedPos = QPointF(sumX / totalWeight, sumY / totalWeight);
+          effectivePressure = sumPres / totalWeight;
+        } else {
+          m_stabilizedPos = pos;
+          effectivePressure = pressure;
+        }
+        targetPos = m_stabilizedPos;
+      }
+      else if (m_brushStabilizerMode == 3) {
+        // --- MODE 3: Virtual Spring / Attraction (Lazy Mouse) ---
+        if (m_stabPosQueue.empty()) {
+          m_stabilizedPos = pos;
+          effectivePressure = pressure;
+          m_stabPosQueue.push_back(pos);
+          m_stabPresQueue.push_back(pressure);
+        }
+
+        float R = strength * 80.0f;
+        float K = 0.02f + (1.0f - strength) * 0.98f;
+
+        QPointF d = pos - m_stabilizedPos;
+        float dist = std::hypot(d.x(), d.y());
+
+        if (dist > R) {
+          QPointF pullTarget = pos - (d / dist) * R;
+          m_stabilizedPos += (pullTarget - m_stabilizedPos) * K;
+        }
+        effectivePressure += (pressure - effectivePressure) * K;
+
+        targetPos = m_stabilizedPos;
+      }
+      else {
+        m_stabPosQueue.clear();
+        m_stabPresQueue.clear();
         m_stabilizedPos = pos;
         effectivePressure = pressure;
-        // Usamos la cola para el Estado del Double EMA:
-        // m_stabPosQueue[0] = EMA Primario
-        // m_stabPosQueue[1] = EMA Secundario
-        m_stabPosQueue.push_back(pos);
-        m_stabPosQueue.push_back(pos);
-
-        m_stabPresQueue.clear();
-        m_stabPresQueue.push_back(pressure);
+        targetPos = pos;
       }
-
-      // Mapeo no lineal para que se sienta premium.
-      // Un mass = 0.95 significa 95% de inercia, 5% de la nueva posición.
-      // En un Double EMA, la inercia se siente aún más, por lo que 0.92 = muy
-      // suave.
-      float mass = std::pow(strength, 0.65f) * 0.92f;
-
-      // Double EMA Position
-      QPointF ema1 = m_stabPosQueue[0] * mass + pos * (1.0f - mass);
-      QPointF ema2 = m_stabPosQueue[1] * mass + ema1 * (1.0f - mass);
-
-      m_stabPosQueue[0] = ema1;
-      m_stabPosQueue[1] = ema2;
-
-      m_stabilizedPos = ema2;
-
-      // Single EMA Pressure (la presión no necesita double EMA, perdería
-      // respuesta rápida)
-      float prevPres = m_stabPresQueue.front();
-      effectivePressure = prevPres * mass + pressure * (1.0f - mass);
-      m_stabPresQueue.front() = effectivePressure;
-
-      targetPos = m_stabilizedPos;
-
     } else {
-      // No stabilization
       m_stabPosQueue.clear();
       m_stabPresQueue.clear();
       m_stabilizedPos = pos;
       effectivePressure = pressure;
+      targetPos = pos;
     }
   }
 
@@ -3755,6 +3804,13 @@ void CanvasItem::setBrushStabilization(float value) {
   s.stabilization = value;
   m_brushEngine->setBrush(s);
   emit brushStabilizationChanged();
+}
+
+void CanvasItem::setBrushStabilizerMode(int mode) {
+  if (m_brushStabilizerMode == mode)
+    return;
+  m_brushStabilizerMode = mode;
+  emit brushStabilizerModeChanged();
 }
 
 void CanvasItem::setBrushStreamline(float value) {

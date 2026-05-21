@@ -130,6 +130,49 @@ Item {
                 accent: "#6366f1"
                 onMoved: (val) => { if (mainCanvas) mainCanvas.brushStabilization = val }
             }
+
+            // Stabilization Mode
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                
+                Text { 
+                    text: "ALGORITMO DE SUAVIZADO"
+                    font.pixelSize: 10; font.weight: Font.Bold
+                    color: "#6b7280"; Layout.fillWidth: true
+                    font.letterSpacing: 1
+                }
+
+                RowLayout {
+                    spacing: 4
+                    Layout.fillWidth: true
+                    Repeater {
+                        model: ["Doble EMA", "WMA", "Lazy Mouse"]
+                        delegate: Rectangle {
+                            Layout.fillWidth: true
+                            height: 28; radius: 4
+                            color: (mainCanvas && mainCanvas.brushStabilizerMode === (index + 1)) ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.2) : "#16161a"
+                            border.color: (mainCanvas && mainCanvas.brushStabilizerMode === (index + 1)) ? accentColor : "#2a2a2d"
+                            
+                            Text {
+                                text: modelData
+                                anchors.centerIn: parent
+                                color: (mainCanvas && mainCanvas.brushStabilizerMode === (index + 1)) ? "white" : "#999"
+                                font.pixelSize: 10; font.weight: Font.DemiBold
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    if(mainCanvas) {
+                                        mainCanvas.brushStabilizerMode = index + 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // --- SHAPE / COMIC PANEL SETTINGS ---

@@ -64,6 +64,8 @@ public:
                  brushSpacingChanged)
   Q_PROPERTY(float brushStabilization READ brushStabilization WRITE
                  setBrushStabilization NOTIFY brushStabilizationChanged)
+  Q_PROPERTY(int brushStabilizerMode READ brushStabilizerMode WRITE
+                 setBrushStabilizerMode NOTIFY brushStabilizerModeChanged)
   Q_PROPERTY(float brushStreamline READ brushStreamline WRITE setBrushStreamline
                  NOTIFY brushStreamlineChanged)
   Q_PROPERTY(float brushGrain READ brushGrain WRITE setBrushGrain NOTIFY
@@ -198,6 +200,7 @@ public:
   float brushHardness() const { return m_brushHardness; }
   float brushSpacing() const { return m_brushSpacing; }
   float brushStabilization() const { return m_brushStabilization; }
+  int brushStabilizerMode() const { return m_brushStabilizerMode; }
   float brushStreamline() const { return m_brushStreamline; }
   float brushGrain() const { return m_brushGrain; }
   float brushWetness() const { return m_brushWetness; }
@@ -253,6 +256,7 @@ public:
   void setBrushHardness(float hardness);
   void setBrushSpacing(float spacing);
   void setBrushStabilization(float value);
+  void setBrushStabilizerMode(int mode);
   void setBrushStreamline(float value);
   void setBrushGrain(float value);
   void setBrushWetness(float value);
@@ -488,6 +492,7 @@ signals:
   void brushHardnessChanged();
   void brushSpacingChanged();
   void brushStabilizationChanged();
+  void brushStabilizerModeChanged();
   void brushStreamlineChanged();
   void brushGrainChanged();
   void brushWetnessChanged();
@@ -600,6 +605,7 @@ private:
   float m_brushHardness;
   float m_brushSpacing;
   float m_brushStabilization;
+  int m_brushStabilizerMode = 1;
   float m_brushStreamline;
   float m_brushGrain;
   float m_brushWetness;
