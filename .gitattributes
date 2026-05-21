@@ -1,0 +1,5 @@
+# Excluir la interfaz de usuario (QML y JavaScript) de las estadísticas de lenguaje de GitHub/Linguist
+# Esto resalta el motor de dibujo de alto rendimiento en C++ como el lenguaje principal del repositorio.
+src/ui/** linguist-detectable=false
+*.qml linguist-detectable=false
+*.js linguist-detectable=false
