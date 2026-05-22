@@ -52,40 +52,7 @@ Window {
         }
     }
 
-    // Global Keyboard Handler (Centralized)
-    FocusScope {
-        id: globalKeys
-        anchors.fill: parent
-        focus: true
-        z: 9999
-        
-        // Only handle keys if we are on drawing page and no dialog is active
-        enabled: currentPage === 1 && !newProjectDialog.visible && !newSketchbookDialog.visible && !preferencesDialog.visible && !pressureDialog.visible
-        
-        onEnabledChanged: if (enabled) forceActiveFocus()
-        
-        Keys.onPressed: (event) => {
-            // Prevent Space from scrolling Flickables
-            if (event.key === Qt.Key_Space) {
-                event.accepted = true;
-                if (event.isAutoRepeat) return;
-            } else if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BracketRight ||
-                       event.key === Qt.Key_O || event.key === Qt.Key_R ||
-                       event.key === Qt.Key_4 || event.key === Qt.Key_5 || event.key === Qt.Key_6) {
-                event.accepted = true;
-            } else {
-                event.accepted = false; // Bubble up to global/local Shortcuts!
-            }
-            mainCanvas.handle_shortcuts(event.key, event.modifiers)
-        }
-        Keys.onReleased: (event) => {
-            if (event.key === Qt.Key_Space) {
-                event.accepted = true;
-                if (event.isAutoRepeat) return; // 💡 IGNORE pulses while holding
-            }
-            mainCanvas.handle_key_release(event.key)
-        }
-    }
+
 
     // --- GLOBAL SHORTCUTS ---
     // These ensure shortcuts work globally even if focus is lost (fixing the "funcionen siempre" issue).
@@ -98,18 +65,18 @@ Window {
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Undo"] ? mainWindow.sm["Undo"] : "Ctrl+Z"; onActivated: mainCanvas.undo() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Redo"] ? mainWindow.sm["Redo"] : "Ctrl+Y"; onActivated: mainCanvas.redo() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["New Layer"] ? mainWindow.sm["New Layer"] : "Ctrl+Shift+N"; onActivated: mainCanvas.addLayer() }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Pen Tool"] ? mainWindow.sm["Pen Tool"] : "P"; onActivated: canvasPage.activeToolIdx = 5 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Brush Tool"] ? mainWindow.sm["Brush Tool"] : "B"; onActivated: canvasPage.activeToolIdx = 7 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eraser Tool"] ? mainWindow.sm["Eraser Tool"] : "E"; onActivated: canvasPage.activeToolIdx = 9 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Lasso Tool"] ? mainWindow.sm["Lasso Tool"] : "L"; onActivated: canvasPage.activeToolIdx = 2 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Hand Tool"] ? mainWindow.sm["Hand Tool"] : "H"; onActivated: canvasPage.activeToolIdx = 12 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: canvasPage.activeToolIdx = 11 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Move Tool"] ? mainWindow.sm["Move Tool"] : "V"; onActivated: canvasPage.activeToolIdx = 4 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Transform"] ? mainWindow.sm["Transform"] : "Ctrl+T"; onActivated: canvasPage.activeToolIdx = 4 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Select None"] ? mainWindow.sm["Select None"] : "Ctrl+D"; onActivated: { mainCanvas.deselect(); mainCanvas.update() } }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Fit to Screen"] ? mainWindow.sm["Fit to Screen"] : "Ctrl+0"; onActivated: mainCanvas.fitToView() }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Zoom In"] ? mainWindow.sm["Zoom In"] : "Ctrl++"; onActivated: mainCanvas.zoomLevel *= 1.2 }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Zoom Out"] ? mainWindow.sm["Zoom Out"] : "Ctrl+-"; onActivated: mainCanvas.zoomLevel *= 0.8 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Pen Tool"] ? mainWindow.sm["Pen Tool"] : "P"; onActivated: canvasPage.activeToolIdx = 5 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Brush Tool"] ? mainWindow.sm["Brush Tool"] : "B"; onActivated: canvasPage.activeToolIdx = 7 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Eraser Tool"] ? mainWindow.sm["Eraser Tool"] : "E"; onActivated: canvasPage.activeToolIdx = 9 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Lasso Tool"] ? mainWindow.sm["Lasso Tool"] : "L"; onActivated: canvasPage.activeToolIdx = 2 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Hand Tool"] ? mainWindow.sm["Hand Tool"] : "H"; onActivated: canvasPage.activeToolIdx = 12 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: canvasPage.activeToolIdx = 11 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Move Tool"] ? mainWindow.sm["Move Tool"] : "V"; onActivated: canvasPage.activeToolIdx = 4 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Transform"] ? mainWindow.sm["Transform"] : "Ctrl+T"; onActivated: canvasPage.activeToolIdx = 4 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Select None"] ? mainWindow.sm["Select None"] : "Ctrl+D"; onActivated: { mainCanvas.deselect(); mainCanvas.update() } }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Fit to Screen"] ? mainWindow.sm["Fit to Screen"] : "Ctrl+0"; onActivated: mainCanvas.fitToView() }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Zoom In"] ? mainWindow.sm["Zoom In"] : "Ctrl++"; onActivated: mainCanvas.zoomLevel *= 1.2 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Zoom Out"] ? mainWindow.sm["Zoom Out"] : "Ctrl+-"; onActivated: mainCanvas.zoomLevel *= 0.8 }
 
 
     Component.onCompleted: {
@@ -144,6 +111,20 @@ Window {
     
     property int currentPage: 0
     property bool isProjectActive: false
+
+    readonly property bool shortcutsEnabled: isProjectActive && currentPage === 1 &&
+        (!mainWindow.activeFocusItem || (mainWindow.activeFocusItem.echoMode === undefined && mainWindow.activeFocusItem.cursorPosition === undefined))
+
+    onCurrentPageChanged: {
+        if (currentPage === 1) {
+            mainCanvas.forceActiveFocus()
+        }
+    }
+    onIsProjectActiveChanged: {
+        if (isProjectActive && currentPage === 1) {
+            mainCanvas.forceActiveFocus()
+        }
+    }
     
     // Estado de paneles desplegables
     property bool showLayers: false
@@ -1069,6 +1050,7 @@ Window {
                 QCanvasItem {
                     id: mainCanvas
                     anchors.fill: parent
+                    focus: true
 
                     visible: isProjectActive
                     onVisibleChanged: if (visible) Qt.callLater(fitToView)
@@ -1107,17 +1089,53 @@ Window {
                                 width: mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.width : parent.width
                                 height: mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.height : parent.height
                                 color: "transparent"
-                                border.color: mainCanvas.transformMode === 1 ? "transparent" : colorAccent
+                                border.color: (mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) ? "transparent" : colorAccent
                                 border.width: 2 / mainCanvas.zoomLevel
                                 transformOrigin: Item.Center
                             
-                            // Perspective points state
+                            // Perspective/Mesh points state
                             property var perspPoints: null
+                            
+                            // Helper function to initialize points for the current transform mode
+                            function initializePointsForMode(mode) {
+                                var w = manipulator.width > 0 ? manipulator.width : (mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.width : parent.width);
+                                var h = manipulator.height > 0 ? manipulator.height : (mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.height : parent.height);
+                                if (mode === 1) { // Perspective
+                                    perspPoints = [
+                                        {x: 0, y: 0},
+                                        {x: w, y: 0},
+                                        {x: w, y: h},
+                                        {x: 0, y: h}
+                                    ];
+                                } else if (mode === 2 || mode === 3) { // Warp/Mesh
+                                    var pts = [];
+                                    for (var r = 0; r < 4; ++r) {
+                                        var y = (r / 3.0) * h;
+                                        for (var c = 0; c < 4; ++c) {
+                                            var x = (c / 3.0) * w;
+                                            pts.push({ x: x, y: y });
+                                        }
+                                    }
+                                    perspPoints = pts;
+                                } else { // Free
+                                    perspPoints = null;
+                                }
+                            }
+                            
+                            // Connect to mainCanvas to reset points when transformMode changes
+                            Connections {
+                                target: mainCanvas
+                                function onTransformModeChanged() {
+                                    if (mainCanvas.isTransforming) {
+                                        manipulator.initializePointsForMode(mainCanvas.transformMode);
+                                        manipulator.updateTransform();
+                                    }
+                                }
+                            }
                             
                                 // Reset state when shown
                                 onVisibleChanged: {
                                     if (visible) {
-                                        perspPoints = null // Reset perspective
                                         if (mainCanvas.transformBox.width > 0) {
                                             x = mainCanvas.transformBox.x
                                             y = mainCanvas.transformBox.y
@@ -1129,7 +1147,8 @@ Window {
                                             height = parent.height
                                         }
                                         scale = 1; rotation = 0
-                                        mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
+                                        initializePointsForMode(mainCanvas.transformMode);
+                                        updateTransform();
                                         if (typeof canvasOutline !== "undefined") canvasOutline.requestPaint()
                                     }
                                 }
@@ -1137,8 +1156,8 @@ Window {
                                 Canvas {
                                     id: canvasOutline
                                     anchors.fill: parent
-                                    anchors.margins: -4000 // Bleed area for extreme perspective warping
-                                    visible: mainCanvas.transformMode === 1
+                                    anchors.margins: -200 // Bleed area for moderate perspective/warp warping
+                                    visible: mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3
                                     onPaint: {
                                         var ctx = getContext("2d")
                                         ctx.reset()
@@ -1148,20 +1167,45 @@ Window {
                                         ctx.lineWidth = 2 / mainCanvas.zoomLevel
                                         ctx.beginPath()
                                         
-                                        var offset = 4000 // Match the margins
-                                        ctx.moveTo(manipulator.perspPoints[0].x + offset, manipulator.perspPoints[0].y + offset)
-                                        ctx.lineTo(manipulator.perspPoints[1].x + offset, manipulator.perspPoints[1].y + offset)
-                                        ctx.lineTo(manipulator.perspPoints[2].x + offset, manipulator.perspPoints[2].y + offset)
-                                        ctx.lineTo(manipulator.perspPoints[3].x + offset, manipulator.perspPoints[3].y + offset)
-                                        ctx.closePath()
+                                        var offset = 200 // Match the margins
+                                        
+                                        if (mainCanvas.transformMode === 1 && manipulator.perspPoints.length === 4) {
+                                            ctx.moveTo(manipulator.perspPoints[0].x + offset, manipulator.perspPoints[0].y + offset)
+                                            ctx.lineTo(manipulator.perspPoints[1].x + offset, manipulator.perspPoints[1].y + offset)
+                                            ctx.lineTo(manipulator.perspPoints[2].x + offset, manipulator.perspPoints[2].y + offset)
+                                            ctx.lineTo(manipulator.perspPoints[3].x + offset, manipulator.perspPoints[3].y + offset)
+                                            ctx.closePath()
+                                        } else if ((mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) && manipulator.perspPoints.length === 16) {
+                                            // Horizontal grid lines
+                                            for (var r = 0; r < 4; ++r) {
+                                                ctx.moveTo(manipulator.perspPoints[r*4].x + offset, manipulator.perspPoints[r*4].y + offset)
+                                                for (var c = 1; c < 4; ++c) {
+                                                    ctx.lineTo(manipulator.perspPoints[r*4 + c].x + offset, manipulator.perspPoints[r*4 + c].y + offset)
+                                                }
+                                            }
+                                            // Vertical grid lines
+                                            for (var c = 0; c < 4; ++c) {
+                                                ctx.moveTo(manipulator.perspPoints[c].x + offset, manipulator.perspPoints[c].y + offset)
+                                                for (var r = 1; r < 4; ++r) {
+                                                    ctx.lineTo(manipulator.perspPoints[r*4 + c].x + offset, manipulator.perspPoints[r*4 + c].y + offset)
+                                                }
+                                            }
+                                        }
                                         ctx.stroke()
                                     }
                                 }
                                 
-                                PinchHandler { target: manipulator }
+                                PinchHandler { 
+                                    target: manipulator
+                                    enabled: mainCanvas.transformMode === 0
+                                }
                             
                             // Center drag handle
-                            DragHandler { target: manipulator; xAxis.enabled: true; yAxis.enabled: true }
+                            DragHandler { 
+                                target: manipulator
+                                xAxis.enabled: mainCanvas.transformMode === 0
+                                yAxis.enabled: mainCanvas.transformMode === 0
+                            }
                             
                             onXChanged: if (visible) updateTransform()
                             onYChanged: if (visible) updateTransform()
@@ -1171,9 +1215,9 @@ Window {
                             onHeightChanged: if (visible) updateTransform()
                             
                             function updateTransform() {
-                                if (mainCanvas.transformMode === 1 && manipulator.perspPoints) {
+                                if ((mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) && manipulator.perspPoints) {
                                     var canvasPts = []
-                                    for(var i=0; i<4; i++) {
+                                    for(var i=0; i<manipulator.perspPoints.length; i++) {
                                         var cp = manipulator.parent.mapFromItem(manipulator, manipulator.perspPoints[i].x, manipulator.perspPoints[i].y)
                                         canvasPts.push({x: cp.x, y: cp.y})
                                     }
@@ -1192,6 +1236,7 @@ Window {
                                 anchors.topMargin: -40 / mainCanvas.zoomLevel
                                 color: "#1a1a1e"; border.color: colorAccent
                                 radius: width/2
+                                visible: mainCanvas.transformMode === 0
                                 
                                 Text { text: "⟳"; color: "white"; anchors.centerIn: parent; font.pixelSize: 14/mainCanvas.zoomLevel }
                                 
@@ -1227,32 +1272,56 @@ Window {
                                 }
                             }
                             
-                            // ── RESIZE HANDLES (Corners) ──
+                            // ── RESIZE HANDLES (Corners & Grid) ──
                             Repeater {
-                                model: [
-                                    {hx: 0, hy: 0, cursor: Qt.SizeFDiagCursor, idx: 0},
-                                    {hx: 1, hy: 0, cursor: Qt.SizeBDiagCursor, idx: 1},
-                                    {hx: 0, hy: 1, cursor: Qt.SizeBDiagCursor, idx: 3},
-                                    {hx: 1, hy: 1, cursor: Qt.SizeFDiagCursor, idx: 2}
-                                ]
+                                model: (mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) 
+                                       ? [
+                                           {hx: 0, hy: 0, cursor: Qt.PointingHandCursor, idx: 0},
+                                           {hx: 0.33, hy: 0, cursor: Qt.PointingHandCursor, idx: 1},
+                                           {hx: 0.67, hy: 0, cursor: Qt.PointingHandCursor, idx: 2},
+                                           {hx: 1, hy: 0, cursor: Qt.PointingHandCursor, idx: 3},
+                                           {hx: 0, hy: 0.33, cursor: Qt.PointingHandCursor, idx: 4},
+                                           {hx: 0.33, hy: 0.33, cursor: Qt.PointingHandCursor, idx: 5},
+                                           {hx: 0.67, hy: 0.33, cursor: Qt.PointingHandCursor, idx: 6},
+                                           {hx: 1, hy: 0.33, cursor: Qt.PointingHandCursor, idx: 7},
+                                           {hx: 0, hy: 0.67, cursor: Qt.PointingHandCursor, idx: 8},
+                                           {hx: 0.33, hy: 0.67, cursor: Qt.PointingHandCursor, idx: 9},
+                                           {hx: 0.67, hy: 0.67, cursor: Qt.PointingHandCursor, idx: 10},
+                                           {hx: 1, hy: 0.67, cursor: Qt.PointingHandCursor, idx: 11},
+                                           {hx: 0, hy: 1, cursor: Qt.PointingHandCursor, idx: 12},
+                                           {hx: 0.33, hy: 1, cursor: Qt.PointingHandCursor, idx: 13},
+                                           {hx: 0.67, hy: 1, cursor: Qt.PointingHandCursor, idx: 14},
+                                           {hx: 1, hy: 1, cursor: Qt.PointingHandCursor, idx: 15}
+                                         ]
+                                       : [
+                                           {hx: 0, hy: 0, cursor: Qt.SizeFDiagCursor, idx: 0},
+                                           {hx: 1, hy: 0, cursor: Qt.SizeBDiagCursor, idx: 1},
+                                           {hx: 0, hy: 1, cursor: Qt.SizeBDiagCursor, idx: 3},
+                                           {hx: 1, hy: 1, cursor: Qt.SizeFDiagCursor, idx: 2}
+                                         ]
                                 delegate: Rectangle {
                                     width: 24 / mainCanvas.zoomLevel; height: 24 / mainCanvas.zoomLevel
                                     
                                     // Switch between calculated position or perspective point
-                                    x: (mainCanvas.transformMode === 1 && manipulator.perspPoints) 
+                                    x: ((mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) && manipulator.perspPoints && manipulator.perspPoints.length > modelData.idx) 
                                        ? manipulator.perspPoints[modelData.idx].x - width/2
                                        : modelData.hx * manipulator.width - width/2
-                                    y: (mainCanvas.transformMode === 1 && manipulator.perspPoints)
+                                    y: ((mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) && manipulator.perspPoints && manipulator.perspPoints.length > modelData.idx)
                                        ? manipulator.perspPoints[modelData.idx].y - height/2
                                        : modelData.hy * manipulator.height - height/2
                                        
-                                    color: mainCanvas.transformMode === 1 ? colorAccent : "white"
+                                    color: (mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) ? colorAccent : "white"
                                     border.color: colorAccent; border.width: 2/mainCanvas.zoomLevel
-                                    radius: mainCanvas.transformMode === 1 ? width/2 : 2/mainCanvas.zoomLevel
+                                    radius: (mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) ? width/2 : 2/mainCanvas.zoomLevel
                                     z: 100
                                     
+                                    scale: handleMouseArea.containsMouse ? 1.25 : 1.0
+                                    Behavior on scale { NumberAnimation { duration: 100 } }
+                                    
                                     MouseArea {
+                                        id: handleMouseArea
                                         anchors.fill: parent
+                                        hoverEnabled: true
                                         cursorShape: modelData.cursor
                                         
                                         property real startScale: 1
@@ -1269,45 +1338,37 @@ Window {
                                             startMiy = p.y
                                             
                                             if (!manipulator.perspPoints) {
-                                                manipulator.perspPoints = [
-                                                    {x: 0, y: 0}, {x: manipulator.width, y: 0},
-                                                    {x: manipulator.width, y: manipulator.height}, {x: 0, y: manipulator.height}
-                                                ]
+                                                manipulator.initializePointsForMode(mainCanvas.transformMode);
                                             }
-                                            startPx = manipulator.perspPoints[modelData.idx].x
-                                            startPy = manipulator.perspPoints[modelData.idx].y
+                                            if (manipulator.perspPoints && manipulator.perspPoints.length > modelData.idx) {
+                                                startPx = manipulator.perspPoints[modelData.idx].x
+                                                startPy = manipulator.perspPoints[modelData.idx].y
+                                            }
                                         }
                                         onPositionChanged: {
                                             if (pressed) {
                                                 var p = manipulator.parent.mapFromItem(this, mouse.x, mouse.y)
                                                 
-                                                if (mainCanvas.transformMode === 1) { // Perspective
-                                                    // In perspective mode, we move individual corners
+                                                if (mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) {
+                                                    // In warp/mesh/perspective mode, we move individual corners/control points
                                                     var dx = (p.x - startMix) / manipulator.scale
                                                     var dy = (p.y - startMiy) / manipulator.scale
                                                     
-                                                    var newPts = []
-                                                    for(var i=0; i<4; i++) {
-                                                        if (i === modelData.idx) {
-                                                            newPts.push({
-                                                                x: startPx + dx,
-                                                                y: startPy + dy
-                                                            })
-                                                        } else {
-                                                            newPts.push(manipulator.perspPoints[i])
+                                                    if (manipulator.perspPoints && manipulator.perspPoints.length > modelData.idx) {
+                                                        var newPts = []
+                                                        for(var i=0; i<manipulator.perspPoints.length; i++) {
+                                                            if (i === modelData.idx) {
+                                                                newPts.push({
+                                                                    x: startPx + dx,
+                                                                    y: startPy + dy
+                                                                })
+                                                            } else {
+                                                                newPts.push(manipulator.perspPoints[i])
+                                                            }
                                                         }
+                                                        manipulator.perspPoints = newPts
+                                                        manipulator.updateTransform()
                                                     }
-                                                    manipulator.perspPoints = newPts
-                                                    canvasOutline.requestPaint()
-                                                    
-                                                    // Map local points to canvas space for C++
-                                                    var canvasPts = []
-                                                    for(var i=0; i<4; i++) {
-                                                        var cp = manipulator.parent.mapFromItem(manipulator, manipulator.perspPoints[i].x, manipulator.perspPoints[i].y)
-                                                        canvasPts.push({x: cp.x, y: cp.y})
-                                                    }
-                                                    mainCanvas.updateTransformCorners(canvasPts)
-                                                    
                                                 } else { // Free Transform
                                                     var cx = manipulator.x + manipulator.width/2
                                                     var cy = manipulator.y + manipulator.height/2
@@ -2009,8 +2070,8 @@ Window {
                         ListElement { name: "HARD"; label: "Hard"; icon: "airbrush.svg" }
                     ]}
                     ListElement { name: "eraser"; icon: "eraser.svg"; label: "Eraser"; subTools: [
-                        ListElement { name: "E_SOFT"; label: "Soft Eraser"; icon: "eraser.svg" },
-                        ListElement { name: "E_HARD"; label: "Hard Eraser"; icon: "eraser.svg" }
+                        ListElement { name: "E_SOFT"; label: "Eraser Soft"; icon: "eraser.svg" },
+                        ListElement { name: "E_HARD"; label: "Eraser Hard"; icon: "eraser.svg" }
                     ]}
                     ListElement { name: "fill"; icon: "fill.svg"; label: "Fill"; subTools: [
                         ListElement { name: "BUCKET"; label: "Bucket Fill"; icon: "fill.svg" },
@@ -2033,32 +2094,39 @@ Window {
                     }
                     
                     var toolData = toolsModel.get(activeToolIdx)
-                    if (toolData && toolData.subTools && toolData.subTools.count > 0) {
-                        var subIdx = activeSubToolIdx
-                        if (subIdx >= toolData.subTools.count) subIdx = 0
+                    if (toolData) {
+                        // ALWAYS update backend currentTool first to ensure C++ registers the correct tool mode!
+                        if (toolData.name !== "shapes" && toolData.name !== "selection" && toolData.name !== "fill") {
+                            mainCanvas.currentTool = toolData.name;
+                        }
                         
-                        // SPECIAL HANDLING FOR NON-BRUSH TOOLS
-                        if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill") {
-                            var subName = toolData.subTools.get(subIdx).name
-                            console.log("Switching Tool: " + subName)
-                            mainCanvas.currentTool = subName
+                        if (toolData.subTools && toolData.subTools.count > 0) {
+                            var subIdx = activeSubToolIdx
+                            if (subIdx >= toolData.subTools.count) subIdx = 0
+                            
+                            // SPECIAL HANDLING FOR NON-BRUSH TOOLS
+                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill") {
+                                var subName = toolData.subTools.get(subIdx).name
+                                console.log("Switching Tool: " + subName)
+                                mainCanvas.currentTool = subName
+                            } else {
+                                // Standard Presets (Pen, Pencil, Brush, Airbrush, Eraser)
+                                var presetName = toolData.subTools.get(subIdx).label
+                                console.log("Auto-applying Preset on Tool Change: " + presetName)
+                                mainCanvas.usePreset(presetName)
+                            }
                         } else {
-                            // Standard Presets (Pen, Pencil, Brush, Airbrush, Eraser)
-                            var presetName = toolData.subTools.get(subIdx).label
-                            console.log("Auto-applying Preset on Tool Change: " + presetName)
-                            mainCanvas.usePreset(presetName)
+                            // Handlers for tools without subtools
+                            if (toolData.name === "eraser") mainCanvas.usePreset("Eraser Soft")
+                            if (toolData.name === "lasso") mainCanvas.currentTool = "lasso"
+                            if (toolData.name === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
+                            if (toolData.name === "selection") {
+                                mainCanvas.isSelectionModeActive = !mainCanvas.isSelectionModeActive
+                                if (mainCanvas.isSelectionModeActive) mainCanvas.currentTool = "lasso"
+                            }
+                            if (toolData.name === "move") mainCanvas.currentTool = "move"
+                            if (toolData.name === "panel_cut") mainCanvas.currentTool = "panel_cut"
                         }
-                    } else if (toolData) {
-                        // Handlers for tools without subtools
-                        if (toolData.name === "eraser") mainCanvas.usePreset("Eraser Soft")
-                        if (toolData.name === "lasso") mainCanvas.currentTool = "lasso"
-                        if (toolData.name === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
-                        if (toolData.name === "selection") {
-                            mainCanvas.isSelectionModeActive = !mainCanvas.isSelectionModeActive
-                            if (mainCanvas.isSelectionModeActive) mainCanvas.currentTool = "lasso"
-                        }
-                        if (toolData.name === "move") mainCanvas.currentTool = "move"
-                        if (toolData.name === "panel_cut") mainCanvas.currentTool = "panel_cut"
                     }
                     
                     // UX IMPROVEMENT: Close panels when picking a tool
@@ -2104,14 +2172,20 @@ Window {
                 property bool isSampling: false
                 property point samplePos: Qt.point(0,0)
                 
-                // Shortcuts (FIXED INDICES & BEHAVIOR - RESPECT USER PREFERENCES)
-                Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: canvasPage.activeToolIdx = 11 }
-                Shortcut { sequence: mainWindow.sm && mainWindow.sm["Brush Tool"] ? mainWindow.sm["Brush Tool"] : "B"; onActivated: canvasPage.activeToolIdx = 7 }
-                Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eraser Tool"] ? mainWindow.sm["Eraser Tool"] : "E"; onActivated: canvasPage.activeToolIdx = 9 }
-                
                 // Alt logic: Need to capture Alt press/release
                 focus: isProjectActive
                 Keys.onPressed: (event) => {
+                    var enabled = currentPage === 1 && !newProjectDialog.visible && !newSketchbookDialog.visible && !preferencesDialog.visible && !pressureDialog.visible;
+                    if (!enabled) {
+                        event.accepted = false;
+                        return;
+                    }
+                    var isInput = mainWindow.activeFocusItem && (typeof mainWindow.activeFocusItem.echoMode !== "undefined" || typeof mainWindow.activeFocusItem.cursorPosition !== "undefined");
+                    if (isInput) {
+                        event.accepted = false;
+                        return;
+                    }
+
                     if (event.key === Qt.Key_Alt) {
                         if (!altPressed && activeToolIdx !== 11) { // FIXED: Picker is 11
                             lastToolIdx = activeToolIdx
@@ -2119,11 +2193,31 @@ Window {
                             altPressed = true
                         }
                         event.accepted = true
+                    } else if (event.key === Qt.Key_Space) {
+                        event.accepted = true;
+                        if (event.isAutoRepeat) return;
+                        mainCanvas.handle_shortcuts(event.key, event.modifiers)
+                    } else if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BracketRight ||
+                               event.key === Qt.Key_O || event.key === Qt.Key_R ||
+                               event.key === Qt.Key_4 || event.key === Qt.Key_5 || event.key === Qt.Key_6) {
+                        event.accepted = true;
+                        mainCanvas.handle_shortcuts(event.key, event.modifiers)
                     } else {
                         event.accepted = false; // Bubble up!
                     }
                 }
                 Keys.onReleased: (event) => {
+                    var enabled = currentPage === 1 && !newProjectDialog.visible && !newSketchbookDialog.visible && !preferencesDialog.visible && !pressureDialog.visible;
+                    if (!enabled) {
+                        event.accepted = false;
+                        return;
+                    }
+                    var isInput = mainWindow.activeFocusItem && (typeof mainWindow.activeFocusItem.echoMode !== "undefined" || typeof mainWindow.activeFocusItem.cursorPosition !== "undefined");
+                    if (isInput) {
+                        event.accepted = false;
+                        return;
+                    }
+
                     if (event.key === Qt.Key_Alt) {
                         // Restore tool first so the onActiveToolIdxChanged handler sees altPressed=true and ignores it
                         if (!isSampling) {
@@ -2132,6 +2226,12 @@ Window {
                         // Then clear flag
                         altPressed = false
                         event.accepted = true
+                    } else if (event.key === Qt.Key_Space || event.key === Qt.Key_R || event.key === Qt.Key_Shift) {
+                        event.accepted = true;
+                        if (event.isAutoRepeat) return;
+                        mainCanvas.handle_key_release(event.key)
+                    } else {
+                        event.accepted = false;
                     }
                 }
 

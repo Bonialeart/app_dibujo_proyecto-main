@@ -70,8 +70,8 @@ import "../components"
                     Item {
                         id: transformOverlayContainer
                         visible: mainCanvas.isTransforming
-                        x: mainCanvas.viewOffset.x
-                        y: mainCanvas.viewOffset.y
+                        x: mainCanvas.viewOffset.x * mainCanvas.zoomLevel
+                        y: mainCanvas.viewOffset.y * mainCanvas.zoomLevel
                         scale: mainCanvas.zoomLevel
                         width: mainCanvas.canvasWidth
                         height: mainCanvas.canvasHeight
@@ -121,6 +121,8 @@ import "../components"
                             onYChanged: if (visible && mainCanvas.isTransforming) updateTransform()
                             onScaleChanged: if (visible && mainCanvas.isTransforming) updateTransform()
                             onRotationChanged: if (visible && mainCanvas.isTransforming) updateTransform()
+                            onWidthChanged: if (visible && mainCanvas.isTransforming) updateTransform()
+                            onHeightChanged: if (visible && mainCanvas.isTransforming) updateTransform()
                             
                             function updateTransform() {
                                 mainCanvas.updateTransformProperties(x, y, scale, rotation, width, height)
@@ -492,8 +494,8 @@ import "../components"
                         ListElement { name: "HARD"; label: "Hard"; icon: "airbrush.svg" }
                     ]}
                     ListElement { name: "eraser"; icon: "eraser.svg"; label: "Eraser"; subTools: [
-                        ListElement { name: "E_SOFT"; label: "Soft Eraser"; icon: "eraser.svg" },
-                        ListElement { name: "E_HARD"; label: "Hard Eraser"; icon: "eraser.svg" }
+                        ListElement { name: "E_SOFT"; label: "Eraser Soft"; icon: "eraser.svg" },
+                        ListElement { name: "E_HARD"; label: "Eraser Hard"; icon: "eraser.svg" }
                     ]}
                     ListElement { name: "fill"; icon: "fill.svg"; label: "Fill"; subTools: [
                         ListElement { name: "BUCKET"; label: "Bucket Fill"; icon: "fill.svg" },
@@ -511,28 +513,35 @@ import "../components"
                     if (canvasPage.altPressed) return // Don't reset if switching via ALT
                     
                     var toolData = toolsModel.get(activeToolIdx)
-                    if (toolData && toolData.subTools && toolData.subTools.count > 0) {
-                        var subIdx = activeSubToolIdx
-                        if (subIdx >= toolData.subTools.count) subIdx = 0
-                        
-                        // SPECIAL HANDLING FOR NON-BRUSH TOOLS
-                        if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill") {
-                            var subName = toolData.subTools.get(subIdx).name
-                            console.log("Switching Tool: " + subName)
-                            mainCanvas.currentTool = subName
-                        } else {
-                            // Standard Presets (Pen, Pencil, Brush, Airbrush, Eraser)
-                            var presetName = toolData.subTools.get(subIdx).label
-                            console.log("Auto-applying Preset on Tool Change: " + presetName)
-                            mainCanvas.usePreset(presetName)
+                    if (toolData) {
+                        // ALWAYS update backend currentTool first to ensure C++ registers the correct tool mode!
+                        if (toolData.name !== "shapes" && toolData.name !== "selection" && toolData.name !== "fill") {
+                            mainCanvas.currentTool = toolData.name;
                         }
-                    } else if (toolData) {
-                        // Handlers for tools without subtools
-                        if (toolData.name === "eraser") mainCanvas.usePreset("Eraser Soft")
-                        if (toolData.name === "lasso") mainCanvas.currentTool = "lasso"
-                        if (toolData.name === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
-                        if (toolData.name === "selection") mainCanvas.currentTool = "selection"
-                        if (toolData.name === "move") mainCanvas.currentTool = "move"
+                        
+                        if (toolData.subTools && toolData.subTools.count > 0) {
+                            var subIdx = activeSubToolIdx
+                            if (subIdx >= toolData.subTools.count) subIdx = 0
+                            
+                            // SPECIAL HANDLING FOR NON-BRUSH TOOLS
+                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill") {
+                                var subName = toolData.subTools.get(subIdx).name
+                                console.log("Switching Tool: " + subName)
+                                mainCanvas.currentTool = subName
+                            } else {
+                                // Standard Presets (Pen, Pencil, Brush, Airbrush, Eraser)
+                                var presetName = toolData.subTools.get(subIdx).label
+                                console.log("Auto-applying Preset on Tool Change: " + presetName)
+                                mainCanvas.usePreset(presetName)
+                            }
+                        } else {
+                            // Handlers for tools without subtools
+                            if (toolData.name === "eraser") mainCanvas.usePreset("Eraser Soft")
+                            if (toolData.name === "lasso") mainCanvas.currentTool = "lasso"
+                            if (toolData.name === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
+                            if (toolData.name === "selection") mainCanvas.currentTool = "selection"
+                            if (toolData.name === "move") mainCanvas.currentTool = "move"
+                        }
                     }
                     
                     // UX IMPROVEMENT: Close panels when picking a tool

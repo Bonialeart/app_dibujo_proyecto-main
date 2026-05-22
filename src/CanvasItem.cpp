@@ -892,7 +892,7 @@ void CanvasItem::paint(QPainter *painter) {
         }
         if (!m_transformStaticCache.isNull()) {
           m_transformStaticTex =
-              new QOpenGLTexture(m_transformStaticCache.flipped(Qt::Vertical));
+              new QOpenGLTexture(m_transformStaticCache);
           m_transformStaticTex->setMinificationFilter(QOpenGLTexture::Linear);
           m_transformStaticTex->setMagnificationFilter(QOpenGLTexture::Linear);
         }
@@ -903,7 +903,7 @@ void CanvasItem::paint(QPainter *painter) {
         }
         if (!m_selectionBuffer.isNull()) {
           m_selectionTex =
-              new QOpenGLTexture(m_selectionBuffer.flipped(Qt::Vertical));
+              new QOpenGLTexture(m_selectionBuffer);
           m_selectionTex->setMinificationFilter(QOpenGLTexture::Linear);
           m_selectionTex->setMagnificationFilter(QOpenGLTexture::Linear);
         }
@@ -934,8 +934,15 @@ void CanvasItem::paint(QPainter *painter) {
 
         float cw = m_canvasWidth;
         float ch = m_canvasHeight;
-        GLfloat bgVertices[] = {0, 0,  0, 0, cw, 0, 1, 0, 0,  ch, 0, 1,
-                                0, ch, 0, 1, cw, 0, 1, 0, cw, ch, 1, 1};
+        GLfloat bgVertices[] = {
+            0, 0,   0, 1,  // Top-Left
+            cw, 0,  1, 1,  // Top-Right
+            0, ch,  0, 0,  // Bottom-Left
+
+            0, ch,  0, 0,  // Bottom-Left
+            cw, 0,  1, 1,  // Top-Right
+            cw, ch, 1, 0   // Bottom-Right
+        };
 
         m_transformShader->enableAttributeArray(0);
         m_transformShader->enableAttributeArray(1);
@@ -945,31 +952,99 @@ void CanvasItem::paint(QPainter *painter) {
                                              4 * sizeof(GLfloat));
         f->glDrawArrays(GL_TRIANGLES, 0, 6);
 
-        // Draw Selection Frame natively with perspective correction
-        QMatrix4x4 qtMat;
-        qtMat.setColumn(0, QVector4D(m_transformMatrix.m11(),
-                                     m_transformMatrix.m12(), 0,
-                                     m_transformMatrix.m13()));
-        qtMat.setColumn(1, QVector4D(m_transformMatrix.m21(),
-                                     m_transformMatrix.m22(), 0,
-                                     m_transformMatrix.m23()));
-        qtMat.setColumn(2, QVector4D(0, 0, 1, 0));
-        qtMat.setColumn(3, QVector4D(m_transformMatrix.m31(),
-                                     m_transformMatrix.m32(), 0,
-                                     m_transformMatrix.m33()));
-
-        m_transformShader->setUniformValue("MVP", orthoView * qtMat);
         m_selectionTex->bind(0);
 
-        float sw = m_selectionBuffer.width();
-        float sh = m_selectionBuffer.height();
-        GLfloat selVertices[] = {0, 0,  0, 0, sw, 0, 1, 0, 0,  sh, 0, 1,
-                                 0, sh, 0, 1, sw, 0, 1, 0, sw, sh, 1, 1};
-        m_transformShader->setAttributeArray(0, GL_FLOAT, selVertices, 2,
-                                             4 * sizeof(GLfloat));
-        m_transformShader->setAttributeArray(1, GL_FLOAT, selVertices + 2, 2,
-                                             4 * sizeof(GLfloat));
-        f->glDrawArrays(GL_TRIANGLES, 0, 6);
+        if (m_isMeshTransform && m_meshPoints.size() == 16) {
+          // Draw Selection Mesh (9 quads = 18 triangles = 54 vertices)
+          std::vector<GLfloat> vertices;
+          vertices.reserve(54 * 4);
+
+          for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 3; ++col) {
+              int idx_TL = row * 4 + col;
+              int idx_TR = row * 4 + col + 1;
+              int idx_BR = (row + 1) * 4 + col + 1;
+              int idx_BL = (row + 1) * 4 + col;
+
+              QPointF TL = m_meshPoints[idx_TL];
+              QPointF TR = m_meshPoints[idx_TR];
+              QPointF BR = m_meshPoints[idx_BR];
+              QPointF BL = m_meshPoints[idx_BL];
+
+              float u_TL = col / 3.0f;
+              float u_TR = (col + 1) / 3.0f;
+              float u_BR = (col + 1) / 3.0f;
+              float u_BL = col / 3.0f;
+
+              float v_TL = 1.0f - (row / 3.0f);
+              float v_TR = 1.0f - (row / 3.0f);
+              float v_BR = 1.0f - ((row + 1) / 3.0f);
+              float v_BL = 1.0f - ((row + 1) / 3.0f);
+
+              // Triangle 1: TL, TR, BL
+              vertices.push_back(TL.x()); vertices.push_back(TL.y());
+              vertices.push_back(u_TL);   vertices.push_back(v_TL);
+
+              vertices.push_back(TR.x()); vertices.push_back(TR.y());
+              vertices.push_back(u_TR);   vertices.push_back(v_TR);
+
+              vertices.push_back(BL.x()); vertices.push_back(BL.y());
+              vertices.push_back(u_BL);   vertices.push_back(v_BL);
+
+              // Triangle 2: BL, TR, BR
+              vertices.push_back(BL.x()); vertices.push_back(BL.y());
+              vertices.push_back(u_BL);   vertices.push_back(v_BL);
+
+              vertices.push_back(TR.x()); vertices.push_back(TR.y());
+              vertices.push_back(u_TR);   vertices.push_back(v_TR);
+
+              vertices.push_back(BR.x()); vertices.push_back(BR.y());
+              vertices.push_back(u_BR);   vertices.push_back(v_BR);
+            }
+          }
+
+          m_transformShader->setUniformValue("MVP", orthoView);
+          m_transformShader->enableAttributeArray(0);
+          m_transformShader->enableAttributeArray(1);
+          m_transformShader->setAttributeArray(0, GL_FLOAT, vertices.data(), 2, 4 * sizeof(GLfloat));
+          m_transformShader->setAttributeArray(1, GL_FLOAT, vertices.data() + 2, 2, 4 * sizeof(GLfloat));
+          f->glDrawArrays(GL_TRIANGLES, 0, 54);
+
+        } else {
+          // Draw Selection Frame natively with perspective correction
+          QMatrix4x4 qtMat;
+          qtMat.setColumn(0, QVector4D(m_transformMatrix.m11(),
+                                       m_transformMatrix.m12(), 0,
+                                       m_transformMatrix.m13()));
+          qtMat.setColumn(1, QVector4D(m_transformMatrix.m21(),
+                                       m_transformMatrix.m22(), 0,
+                                       m_transformMatrix.m23()));
+          qtMat.setColumn(2, QVector4D(0, 0, 1, 0));
+          qtMat.setColumn(3, QVector4D(m_transformMatrix.m31(),
+                                       m_transformMatrix.m32(), 0,
+                                       m_transformMatrix.m33()));
+
+          m_transformShader->setUniformValue("MVP", orthoView * qtMat);
+
+          float sw = m_selectionBuffer.width();
+          float sh = m_selectionBuffer.height();
+          GLfloat selVertices[] = {
+              0, 0,   0, 1,  // Top-Left
+              sw, 0,  1, 1,  // Top-Right
+              0, sh,  0, 0,  // Bottom-Left
+
+              0, sh,  0, 0,  // Bottom-Left
+              sw, 0,  1, 1,  // Top-Right
+              sw, sh, 1, 0   // Bottom-Right
+          };
+          m_transformShader->enableAttributeArray(0);
+          m_transformShader->enableAttributeArray(1);
+          m_transformShader->setAttributeArray(0, GL_FLOAT, selVertices, 2,
+                                               4 * sizeof(GLfloat));
+          m_transformShader->setAttributeArray(1, GL_FLOAT, selVertices + 2, 2,
+                                               4 * sizeof(GLfloat));
+          f->glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
 
         m_transformShader->disableAttributeArray(0);
         m_transformShader->disableAttributeArray(1);
@@ -1158,8 +1233,7 @@ void CanvasItem::paint(QPainter *painter) {
     }
 
     // --- FALLBACK DRAWING FOR TRANSFORMATION ---
-    // Si estamos transformando pero la GPU aún no está lista (p. ej. cargando
-    // cache), dibujamos la selección con QPainter para que no "desaparezca".
+    // Si estamos transformando pero la GPU aún no está lista, dibujamos la selección con QPainter
     if (m_isTransforming && !gpuTransformReady && !m_selectionBuffer.isNull()) {
       painter->save();
       painter->translate(m_viewOffset.x() * m_zoomLevel,
@@ -1169,12 +1243,48 @@ void CanvasItem::paint(QPainter *painter) {
       painter->setRenderHint(QPainter::SmoothPixmapTransform);
       painter->setRenderHint(QPainter::Antialiasing);
 
-      // Aplicar la matriz de transformación actual (que mapea de local [0,0] a
-      // canvas final)
-      painter->setTransform(m_transformMatrix * painter->transform());
+      if (m_isMeshTransform && m_meshPoints.size() == 16) {
+        float sw = m_selectionBuffer.width();
+        float sh = m_selectionBuffer.height();
 
-      // Dibujar en 0,0 porque la matriz ya posiciona el contenido
-      painter->drawImage(0, 0, m_selectionBuffer);
+        for (int row = 0; row < 3; ++row) {
+          for (int col = 0; col < 3; ++col) {
+            int idx_TL = row * 4 + col;
+            int idx_TR = row * 4 + col + 1;
+            int idx_BR = (row + 1) * 4 + col + 1;
+            int idx_BL = (row + 1) * 4 + col;
+
+            QPointF TL = m_meshPoints[idx_TL];
+            QPointF TR = m_meshPoints[idx_TR];
+            QPointF BR = m_meshPoints[idx_BR];
+            QPointF BL = m_meshPoints[idx_BL];
+
+            QPolygonF dstPolygon;
+            dstPolygon << TL << TR << BR << BL;
+
+            QPolygonF srcPolygon;
+            srcPolygon << QPointF(col * sw / 3.0f, row * sh / 3.0f)
+                       << QPointF((col + 1) * sw / 3.0f, row * sh / 3.0f)
+                       << QPointF((col + 1) * sw / 3.0f, (row + 1) * sh / 3.0f)
+                       << QPointF(col * sw / 3.0f, (row + 1) * sh / 3.0f);
+
+            QTransform trans;
+            if (QTransform::quadToQuad(srcPolygon, dstPolygon, trans)) {
+              QPainterPath clipPath;
+              clipPath.addPolygon(dstPolygon);
+
+              painter->save();
+              painter->setClipPath(clipPath);
+              painter->setTransform(trans * painter->transform());
+              painter->drawImage(0, 0, m_selectionBuffer);
+              painter->restore();
+            }
+          }
+        }
+      } else {
+        painter->setTransform(m_transformMatrix * painter->transform());
+        painter->drawImage(0, 0, m_selectionBuffer);
+      }
       painter->restore();
     }
   }
@@ -2543,6 +2653,7 @@ void CanvasItem::drawCircle(const QPointF &center, float radius) {
 }
 
 void CanvasItem::mousePressEvent(QMouseEvent *event) {
+  forceActiveFocus();
   m_lastMousePos = event->position();
 
   // ═══ Canvas Rotation Gesture: 'R' + Drag ═══
@@ -3218,6 +3329,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
   tiltFactor = std::max(0.0f, std::min(1.0f, tiltFactor));
 
   if (event->type() == QEvent::TabletPress) {
+    forceActiveFocus();
     // ═══ Canvas Rotation Gesture: 'R' + Drag (Tablet) ═══
     if (m_rPressed) {
       m_isRotatingCanvas = true;
@@ -4614,6 +4726,8 @@ void CanvasItem::beginTransform() {
   m_initialMatrix = QTransform();
   m_transformMatrix = QTransform();
   m_isTransforming = true;
+  m_isMeshTransform = false;
+  m_meshPoints.clear();
   layer->dirty = true;
 
   // PRECOMPUTE en hilo secundario — no bloquear la UI
@@ -4894,25 +5008,37 @@ void CanvasItem::updateTransformCorners(const QVariantList &corners) {
   if (!m_isTransforming || corners.size() < 4)
     return;
 
-  // m_selectionBuffer goes from (0,0) to (W,H). Map its local corners to
-  // the global dst corners.
-  QPolygonF src;
-  src << QPointF(0, 0) << QPointF(m_transformBox.width(), 0)
-      << QPointF(m_transformBox.width(), m_transformBox.height())
-      << QPointF(0, m_transformBox.height());
-
-  QPolygonF dst;
-  for (int i = 0; i < 4; ++i) {
+  m_meshPoints.clear();
+  for (int i = 0; i < corners.size(); ++i) {
     QVariantMap p = corners[i].toMap();
-    dst << QPointF(p["x"].toDouble(), p["y"].toDouble());
+    m_meshPoints.push_back(QPointF(p["x"].toDouble(), p["y"].toDouble()));
   }
 
-  // Calculate perspective/mesh quad transform
-  QTransform transform;
-  if (QTransform::quadToQuad(src, dst, transform)) {
-    m_transformMatrix = transform;
-    requestUpdate(); // throttled — no update() directo aquí
+  if (m_meshPoints.size() == 16) {
+    m_isMeshTransform = true;
+  } else {
+    m_isMeshTransform = false;
   }
+
+  // If 4 corners (Perspective mode)
+  if (m_meshPoints.size() == 4) {
+    QPolygonF src;
+    src << QPointF(0, 0) << QPointF(m_transformBox.width(), 0)
+        << QPointF(m_transformBox.width(), m_transformBox.height())
+        << QPointF(0, m_transformBox.height());
+
+    QPolygonF dst;
+    for (int i = 0; i < 4; ++i) {
+      dst << m_meshPoints[i];
+    }
+
+    QTransform transform;
+    if (QTransform::quadToQuad(src, dst, transform)) {
+      m_transformMatrix = transform;
+    }
+  }
+
+  requestUpdate(); // throttled — no update() directo aquí
 }
 
 void CanvasItem::applyTransform() {
@@ -4931,8 +5057,49 @@ void CanvasItem::applyTransform() {
     QPainter p(&img);
     p.setRenderHint(QPainter::SmoothPixmapTransform);
     p.setRenderHint(QPainter::Antialiasing);
-    p.setTransform(m_transformMatrix);
-    p.drawImage(0, 0, m_selectionBuffer);
+
+    if (m_isMeshTransform && m_meshPoints.size() == 16) {
+      float sw = m_selectionBuffer.width();
+      float sh = m_selectionBuffer.height();
+
+      for (int row = 0; row < 3; ++row) {
+        for (int col = 0; col < 3; ++col) {
+          int idx_TL = row * 4 + col;
+          int idx_TR = row * 4 + col + 1;
+          int idx_BR = (row + 1) * 4 + col + 1;
+          int idx_BL = (row + 1) * 4 + col;
+
+          QPointF TL = m_meshPoints[idx_TL];
+          QPointF TR = m_meshPoints[idx_TR];
+          QPointF BR = m_meshPoints[idx_BR];
+          QPointF BL = m_meshPoints[idx_BL];
+
+          QPolygonF dstPolygon;
+          dstPolygon << TL << TR << BR << BL;
+
+          QPolygonF srcPolygon;
+          srcPolygon << QPointF(col * sw / 3.0f, row * sh / 3.0f)
+                     << QPointF((col + 1) * sw / 3.0f, row * sh / 3.0f)
+                     << QPointF((col + 1) * sw / 3.0f, (row + 1) * sh / 3.0f)
+                     << QPointF(col * sw / 3.0f, (row + 1) * sh / 3.0f);
+
+          QTransform trans;
+          if (QTransform::quadToQuad(srcPolygon, dstPolygon, trans)) {
+            QPainterPath clipPath;
+            clipPath.addPolygon(dstPolygon);
+
+            p.save();
+            p.setClipPath(clipPath);
+            p.setTransform(trans);
+            p.drawImage(0, 0, m_selectionBuffer);
+            p.restore();
+          }
+        }
+      }
+    } else {
+      p.setTransform(m_transformMatrix);
+      p.drawImage(0, 0, m_selectionBuffer);
+    }
     p.end();
 
     layer->dirty = true;
@@ -7011,21 +7178,27 @@ void CanvasItem::updateTransformProperties(float x, float y, float scale,
 
   // Current center (based on manipulator position on Canvas)
   float newCx = x + w / 2.0f;
+
+  // Use standard non-inverted vertical center mapping matching the horizontal mapping
   float newCy = y + h / 2.0f;
-
-  // 1. Move to new center
-  m_transformMatrix.translate(newCx, newCy);
-
-  // 2. Rotate and Scale
-  m_transformMatrix.rotate(rotation);
-  m_transformMatrix.scale(scale, scale);
 
   // Apply differential scaling based on free-transform handle manipulation
   float scaleX = w / std::max(1.0f, (float)m_transformBox.width());
   float scaleY = h / std::max(1.0f, (float)m_transformBox.height());
-  m_transformMatrix.scale(scaleX, scaleY);
 
-  // 3. Move back relative to local image origin so (0,0) maps correctly
+  // To apply operations in the logical order (Centering -> Scale -> Rotate -> Translate),
+  // we must call them in the REVERSE order because QTransform pre-multiplies convenience functions:
+
+  // 1. Translate to the target center on the canvas (called 1st, applied last)
+  m_transformMatrix.translate(newCx, newCy);
+
+  // 2. Rotate around the local center (called 2nd, applied 3rd)
+  m_transformMatrix.rotate(rotation);
+
+  // 3. Scale relative to the local center (called 3rd, applied 2nd)
+  m_transformMatrix.scale(scale * scaleX, scale * scaleY);
+
+  // 4. Move local coordinates to center around (0,0) (called last, applied 1st)
   m_transformMatrix.translate(-m_transformBox.width() / 2.0f,
                               -m_transformBox.height() / 2.0f);
 

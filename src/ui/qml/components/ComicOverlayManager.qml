@@ -1093,23 +1093,31 @@ Item {
                     }
                     
                     function pathBubbleShape(c, type, subCx, subCy, subBw, subBh, cornerRadius, theta1, theta2, a1x, a1y, a2x, a2y, tTipX, tTipY) {
+                        function getClockwiseDist(angle, base) {
+                            var diff = angle - base
+                            return (diff % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+                        }
+
                         if (type === "speech" || type === "oval") {
                             var rx = subBw / 2
                             var ry = subBh / 2
                             
-                            c.save()
-                            c.translate(subCx, subCy)
-                            c.scale(1.0, ry / rx)
+                            var startA = theta2
+                            var endA = theta1
+                            if (endA <= startA) {
+                                endA += 2 * Math.PI
+                            }
                             
-                            c.arc(0, 0, rx, theta2, theta1, false)
+                            c.moveTo(subCx + rx * Math.cos(startA), subCy + ry * Math.sin(startA))
+                            var steps = 60
+                            for (var step = 1; step <= steps; step++) {
+                                var t = startA + (endA - startA) * (step / steps)
+                                c.lineTo(subCx + rx * Math.cos(t), subCy + ry * Math.sin(t))
+                            }
                             
-                            var scaledTipX = tTipX - subCx
-                            var scaledTipY = (tTipY - subCy) * (rx / ry)
-                            
-                            c.lineTo(scaledTipX, scaledTipY)
-                            c.lineTo(rx * Math.cos(theta2), rx * Math.sin(theta2))
+                            c.lineTo(tTipX, tTipY)
+                            c.lineTo(subCx + rx * Math.cos(startA), subCy + ry * Math.sin(startA))
                             c.closePath()
-                            c.restore()
                         } else if (type === "rect" || type === "rounded_rect" || type === "narration") {
                             var bx = subCx - subBw / 2
                             var by = subCy - subBh / 2
@@ -1137,6 +1145,10 @@ Item {
                                     activeCorners.push(cr)
                                 }
                             }
+                            
+                            activeCorners.sort(function(a, b) {
+                                return getClockwiseDist(a.angle, theta2) - getClockwiseDist(b.angle, theta2)
+                            })
                             
                             c.moveTo(a2x, a2y)
                             
@@ -1167,12 +1179,21 @@ Item {
                                 spikyPoints.push({ x: prx, y: pry, angle: angle })
                             }
                             
-                            c.moveTo(a2x, a2y)
+                            var activePoints = []
                             for (var i = 0; i < spikyPoints.length; i++) {
                                 var pt = spikyPoints[i]
                                 if (isAngleBetween(pt.angle, theta2, theta1)) {
-                                    c.lineTo(pt.x, pt.y)
+                                    activePoints.push(pt)
                                 }
+                            }
+                            
+                            activePoints.sort(function(a, b) {
+                                return getClockwiseDist(a.angle, theta2) - getClockwiseDist(b.angle, theta2)
+                            })
+                            
+                            c.moveTo(a2x, a2y)
+                            for (var i = 0; i < activePoints.length; i++) {
+                                c.lineTo(activePoints[i].x, activePoints[i].y)
                             }
                             c.lineTo(a1x, a1y)
                             c.lineTo(tTipX, tTipY)
@@ -1201,67 +1222,67 @@ Item {
                         c.beginPath()
                         if (bType === "double_oval") {
                             // First bubble (no tail)
-                            var ox = bw * 0.12
-                            var oy = bh * 0.12
-                            var w1 = bw * 0.76
-                            var h1 = bh * 0.76
+                            var dbOx = bw * 0.12
+                            var dbOy = bh * 0.12
+                            var dbW1 = bw * 0.76
+                            var dbH1 = bh * 0.76
                             
-                            c.ellipse(cx - ox - w1/2, cy - oy - h1/2, w1, h1)
+                            c.ellipse(cx - dbOx - dbW1/2, cy - dbOy - dbH1/2, dbW1, dbH1)
                             
                             // Second bubble with tail
-                            var subCx = cx + ox
-                            var subCy = cy + oy
-                            var subBw = w1
-                            var subBh = h1
+                            var dbCx = cx + dbOx
+                            var dbCy = cy + dbOy
+                            var dbBw = dbW1
+                            var dbBh = dbH1
                             
-                            var rx = subBw / 2
-                            var ry = subBh / 2
-                            var subTheta = Math.atan2(tTipY - subCy, tTipX - subCx)
-                            var rTheta = 1.0 / Math.sqrt(Math.pow(Math.cos(subTheta) / rx, 2) + Math.pow(Math.sin(subTheta) / ry, 2))
-                            var deltaTheta = (tWidth / 2) / rTheta
-                            var t1 = subTheta - deltaTheta
-                            var t2 = subTheta + deltaTheta
-                            var a1x = subCx + rx * Math.cos(t1)
-                            var a1y = subCy + ry * Math.sin(t1)
-                            var a2x = subCx + rx * Math.cos(t2)
-                            var a2y = subCy + ry * Math.sin(t2)
+                            var dbRx = dbBw / 2
+                            var dbRy = dbBh / 2
+                            var dbTheta = Math.atan2(tTipY - dbCy, tTipX - dbCx)
+                            var dbRTheta = 1.0 / Math.sqrt(Math.pow(Math.cos(dbTheta) / dbRx, 2) + Math.pow(Math.sin(dbTheta) / dbRy, 2))
+                            var dbDeltaTheta = (tWidth / 2) / dbRTheta
+                            var dbT1 = dbTheta - dbDeltaTheta
+                            var dbT2 = dbTheta + dbDeltaTheta
+                            var dbA1x = dbCx + dbRx * Math.cos(dbT1)
+                            var dbA1y = dbCy + dbRy * Math.sin(dbT1)
+                            var dbA2x = dbCx + dbRx * Math.cos(dbT2)
+                            var dbA2y = dbCy + dbRy * Math.sin(dbT2)
                             
-                            pathBubbleShape(c, "oval", subCx, subCy, subBw, subBh, cornerRadius, t1, t2, a1x, a1y, a2x, a2y, tTipX, tTipY)
+                            pathBubbleShape(c, "oval", dbCx, dbCy, dbBw, dbBh, cornerRadius, dbT1, dbT2, dbA1x, dbA1y, dbA2x, dbA2y, tTipX, tTipY)
                         } else if (bType === "double_rounded") {
                             // First bubble (no tail)
-                            var ox = bw * 0.12
-                            var oy = bh * 0.12
-                            var w1 = bw * 0.76
-                            var h1 = bh * 0.76
+                            var dbOx = bw * 0.12
+                            var dbOy = bh * 0.12
+                            var dbW1 = bw * 0.76
+                            var dbH1 = bh * 0.76
                             
-                            c.roundedRect(cx - ox - w1/2, cy - oy - h1/2, w1, h1, cornerRadius, cornerRadius)
+                            c.roundedRect(cx - dbOx - dbW1/2, cy - dbOy - dbH1/2, dbW1, dbH1, cornerRadius, cornerRadius)
                             
                             // Second bubble with tail
-                            var subCx = cx + ox
-                            var subCy = cy + oy
-                            var subBw = w1
-                            var subBh = h1
+                            var dbCx = cx + dbOx
+                            var dbCy = cy + dbOy
+                            var dbBw = dbW1
+                            var dbBh = dbH1
                             
-                            var subTheta = Math.atan2(tTipY - subCy, tTipX - subCx)
-                            var dx = Math.cos(subTheta)
-                            var dy = Math.sin(subTheta)
-                            var tx = dx !== 0 ? Math.abs((subBw / 2) / dx) : 999999
-                            var ty = dy !== 0 ? Math.abs((subBh / 2) / dy) : 999999
-                            var rTheta = Math.min(tx, ty)
+                            var dbTheta = Math.atan2(tTipY - dbCy, tTipX - dbCx)
+                            var dbDx = Math.cos(dbTheta)
+                            var dbDy = Math.sin(dbTheta)
+                            var dbTx = dbDx !== 0 ? Math.abs((dbBw / 2) / dbDx) : 999999
+                            var dbTy = dbDy !== 0 ? Math.abs((dbBh / 2) / dbDy) : 999999
+                            var dbRTheta = Math.min(dbTx, dbTy)
                             
-                            var deltaTheta = (tWidth / 2) / rTheta
-                            var t1 = subTheta - deltaTheta
-                            var t2 = subTheta + deltaTheta
+                            var dbDeltaTheta = (tWidth / 2) / dbRTheta
+                            var dbT1 = dbTheta - dbDeltaTheta
+                            var dbT2 = dbTheta + dbDeltaTheta
                             
-                            var a1 = getRectIntersection(subCx, subCy, subBw, subBh, t1)
-                            var a2 = getRectIntersection(subCx, subCy, subBw, subBh, t2)
+                            var dbA1 = getRectIntersection(dbCx, dbCy, dbBw, dbBh, dbT1)
+                            var dbA2 = getRectIntersection(dbCx, dbCy, dbBw, dbBh, dbT2)
                             
-                            pathBubbleShape(c, "rounded_rect", subCx, subCy, subBw, subBh, cornerRadius, t1, t2, a1.x, a1.y, a2.x, a2.y, tTipX, tTipY)
+                            pathBubbleShape(c, "rounded_rect", dbCx, dbCy, dbBw, dbBh, cornerRadius, dbT1, dbT2, dbA1.x, dbA1.y, dbA2.x, dbA2.y, tTipX, tTipY)
                         } else {
+                            console.log("[drawMainUnifiedPath else]", "bType:", bType, "theta1:", theta1, "theta2:", theta2, "a1X:", a1X, "a1Y:", a1Y, "a2X:", a2X, "a2Y:", a2Y)
                             pathBubbleShape(c, bType, subCx, subCy, subBw, subBh, cornerRadius, theta1, theta2, a1X, a1Y, a2X, a2Y, tTipX, tTipY)
                         }
                     }
-                    
                     // ═══════════════ RENDER PASSES ═══════════════
                     if (bType === "double_oval" || bType === "double_rounded") {
                         // Double Bubble Merge Render

@@ -738,6 +738,8 @@ private:
   QTransform m_transformMatrix;
   QRectF m_transformBox;
   bool m_isTransforming = false;
+  std::vector<QPointF> m_meshPoints;
+  bool m_isMeshTransform = false;
   QImage m_transformStaticCache;
   bool m_updateTransformTextures = false;
   QOpenGLShaderProgram *m_transformShader = nullptr;
