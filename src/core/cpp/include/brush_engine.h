@@ -83,6 +83,14 @@ struct BrushSettings {
   bool rotateWithStroke = false;
   uint32_t textureId = 0; // Alias/Same as grainTextureID
 
+  // Dual Brush Tip Settings
+  bool dualTipEnabled = false;
+  QString dualTipTextureName = "";
+  uint32_t dualTipTextureID = 0;
+  float dualTipScale = 1.0f;
+  float dualTipRotation = 0.0f;
+  QString dualTipBlendMode = "multiply";
+
   // === NEW BRUSH STUDIO FIELDS ===
   // Shape
   float roundness = 1.0f;

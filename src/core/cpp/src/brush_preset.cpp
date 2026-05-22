@@ -52,6 +52,31 @@ BrushPreset::ShapeSettings::fromJson(const QJsonObject &obj) {
 }
 
 // ============================================================
+// DualBrushSettings
+// ============================================================
+QJsonObject BrushPreset::DualBrushSettings::toJson() const {
+  QJsonObject obj;
+  obj["enabled"] = enabled;
+  if (!tipTexture.isEmpty())
+    obj["tip_texture"] = tipTexture;
+  obj["scale"] = scale;
+  obj["rotation"] = rotation;
+  obj["blend_mode"] = blendMode;
+  return obj;
+}
+
+BrushPreset::DualBrushSettings
+BrushPreset::DualBrushSettings::fromJson(const QJsonObject &obj) {
+  DualBrushSettings d;
+  d.enabled = obj.value("enabled").toBool(false);
+  d.tipTexture = obj.value("tip_texture").toString();
+  d.scale = obj.value("scale").toDouble(1.0);
+  d.rotation = obj.value("rotation").toDouble(0.0);
+  d.blendMode = obj.value("blend_mode").toString("multiply");
+  return d;
+}
+
+// ============================================================
 // RandomizeSettings
 // ============================================================
 QJsonObject BrushPreset::RandomizeSettings::toJson() const {
@@ -583,6 +608,9 @@ QJsonObject BrushPreset::toJson() const {
   // Shape
   root["shape"] = shape.toJson();
 
+  // Dual Brush
+  root["dual_brush"] = dualBrush.toJson();
+
   // Randomize
   root["randomize"] = randomize.toJson();
 
@@ -659,6 +687,10 @@ BrushPreset BrushPreset::fromJson(const QJsonObject &root) {
   // Shape
   if (root.contains("shape"))
     preset.shape = ShapeSettings::fromJson(root["shape"].toObject());
+
+  // Dual Brush
+  if (root.contains("dual_brush"))
+    preset.dualBrush = DualBrushSettings::fromJson(root["dual_brush"].toObject());
 
   // Randomize
   if (root.contains("randomize"))
@@ -758,6 +790,14 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   }
 
   s.calligraphicInfluence = shape.calligraphic;
+
+  // Dual Brush Tip Settings
+  s.dualTipEnabled = dualBrush.enabled;
+  s.dualTipTextureName = dualBrush.tipTexture;
+  s.dualTipTextureID = 0; // Loaded lazily by BrushEngine
+  s.dualTipScale = dualBrush.scale;
+  s.dualTipRotation = dualBrush.rotation * 3.14159265f / 180.0f; // deg to rad
+  s.dualTipBlendMode = dualBrush.blendMode;
 
   // Grain texture (paper grain) — separate slot
   if (!grain.texture.isEmpty()) {

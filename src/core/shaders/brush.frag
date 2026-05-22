@@ -28,6 +28,14 @@ uniform int uHasGrain;         // 1 = grain active
 uniform float grainScale;
 uniform float grainIntensity;
 
+// === Dual Brush Tip (Secondary Shape) — Local UV Mapping ===
+uniform sampler2D dualTipTexture;
+uniform int uHasDualTip;
+uniform float dualTipScale;
+uniform float dualTipRotation;
+uniform int uDualTipBlendMode; // 0 = multiply, 1 = mask (subtract), 2 = add
+uniform int uGrainBlendMode;   // 0 = multiply, 1 = subtract, 2 = threshold/reveal
+
 // === Wet Mix Engine ===
 uniform sampler2D canvasTexture;  // Ping-pong buffer (existing paint on canvas)
 uniform float wetness;            // 0 = dry, 1 = fully wet (blends with canvas)
@@ -184,6 +192,32 @@ void main() {
         }
     }
 
+    // === DUAL BRUSH TIP COMBINATION ===
+    if (uHasDualTip == 1) {
+        vec2 dualUV = TexCoords - vec2(0.5);
+        if (dualTipRotation != 0.0) {
+            float cosR = cos(dualTipRotation);
+            float sinR = sin(dualTipRotation);
+            dualUV = vec2(dualUV.x * cosR - dualUV.y * sinR, dualUV.x * sinR + dualUV.y * cosR);
+        }
+        dualUV /= max(dualTipScale, 0.001);
+        dualUV += vec2(0.5);
+
+        float dualAlpha = 0.0;
+        if (dualUV.x >= 0.0 && dualUV.x <= 1.0 && dualUV.y >= 0.0 && dualUV.y <= 1.0) {
+            vec4 dualSample = texture(dualTipTexture, dualUV);
+            dualAlpha = dot(dualSample.rgb, vec3(0.299, 0.587, 0.114)) * dualSample.a;
+        }
+
+        if (uDualTipBlendMode == 0) {
+            shapeAlpha *= dualAlpha;
+        } else if (uDualTipBlendMode == 1) {
+            shapeAlpha *= (1.0 - dualAlpha);
+        } else if (uDualTipBlendMode == 2) {
+            shapeAlpha = clamp(shapeAlpha + dualAlpha, 0.0, 1.0);
+        }
+    }
+
     // Early discard for fully transparent fragments
     if (shapeAlpha < 0.001) discard;
 
@@ -210,8 +244,15 @@ void main() {
         // Extract grain value (handles both grayscale and color textures)
         float grainVal = max(grainSample.a, dot(grainSample.rgb, vec3(0.299, 0.587, 0.114)));
 
-        // Multiplicative blend controlled by intensity
-        grainFactor = mix(1.0, grainVal, grainIntensity);
+        // Multiplicative, subtractive, or physical threshold blend
+        if (uGrainBlendMode == 0) {
+            grainFactor = mix(1.0, grainVal, grainIntensity);
+        } else if (uGrainBlendMode == 1) {
+            grainFactor = clamp(1.0 - (1.0 - grainVal) * grainIntensity, 0.0, 1.0);
+        } else if (uGrainBlendMode == 2) {
+            float threshold = (1.0 - pressure) * grainIntensity;
+            grainFactor = smoothstep(threshold - 0.05, threshold + 0.05, grainVal);
+        }
     }
 
     // === 3. FLOW & PRESSURE COMBINATION ===

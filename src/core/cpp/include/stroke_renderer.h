@@ -86,6 +86,8 @@ public:
       float canvasCatchPeaks = 0.0f,
       // Oil Color Dynamics
       float temperatureShift = 0.0f, float brokenColor = 0.0f,
+      // Dual brush and grain modes
+      uint32_t dualTipTexId = 0, bool hasDualTip = false, float dualTipScale = 1.0f, float dualTipRotation = 0.0f, int dualTipBlendMode = 0, int grainBlendMode = 0,
       // Mode
       bool isEraser = false);
 
@@ -143,6 +145,8 @@ public:
       float canvasCatchPeaks = 0.0f,
       // Oil Color Dynamics
       float temperatureShift = 0.0f, float brokenColor = 0.0f,
+      // Dual brush and grain modes
+      uint32_t dualTipTexId = 0, bool hasDualTip = false, float dualTipScale = 1.0f, float dualTipRotation = 0.0f, int dualTipBlendMode = 0, int grainBlendMode = 0,
       // Mode
       bool isEraser = false);
 

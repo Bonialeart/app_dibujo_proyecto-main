@@ -83,6 +83,19 @@ Rectangle {
         return ""
     }
 
+    // Helper to get active dual tip texture path
+    function getActiveDualTipTexturePath() {
+        if (!targetCanvas) return ""
+        var currentTip = targetCanvas.getBrushProperty("dualbrush", "tip_texture") || ""
+        var list = targetCanvas.getAvailableTipTextures()
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].filename === currentTip || list[i].path.indexOf(currentTip) !== -1) {
+                return list[i].path
+            }
+        }
+        return ""
+    }
+
     // === ANIMATIONS ===
     ParallelAnimation {
         id: openAnim
@@ -264,6 +277,7 @@ Rectangle {
                             id: tabsModel
                             ListElement { icon: "trayectoria.svg"; label: "Trayectoria";       idx: 0 }
                             ListElement { icon: "forma.svg";       label: "Forma";            idx: 1 }
+                            ListElement { icon: "forma.svg";       label: "Pincel Dual";      idx: 10 }
                             ListElement { icon: "aleatorizar.svg"; label: "Aleatorizar";      idx: 2 }
                             ListElement { icon: "textura.svg";     label: "Textura";          idx: 3 }
                             ListElement { icon: "visibilidad.svg"; label: "Visibilidad";      idx: 4 }
@@ -1070,6 +1084,45 @@ Rectangle {
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "contrast", value)
                             }
 
+                            Column {
+                                width: parent.width; spacing: 8
+                                Text { text: "Modo de Mezcla de Grano"; color: textPrimary; font.pixelSize: 12 }
+                                Row {
+                                    width: parent.width; spacing: 6
+                                    property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("grain", "blend_mode") || "multiply" : "multiply"
+
+                                    component GrainBlendButton : Rectangle {
+                                        property string modeName: "multiply"
+                                        property string displayLabel: "Multiplicar"
+                                        height: 28
+                                        width: (parent.parent.width - 12) / 3
+                                        radius: 6
+                                        color: parent.currentMode === modeName ? colorAccent : (gBlendMa.containsMouse ? bgSurface : "#1a1a1c")
+                                        border.color: parent.currentMode === modeName ? "transparent" : borderDim
+                                        border.width: 1
+
+                                        Text {
+                                            text: displayLabel
+                                            color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
+                                            font.pixelSize: 10; font.weight: Font.Medium
+                                            anchors.centerIn: parent
+                                        }
+
+                                        MouseArea {
+                                            id: gBlendMa
+                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (targetCanvas) targetCanvas.setBrushProperty("grain", "blend_mode", modeName)
+                                            }
+                                        }
+                                    }
+
+                                    GrainBlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
+                                    GrainBlendButton { modeName: "subtract"; displayLabel: "Restar" }
+                                    GrainBlendButton { modeName: "threshold"; displayLabel: "Umbral Seco" }
+                                }
+                            }
+
                             StudioToggle {
                                 label: "Fijo al Lienzo (Rodante)"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("grain", "rolling") || true : true
@@ -1566,6 +1619,207 @@ Rectangle {
                                         anchors.top: parent.top; anchors.topMargin: 10
                                         opacity: 0.5
                                         visible: parent.children[0].text === ""
+                                    }
+                                }
+                            }
+                        }
+
+                        // --- TAB 10: PINCEL DUAL ---
+                        Column {
+                            visible: studio.activeTab === 10
+                            width: parent.width
+                            spacing: 20
+
+                            Row {
+                                spacing: 8
+                                Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: "MOTOR DE PINCEL DUAL"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
+                            }
+
+                            // Enable Toggle
+                            StudioToggle {
+                                label: "Habilitar Pincel Dual"
+                                checked: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false
+                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "enabled", checked)
+                            }
+
+                            // Only show configuration if dual tip is enabled
+                            Column {
+                                width: parent.width
+                                spacing: 20
+                                visible: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false
+
+                                // Dual Tip Texture Card
+                                Rectangle {
+                                    width: parent.width
+                                    height: 160
+                                    radius: 12
+                                    color: "#08080a"
+                                    border.color: borderDim
+                                    border.width: 1
+                                    clip: true
+
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: parent.width - 24; height: parent.height - 24
+                                        source: getActiveDualTipTexturePath()
+                                        fillMode: Image.PreserveAspectFit
+                                        opacity: 0.85
+                                        smooth: true
+                                        visible: getActiveDualTipTexturePath() !== ""
+                                    }
+
+                                    Text {
+                                        text: "Sin Pincel Secundario"
+                                        color: textDim; font.pixelSize: 13
+                                        anchors.centerIn: parent
+                                        visible: getActiveDualTipTexturePath() === ""
+                                    }
+
+                                    // Reset button in bottom-left
+                                    Rectangle {
+                                        width: 26; height: 26; radius: 13
+                                        color: "#a01c1c1e"
+                                        border.color: borderDim; border.width: 1
+                                        anchors.left: parent.left; anchors.leftMargin: 10
+                                        anchors.bottom: parent.bottom; anchors.bottomMargin: 10
+
+                                        Text {
+                                            text: "↺"
+                                            color: "#ffffff"
+                                            font.pixelSize: 12
+                                            font.weight: Font.Bold
+                                            anchors.centerIn: parent
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "tip_texture", "")
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Selector Grid for Dual Tip Texture
+                                Column {
+                                    width: parent.width; spacing: 8
+
+                                    Rectangle {
+                                        width: parent.width; height: 32; radius: 8
+                                        color: changeDualTipMa.containsMouse ? bgSurface : "transparent"
+                                        border.color: borderDim; border.width: 1
+
+                                        Text {
+                                            text: "▼ Seleccionar punta secundaria..."
+                                            color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
+                                            anchors.centerIn: parent
+                                        }
+
+                                        MouseArea {
+                                            id: changeDualTipMa
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onClicked: dualTipSelectionGrid.visible = !dualTipSelectionGrid.visible
+                                        }
+                                    }
+
+                                    Grid {
+                                        id: dualTipSelectionGrid
+                                        width: parent.width
+                                        columns: 4
+                                        spacing: 8
+                                        visible: false
+
+                                        Repeater {
+                                            model: targetCanvas ? targetCanvas.getAvailableTipTextures() : []
+                                            delegate: Rectangle {
+                                                width: (parent.width - 3 * 8) / 4
+                                                height: width
+                                                radius: 8
+                                                color: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface
+                                                border.color: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? colorAccent : borderDim
+                                                border.width: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? 2 : 1
+
+                                                Image {
+                                                    anchors.centerIn: parent
+                                                    width: parent.width - 12; height: parent.height - 12
+                                                    source: modelData.path
+                                                    fillMode: Image.PreserveAspectFit
+                                                    opacity: 0.85
+                                                }
+
+                                                Text {
+                                                    text: modelData.name; color: textDim; font.pixelSize: 8
+                                                    anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                                                    anchors.bottomMargin: 3; elide: Text.ElideRight
+                                                    width: parent.width - 4; horizontalAlignment: Text.AlignHCenter
+                                                }
+
+                                                MouseArea {
+                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "tip_texture", modelData.filename)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Scale and Rotation Sliders
+                                StudioSlider {
+                                    label: "Escala Secundaria"
+                                    from: 0.1; to: 3.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "scale") || 1.0 : 1.0
+                                    suffix: "x"
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "scale", value)
+                                }
+
+                                StudioSlider {
+                                    label: "Rotación Secundaria"
+                                    from: -180; to: 180
+                                    suffix: "°"
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "rotation") || 0 : 0
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "rotation", value)
+                                }
+
+                                // Blend Mode Selector
+                                Column {
+                                    width: parent.width; spacing: 8
+                                    Text { text: "Modo de Fusión"; color: textPrimary; font.pixelSize: 12 }
+                                    Row {
+                                        width: parent.width; spacing: 6
+                                        property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "blend_mode") || "multiply" : "multiply"
+
+                                        component BlendButton : Rectangle {
+                                            property string modeName: "multiply"
+                                            property string displayLabel: "Multiplicar"
+                                            height: 28
+                                            width: (parent.parent.width - 12) / 3
+                                            radius: 6
+                                            color: parent.currentMode === modeName ? colorAccent : (blendMa.containsMouse ? bgSurface : "#1a1a1c")
+                                            border.color: parent.currentMode === modeName ? "transparent" : borderDim
+                                            border.width: 1
+
+                                            Text {
+                                                text: displayLabel
+                                                color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
+                                                font.pixelSize: 10; font.weight: Font.Medium
+                                                anchors.centerIn: parent
+                                            }
+
+                                            MouseArea {
+                                                id: blendMa
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "blend_mode", modeName)
+                                                }
+                                            }
+                                        }
+
+                                        BlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
+                                        BlendButton { modeName: "mask"; displayLabel: "Restar" }
+                                        BlendButton { modeName: "add"; displayLabel: "Añadir" }
                                     }
                                 }
                             }

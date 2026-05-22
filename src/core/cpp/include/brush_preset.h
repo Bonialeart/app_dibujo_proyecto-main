@@ -512,10 +512,17 @@ struct BrushPreset {
   float defaultHardness = 0.8f;
   float defaultFlow = 1.0f;
 
-  // === Dual Brush (optional) ===
-  // For Phase 5 - placeholder
-  // std::shared_ptr<BrushPreset> secondaryBrush;
-  // BlendMode dualBlendMode = BlendMode::Normal;
+  // === Dual Brush ===
+  struct DualBrushSettings {
+    bool enabled = false;
+    QString tipTexture = "";
+    float scale = 1.0f;
+    float rotation = 0.0f; // degrees
+    QString blendMode = "multiply"; // "multiply", "mask", "add"
+
+    QJsonObject toJson() const;
+    static DualBrushSettings fromJson(const QJsonObject &obj);
+  } dualBrush;
 
   // === Serialization ===
   QJsonObject toJson() const;

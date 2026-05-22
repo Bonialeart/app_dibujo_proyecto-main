@@ -338,6 +338,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     // === LOAD TEXTURES (lazy, cached) ===
     uint32_t grainTexID = settings.grainTextureID;
     uint32_t tipTexID = settings.tipTextureID;
+    uint32_t dualTipTexID = settings.dualTipTextureID;
 
     // Load grain texture if needed
     if (settings.useTexture && grainTexID == 0 &&
@@ -350,8 +351,29 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       tipTexID = loadTexture(settings.tipTextureName);
     }
 
+    // Load dual tip texture if needed
+    if (settings.dualTipEnabled && dualTipTexID == 0 &&
+        !settings.dualTipTextureName.isEmpty()) {
+      dualTipTexID = loadTexture(settings.dualTipTextureName);
+    }
+
     bool hasGrain = (grainTexID != 0 && settings.useTexture);
     bool hasTip = (tipTexID != 0);
+    bool hasDualTip = (dualTipTexID != 0 && settings.dualTipEnabled);
+
+    int uDualTipBlendMode = 0; // multiply
+    if (settings.dualTipBlendMode == "mask" || settings.dualTipBlendMode == "subtract") {
+      uDualTipBlendMode = 1;
+    } else if (settings.dualTipBlendMode == "add") {
+      uDualTipBlendMode = 2;
+    }
+
+    int uGrainBlendMode = 0; // multiply
+    if (settings.grainBlendMode == "subtract") {
+      uGrainBlendMode = 1;
+    } else if (settings.grainBlendMode == "threshold" || settings.grainBlendMode == "reveal") {
+      uGrainBlendMode = 2;
+    }
 
     painter->save();
     painter->beginNativePainting();
@@ -565,6 +587,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               settings.smudgeSmear, settings.canvasAbsorption,
               settings.canvasSkipValleys, settings.canvasCatchPeaks,
               settings.temperatureShift, settings.brokenColor,
+              dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
               settings.type == BrushSettings::Type::Eraser);
 
           // Blit the result from pongFBO (write target) back to pingFBO (read target)
@@ -603,6 +626,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             settings.smudgeSmear, settings.canvasAbsorption,
             settings.canvasSkipValleys, settings.canvasCatchPeaks,
             settings.temperatureShift, settings.brokenColor,
+            dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
             settings.type == BrushSettings::Type::Eraser);
       }
     }

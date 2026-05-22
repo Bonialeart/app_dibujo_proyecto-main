@@ -4,6 +4,7 @@
 #include "WintabManager.h"
 #include "core/cpp/include/brush_preset_manager.h"
 #include "core/brushes/abr_parser.h"
+#include "core/cpp/include/undo_commands.h"
 #include <QBuffer>
 #include <QCoreApplication>
 #include <QCursor>
@@ -3832,6 +3833,118 @@ void CanvasItem::setBrushWetness(float value) {
   emit brushWetnessChanged();
 }
 
+void CanvasItem::_commitLassoPath() {
+  QPainterPath closed = m_activeLassoPath;
+  m_activeLassoPath = QPainterPath();
+  m_isMagneticLassoActive = false;
+  m_isLassoDragging = false;
+
+  if (closed.elementCount() < 3)
+    return;
+
+  QPainterPath beforePath = m_selectionPath;
+  bool beforeHasSel = m_hasSelection;
+
+  if (m_selectionAddMode == 0) {
+    m_selectionPath = closed;
+  } else if (m_selectionAddMode == 1) {
+    m_selectionPath = m_selectionPath.united(closed);
+  } else if (m_selectionAddMode == 2) {
+    m_selectionPath = m_selectionPath.subtracted(closed);
+  }
+
+  m_hasSelection = !m_selectionPath.isEmpty();
+  emit hasSelectionChanged();
+
+  if (m_hasSelection && !m_marchingAntsTimer->isActive())
+    m_marchingAntsTimer->start();
+
+  update();
+
+  auto updateSelCb = [this](const QPainterPath &path, bool hasSel) {
+    m_selectionPath = path;
+    m_hasSelection = hasSel;
+    emit hasSelectionChanged();
+    if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+      m_marchingAntsTimer->start();
+    else if (!m_hasSelection && m_marchingAntsTimer)
+      m_marchingAntsTimer->stop();
+    update();
+  };
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<artflow::SelectionUndoCommand>(
+        updateSelCb, beforePath, beforeHasSel, m_selectionPath, m_hasSelection));
+  }
+}
+
+void CanvasItem::_commitNewShapePath(const QPainterPath &newPath) {
+  QPainterPath beforePath = m_selectionPath;
+  bool beforeHasSel = m_hasSelection;
+
+  if (m_selectionAddMode == 0) {
+    m_selectionPath = newPath;
+  } else if (m_selectionAddMode == 1) {
+    m_selectionPath = m_selectionPath.united(newPath);
+  } else if (m_selectionAddMode == 2) {
+    m_selectionPath = m_selectionPath.subtracted(newPath);
+  }
+
+  m_hasSelection = !m_selectionPath.isEmpty();
+  emit hasSelectionChanged();
+
+  if (m_hasSelection && !m_marchingAntsTimer->isActive())
+    m_marchingAntsTimer->start();
+
+  update();
+
+  auto updateSelCb = [this](const QPainterPath &path, bool hasSel) {
+    m_selectionPath = path;
+    m_hasSelection = hasSel;
+    emit hasSelectionChanged();
+    if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+      m_marchingAntsTimer->start();
+    else if (!m_hasSelection && m_marchingAntsTimer)
+      m_marchingAntsTimer->stop();
+    update();
+  };
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<artflow::SelectionUndoCommand>(
+        updateSelCb, beforePath, beforeHasSel, m_selectionPath, m_hasSelection));
+  }
+}
+
+void CanvasItem::invertSelection() {
+  QPainterPath beforePath = m_selectionPath;
+  bool beforeHasSel = m_hasSelection;
+
+  QPainterPath full;
+  full.addRect(0, 0, m_canvasWidth, m_canvasHeight);
+  m_selectionPath = full.subtracted(m_selectionPath);
+  m_hasSelection = !m_selectionPath.isEmpty();
+
+  emit hasSelectionChanged();
+  if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+    m_marchingAntsTimer->start();
+  else if (!m_hasSelection && m_marchingAntsTimer)
+    m_marchingAntsTimer->stop();
+  update();
+
+  auto updateSelCb = [this](const QPainterPath &path, bool hasSel) {
+    m_selectionPath = path;
+    m_hasSelection = hasSel;
+    emit hasSelectionChanged();
+    if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+      m_marchingAntsTimer->start();
+    else if (!m_hasSelection && m_marchingAntsTimer)
+      m_marchingAntsTimer->stop();
+    update();
+  };
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<artflow::SelectionUndoCommand>(
+        updateSelCb, beforePath, beforeHasSel, m_selectionPath, m_hasSelection));
+  }
+}
+
 void CanvasItem::setBrushSmudge(float value) {
   m_brushSmudge = value;
   BrushSettings s = m_brushEngine->getBrush();
@@ -3927,58 +4040,7 @@ void CanvasItem::closeLasso() {
   _commitLassoPath();
 }
 
-// Internal: commit m_activeLassoPath into m_selectionPath with add/subtract mode
-void CanvasItem::_commitLassoPath() {
-  QPainterPath closed = m_activeLassoPath;
-  m_activeLassoPath = QPainterPath();
-  m_isMagneticLassoActive = false;
-  m_isLassoDragging = false;
 
-  if (closed.elementCount() < 3)
-    return;
-
-  if (m_selectionAddMode == 0) {
-    m_selectionPath = closed;
-  } else if (m_selectionAddMode == 1) {
-    m_selectionPath = m_selectionPath.united(closed);
-  } else if (m_selectionAddMode == 2) {
-    m_selectionPath = m_selectionPath.subtracted(closed);
-  }
-
-  m_hasSelection = !m_selectionPath.isEmpty();
-  emit hasSelectionChanged();
-
-  if (m_hasSelection && !m_marchingAntsTimer->isActive())
-    m_marchingAntsTimer->start();
-
-  update();
-}
-
-// Internal: commit a shape path (rect/ellipse) with add/subtract mode
-void CanvasItem::_commitNewShapePath(const QPainterPath &newPath) {
-  if (m_selectionAddMode == 0) {
-    m_selectionPath = newPath;
-  } else if (m_selectionAddMode == 1) {
-    m_selectionPath = m_selectionPath.united(newPath);
-  } else if (m_selectionAddMode == 2) {
-    m_selectionPath = m_selectionPath.subtracted(newPath);
-  }
-
-  m_hasSelection = !m_selectionPath.isEmpty();
-  emit hasSelectionChanged();
-
-  if (m_hasSelection && !m_marchingAntsTimer->isActive())
-    m_marchingAntsTimer->start();
-
-  update();
-}
-
-void CanvasItem::invertSelection() {
-  QPainterPath full;
-  full.addRect(0, 0, m_canvasWidth, m_canvasHeight);
-  m_selectionPath = full.subtracted(m_selectionPath);
-  update();
-}
 
 void CanvasItem::apply_color_drop(int x, int y, const QColor &color) {
   // 1. Transform Visual/Screen coordinates to Logical Canvas coordinates
@@ -4126,22 +4188,64 @@ void CanvasItem::clearSelectionContent() {
 }
 
 void CanvasItem::deselect() {
+  QPainterPath beforePath = m_selectionPath;
+  bool beforeHasSel = m_hasSelection;
+
   m_selectionPath = QPainterPath();
   m_activeLassoPath = QPainterPath();
   m_isLassoDragging = false;
   m_isMagneticLassoActive = false;
   m_hasSelection = false;
+
   emit hasSelectionChanged();
   if (m_marchingAntsTimer) m_marchingAntsTimer->stop();
   update();
+
+  if (beforeHasSel) {
+    auto updateSelCb = [this](const QPainterPath &path, bool hasSel) {
+      m_selectionPath = path;
+      m_hasSelection = hasSel;
+      emit hasSelectionChanged();
+      if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+        m_marchingAntsTimer->start();
+      else if (!m_hasSelection && m_marchingAntsTimer)
+        m_marchingAntsTimer->stop();
+      update();
+    };
+    if (m_undoManager) {
+      m_undoManager->pushCommand(std::make_unique<artflow::SelectionUndoCommand>(
+          updateSelCb, beforePath, beforeHasSel, m_selectionPath, m_hasSelection));
+    }
+  }
 }
 
 void CanvasItem::selectAll() {
+  QPainterPath beforePath = m_selectionPath;
+  bool beforeHasSel = m_hasSelection;
+
   m_selectionPath = QPainterPath();
   m_selectionPath.addRect(0, 0, m_canvasWidth, m_canvasHeight);
   m_hasSelection = true;
+
   emit hasSelectionChanged();
   update();
+
+  if (beforePath != m_selectionPath || beforeHasSel != m_hasSelection) {
+    auto updateSelCb = [this](const QPainterPath &path, bool hasSel) {
+      m_selectionPath = path;
+      m_hasSelection = hasSel;
+      emit hasSelectionChanged();
+      if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+        m_marchingAntsTimer->start();
+      else if (!m_hasSelection && m_marchingAntsTimer)
+        m_marchingAntsTimer->stop();
+      update();
+    };
+    if (m_undoManager) {
+      m_undoManager->pushCommand(std::make_unique<artflow::SelectionUndoCommand>(
+          updateSelCb, beforePath, beforeHasSel, m_selectionPath, m_hasSelection));
+    }
+  }
 }
 
 void CanvasItem::setBrushRoundness(float value) {
@@ -5114,6 +5218,12 @@ void CanvasItem::addLayer() {
   }
 
   setActiveLayer(targetIdx);
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<LayerAddUndoCommand>(
+        m_layerManager, targetIdx, nullptr, activeIdx, targetIdx));
+  }
+
   update();
 }
 
@@ -5136,6 +5246,12 @@ void CanvasItem::addGroup() {
   }
 
   setActiveLayer(targetIdx);
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<LayerAddUndoCommand>(
+        m_layerManager, targetIdx, nullptr, activeIdx, targetIdx));
+  }
+
   update();
 }
 
@@ -5415,16 +5531,42 @@ void CanvasItem::removeLayer(int index) {
     emit notificationRequested("Cannot delete a locked layer", "error");
     return;
   }
-  m_layerManager->removeLayer(index);
+
+  int activeBefore = m_layerManager->getActiveLayerIndex();
+  int countBefore = m_layerManager->getLayerCount();
+  if (countBefore <= 1)
+    return; // Keep at least one layer
+
+  std::unique_ptr<Layer> takenLayer = m_layerManager->takeLayer(index);
+  if (!takenLayer)
+    return;
+
   clearRenderCaches();
-  m_activeLayerIndex = qMax(0, (int)m_layerManager->getLayerCount() - 1);
+  int activeAfter = qMax(0, (int)m_layerManager->getLayerCount() - 1);
+  m_layerManager->setActiveLayer(activeAfter);
+  m_activeLayerIndex = activeAfter;
   emit activeLayerChanged();
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<LayerRemoveUndoCommand>(
+        m_layerManager, index, std::move(takenLayer), activeBefore, activeAfter));
+  }
+
   updateLayersList();
   update();
 }
 
 void CanvasItem::duplicateLayer(int index) {
+  int activeBefore = m_layerManager->getActiveLayerIndex();
   m_layerManager->duplicateLayer(index);
+  int activeAfter = index + 1;
+  setActiveLayer(activeAfter);
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<LayerAddUndoCommand>(
+        m_layerManager, index + 1, nullptr, activeBefore, activeAfter));
+  }
+
   updateLayersList();
   update();
 }
@@ -5449,10 +5591,15 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
     return;
   }
 
+  int activeBefore = m_activeLayerIndex;
+  artflow::Layer *moved = m_layerManager->getLayer(fromIndex);
+  int parentIdBefore = moved ? moved->parentId : -1;
+  bool clippedBefore = moved ? moved->clipped : false;
+
   m_layerManager->moveLayer(fromIndex, toIndex);
 
   // Update parentId based on new neighbors to allow entering/exiting groups
-  artflow::Layer *moved = m_layerManager->getLayer(toIndex);
+  moved = m_layerManager->getLayer(toIndex);
   if (moved && moved->type != artflow::Layer::Type::Background) {
     artflow::Layer *neighborAbove =
         (toIndex + 1 < count) ? m_layerManager->getLayer(toIndex + 1) : nullptr;
@@ -5463,20 +5610,20 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
       } else {
         moved->parentId = neighborAbove->parentId;
       }
-
-
     } else {
       moved->parentId = -1;
     }
   }
 
-  // Auto-clipping logic: If dropped into the middle of a clipping group, join
-  // it.
+  // Auto-clipping logic: If dropped into the middle of a clipping group, join it.
   artflow::Layer *above =
       (toIndex + 1 < count) ? m_layerManager->getLayer(toIndex + 1) : nullptr;
   if (moved && above && above->clipped) {
     moved->clipped = true;
   }
+
+  int parentIdAfter = moved ? moved->parentId : -1;
+  bool clippedAfter = moved ? moved->clipped : false;
 
   // Update active layer index if it moved
   if (m_activeLayerIndex == fromIndex) {
@@ -5490,17 +5637,62 @@ void CanvasItem::moveLayer(int fromIndex, int toIndex) {
     emit activeLayerChanged();
   }
 
+  int activeAfter = m_activeLayerIndex;
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<LayerMoveUndoCommand>(
+        m_layerManager, fromIndex, toIndex, parentIdBefore, parentIdAfter,
+        clippedBefore, clippedAfter, activeBefore, activeAfter));
+  }
+
   updateLayersList();
   update();
 }
 
 void CanvasItem::mergeDown(int index) {
+  if (!m_layerManager) return;
+  if (index <= 0 || index >= m_layerManager->getLayerCount())
+    return;
+
+  Layer *top = m_layerManager->getLayer(index);
   Layer *bottom = m_layerManager->getLayer(index - 1);
-  if (bottom && bottom->locked) {
+
+  if (!top || !bottom)
+    return;
+  if (bottom->locked) {
     emit notificationRequested("Cannot merge onto a locked layer", "error");
     return;
   }
-  m_layerManager->mergeDown(index);
+  if (!top->visible)
+    return;
+
+  int activeBefore = m_layerManager->getActiveLayerIndex();
+
+  // 1. Capture bottom layer buffer before
+  auto bottomBefore = std::make_unique<artflow::ImageBuffer>(*bottom->buffer);
+
+  // 2. Perform composite
+  bottom->buffer->composite(*top->buffer, 0, 0, top->opacity);
+  bottom->markDirty();
+
+  // 3. Capture bottom layer buffer after
+  auto bottomAfter = std::make_unique<artflow::ImageBuffer>(*bottom->buffer);
+
+  // 4. Take top layer
+  std::unique_ptr<Layer> topLayer = m_layerManager->takeLayer(index);
+
+  clearRenderCaches();
+  int activeAfter = qMax(0, (int)m_layerManager->getLayerCount() - 1);
+  m_layerManager->setActiveLayer(activeAfter);
+  m_activeLayerIndex = activeAfter;
+  emit activeLayerChanged();
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<LayerMergeUndoCommand>(
+        m_layerManager, index, std::move(topLayer), index - 1,
+        std::move(bottomBefore), std::move(bottomAfter), activeBefore, activeAfter));
+  }
+
   updateLayersList();
   update();
 }
@@ -5512,8 +5704,15 @@ void CanvasItem::renameLayer(int index, const QString &name) {
     return;
   }
   if (l) {
-    l->name = name.toStdString();
-    updateLayersList();
+    QString oldName = QString::fromStdString(l->name);
+    if (oldName != name) {
+      if (m_undoManager) {
+        m_undoManager->pushCommand(std::make_unique<artflow::LayerPropertyUndoCommand>(
+            m_layerManager, l->stableId, artflow::LayerProperty::Name, oldName, name));
+      }
+      l->name = name.toStdString();
+      updateLayersList();
+    }
   }
 }
 
@@ -5521,6 +5720,9 @@ void CanvasItem::selectPixels(int index) {
   Layer *l = m_layerManager->getLayer(index);
   if (!l || !l->buffer)
     return;
+
+  QPainterPath beforePath = m_selectionPath;
+  bool beforeHasSel = m_hasSelection;
 
   m_selectionPath = QPainterPath();
   int w = l->buffer->width();
@@ -5551,6 +5753,21 @@ void CanvasItem::selectPixels(int index) {
   m_hasSelection = !m_selectionPath.isEmpty();
   emit hasSelectionChanged();
   update();
+
+  auto updateSelCb = [this](const QPainterPath &path, bool hasSel) {
+    m_selectionPath = path;
+    m_hasSelection = hasSel;
+    emit hasSelectionChanged();
+    if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+      m_marchingAntsTimer->start();
+    else if (!m_hasSelection && m_marchingAntsTimer)
+      m_marchingAntsTimer->stop();
+    update();
+  };
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<artflow::SelectionUndoCommand>(
+        updateSelCb, beforePath, beforeHasSel, m_selectionPath, m_hasSelection));
+  }
 }
 
 void CanvasItem::invertLayerColors(int index) {
@@ -7335,7 +7552,13 @@ void CanvasItem::toggleClipping(int index) {
     return;
   }
   if (l) {
-    l->clipped = !l->clipped;
+    bool beforeVal = l->clipped;
+    bool afterVal = !beforeVal;
+    if (m_undoManager) {
+      m_undoManager->pushCommand(std::make_unique<artflow::LayerPropertyUndoCommand>(
+          m_layerManager, l->stableId, artflow::LayerProperty::Clipped, beforeVal, afterVal));
+    }
+    l->clipped = afterVal;
     updateLayersList();
     update();
   }
@@ -7348,7 +7571,13 @@ void CanvasItem::toggleAlphaLock(int index) {
     return;
   }
   if (l) {
-    l->alphaLock = !l->alphaLock;
+    bool beforeVal = l->alphaLock;
+    bool afterVal = !beforeVal;
+    if (m_undoManager) {
+      m_undoManager->pushCommand(std::make_unique<artflow::LayerPropertyUndoCommand>(
+          m_layerManager, l->stableId, artflow::LayerProperty::AlphaLock, beforeVal, afterVal));
+    }
+    l->alphaLock = afterVal;
     updateLayersList();
   }
 }
@@ -7356,8 +7585,13 @@ void CanvasItem::toggleAlphaLock(int index) {
 void CanvasItem::toggleVisibility(int index) {
   Layer *l = m_layerManager->getLayer(index);
   if (l) {
-    bool newVisible = !l->visible;
-    l->visible = newVisible;
+    bool beforeVal = l->visible;
+    bool afterVal = !beforeVal;
+    if (m_undoManager) {
+      m_undoManager->pushCommand(std::make_unique<artflow::LayerPropertyUndoCommand>(
+          m_layerManager, l->stableId, artflow::LayerProperty::Visible, beforeVal, afterVal));
+    }
+    l->visible = afterVal;
     l->markDirty();
 
     // If it's a group, toggle all children recursively
@@ -7366,7 +7600,7 @@ void CanvasItem::toggleVisibility(int index) {
       for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
         Layer *child = m_layerManager->getLayer(i);
         if (child && child->parentId == (int)groupStableId) {
-          child->visible = newVisible;
+          child->visible = afterVal;
         }
       }
     }
@@ -7379,6 +7613,10 @@ void CanvasItem::toggleVisibility(int index) {
 void CanvasItem::setLayerVisibility(int index, bool visible) {
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->visible != visible) {
+    if (m_undoManager) {
+      m_undoManager->pushCommand(std::make_unique<artflow::LayerPropertyUndoCommand>(
+          m_layerManager, l->stableId, artflow::LayerProperty::Visible, l->visible, visible));
+    }
     l->visible = visible;
     l->markDirty();
     updateLayersList();
@@ -7389,7 +7627,13 @@ void CanvasItem::setLayerVisibility(int index, bool visible) {
 void CanvasItem::toggleLock(int index) {
   Layer *l = m_layerManager->getLayer(index);
   if (l) {
-    l->locked = !l->locked;
+    bool beforeVal = l->locked;
+    bool afterVal = !beforeVal;
+    if (m_undoManager) {
+      m_undoManager->pushCommand(std::make_unique<artflow::LayerPropertyUndoCommand>(
+          m_layerManager, l->stableId, artflow::LayerProperty::Locked, beforeVal, afterVal));
+    }
+    l->locked = afterVal;
     updateLayersList();
   }
 }
@@ -7419,10 +7663,21 @@ void CanvasItem::setLayerOpacity(int index, float opacity) {
     return;
   }
   if (l) {
-    l->opacity = opacity;
-    l->markDirty();
-    updateLayersList();
-    update();
+    float beforeVal = l->opacity;
+    if (m_isDraggingOpacity) {
+      beforeVal = m_opacityBeforeDrag;
+      m_isDraggingOpacity = false;
+    }
+    if (beforeVal != opacity) {
+      if (m_undoManager) {
+        m_undoManager->pushCommand(std::make_unique<artflow::LayerPropertyUndoCommand>(
+            m_layerManager, l->stableId, artflow::LayerProperty::Opacity, beforeVal, opacity));
+      }
+      l->opacity = opacity;
+      l->markDirty();
+      updateLayersList();
+      update();
+    }
   }
 }
 
@@ -7431,6 +7686,10 @@ void CanvasItem::setLayerOpacityPreview(int index, float opacity) {
   if (l && l->locked)
     return;
   if (l) {
+    if (!m_isDraggingOpacity) {
+      m_opacityBeforeDrag = l->opacity;
+      m_isDraggingOpacity = true;
+    }
     l->opacity = opacity;
     l->markDirty();
     // Skip updateLayersList() for smooth preview
@@ -7481,6 +7740,11 @@ void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
 
     if (l->blendMode == newMode)
       return;
+
+    if (m_undoManager) {
+      m_undoManager->pushCommand(std::make_unique<artflow::LayerPropertyUndoCommand>(
+          m_layerManager, l->stableId, artflow::LayerProperty::BlendMode, static_cast<int>(l->blendMode), static_cast<int>(newMode)));
+    }
 
     l->blendMode = newMode;
     l->markDirty();
@@ -7826,6 +8090,22 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.grain.contrast;
     if (key == "rolling")
       return m_editingPreset.grain.rolling;
+    if (key == "blend_mode")
+      return m_editingPreset.grain.blendMode;
+  }
+
+  // ── dualbrush ──
+  if (category == "dualbrush") {
+    if (key == "enabled")
+      return m_editingPreset.dualBrush.enabled;
+    if (key == "tip_texture")
+      return m_editingPreset.dualBrush.tipTexture;
+    if (key == "scale")
+      return m_editingPreset.dualBrush.scale;
+    if (key == "rotation")
+      return m_editingPreset.dualBrush.rotation;
+    if (key == "blend_mode")
+      return m_editingPreset.dualBrush.blendMode;
   }
 
   // ── wetmix ──
@@ -8032,6 +8312,29 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
       changed = true;
     } else if (key == "rolling") {
       m_editingPreset.grain.rolling = value.toBool();
+      changed = true;
+    } else if (key == "blend_mode") {
+      m_editingPreset.grain.blendMode = value.toString();
+      changed = true;
+    }
+  }
+
+  // ── dualbrush ──
+  else if (category == "dualbrush") {
+    if (key == "enabled") {
+      m_editingPreset.dualBrush.enabled = value.toBool();
+      changed = true;
+    } else if (key == "tip_texture") {
+      m_editingPreset.dualBrush.tipTexture = value.toString();
+      changed = true;
+    } else if (key == "scale") {
+      m_editingPreset.dualBrush.scale = value.toFloat();
+      changed = true;
+    } else if (key == "rotation") {
+      m_editingPreset.dualBrush.rotation = value.toFloat();
+      changed = true;
+    } else if (key == "blend_mode") {
+      m_editingPreset.dualBrush.blendMode = value.toString();
       changed = true;
     }
   }
@@ -8244,6 +8547,13 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
     map["brightness"] = m_editingPreset.grain.brightness;
     map["contrast"] = m_editingPreset.grain.contrast;
     map["rolling"] = m_editingPreset.grain.rolling;
+    map["blend_mode"] = m_editingPreset.grain.blendMode;
+  } else if (category == "dualbrush") {
+    map["enabled"] = m_editingPreset.dualBrush.enabled;
+    map["tip_texture"] = m_editingPreset.dualBrush.tipTexture;
+    map["scale"] = m_editingPreset.dualBrush.scale;
+    map["rotation"] = m_editingPreset.dualBrush.rotation;
+    map["blend_mode"] = m_editingPreset.dualBrush.blendMode;
   } else if (category == "wetmix") {
     map["wet_mix"] = m_editingPreset.wetMix.wetMix;
     map["pigment"] = m_editingPreset.wetMix.pigment;
@@ -8773,6 +9083,10 @@ void CanvasItem::undo() {
   if (m_undoManager && m_undoManager->canUndo()) {
     m_undoManager->undo();
     setProjectDirty(true);
+    m_activeLayerIndex = m_layerManager->getActiveLayerIndex();
+    m_lastActiveLayerIndex = m_activeLayerIndex;
+    updateLayersList();
+    emit activeLayerChanged();
     update();
   }
 }
@@ -8784,6 +9098,10 @@ void CanvasItem::redo() {
   if (m_undoManager && m_undoManager->canRedo()) {
     m_undoManager->redo();
     setProjectDirty(true);
+    m_activeLayerIndex = m_layerManager->getActiveLayerIndex();
+    m_lastActiveLayerIndex = m_activeLayerIndex;
+    updateLayersList();
+    emit activeLayerChanged();
     update();
   }
 }

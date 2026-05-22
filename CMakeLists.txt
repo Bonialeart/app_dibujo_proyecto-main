@@ -34,6 +34,7 @@ set(CORE_SOURCES
     src/core/cpp/src/stroke_renderer.cpp
     src/core/cpp/src/undo_manager.cpp
     src/core/cpp/src/stroke_undo_command.cpp
+    src/core/cpp/src/undo_commands.cpp
     src/core/cpp/src/ColorPicker.cpp
     src/core/cpp/src/ColorPickerImpl.cpp
     src/core/cpp/src/panel_list_model.cpp

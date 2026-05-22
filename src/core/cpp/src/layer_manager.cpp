@@ -184,4 +184,38 @@ void LayerManager::compositeAll(ImageBuffer &output, bool skipPrivate) const {
   }
 }
 
+std::unique_ptr<Layer> LayerManager::takeLayer(int index) {
+  if (index < 0 || index >= static_cast<int>(m_layers.size()))
+    return nullptr;
+  auto layer = std::move(m_layers[index]);
+  m_layers.erase(m_layers.begin() + index);
+  m_activeIndex = clampVal(m_activeIndex, 0, static_cast<int>(m_layers.size()) - 1);
+  return layer;
+}
+
+void LayerManager::insertLayer(int index, std::unique_ptr<Layer> layer) {
+  if (!layer)
+    return;
+  if (index < 0)
+    index = 0;
+  if (index > static_cast<int>(m_layers.size()))
+    index = static_cast<int>(m_layers.size());
+  m_layers.insert(m_layers.begin() + index, std::move(layer));
+  m_activeIndex = index;
+}
+
+int LayerManager::getLayerIndexByStableId(uint32_t stableId) const {
+  for (size_t i = 0; i < m_layers.size(); ++i) {
+    if (m_layers[i] && m_layers[i]->stableId == stableId) {
+      return static_cast<int>(i);
+    }
+  }
+  return -1;
+}
+
+Layer *LayerManager::getLayerByStableId(uint32_t stableId) {
+  int idx = getLayerIndexByStableId(stableId);
+  return idx != -1 ? m_layers[idx].get() : nullptr;
+}
+
 } // namespace artflow

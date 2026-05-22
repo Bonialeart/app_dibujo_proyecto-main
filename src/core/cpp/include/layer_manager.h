@@ -71,6 +71,11 @@ public:
   void duplicateLayer(int index);
   void mergeDown(int index);
 
+  std::unique_ptr<Layer> takeLayer(int index);
+  void insertLayer(int index, std::unique_ptr<Layer> layer);
+  int getLayerIndexByStableId(uint32_t stableId) const;
+  Layer *getLayerByStableId(uint32_t stableId);
+
   // Color Sampling
   void sampleColor(int x, int y, uint8_t *r, uint8_t *g, uint8_t *b, uint8_t *a,
                    int mode = 0) const;

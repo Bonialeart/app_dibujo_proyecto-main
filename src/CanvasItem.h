@@ -591,6 +591,8 @@ private:
                       const QPointF &center);
   std::unique_ptr<artflow::ImageBuffer> m_strokeBeforeBuffer;
   std::unique_ptr<artflow::ImageBuffer> m_transformBeforeBuffer;
+  float m_opacityBeforeDrag = 1.0f;
+  bool m_isDraggingOpacity = false;
 
   // Pressure Logic
   std::vector<float> m_lut;

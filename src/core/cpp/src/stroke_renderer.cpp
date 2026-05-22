@@ -272,6 +272,8 @@ void StrokeRenderer::renderStroke(
     float canvasAbsorption, bool canvasSkipValleys, float canvasCatchPeaks,
     // Oil Color Dynamics
     float temperatureShift, float brokenColor,
+    // Dual brush and grain modes
+    uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, int grainBlendMode,
     // Mode
     bool isEraser) {
 
@@ -339,6 +341,25 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("grainScale", 1.0f);
     m_program->setUniformValue("grainIntensity", 0.0f);
   }
+
+  // --- DUAL TIP TEXTURE ---
+  if (hasDualTip && dualTipTexId != 0) {
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, dualTipTexId);
+    m_program->setUniformValue("dualTipTexture", 3);
+    m_program->setUniformValue("uHasDualTip", 1);
+    m_program->setUniformValue("dualTipScale", dualTipScale);
+    m_program->setUniformValue("dualTipRotation", dualTipRotation);
+    m_program->setUniformValue("uDualTipBlendMode", dualTipBlendMode);
+  } else {
+    m_program->setUniformValue("uHasDualTip", 0);
+    m_program->setUniformValue("dualTipScale", 1.0f);
+    m_program->setUniformValue("dualTipRotation", 0.0f);
+    m_program->setUniformValue("uDualTipBlendMode", 0);
+  }
+
+  // --- GRAIN BLEND MODE ---
+  m_program->setUniformValue("uGrainBlendMode", grainBlendMode);
 
   // --- WET MIX ENGINE & WATERCOLOR UNIFORMS ---
   m_program->setUniformValue("wetness", wetness);
@@ -496,6 +517,8 @@ void StrokeRenderer::renderStrokeInstanced(
     float canvasAbsorption, bool canvasSkipValleys, float canvasCatchPeaks,
     // Oil Color Dynamics
     float temperatureShift, float brokenColor,
+    // Dual brush and grain modes
+    uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, int grainBlendMode,
     // Mode
     bool isEraser) {
 
@@ -547,6 +570,25 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("grainScale", 1.0f);
     m_program->setUniformValue("grainIntensity", 0.0f);
   }
+
+  // --- DUAL TIP TEXTURE ---
+  if (hasDualTip && dualTipTexId != 0) {
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, dualTipTexId);
+    m_program->setUniformValue("dualTipTexture", 3);
+    m_program->setUniformValue("uHasDualTip", 1);
+    m_program->setUniformValue("dualTipScale", dualTipScale);
+    m_program->setUniformValue("dualTipRotation", dualTipRotation);
+    m_program->setUniformValue("uDualTipBlendMode", dualTipBlendMode);
+  } else {
+    m_program->setUniformValue("uHasDualTip", 0);
+    m_program->setUniformValue("dualTipScale", 1.0f);
+    m_program->setUniformValue("dualTipRotation", 0.0f);
+    m_program->setUniformValue("uDualTipBlendMode", 0);
+  }
+
+  // --- GRAIN BLEND MODE ---
+  m_program->setUniformValue("uGrainBlendMode", grainBlendMode);
 
   // --- WET MIX ENGINE & WATERCOLOR UNIFORMS ---
   m_program->setUniformValue("wetness", wetness);
