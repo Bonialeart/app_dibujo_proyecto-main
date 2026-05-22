@@ -43,6 +43,7 @@ Item {
     // Selection state
     property int selectedPanelId: -1
     property int selectedBubbleId: -1
+    property Item selectedBubbleDelegate: null
     property int selectedShapeId: -1
     property bool hasSelection: selectedPanelId >= 0 || selectedBubbleId >= 0 || selectedShapeId >= 0
     
@@ -57,6 +58,47 @@ Item {
     signal bubblesChanged()
     signal shapesChanged()
     signal shapeDrawingFinished()
+    
+    // ── Helper functions for Speech Bubbles ──
+    function constrainTail(tx, ty, bw, bh, type) {
+        var rx = bw / 2
+        var ry = bh / 2
+        var minDistance = 15
+        
+        if (type === "speech" || type === "oval" || type === "double_oval" || type === "thought") {
+            var distRatio = Math.sqrt((tx * tx) / (rx * rx) + (ty * ty) / (ry * ry))
+            var angle = Math.atan2(ty, tx)
+            var boundX = rx * Math.cos(angle)
+            var boundY = ry * Math.sin(angle)
+            var targetX = boundX + minDistance * Math.cos(angle)
+            var targetY = boundY + minDistance * Math.sin(angle)
+            
+            var currentDist = Math.sqrt(tx * tx + ty * ty)
+            var targetDist = Math.sqrt(targetX * targetX + targetY * targetY)
+            if (currentDist < targetDist) {
+                return { x: targetX, y: targetY }
+            }
+        } else {
+            var absX = Math.abs(tx)
+            var absY = Math.abs(ty)
+            var limX = rx + minDistance
+            var limY = ry + minDistance
+            
+            if (absX < limX && absY < limY) {
+                var diffX = limX - absX
+                var diffY = limY - absY
+                var newTx = tx
+                var newTy = ty
+                if (diffX < diffY) {
+                    newTx = tx >= 0 ? limX : -limX
+                } else {
+                    newTy = ty >= 0 ? limY : -limY
+                }
+                return { x: newTx, y: newTy }
+            }
+        }
+        return { x: tx, y: ty }
+    }
     
     // ── Public API ──
     
@@ -804,25 +846,126 @@ Item {
             property real offX: targetCanvas ? targetCanvas.viewOffset.x * zoom : 0
             property real offY: targetCanvas ? targetCanvas.viewOffset.y * zoom : 0
             
-            x: offX + bubbleData.x * zoom
-            y: offY + bubbleData.y * zoom
-            width: bubbleData.w * zoom
-            height: bubbleData.h * zoom
+            // Custom fully reactive QML properties
+            property real bubbleX: bubbleData.x
+            property real bubbleY: bubbleData.y
+            property real bubbleW: bubbleData.w
+            property real bubbleH: bubbleData.h
+            
+            property real strokeWidth: bubbleData.strokeWidth !== undefined ? bubbleData.strokeWidth : 3
+            property string strokeColor: bubbleData.strokeColor !== undefined ? bubbleData.strokeColor : "#000000"
+            property string fillColor: bubbleData.fillColor !== undefined ? bubbleData.fillColor : "#ffffff"
+            property real cornerRadius: bubbleData.cornerRadius !== undefined ? bubbleData.cornerRadius : 16
+            property real tailWidth: bubbleData.tailWidth !== undefined ? bubbleData.tailWidth : 30
+            property real tailX: bubbleData.tailX !== undefined ? bubbleData.tailX : -bubbleW * 0.4
+            property real tailY: bubbleData.tailY !== undefined ? bubbleData.tailY : bubbleH * 0.6
+            
+            property int fontSize: bubbleData.fontSize !== undefined ? bubbleData.fontSize : 18
+            property bool autoResize: bubbleData.autoResize || false
+            property bool autoFitText: bubbleData.autoFitText || false
+            property string textColor: bubbleData.textColor !== undefined ? bubbleData.textColor : "#000000"
+            property string fontFamily: bubbleData.fontFamily !== undefined ? bubbleData.fontFamily : "Comic Sans MS, sans-serif"
+            property bool bold: bubbleData.bold !== undefined ? bubbleData.bold : (bubbleType === "shout")
+            property bool italic: bubbleData.italic || false
+            property int alignment: bubbleData.alignment !== undefined ? bubbleData.alignment : Text.AlignHCenter
+            property string text: bubbleData.text || ""
+            
+            // Selection tracking
+            onIsSelectedChanged: {
+                if (isSelected) {
+                    root.selectedBubbleDelegate = bubbleDelegate
+                } else if (root.selectedBubbleDelegate === bubbleDelegate) {
+                    root.selectedBubbleDelegate = null
+                }
+            }
+            
+            function keepTailConstrained() {
+                if (bubbleType === "narration") return
+                var constrained = root.constrainTail(tailX, tailY, bubbleW, bubbleH, bubbleType)
+                if (Math.abs(tailX - constrained.x) > 0.05 || Math.abs(tailY - constrained.y) > 0.05) {
+                    tailX = constrained.x
+                    tailY = constrained.y
+                }
+            }
+            
+            Component.onCompleted: {
+                keepTailConstrained()
+            }
+            
+            // Sync back to plain JS object
+            onBubbleXChanged: { if (bubbleData) bubbleData.x = bubbleX }
+            onBubbleYChanged: { if (bubbleData) bubbleData.y = bubbleY }
+            onBubbleWChanged: {
+                if (bubbleData) bubbleData.w = bubbleW
+                keepTailConstrained()
+            }
+            onBubbleHChanged: {
+                if (bubbleData) bubbleData.h = bubbleH
+                keepTailConstrained()
+            }
+            onStrokeWidthChanged: { if (bubbleData) bubbleData.strokeWidth = strokeWidth }
+            onStrokeColorChanged: { if (bubbleData) bubbleData.strokeColor = strokeColor }
+            onFillColorChanged: { if (bubbleData) bubbleData.fillColor = fillColor }
+            onCornerRadiusChanged: { if (bubbleData) bubbleData.cornerRadius = cornerRadius }
+            onTailWidthChanged: { if (bubbleData) bubbleData.tailWidth = tailWidth }
+            onTailXChanged: {
+                if (bubbleData) bubbleData.tailX = tailX
+                keepTailConstrained()
+            }
+            onTailYChanged: {
+                if (bubbleData) bubbleData.tailY = tailY
+                keepTailConstrained()
+            }
+            onFontSizeChanged: { if (bubbleData) bubbleData.fontSize = fontSize }
+            onAutoResizeChanged: { if (bubbleData) bubbleData.autoResize = autoResize }
+            onAutoFitTextChanged: { if (bubbleData) bubbleData.autoFitText = autoFitText }
+            onTextColorChanged: { if (bubbleData) bubbleData.textColor = textColor }
+            onFontFamilyChanged: { if (bubbleData) bubbleData.fontFamily = fontFamily }
+            onBoldChanged: { if (bubbleData) bubbleData.bold = bold }
+            onItalicChanged: { if (bubbleData) bubbleData.italic = italic }
+            onAlignmentChanged: { if (bubbleData) bubbleData.alignment = alignment }
+            onTextChanged: { if (bubbleData) bubbleData.text = text }
+            onBubbleTypeChanged: {
+                if (bubbleData) bubbleData.type = bubbleType
+                keepTailConstrained()
+            }
+            
+            x: offX + bubbleX * zoom
+            y: offY + bubbleY * zoom
+            width: bubbleW * zoom
+            height: bubbleH * zoom
             z: isSelected ? 60 : 20
             
             // ── Bubble Shape ──
             Canvas {
                 id: bubbleCanvas
                 anchors.fill: parent
-                anchors.margins: -20 * zoom // Extra room for tail
+                
+                // Dynamically calculate margin to ensure the tail tip is never clipped in any direction
+                property real extraPadding: Math.max(30, Math.max(Math.abs(tailX) - bubbleW/2, Math.abs(tailY) - bubbleH/2) + 20)
+                anchors.margins: -extraPadding * zoom
                 
                 property string bType: bubbleType
                 property bool sel: isSelected
+                property real sWidth: strokeWidth
+                property string sColor: strokeColor
+                property string fColor: fillColor
+                property real cRadius: cornerRadius
+                property real tWidth: tailWidth
+                property real tX: tailX
+                property real tY: tailY
                 
                 onBTypeChanged: requestPaint()
                 onSelChanged: requestPaint()
                 onWidthChanged: requestPaint()
                 onHeightChanged: requestPaint()
+                onSWidthChanged: requestPaint()
+                onSColorChanged: requestPaint()
+                onFColorChanged: requestPaint()
+                onCRadiusChanged: requestPaint()
+                onTWidthChanged: requestPaint()
+                onTXChanged: requestPaint()
+                onTYChanged: requestPaint()
                 
                 Connections {
                     target: root
@@ -835,16 +978,16 @@ Item {
                     var ctx = getContext("2d")
                     ctx.clearRect(0, 0, width, height)
                     
-                    var pad = 20 * zoom
+                    var pad = extraPadding * zoom
                     var bx = pad, by = pad
                     var bw = width - 2 * pad, bh = height - 2 * pad
                     var cx = width / 2, cy = height / 2
                     
-                    var strokeColor = bubbleData.strokeColor !== undefined ? bubbleData.strokeColor : "#000000"
-                    var fillColor = bubbleData.fillColor !== undefined ? bubbleData.fillColor : "#ffffff"
-                    var strokeWidth = (bubbleData.strokeWidth !== undefined ? bubbleData.strokeWidth : 3) * zoom
-                    var cornerRadius = (bubbleData.cornerRadius !== undefined ? bubbleData.cornerRadius : 16) * zoom
-                    var tWidth = (bubbleData.tailWidth !== undefined ? bubbleData.tailWidth : 30) * zoom
+                    var strokeColor = sColor
+                    var fillColor = fColor
+                    var strokeWidth = sWidth * zoom
+                    var cornerRadius = cRadius * zoom
+                    var tWidth = this.tWidth * zoom
                     
                     ctx.fillStyle = fillColor
                     ctx.strokeStyle = sel ? root.accentColor.toString() : strokeColor
@@ -852,106 +995,319 @@ Item {
                     ctx.lineJoin = "round"
                     ctx.lineCap = "round"
                     
-                    var tX = bubbleData.tailX !== undefined ? bubbleData.tailX : -bubbleData.w * 0.4
-                    var tY = bubbleData.tailY !== undefined ? bubbleData.tailY : bubbleData.h * 0.6
+                    // Support offsets for double bubble base lower-right anchoring
+                    var subCx = cx
+                    var subCy = cy
+                    var subBw = bw
+                    var subBh = bh
+                    if (bType === "double_oval" || bType === "double_rounded") {
+                        var ox = bw * 0.12
+                        var oy = bh * 0.12
+                        subCx = cx + ox
+                        subCy = cy + oy
+                        subBw = bw * 0.76
+                        subBh = bh * 0.76
+                    }
+                    
                     var tTipX = cx + tX * zoom
                     var tTipY = cy + tY * zoom
                     
-                    var theta = Math.atan2(tTipY - cy, tTipX - cx)
+                    var theta = Math.atan2(tTipY - subCy, tTipX - subCx)
                     
                     // Boundary raycast intersection point B
-                    var bX = cx
-                    var bY = cy
-                    if (bType === "speech" || bType === "oval" || bType === "thought") {
+                    var bX = subCx
+                    var bY = subCy
+                    if (bType === "speech" || bType === "oval" || bType === "double_oval" || bType === "thought") {
                         // Ellipse intersection
-                        bX = cx + (bw / 2) * Math.cos(theta)
-                        bY = cy + (bh / 2) * Math.sin(theta)
+                        bX = subCx + (subBw / 2) * Math.cos(theta)
+                        bY = subCy + (subBh / 2) * Math.sin(theta)
                     } else {
                         // Rectangle intersection
                         var dx = Math.cos(theta)
                         var dy = Math.sin(theta)
-                        var tx = dx !== 0 ? Math.abs((bw / 2) / dx) : 999999
-                        var ty = dy !== 0 ? Math.abs((bh / 2) / dy) : 999999
+                        var tx = dx !== 0 ? Math.abs((subBw / 2) / dx) : 999999
+                        var ty = dy !== 0 ? Math.abs((subBh / 2) / dy) : 999999
                         var tVal = Math.min(tx, ty)
-                        bX = cx + tVal * dx
-                        bY = cy + tVal * dy
+                        bX = subCx + tVal * dx
+                        bY = subCy + tVal * dy
                     }
                     
-                    // Perpendicular base points A1, A2
-                    var perpX = -Math.sin(theta)
-                    var perpY = Math.cos(theta)
-                    var a1X = bX - perpX * (tWidth / 2)
-                    var a1Y = bY - perpY * (tWidth / 2)
-                    var a2X = bX + perpX * (tWidth / 2)
-                    var a2Y = bY + perpY * (tWidth / 2)
+                    // Calculate precise tail base angles and intersection points
+                    var hasTail = (bType !== "narration" && bType !== "thought")
+                    var a1X = 0, a1Y = 0, a2X = 0, a2Y = 0
+                    var theta1 = 0, theta2 = 0
                     
-                    function drawBodyPath(c) {
-                        if (bType === "speech" || bType === "oval") {
-                            c.beginPath()
-                            c.ellipse(bx, by, bw, bh)
-                        } else if (bType === "rect" || bType === "narration") {
-                            c.beginPath()
-                            c.rect(bx, by, bw, bh)
-                        } else if (bType === "rounded_rect") {
-                            c.beginPath()
-                            c.roundedRect(bx, by, bw, bh, cornerRadius, cornerRadius)
-                        } else if (bType === "thought") {
-                            c.beginPath()
-                            var rx = bw/2, ry = bh/2
+                    if (hasTail) {
+                        var rx = subBw / 2
+                        var ry = subBh / 2
+                        var rTheta = 0
+                        if (bType === "rect" || bType === "rounded_rect" || bType === "double_rounded") {
+                            var dx = Math.cos(theta)
+                            var dy = Math.sin(theta)
+                            var tx = dx !== 0 ? Math.abs((subBw / 2) / dx) : 999999
+                            var ty = dy !== 0 ? Math.abs((subBh / 2) / dy) : 999999
+                            rTheta = Math.min(tx, ty)
+                        } else {
+                            rTheta = 1.0 / Math.sqrt(Math.pow(Math.cos(theta) / rx, 2) + Math.pow(Math.sin(theta) / ry, 2))
+                        }
+                        
+                        var deltaTheta = (tWidth / 2) / rTheta
+                        theta1 = theta - deltaTheta
+                        theta2 = theta + deltaTheta
+                        
+                        if (bType === "rect" || bType === "rounded_rect" || bType === "double_rounded") {
+                            var a1 = getRectIntersection(subCx, subCy, subBw, subBh, theta1)
+                            var a2 = getRectIntersection(subCx, subCy, subBw, subBh, theta2)
+                            a1X = a1.x; a1Y = a1.y
+                            a2X = a2.x; a2Y = a2.y
+                        } else {
+                            a1X = subCx + rx * Math.cos(theta1)
+                            a1Y = subCy + ry * Math.sin(theta1)
+                            a2X = subCx + rx * Math.cos(theta2)
+                            a2Y = subCy + ry * Math.sin(theta2)
+                        }
+                    }
+                    
+                    function isAngleBetween(target, start, end) {
+                        var t = (target % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+                        var s = (start % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+                        var e = (end % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI)
+                        if (s <= e) {
+                            return t >= s && t <= e
+                        } else {
+                            return t >= s || t <= e
+                        }
+                    }
+                    
+                    function getRectIntersection(cx, cy, w, h, phi) {
+                        var dx = Math.cos(phi)
+                        var dy = Math.sin(phi)
+                        var tx = dx !== 0 ? Math.abs((w / 2) / dx) : 999999
+                        var ty = dy !== 0 ? Math.abs((h / 2) / dy) : 999999
+                        var tVal = Math.min(tx, ty)
+                        return {
+                            x: cx + tVal * dx,
+                            y: cy + tVal * dy,
+                            t: tVal
+                        }
+                    }
+                    
+                    function pathBubbleShape(c, type, subCx, subCy, subBw, subBh, cornerRadius, theta1, theta2, a1x, a1y, a2x, a2y, tTipX, tTipY) {
+                        if (type === "speech" || type === "oval") {
+                            var rx = subBw / 2
+                            var ry = subBh / 2
+                            
+                            c.save()
+                            c.translate(subCx, subCy)
+                            c.scale(1.0, ry / rx)
+                            
+                            c.arc(0, 0, rx, theta2, theta1, false)
+                            
+                            var scaledTipX = tTipX - subCx
+                            var scaledTipY = (tTipY - subCy) * (rx / ry)
+                            
+                            c.lineTo(scaledTipX, scaledTipY)
+                            c.lineTo(rx * Math.cos(theta2), rx * Math.sin(theta2))
+                            c.closePath()
+                            c.restore()
+                        } else if (type === "rect" || type === "rounded_rect" || type === "narration") {
+                            var bx = subCx - subBw / 2
+                            var by = subCy - subBh / 2
+                            var bw = subBw
+                            var bh = subBh
+                            
+                            var isRounded = (type === "rounded_rect")
+                            
+                            if (type === "narration") {
+                                c.rect(bx, by, bw, bh)
+                                return
+                            }
+                            
+                            var corners = [
+                                { x: bx, y: by, angle: Math.atan2(by - subCy, bx - subCx) },
+                                { x: bx + bw, y: by, angle: Math.atan2(by - subCy, bx + bw - subCx) },
+                                { x: bx + bw, y: by + bh, angle: Math.atan2(by + bh - subCy, bx + bw - subCx) },
+                                { x: bx, y: by + bh, angle: Math.atan2(by + bh - subCy, bx - subCx) }
+                            ]
+                            
+                            var activeCorners = []
+                            for (var i = 0; i < 4; i++) {
+                                var cr = corners[i]
+                                if (isAngleBetween(cr.angle, theta2, theta1)) {
+                                    activeCorners.push(cr)
+                                }
+                            }
+                            
+                            c.moveTo(a2x, a2y)
+                            
+                            for (var j = 0; j < activeCorners.length; j++) {
+                                var curr = activeCorners[j]
+                                var nextPt = (j < activeCorners.length - 1) ? activeCorners[j + 1] : { x: a1x, y: a1y }
+                                
+                                if (isRounded) {
+                                    c.arcTo(curr.x, curr.y, nextPt.x, nextPt.y, cornerRadius)
+                                } else {
+                                    c.lineTo(curr.x, curr.y)
+                                }
+                            }
+                            
+                            c.lineTo(a1x, a1y)
+                            c.lineTo(tTipX, tTipY)
+                            c.lineTo(a2x, a2y)
+                        } else if (type === "shout") {
+                            var rx = subBw / 2
+                            var ry = subBh / 2
+                            var spikyPoints = []
+                            var points = 24
+                            for (var k = 0; k < points; k++) {
+                                var angle = (k / points) * Math.PI * 2 - Math.PI/2
+                                var rOuter = (k % 2 === 0) ? 1.0 : 0.70
+                                var prx = subCx + Math.cos(angle) * rx * rOuter
+                                var pry = subCy + Math.sin(angle) * ry * rOuter
+                                spikyPoints.push({ x: prx, y: pry, angle: angle })
+                            }
+                            
+                            c.moveTo(a2x, a2y)
+                            for (var i = 0; i < spikyPoints.length; i++) {
+                                var pt = spikyPoints[i]
+                                if (isAngleBetween(pt.angle, theta2, theta1)) {
+                                    c.lineTo(pt.x, pt.y)
+                                }
+                            }
+                            c.lineTo(a1x, a1y)
+                            c.lineTo(tTipX, tTipY)
+                            c.lineTo(a2x, a2y)
+                        } else if (type === "thought") {
+                            var rx = subBw/2, ry = subBh/2
                             var bumps = 12
                             for (var i = 0; i < bumps; i++) {
                                 var a = (i / bumps) * Math.PI * 2
                                 var na = ((i + 1) / bumps) * Math.PI * 2
                                 var bumpSize = 0.15
-                                var px = cx + Math.cos(a) * rx
-                                var py = cy + Math.sin(a) * ry
-                                var npx = cx + Math.cos(na) * rx
-                                var npy = cy + Math.sin(na) * ry
-                                var cpx = cx + Math.cos((a + na)/2) * (rx * (1 + bumpSize))
-                                var cpy = cy + Math.sin((a + na)/2) * (ry * (1 + bumpSize))
+                                var px = subCx + Math.cos(a) * rx
+                                var py = subCy + Math.sin(a) * ry
+                                var npx = subCx + Math.cos(na) * rx
+                                var npy = subCy + Math.sin(na) * ry
+                                var cpx = subCx + Math.cos((a + na)/2) * (rx * (1 + bumpSize))
+                                var cpy = subCy + Math.sin((a + na)/2) * (ry * (1 + bumpSize))
                                 
                                 if (i === 0) c.moveTo(px, py)
                                 c.quadraticCurveTo(cpx, cpy, npx, npy)
                             }
-                            c.closePath()
-                        } else if (bType === "shout") {
-                            c.beginPath()
-                            var points = 16
-                            var closestK = 0
-                            var minDiff = 999999
-                            for (var k = 0; k < points; k += 2) {
-                                var angle = (k / points) * Math.PI * 2 - Math.PI/2
-                                var diff = Math.abs(Math.atan2(Math.sin(angle - theta), Math.cos(angle - theta)))
-                                if (diff < minDiff) {
-                                    minDiff = diff
-                                    closestK = k
-                                }
-                            }
-                            for (var k = 0; k < points; k++) {
-                                var angle = (k / points) * Math.PI * 2 - Math.PI/2
-                                var prx, pry
-                                if (k === closestK) {
-                                    prx = tTipX
-                                    pry = tTipY
-                                } else {
-                                    var rOuter = (k % 2 === 0) ? 1.0 : 0.75
-                                    prx = cx + Math.cos(angle) * bw/2 * rOuter
-                                    pry = cy + Math.sin(angle) * bh/2 * rOuter
-                                }
-                                if (k === 0) c.moveTo(prx, pry)
-                                else c.lineTo(prx, pry)
-                            }
-                            c.closePath()
                         }
                     }
                     
-                    if (bType === "narration" || bType === "shout") {
-                        drawBodyPath(ctx)
-                        if (fillColor !== "transparent") ctx.fill()
+                    function drawMainUnifiedPath(c) {
+                        c.beginPath()
+                        if (bType === "double_oval") {
+                            // First bubble (no tail)
+                            var ox = bw * 0.12
+                            var oy = bh * 0.12
+                            var w1 = bw * 0.76
+                            var h1 = bh * 0.76
+                            
+                            c.ellipse(cx - ox - w1/2, cy - oy - h1/2, w1, h1)
+                            
+                            // Second bubble with tail
+                            var subCx = cx + ox
+                            var subCy = cy + oy
+                            var subBw = w1
+                            var subBh = h1
+                            
+                            var rx = subBw / 2
+                            var ry = subBh / 2
+                            var subTheta = Math.atan2(tTipY - subCy, tTipX - subCx)
+                            var rTheta = 1.0 / Math.sqrt(Math.pow(Math.cos(subTheta) / rx, 2) + Math.pow(Math.sin(subTheta) / ry, 2))
+                            var deltaTheta = (tWidth / 2) / rTheta
+                            var t1 = subTheta - deltaTheta
+                            var t2 = subTheta + deltaTheta
+                            var a1x = subCx + rx * Math.cos(t1)
+                            var a1y = subCy + ry * Math.sin(t1)
+                            var a2x = subCx + rx * Math.cos(t2)
+                            var a2y = subCy + ry * Math.sin(t2)
+                            
+                            pathBubbleShape(c, "oval", subCx, subCy, subBw, subBh, cornerRadius, t1, t2, a1x, a1y, a2x, a2y, tTipX, tTipY)
+                        } else if (bType === "double_rounded") {
+                            // First bubble (no tail)
+                            var ox = bw * 0.12
+                            var oy = bh * 0.12
+                            var w1 = bw * 0.76
+                            var h1 = bh * 0.76
+                            
+                            c.roundedRect(cx - ox - w1/2, cy - oy - h1/2, w1, h1, cornerRadius, cornerRadius)
+                            
+                            // Second bubble with tail
+                            var subCx = cx + ox
+                            var subCy = cy + oy
+                            var subBw = w1
+                            var subBh = h1
+                            
+                            var subTheta = Math.atan2(tTipY - subCy, tTipX - subCx)
+                            var dx = Math.cos(subTheta)
+                            var dy = Math.sin(subTheta)
+                            var tx = dx !== 0 ? Math.abs((subBw / 2) / dx) : 999999
+                            var ty = dy !== 0 ? Math.abs((subBh / 2) / dy) : 999999
+                            var rTheta = Math.min(tx, ty)
+                            
+                            var deltaTheta = (tWidth / 2) / rTheta
+                            var t1 = subTheta - deltaTheta
+                            var t2 = subTheta + deltaTheta
+                            
+                            var a1 = getRectIntersection(subCx, subCy, subBw, subBh, t1)
+                            var a2 = getRectIntersection(subCx, subCy, subBw, subBh, t2)
+                            
+                            pathBubbleShape(c, "rounded_rect", subCx, subCy, subBw, subBh, cornerRadius, t1, t2, a1.x, a1.y, a2.x, a2.y, tTipX, tTipY)
+                        } else {
+                            pathBubbleShape(c, bType, subCx, subCy, subBw, subBh, cornerRadius, theta1, theta2, a1X, a1Y, a2X, a2Y, tTipX, tTipY)
+                        }
+                    }
+                    
+                    // ═══════════════ RENDER PASSES ═══════════════
+                    if (bType === "double_oval" || bType === "double_rounded") {
+                        // Double Bubble Merge Render
+                        ctx.beginPath()
+                        drawMainUnifiedPath(ctx)
+                        if (fillColor !== "transparent") {
+                            ctx.fillStyle = fillColor
+                            ctx.fill()
+                        }
+                        
+                        ctx.strokeStyle = sel ? root.accentColor.toString() : strokeColor
+                        ctx.lineWidth = strokeWidth * 2
+                        ctx.lineJoin = "round"
+                        ctx.lineCap = "round"
+                        ctx.beginPath()
+                        drawMainUnifiedPath(ctx)
                         ctx.stroke()
+                        
+                        if (fillColor !== "transparent") {
+                            ctx.fillStyle = fillColor
+                            ctx.beginPath()
+                            drawMainUnifiedPath(ctx)
+                            ctx.fill()
+                        } else {
+                            ctx.save()
+                            ctx.globalCompositeOperation = "destination-out"
+                            ctx.fillStyle = "rgba(0,0,0,1.0)"
+                            ctx.beginPath()
+                            drawMainUnifiedPath(ctx)
+                            ctx.fill()
+                            ctx.restore()
+                        }
                     } else if (bType === "thought") {
-                        drawBodyPath(ctx)
-                        if (fillColor !== "transparent") ctx.fill()
+                        // Thought Bubble Spiky Bumps & Dots
+                        ctx.beginPath()
+                        drawMainUnifiedPath(ctx)
+                        if (fillColor !== "transparent") {
+                            ctx.fillStyle = fillColor
+                            ctx.fill()
+                        }
+                        ctx.strokeStyle = sel ? root.accentColor.toString() : strokeColor
+                        ctx.lineWidth = strokeWidth
+                        ctx.lineJoin = "round"
+                        ctx.lineCap = "round"
+                        ctx.beginPath()
+                        drawMainUnifiedPath(ctx)
                         ctx.stroke()
                         
                         // 3 thought circles
@@ -971,52 +1327,20 @@ Item {
                             ctx.stroke()
                         }
                     } else {
-                        // Standard bubbles (speech, oval, rect, rounded_rect) with customizable tails
-                        // 1. Fill body
-                        drawBodyPath(ctx)
-                        if (fillColor !== "transparent") ctx.fill()
-                        
-                        // 2. Fill tail
+                        // Standard Bubbles (speech, oval, rect, rounded_rect, shout, narration)
                         ctx.beginPath()
-                        ctx.moveTo(a1X, a1Y)
-                        ctx.lineTo(tTipX, tTipY)
-                        ctx.lineTo(a2X, a2Y)
-                        ctx.closePath()
-                        if (fillColor !== "transparent") ctx.fill()
-                        
-                        // 3. Stroke body
-                        ctx.strokeStyle = sel ? root.accentColor.toString() : strokeColor
-                        ctx.lineWidth = strokeWidth
-                        drawBodyPath(ctx)
-                        ctx.stroke()
-                        
-                        // 4. Mask outline join region
+                        drawMainUnifiedPath(ctx)
                         if (fillColor !== "transparent") {
-                            ctx.strokeStyle = fillColor
-                            ctx.lineWidth = strokeWidth + 2
-                            ctx.beginPath()
-                            ctx.moveTo(a1X, a1Y)
-                            ctx.lineTo(a2X, a2Y)
-                            ctx.stroke()
-                        } else {
-                            ctx.save()
-                            ctx.globalCompositeOperation = "destination-out"
-                            ctx.strokeStyle = "rgba(0,0,0,1.0)"
-                            ctx.lineWidth = strokeWidth + 2
-                            ctx.beginPath()
-                            ctx.moveTo(a1X, a1Y)
-                            ctx.lineTo(a2X, a2Y)
-                            ctx.stroke()
-                            ctx.restore()
+                            ctx.fillStyle = fillColor
+                            ctx.fill()
                         }
                         
-                        // 5. Stroke tail
                         ctx.strokeStyle = sel ? root.accentColor.toString() : strokeColor
                         ctx.lineWidth = strokeWidth
+                        ctx.lineJoin = "round"
+                        ctx.lineCap = "round"
                         ctx.beginPath()
-                        ctx.moveTo(a1X, a1Y)
-                        ctx.lineTo(tTipX, tTipY)
-                        ctx.lineTo(a2X, a2Y)
+                        drawMainUnifiedPath(ctx)
                         ctx.stroke()
                     }
                 }
@@ -1030,28 +1354,26 @@ Item {
             
             // ── Auto Adjusting helpers ──
             function updateAutoHeight() {
-                if (!bubbleData || !bubbleData.autoResize) return
+                if (!autoResize) return
                 var ch = bubbleText.contentHeight
                 var th = 0
-                if (bubbleType === "rect" || bubbleType === "rounded_rect" || bubbleType === "narration") {
+                if (bubbleType === "rect" || bubbleType === "rounded_rect" || bubbleType === "double_rounded" || bubbleType === "narration") {
                     th = ch / zoom + 50
                 } else {
                     th = (ch / zoom) * 1.414 + 40
                 }
                 th = Math.max(60, th)
-                if (Math.abs(bubbleData.h - th) > 1.0) {
-                    bubbleData.h = th
-                    root.bubbleItems = root.bubbleItems.slice()
-                    bubbleCanvas.requestPaint()
+                if (Math.abs(bubbleH - th) > 1.0) {
+                    bubbleH = th
                 }
             }
             
             function adjustFontSizeToFit() {
-                if (!bubbleData || !bubbleData.autoFitText) return
+                if (!autoFitText) return
                 
                 var minFs = 8
                 var maxFs = 60
-                var bestFs = bubbleData.fontSize || 18
+                var bestFs = fontSize || 18
                 
                 var textToFit = bubbleText.text
                 if (!textToFit || textToFit.trim() === "") return
@@ -1060,9 +1382,9 @@ Item {
                 fitCalcText.font.family = bubbleText.font.family
                 fitCalcText.font.bold = bubbleText.font.bold
                 fitCalcText.font.italic = bubbleText.font.italic
-                fitCalcText.width = (bubbleType === "rect" || bubbleType === "narration" || bubbleType === "rounded_rect") ? bubbleData.w * 0.85 : bubbleData.w * 0.70
+                fitCalcText.width = (bubbleType === "rect" || bubbleType === "narration" || bubbleType === "rounded_rect" || bubbleType === "double_rounded") ? bubbleW * 0.85 : bubbleW * 0.70
                 
-                var targetH = (bubbleType === "rect" || bubbleType === "narration" || bubbleType === "rounded_rect") ? bubbleData.h * 0.85 : bubbleData.h * 0.70
+                var targetH = (bubbleType === "rect" || bubbleType === "narration" || bubbleType === "rounded_rect" || bubbleType === "double_rounded") ? bubbleH * 0.85 : bubbleH * 0.70
                 
                 var low = minFs
                 var high = maxFs
@@ -1079,33 +1401,25 @@ Item {
                     }
                 }
                 
-                if (bubbleData.fontSize !== bestFs) {
-                    bubbleData.fontSize = bestFs
-                    root.bubbleItems = root.bubbleItems.slice()
-                    bubbleCanvas.requestPaint()
+                if (fontSize !== bestFs) {
+                    fontSize = bestFs
                 }
             }
             
             onWidthChanged: {
-                if (bubbleData) {
-                    if (bubbleData.autoResize) updateAutoHeight()
-                    if (bubbleData.autoFitText) adjustFontSizeToFit()
-                }
+                if (autoResize) updateAutoHeight()
+                if (autoFitText) adjustFontSizeToFit()
             }
             onHeightChanged: {
-                if (bubbleData) {
-                    if (bubbleData.autoFitText) adjustFontSizeToFit()
-                }
+                if (autoFitText) adjustFontSizeToFit()
             }
             
             Connections {
                 target: root
                 function onBubblesChanged() {
                     bubbleCanvas.requestPaint()
-                    if (bubbleData) {
-                        if (bubbleData.autoResize) updateAutoHeight()
-                        if (bubbleData.autoFitText) adjustFontSizeToFit()
-                    }
+                    if (autoResize) updateAutoHeight()
+                    if (autoFitText) adjustFontSizeToFit()
                 }
             }
             
@@ -1113,31 +1427,29 @@ Item {
             TextEdit {
                 id: bubbleText
                 anchors.centerIn: parent
-                width: (bubbleType === "rect" || bubbleType === "narration" || bubbleType === "rounded_rect") ? parent.width * 0.85 : parent.width * 0.70
-                text: bubbleData.text || ""
-                color: bubbleData.textColor !== undefined ? bubbleData.textColor : "#000000"
-                font.pixelSize: (bubbleData.fontSize !== undefined ? bubbleData.fontSize : 18) * zoom
-                font.family: bubbleData.fontFamily !== undefined ? bubbleData.fontFamily : (bubbleType === "shout" ? "Impact, sans-serif" : "Comic Sans MS, sans-serif")
-                font.bold: bubbleData.bold !== undefined ? bubbleData.bold : (bubbleType === "shout")
-                font.italic: bubbleData.italic !== undefined ? bubbleData.italic : false
-                horizontalAlignment: bubbleData.alignment !== undefined ? bubbleData.alignment : Text.AlignHCenter
+                width: (bubbleType === "rect" || bubbleType === "narration" || bubbleType === "rounded_rect" || bubbleType === "double_rounded") ? parent.width * 0.85 : parent.width * 0.70
+                text: bubbleDelegate.text
+                color: textColor
+                font.pixelSize: fontSize * zoom
+                font.family: fontFamily
+                font.bold: bold
+                font.italic: italic
+                horizontalAlignment: alignment
                 verticalAlignment: Text.AlignVCenter
                 wrapMode: TextEdit.WordWrap
                 readOnly: !isSelected
                 selectByMouse: isSelected
                 
                 onContentHeightChanged: {
-                    if (bubbleData) {
-                        if (bubbleData.autoResize) updateAutoHeight()
-                        if (bubbleData.autoFitText) adjustFontSizeToFit()
-                    }
+                    if (autoResize) updateAutoHeight()
+                    if (autoFitText) adjustFontSizeToFit()
                 }
                 onTextChanged: {
-                    if (bubbleData) {
-                        bubbleData.text = text
-                        if (bubbleData.autoResize) updateAutoHeight()
-                        if (bubbleData.autoFitText) adjustFontSizeToFit()
+                    if (bubbleDelegate.text !== text) {
+                        bubbleDelegate.text = text
                     }
+                    if (autoResize) updateAutoHeight()
+                    if (autoFitText) adjustFontSizeToFit()
                 }
             }
             
@@ -1166,13 +1478,12 @@ Item {
                 
                 onPressed: {
                     startX = mouseX; startY = mouseY
-                    origBx = bubbleData.x; origBy = bubbleData.y
+                    origBx = bubbleX; origBy = bubbleY
                 }
                 onPositionChanged: {
                     if (pressed) {
-                        bubbleData.x = origBx + (mouseX - startX) / zoom
-                        bubbleData.y = origBy + (mouseY - startY) / zoom
-                        root.bubbleItems = root.bubbleItems.slice()
+                        bubbleX = origBx + (mouseX - startX) / zoom
+                        bubbleY = origBy + (mouseY - startY) / zoom
                     }
                 }
             }
@@ -1207,8 +1518,8 @@ Item {
                         
                         onPressed: {
                             sx = mouse.x + parent.x; sy = mouse.y + parent.y
-                            oX = bubbleData.x; oY = bubbleData.y
-                            oW = bubbleData.w; oH = bubbleData.h
+                            oX = bubbleX; oY = bubbleY
+                            oW = bubbleW; oH = bubbleH
                         }
                         onPositionChanged: {
                             if (!pressed) return
@@ -1218,19 +1529,18 @@ Item {
                             var ms = 60
                             
                             if (e === "tl") {
-                                if (oW - dx > ms) { bubbleData.x = oX + dx; bubbleData.w = oW - dx }
-                                if (oH - dy > ms) { bubbleData.y = oY + dy; bubbleData.h = oH - dy }
+                                if (oW - dx > ms) { bubbleX = oX + dx; bubbleW = oW - dx }
+                                if (oH - dy > ms) { bubbleY = oY + dy; bubbleH = oH - dy }
                             } else if (e === "tr") {
-                                if (oW + dx > ms) bubbleData.w = oW + dx
-                                if (oH - dy > ms) { bubbleData.y = oY + dy; bubbleData.h = oH - dy }
+                                if (oW + dx > ms) bubbleW = oW + dx
+                                if (oH - dy > ms) { bubbleY = oY + dy; bubbleH = oH - dy }
                             } else if (e === "bl") {
-                                if (oW - dx > ms) { bubbleData.x = oX + dx; bubbleData.w = oW - dx }
-                                if (oH + dy > ms) bubbleData.h = oH + dy
+                                if (oW - dx > ms) { bubbleX = oX + dx; bubbleW = oW - dx }
+                                if (oH + dy > ms) bubbleH = oH + dy
                             } else if (e === "br") {
-                                if (oW + dx > ms) bubbleData.w = oW + dx
-                                if (oH + dy > ms) bubbleData.h = oH + dy
+                                if (oW + dx > ms) bubbleW = oW + dx
+                                if (oH + dy > ms) bubbleH = oH + dy
                             }
-                            root.bubbleItems = root.bubbleItems.slice()
                             bubbleCanvas.requestPaint()
                         }
                     }
@@ -1245,8 +1555,8 @@ Item {
                 border.color: "#aa8800"; border.width: 2
                 z: 150
                 
-                x: bubbleDelegate.width / 2 + (bubbleData.tailX !== undefined ? bubbleData.tailX : -bubbleData.w * 0.4) * zoom - 9
-                y: bubbleDelegate.height / 2 + (bubbleData.tailY !== undefined ? bubbleData.tailY : bubbleData.h * 0.6) * zoom - 9
+                x: bubbleDelegate.width / 2 + tailX * zoom - 9
+                y: bubbleDelegate.height / 2 + tailY * zoom - 9
                 
                 MouseArea {
                     anchors.fill: parent
@@ -1257,9 +1567,8 @@ Item {
                             var p = bubbleDelegate.mapFromItem(this, mouse.x, mouse.y)
                             var cx = bubbleDelegate.width / 2
                             var cy = bubbleDelegate.height / 2
-                            bubbleData.tailX = (p.x - cx) / zoom
-                            bubbleData.tailY = (p.y - cy) / zoom
-                            root.bubbleItems = root.bubbleItems.slice()
+                            tailX = (p.x - cx) / zoom
+                            tailY = (p.y - cy) / zoom
                             bubbleCanvas.requestPaint()
                         }
                     }
@@ -1294,14 +1603,13 @@ Item {
                         MouseArea {
                             id: fsMinus; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                bubbleData.fontSize = Math.max(8, (bubbleData.fontSize || 18) - 2)
-                                root.bubbleItems = root.bubbleItems.slice()
+                                fontSize = Math.max(8, fontSize - 2)
                             }
                         }
                     }
                     
                     Text {
-                        text: (bubbleData.fontSize || 18) + "pt"
+                        text: fontSize + "pt"
                         color: "#888"; font.pixelSize: 10
                         anchors.verticalCenter: parent.verticalCenter
                     }
@@ -1313,8 +1621,7 @@ Item {
                         MouseArea {
                             id: fsPlus; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                bubbleData.fontSize = Math.min(72, (bubbleData.fontSize || 18) + 2)
-                                root.bubbleItems = root.bubbleItems.slice()
+                                fontSize = Math.min(72, fontSize + 2)
                             }
                         }
                     }
@@ -1331,10 +1638,16 @@ Item {
                             onClicked: {
                                 root.bubbleItems.push({
                                     id: root.nextId++,
-                                    x: bubbleData.x + 30, y: bubbleData.y + 30,
-                                    w: bubbleData.w, h: bubbleData.h,
-                                    type: bubbleData.type, text: bubbleData.text,
-                                    tailAngle: bubbleData.tailAngle, fontSize: bubbleData.fontSize
+                                    x: bubbleX + 30, y: bubbleY + 30,
+                                    w: bubbleW, h: bubbleH,
+                                    type: bubbleType, text: text,
+                                    tailX: tailX, tailY: tailY,
+                                    tailWidth: tailWidth, strokeWidth: strokeWidth,
+                                    strokeColor: strokeColor, fillColor: fillColor,
+                                    cornerRadius: cornerRadius, fontSize: fontSize,
+                                    autoResize: autoResize, autoFitText: autoFitText,
+                                    textColor: textColor, fontFamily: fontFamily,
+                                    bold: bold, italic: italic, alignment: alignment
                                 })
                                 root.bubbleItems = root.bubbleItems.slice()
                                 root.bubblesChanged()

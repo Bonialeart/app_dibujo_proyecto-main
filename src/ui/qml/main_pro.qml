@@ -69,6 +69,12 @@ Window {
             if (event.key === Qt.Key_Space) {
                 event.accepted = true;
                 if (event.isAutoRepeat) return;
+            } else if (event.key === Qt.Key_BracketLeft || event.key === Qt.Key_BracketRight ||
+                       event.key === Qt.Key_O || event.key === Qt.Key_R ||
+                       event.key === Qt.Key_4 || event.key === Qt.Key_5 || event.key === Qt.Key_6) {
+                event.accepted = true;
+            } else {
+                event.accepted = false; // Bubble up to global/local Shortcuts!
             }
             mainCanvas.handle_shortcuts(event.key, event.modifiers)
         }
@@ -92,14 +98,14 @@ Window {
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Undo"] ? mainWindow.sm["Undo"] : "Ctrl+Z"; onActivated: mainCanvas.undo() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Redo"] ? mainWindow.sm["Redo"] : "Ctrl+Y"; onActivated: mainCanvas.redo() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["New Layer"] ? mainWindow.sm["New Layer"] : "Ctrl+Shift+N"; onActivated: mainCanvas.addLayer() }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Pen Tool"] ? mainWindow.sm["Pen Tool"] : "P"; onActivated: mainCanvas.currentTool = "pen" }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Brush Tool"] ? mainWindow.sm["Brush Tool"] : "B"; onActivated: mainCanvas.currentTool = "brush" }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eraser Tool"] ? mainWindow.sm["Eraser Tool"] : "E"; onActivated: mainCanvas.currentTool = "eraser" }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Lasso Tool"] ? mainWindow.sm["Lasso Tool"] : "L"; onActivated: mainCanvas.currentTool = "lasso" }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Hand Tool"] ? mainWindow.sm["Hand Tool"] : "H"; onActivated: mainCanvas.currentTool = "hand" }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: mainCanvas.currentTool = "eyedropper" }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Move Tool"] ? mainWindow.sm["Move Tool"] : "V"; onActivated: mainCanvas.currentTool = "move" }
-    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Transform"] ? mainWindow.sm["Transform"] : "Ctrl+T"; onActivated: mainCanvas.currentTool = "transform" }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Pen Tool"] ? mainWindow.sm["Pen Tool"] : "P"; onActivated: canvasPage.activeToolIdx = 5 }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Brush Tool"] ? mainWindow.sm["Brush Tool"] : "B"; onActivated: canvasPage.activeToolIdx = 7 }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eraser Tool"] ? mainWindow.sm["Eraser Tool"] : "E"; onActivated: canvasPage.activeToolIdx = 9 }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Lasso Tool"] ? mainWindow.sm["Lasso Tool"] : "L"; onActivated: canvasPage.activeToolIdx = 2 }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Hand Tool"] ? mainWindow.sm["Hand Tool"] : "H"; onActivated: canvasPage.activeToolIdx = 12 }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: canvasPage.activeToolIdx = 11 }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Move Tool"] ? mainWindow.sm["Move Tool"] : "V"; onActivated: canvasPage.activeToolIdx = 4 }
+    Shortcut { sequence: mainWindow.sm && mainWindow.sm["Transform"] ? mainWindow.sm["Transform"] : "Ctrl+T"; onActivated: canvasPage.activeToolIdx = 4 }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Select None"] ? mainWindow.sm["Select None"] : "Ctrl+D"; onActivated: { mainCanvas.deselect(); mainCanvas.update() } }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Fit to Screen"] ? mainWindow.sm["Fit to Screen"] : "Ctrl+0"; onActivated: mainCanvas.fitToView() }
     Shortcut { sequence: mainWindow.sm && mainWindow.sm["Zoom In"] ? mainWindow.sm["Zoom In"] : "Ctrl++"; onActivated: mainCanvas.zoomLevel *= 1.2 }
@@ -2098,10 +2104,10 @@ Window {
                 property bool isSampling: false
                 property point samplePos: Qt.point(0,0)
                 
-                // Shortcuts (FIXED INDICES & BEHAVIOR)
-                Shortcut { sequence: "I"; onActivated: canvasPage.activeToolIdx = 11 }
-                Shortcut { sequence: "B"; onActivated: canvasPage.activeToolIdx = 7 }
-                Shortcut { sequence: "E"; onActivated: mainCanvas.isEraser = !mainCanvas.isEraser }
+                // Shortcuts (FIXED INDICES & BEHAVIOR - RESPECT USER PREFERENCES)
+                Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: canvasPage.activeToolIdx = 11 }
+                Shortcut { sequence: mainWindow.sm && mainWindow.sm["Brush Tool"] ? mainWindow.sm["Brush Tool"] : "B"; onActivated: canvasPage.activeToolIdx = 7 }
+                Shortcut { sequence: mainWindow.sm && mainWindow.sm["Eraser Tool"] ? mainWindow.sm["Eraser Tool"] : "E"; onActivated: canvasPage.activeToolIdx = 9 }
                 
                 // Alt logic: Need to capture Alt press/release
                 focus: isProjectActive
@@ -2113,6 +2119,8 @@ Window {
                             altPressed = true
                         }
                         event.accepted = true
+                    } else {
+                        event.accepted = false; // Bubble up!
                     }
                 }
                 Keys.onReleased: (event) => {

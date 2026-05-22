@@ -573,6 +573,8 @@ import "../components"
                             altPressed = true
                         }
                         event.accepted = true
+                    } else {
+                        event.accepted = false; // Bubble up!
                     }
                 }
                 Keys.onReleased: (event) => {

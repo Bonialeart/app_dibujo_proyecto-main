@@ -12,63 +12,15 @@ Item {
     property var comicOverlay: null
     property color accentColor: "#6366f1"
     
-    // Internal cache of the active bubble properties
-    property var activeBubble: null
-    property bool _loading: false
-    
-    function getSelectedBubble() {
-        if (!comicOverlay || comicOverlay.selectedBubbleId < 0) return null
-        var items = comicOverlay.bubbleItems
-        for (var i = 0; i < items.length; i++) {
-            if (items[i].id === comicOverlay.selectedBubbleId) {
-                return items[i]
-            }
-        }
-        return null
-    }
-    
-    function refreshValues() {
-        var b = getSelectedBubble()
-        activeBubble = b
-        if (!b) return
-        
-        _loading = true
-        // Set all UI controls
-        sliderStroke.value = b.strokeWidth !== undefined ? b.strokeWidth : 3
-        sliderTailWidth.value = b.tailWidth !== undefined ? b.tailWidth : 30
-        sliderCorner.value = b.cornerRadius !== undefined ? b.cornerRadius : 16
-        sliderFontSize.value = b.fontSize !== undefined ? b.fontSize : 18
-        
-        toggleAutoResize.active = b.autoResize || false
-        toggleAutoFit.active = b.autoFitText || false
-        toggleBold.active = b.bold !== undefined ? b.bold : (b.type === "shout")
-        toggleItalic.active = b.italic || false
-        
-        _loading = false
-    }
+    // Bind activeBubble directly to the reactive selected bubble delegate
+    property var activeBubble: comicOverlay ? comicOverlay.selectedBubbleDelegate : null
     
     function updateProperty(name, val) {
-        if (_loading) return
-        var b = getSelectedBubble()
-        if (b) {
-            b[name] = val
-            comicOverlay.bubbleItems = comicOverlay.bubbleItems.slice() // trigger model update
-            comicOverlay.bubblesChanged()
+        if (activeBubble) {
+            var propName = name;
+            if (name === "type") propName = "bubbleType";
+            activeBubble[propName] = val;
         }
-    }
-    
-    Connections {
-        target: comicOverlay
-        function onSelectedBubbleIdChanged() {
-            refreshValues()
-        }
-        function onBubblesChanged() {
-            refreshValues()
-        }
-    }
-    
-    Component.onCompleted: {
-        refreshValues()
     }
     
     // Main UI Layout
@@ -133,6 +85,8 @@ Item {
                                 { id: "oval", label: "Oval" },
                                 { id: "rounded_rect", label: "Rounded" },
                                 { id: "rect", label: "Square" },
+                                { id: "double_oval", label: "Double Oval" },
+                                { id: "double_rounded", label: "Double Round" },
                                 { id: "thought", label: "Thought" },
                                 { id: "shout", label: "Shout" },
                                 { id: "narration", label: "Narration" }
@@ -141,14 +95,14 @@ Item {
                             delegate: Rectangle {
                                 Layout.fillWidth: true
                                 height: 32; radius: 8
-                                color: (activeBubble && activeBubble.type === modelData.id) ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : "#141416"
-                                border.color: (activeBubble && activeBubble.type === modelData.id) ? accentColor : "#222"
+                                color: (activeBubble && activeBubble.bubbleType === modelData.id) ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : "#141416"
+                                border.color: (activeBubble && activeBubble.bubbleType === modelData.id) ? accentColor : "#222"
                                 border.width: 1
                                 
                                 Text {
                                     text: modelData.label
                                     anchors.centerIn: parent
-                                    color: (activeBubble && activeBubble.type === modelData.id) ? "white" : "#aaa"
+                                    color: (activeBubble && activeBubble.bubbleType === modelData.id) ? "white" : "#aaa"
                                     font.pixelSize: 11
                                     font.weight: Font.Medium
                                 }
@@ -189,11 +143,15 @@ Item {
                         }
                         Slider {
                             id: sliderStroke
-                            Layout.fillWidth: true; from: 1; to: 15; stepSize: 1
-                            onValueChanged: updateProperty("strokeWidth", value)
-                            background: Rectangle { y: 12; width: parent.width; height: 6; radius: 3; color: "#222"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            height: 36
+                            from: 1; to: 15; stepSize: 1
+                            value: activeBubble ? activeBubble.strokeWidth : 3
+                            onMoved: updateProperty("strokeWidth", value)
+                            background: Rectangle { y: 15; width: parent.width; height: 6; radius: 3; color: "#222"
                                 Rectangle { width: parent.parent.visualPosition * parent.width; height: parent.height; radius: 3; color: accentColor } }
-                            handle: Rectangle { x: parent.visualPosition * (parent.width - width); y: 4; width: 20; height: 20; radius: 10; color: "#fff" }
+                            handle: Rectangle { x: parent.visualPosition * (parent.width - width); y: 8; width: 20; height: 20; radius: 10; color: "#fff" }
                         }
                     }
                     
@@ -201,18 +159,22 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 4
-                        visible: activeBubble ? (activeBubble.type !== "narration") : true
+                        visible: activeBubble ? (activeBubble.bubbleType !== "narration") : true
                         RowLayout {
                             Text { text: "Tail Width"; color: "#aaa"; font.pixelSize: 11; Layout.fillWidth: true }
                             Text { text: Math.round(sliderTailWidth.value) + "px"; color: accentColor; font.pixelSize: 11; font.bold: true }
                         }
                         Slider {
                             id: sliderTailWidth
-                            Layout.fillWidth: true; from: 10; to: 80; stepSize: 1
-                            onValueChanged: updateProperty("tailWidth", value)
-                            background: Rectangle { y: 12; width: parent.width; height: 6; radius: 3; color: "#222"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            height: 36
+                            from: 10; to: 80; stepSize: 1
+                            value: activeBubble ? activeBubble.tailWidth : 30
+                            onMoved: updateProperty("tailWidth", value)
+                            background: Rectangle { y: 15; width: parent.width; height: 6; radius: 3; color: "#222"
                                 Rectangle { width: parent.parent.visualPosition * parent.width; height: parent.height; radius: 3; color: accentColor } }
-                            handle: Rectangle { x: parent.visualPosition * (parent.width - width); y: 4; width: 20; height: 20; radius: 10; color: "#fff" }
+                            handle: Rectangle { x: parent.visualPosition * (parent.width - width); y: 8; width: 20; height: 20; radius: 10; color: "#fff" }
                         }
                     }
                     
@@ -220,18 +182,22 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 4
-                        visible: activeBubble ? (activeBubble.type === "rounded_rect") : false
+                        visible: activeBubble ? (activeBubble.bubbleType === "rounded_rect" || activeBubble.bubbleType === "double_rounded") : false
                         RowLayout {
                             Text { text: "Corner Radius"; color: "#aaa"; font.pixelSize: 11; Layout.fillWidth: true }
                             Text { text: Math.round(sliderCorner.value) + "px"; color: accentColor; font.pixelSize: 11; font.bold: true }
                         }
                         Slider {
                             id: sliderCorner
-                            Layout.fillWidth: true; from: 0; to: 50; stepSize: 1
-                            onValueChanged: updateProperty("cornerRadius", value)
-                            background: Rectangle { y: 12; width: parent.width; height: 6; radius: 3; color: "#222"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            height: 36
+                            from: 0; to: 50; stepSize: 1
+                            value: activeBubble ? activeBubble.cornerRadius : 16
+                            onMoved: updateProperty("cornerRadius", value)
+                            background: Rectangle { y: 15; width: parent.width; height: 6; radius: 3; color: "#222"
                                 Rectangle { width: parent.parent.visualPosition * parent.width; height: parent.height; radius: 3; color: accentColor } }
-                            handle: Rectangle { x: parent.visualPosition * (parent.width - width); y: 4; width: 20; height: 20; radius: 10; color: "#fff" }
+                            handle: Rectangle { x: parent.visualPosition * (parent.width - width); y: 8; width: 20; height: 20; radius: 10; color: "#fff" }
                         }
                     }
                 }
@@ -369,17 +335,15 @@ Item {
                             width: 42; height: 22; radius: 11
                             color: active ? accentColor : "#222226"
                             border.color: active ? Qt.lighter(accentColor, 1.2) : "#333"
-                            property bool active: false
+                            property bool active: activeBubble ? activeBubble.autoResize : false
                             
                             Rectangle { x: parent.active ? 22 : 2; y: 2; width: 18; height: 18; radius: 9; color: "#fff"
                                 Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } } }
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    toggleAutoResize.active = !toggleAutoResize.active
-                                    updateProperty("autoResize", toggleAutoResize.active)
-                                    if (toggleAutoResize.active) {
-                                        toggleAutoFit.active = false
+                                    updateProperty("autoResize", !toggleAutoResize.active)
+                                    if (!toggleAutoResize.active) {
                                         updateProperty("autoFitText", false)
                                     }
                                 }
@@ -398,17 +362,15 @@ Item {
                             width: 42; height: 22; radius: 11
                             color: active ? accentColor : "#222226"
                             border.color: active ? Qt.lighter(accentColor, 1.2) : "#333"
-                            property bool active: false
+                            property bool active: activeBubble ? activeBubble.autoFitText : false
                             
                             Rectangle { x: parent.active ? 22 : 2; y: 2; width: 18; height: 18; radius: 9; color: "#fff"
                                 Behavior on x { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } } }
                             MouseArea {
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    toggleAutoFit.active = !toggleAutoFit.active
-                                    updateProperty("autoFitText", toggleAutoFit.active)
-                                    if (toggleAutoFit.active) {
-                                        toggleAutoResize.active = false
+                                    updateProperty("autoFitText", !toggleAutoFit.active)
+                                    if (!toggleAutoFit.active) {
                                         updateProperty("autoResize", false)
                                     }
                                 }
@@ -480,13 +442,17 @@ Item {
                         }
                         Slider {
                             id: sliderFontSize
-                            Layout.fillWidth: true; from: 8; to: 60; stepSize: 1
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            height: 36
+                            from: 8; to: 60; stepSize: 1
                             enabled: activeBubble ? !activeBubble.autoFitText : true
                             opacity: enabled ? 1.0 : 0.4
-                            onValueChanged: updateProperty("fontSize", value)
-                            background: Rectangle { y: 12; width: parent.width; height: 6; radius: 3; color: "#222"
+                            value: activeBubble ? activeBubble.fontSize : 18
+                            onMoved: updateProperty("fontSize", value)
+                            background: Rectangle { y: 15; width: parent.width; height: 6; radius: 3; color: "#222"
                                 Rectangle { width: parent.parent.visualPosition * parent.width; height: parent.height; radius: 3; color: accentColor } }
-                            handle: Rectangle { x: parent.visualPosition * (parent.width - width); y: 4; width: 20; height: 20; radius: 10; color: "#fff" }
+                            handle: Rectangle { x: parent.visualPosition * (parent.width - width); y: 8; width: 20; height: 20; radius: 10; color: "#fff" }
                         }
                     }
                     
@@ -504,12 +470,12 @@ Item {
                                 width: 38; height: 20; radius: 10
                                 color: active ? accentColor : "#222226"
                                 border.color: active ? Qt.lighter(accentColor, 1.2) : "#333"
-                                property bool active: false
+                                property bool active: activeBubble ? activeBubble.bold : false
                                 Rectangle { x: parent.active ? 20 : 2; y: 2; width: 16; height: 16; radius: 8; color: "#fff"
                                     Behavior on x { NumberAnimation { duration: 100 } } }
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                    onClicked: { parent.active = !parent.active; updateProperty("bold", parent.active) }
+                                    onClicked: { updateProperty("bold", !toggleBold.active) }
                                 }
                             }
                         }
@@ -523,12 +489,12 @@ Item {
                                 width: 38; height: 20; radius: 10
                                 color: active ? accentColor : "#222226"
                                 border.color: active ? Qt.lighter(accentColor, 1.2) : "#333"
-                                property bool active: false
+                                property bool active: activeBubble ? activeBubble.italic : false
                                 Rectangle { x: parent.active ? 20 : 2; y: 2; width: 16; height: 16; radius: 8; color: "#fff"
                                     Behavior on x { NumberAnimation { duration: 100 } } }
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                    onClicked: { parent.active = !parent.active; updateProperty("italic", parent.active) }
+                                    onClicked: { updateProperty("italic", !toggleItalic.active) }
                                 }
                             }
                         }

@@ -50,10 +50,12 @@ Rectangle {
 
     ListModel {
         id: bubblesModel
-        ListElement { itemId: "bubble_speech";    label: "Speech";     desc: "Oval dialog with tail pointer";    iconName: "bubble_speech" }
-        ListElement { itemId: "bubble_thought";   label: "Thought";    desc: "Cloud bubble with dots";           iconName: "bubble_thought" }
-        ListElement { itemId: "bubble_shout";     label: "Shout";      desc: "Starburst for emphasis";           iconName: "bubble_shout" }
-        ListElement { itemId: "bubble_narration"; label: "Narration";  desc: "Rectangular text box";             iconName: "bubble_narration" }
+        ListElement { itemId: "bubble_speech";         label: "Speech";         desc: "Oval dialog with tail pointer";    iconName: "bubble_speech" }
+        ListElement { itemId: "bubble_double_oval";    label: "Double Oval";    desc: "Two overlapping oval dialogs";    iconName: "bubble_speech" }
+        ListElement { itemId: "bubble_double_rounded"; label: "Double Round";   desc: "Two overlapping rounded rectangles"; iconName: "bubble_speech" }
+        ListElement { itemId: "bubble_thought";        label: "Thought";        desc: "Cloud bubble with dots";           iconName: "bubble_thought" }
+        ListElement { itemId: "bubble_shout";          label: "Shout";          desc: "Starburst for emphasis";           iconName: "bubble_shout" }
+        ListElement { itemId: "bubble_narration";      label: "Narration";      desc: "Rectangular text box";             iconName: "bubble_narration" }
     }
 
     function currentModel() {
@@ -404,6 +406,93 @@ Rectangle {
                                                         ctx.lineTo(w*0.45, h*0.58)
                                                         ctx.fillStyle = "white"
                                                         ctx.fill(); ctx.stroke()
+                                                    } else if (bType === "double_oval") {
+                                                        var ox = w * 0.08
+                                                        var oy = h * 0.08
+                                                        var rx = w * 0.28
+                                                        var ry = h * 0.22
+                                                        
+                                                        // 1. Fill base/back ovals
+                                                        ctx.beginPath()
+                                                        ctx.ellipse(cx - ox, cy - oy, rx, ry)
+                                                        ctx.ellipse(cx + ox, cy + oy, rx, ry)
+                                                        ctx.fill()
+                                                        
+                                                        // 2. Double outer stroke
+                                                        ctx.lineWidth = 4
+                                                        ctx.beginPath()
+                                                        ctx.ellipse(cx - ox, cy - oy, rx, ry)
+                                                        ctx.ellipse(cx + ox, cy + oy, rx, ry)
+                                                        ctx.stroke()
+                                                        
+                                                        // 3. Clean inner overlap
+                                                        ctx.lineWidth = 2
+                                                        ctx.fillStyle = "white"
+                                                        ctx.beginPath()
+                                                        ctx.ellipse(cx - ox, cy - oy, rx, ry)
+                                                        ctx.ellipse(cx + ox, cy + oy, rx, ry)
+                                                        ctx.fill()
+                                                        
+                                                        // 4. Tail attached to bottom right
+                                                        var tailBaseX = cx + ox + rx * Math.cos(Math.PI/3)
+                                                        var tailBaseY = cy + oy + ry * Math.sin(Math.PI/3)
+                                                        ctx.beginPath()
+                                                        ctx.moveTo(tailBaseX - 5, tailBaseY - 2)
+                                                        ctx.lineTo(cx + w*0.18, h*0.92)
+                                                        ctx.lineTo(tailBaseX + 5, tailBaseY - 5)
+                                                        ctx.fill(); ctx.stroke()
+                                                        
+                                                        // 5. Clean tail base connection line
+                                                        ctx.strokeStyle = "white"
+                                                        ctx.lineWidth = 3
+                                                        ctx.beginPath()
+                                                        ctx.moveTo(tailBaseX - 4, tailBaseY - 3)
+                                                        ctx.lineTo(tailBaseX + 4, tailBaseY - 5)
+                                                        ctx.stroke()
+                                                    } else if (bType === "double_rounded") {
+                                                        var ox = w * 0.08
+                                                        var oy = h * 0.08
+                                                        var rw = w * 0.55
+                                                        var rh = h * 0.42
+                                                        var rad = 6
+                                                        
+                                                        // 1. Fill base
+                                                        ctx.beginPath()
+                                                        ctx.roundedRect(cx - ox - rw/2, cy - oy - rh/2, rw, rh, rad, rad)
+                                                        ctx.roundedRect(cx + ox - rw/2, cy + oy - rh/2, rw, rh, rad, rad)
+                                                        ctx.fill()
+                                                        
+                                                        // 2. Double outer stroke
+                                                        ctx.lineWidth = 4
+                                                        ctx.beginPath()
+                                                        ctx.roundedRect(cx - ox - rw/2, cy - oy - rh/2, rw, rh, rad, rad)
+                                                        ctx.roundedRect(cx + ox - rw/2, cy + oy - rh/2, rw, rh, rad, rad)
+                                                        ctx.stroke()
+                                                        
+                                                        // 3. Clean inner overlap
+                                                        ctx.lineWidth = 2
+                                                        ctx.fillStyle = "white"
+                                                        ctx.beginPath()
+                                                        ctx.roundedRect(cx - ox - rw/2, cy - oy - rh/2, rw, rh, rad, rad)
+                                                        ctx.roundedRect(cx + ox - rw/2, cy + oy - rh/2, rw, rh, rad, rad)
+                                                        ctx.fill()
+                                                        
+                                                        // 4. Tail attached to bottom right
+                                                        var tailBaseX = cx + ox + rw/2 - 15
+                                                        var tailBaseY = cy + oy + rh/2
+                                                        ctx.beginPath()
+                                                        ctx.moveTo(tailBaseX - 5, tailBaseY - 2)
+                                                        ctx.lineTo(cx + w*0.18, h*0.92)
+                                                        ctx.lineTo(tailBaseX + 5, tailBaseY - 2)
+                                                        ctx.fill(); ctx.stroke()
+                                                        
+                                                        // 5. Clean tail base connection line
+                                                        ctx.strokeStyle = "white"
+                                                        ctx.lineWidth = 3
+                                                        ctx.beginPath()
+                                                        ctx.moveTo(tailBaseX - 4, tailBaseY - 1)
+                                                        ctx.lineTo(tailBaseX + 4, tailBaseY - 1)
+                                                        ctx.stroke()
                                                     } else if (bType === "thought") {
                                                         ctx.beginPath()
                                                         ctx.ellipse(w*0.1, h*0.05, w*0.8, h*0.55)
@@ -416,6 +505,15 @@ Rectangle {
                                                         ctx.ellipse(w*0.14, h*0.8, 5, 5)
                                                         ctx.fill(); ctx.stroke()
                                                     } else if (bType === "shout") {
+                                                        // 1. Draw shout tail
+                                                        ctx.beginPath()
+                                                        ctx.moveTo(w*0.35, h*0.58)
+                                                        ctx.lineTo(w*0.15, h*0.92)
+                                                        ctx.lineTo(w*0.55, h*0.58)
+                                                        ctx.fillStyle = "white"
+                                                        ctx.fill(); ctx.stroke()
+                                                        
+                                                        // 2. Draw star body
                                                         ctx.beginPath()
                                                         var pts = 12
                                                         for (var j = 0; j < pts; j++) {
@@ -426,7 +524,16 @@ Rectangle {
                                                             if (j===0) ctx.moveTo(px,py); else ctx.lineTo(px,py)
                                                         }
                                                         ctx.closePath()
+                                                        ctx.fillStyle = "white"
                                                         ctx.fill(); ctx.stroke()
+                                                        
+                                                        // 3. Clear tail base union
+                                                        ctx.strokeStyle = "white"
+                                                        ctx.lineWidth = 3
+                                                        ctx.beginPath()
+                                                        ctx.moveTo(w*0.36, h*0.58)
+                                                        ctx.lineTo(w*0.54, h*0.58)
+                                                        ctx.stroke()
                                                     } else if (bType === "narration") {
                                                         ctx.fillRect(w*0.05, h*0.1, w*0.9, h*0.8)
                                                         ctx.strokeRect(w*0.05, h*0.1, w*0.9, h*0.8)

@@ -36,6 +36,8 @@ Popup {
     readonly property color colorInput: isDark ? "#18181b" : "#f9fafb"
     
     property int currentCategoryIndex: 0
+    property string shortcutSearchQuery: ""
+    property var tempShortcuts: ({})
 
     // --- TEMP STATE (Buffer for Cancel) ---
     property bool tempGpuEnabled: true
@@ -87,6 +89,7 @@ Popup {
             tempShowTopWorkspaceSwitcher = preferencesManager.showTopWorkspaceSwitcher
             tempShowRightToolbar = preferencesManager.showRightToolbar
             tempShowRightColorSelector = preferencesManager.showRightColorSelector
+            tempShortcuts = Object.assign({}, preferencesManager.shortcuts)
         }
     }
     
@@ -113,6 +116,7 @@ Popup {
             preferencesManager.showTopWorkspaceSwitcher = tempShowTopWorkspaceSwitcher
             preferencesManager.showRightToolbar = tempShowRightToolbar
             preferencesManager.showRightColorSelector = tempShowRightColorSelector
+            preferencesManager.shortcuts = tempShortcuts
             
             toastManager.show(root.qs("saved"), "success")
         }
@@ -218,7 +222,7 @@ Popup {
                                 
                                 Image { 
                                     anchors.fill: parent
-                                    source: model.icon ? "image://icons/" + model.icon : ""
+                                    source: (modelData && modelData.icon) ? "image://icons/" + modelData.icon : ""
                                     visible: status === Image.Ready
                                     sourceSize.width: 16; sourceSize.height: 16
                                     opacity: index === root.currentCategoryIndex ? 1.0 : 0.6
@@ -228,7 +232,7 @@ Popup {
                                 }
                                 
                                 // Default circle coloring if image not loaded initially
-                                Component.onCompleted: if (source == "") color = (index === root.currentCategoryIndex ? "white" : "#555")
+                                Component.onCompleted: if (!modelData || !modelData.icon || modelData.icon === "") color = (index === root.currentCategoryIndex ? "white" : "#555")
                             }
                             
                             Text {
@@ -578,8 +582,7 @@ Popup {
                             }
                         }
                     }
-                    
-                    // 4. SHORTCUTS (USER REQUEST)
+                                      // 4. SHORTCUTS (USER REQUEST)
                     ScrollView {
                         contentHeight: shortcutCol.height
                         ColumnLayout {
@@ -590,72 +593,209 @@ Popup {
                             Text { text: "Keyboard Shortcuts"; color: colorText; font.pixelSize: 18; font.bold: true }
                             
                             // Search
-                            Rectangle {
-                                Layout.fillWidth: true; Layout.preferredHeight: 32
-                                color: colorInput; radius: 4; border.color: colorBorder
-                                TextInput {
-                                    anchors.fill: parent; anchors.leftMargin: 8; verticalAlignment: Text.AlignVCenter
-                                    color: "white"; font.pixelSize: 13
-                                    text: "Search command..."
-                                }
+                            PremiumTextField {
+                                id: shortcutSearchInput
+                                Layout.fillWidth: true
+                                placeholderText: "Search command..."
+                                selectByMouse: true
+                                verticalAlignment: TextInput.AlignVCenter
+                                onTextChanged: root.shortcutSearchQuery = text.toLowerCase()
                             }
                             
                             // Shortcut List Header
                             RowLayout {
                                 Layout.fillWidth: true
                                 Text { text: "Command"; color: colorTextMuted; font.pixelSize: 12; Layout.fillWidth: true }
-                                Text { text: "Key"; color: colorTextMuted; font.pixelSize: 12; Layout.preferredWidth: 100 }
+                                Text { text: "Key"; color: colorTextMuted; font.pixelSize: 12; Layout.preferredWidth: 160 }
                             }
                             
                             Rectangle { Layout.fillWidth: true; height: 1; color: colorBorder }
                             
-
                             // Shortcuts Data
                             Repeater {
-                                model: [
-                                    { id: "New Project", cmd: "New Project" },
-                                    { id: "Open Project", cmd: "Open Project" },
-                                    { id: "Save", cmd: "Save" },
-                                    { id: "Undo", cmd: "Undo" },
-                                    { id: "Redo", cmd: "Redo" },
-                                    { id: "New Layer", cmd: "New Layer" },
-                                    { id: "Pen Tool", cmd: "Pen Tool" },
-                                    { id: "Brush Tool", cmd: "Brush Tool" },
-                                    { id: "Eraser Tool", cmd: "Eraser Tool" },
-                                    { id: "Lasso Tool", cmd: "Lasso Tool" },
-                                    { id: "Hand Tool", cmd: "Hand Tool" },
-                                    { id: "Eyedropper Tool", cmd: "Eyedropper Tool" },
-                                    { id: "Move Tool", cmd: "Move Tool" },
-                                    { id: "Transform", cmd: "Transform" },
-                                    { id: "Select None", cmd: "Select None" },
-                                    { id: "Zoom In", cmd: "Zoom In" },
-                                    { id: "Zoom Out", cmd: "Zoom Out" },
-                                    { id: "Fit to Screen", cmd: "Fit to Screen" }
-                                ]
+                                model: {
+                                    let allShortcuts = [
+                                        { id: "New Project", cmd: "New Project" },
+                                        { id: "Open Project", cmd: "Open Project" },
+                                        { id: "Save", cmd: "Save" },
+                                        { id: "Undo", cmd: "Undo" },
+                                        { id: "Redo", cmd: "Redo" },
+                                        { id: "New Layer", cmd: "New Layer" },
+                                        { id: "Pen Tool", cmd: "Pen Tool" },
+                                        { id: "Brush Tool", cmd: "Brush Tool" },
+                                        { id: "Eraser Tool", cmd: "Eraser Tool" },
+                                        { id: "Lasso Tool", cmd: "Lasso Tool" },
+                                        { id: "Hand Tool", cmd: "Hand Tool" },
+                                        { id: "Eyedropper Tool", cmd: "Eyedropper Tool" },
+                                        { id: "Move Tool", cmd: "Move Tool" },
+                                        { id: "Transform", cmd: "Transform" },
+                                        { id: "Select None", cmd: "Select None" },
+                                        { id: "Zoom In", cmd: "Zoom In" },
+                                        { id: "Zoom Out", cmd: "Zoom Out" },
+                                        { id: "Fit to Screen", cmd: "Fit to Screen" }
+                                    ];
+                                    if (root.shortcutSearchQuery === "") return allShortcuts;
+                                    return allShortcuts.filter(item => item.cmd.toLowerCase().indexOf(root.shortcutSearchQuery) !== -1);
+                                }
                                 delegate: RowLayout {
                                     width: parent.width
-                                    height: 30
-                                    Text { text: modelData.cmd; color: colorText; font.pixelSize: 13; Layout.fillWidth: true }
+                                    height: 34
+                                    spacing: 12
                                     
-                                    Rectangle {
-                                        Layout.preferredWidth: 100; Layout.preferredHeight: 24
-                                        color: "#2c2c2e"; radius: 4
-                                        border.color: shortcutField.activeFocus ? colorAccent : "#3f3f46"
-                                        
-                                        TextInput {
-                                            id: shortcutField
-                                            anchors.fill: parent
-                                            horizontalAlignment: TextInput.AlignHCenter
-                                            verticalAlignment: TextInput.AlignVCenter
-                                            color: "white"; font.pixelSize: 12
-                                            text: preferencesManager && typeof preferencesManager !== "undefined" ? preferencesManager.getShortcut(modelData.id) : ""
-                                            onEditingFinished: {
-                                                if (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") {
-                                                    preferencesManager.setShortcut(modelData.id, text)
-                                                }
-                                            }
-                                        }
+                                    Text {
+                                        text: modelData.cmd
+                                        color: colorText
+                                        font.pixelSize: 13
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideRight
                                     }
+                                    
+                                    // Custom Shortcut Recorder Button Control
+                                     Button {
+                                         id: recorderBtn
+                                         Layout.preferredWidth: 160
+                                         Layout.preferredHeight: 28
+                                         focus: true
+                                         hoverEnabled: true
+                                         
+                                         background: Rectangle {
+                                             color: isDark ? (recorderBtn.activeFocus ? "#18181b" : "#27272a") : (recorderBtn.activeFocus ? "#ffffff" : "#f4f4f5")
+                                             radius: 6
+                                             border.color: recorderBtn.activeFocus ? colorAccent : (recorderBtn.hovered ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.5) : colorBorder)
+                                             border.width: recorderBtn.activeFocus ? 1.5 : 1
+                                             
+                                             Behavior on color { ColorAnimation { duration: 150 } }
+                                             Behavior on border.color { ColorAnimation { duration: 150 } }
+                                         }
+                                         
+                                         contentItem: RowLayout {
+                                             anchors.fill: parent
+                                             anchors.leftMargin: 8
+                                             anchors.rightMargin: 4
+                                             spacing: 6
+                                             
+                                             // Icon or state indicator (Breathing dot)
+                                             Rectangle {
+                                                 width: 6; height: 6; radius: 3
+                                                 color: colorAccent
+                                                 visible: recorderBtn.activeFocus
+                                                 
+                                                 SequentialAnimation on opacity {
+                                                     running: recorderBtn.activeFocus
+                                                     loops: Animation.Infinite
+                                                     NumberAnimation { from: 1.0; to: 0.3; duration: 600; easing.type: Easing.InOutQuad }
+                                                     NumberAnimation { from: 0.3; to: 1.0; duration: 600; easing.type: Easing.InOutQuad }
+                                                 }
+                                             }
+                                             
+                                             Text {
+                                                 id: shortcutText
+                                                 Layout.fillWidth: true
+                                                 font.pixelSize: 12
+                                                 font.bold: !recorderBtn.activeFocus && !!root.tempShortcuts[modelData.id]
+                                                 font.italic: recorderBtn.activeFocus
+                                                 color: recorderBtn.activeFocus ? colorAccent : (root.tempShortcuts[modelData.id] ? colorText : colorTextMuted)
+                                                 verticalAlignment: Text.AlignVCenter
+                                                 elide: Text.ElideRight
+                                                 
+                                                 text: {
+                                                     if (recorderBtn.activeFocus) {
+                                                         return "Press keys...";
+                                                     }
+                                                     return root.tempShortcuts[modelData.id] || "None";
+                                                 }
+                                             }
+                                             
+                                             // Clear Button (✕)
+                                             Button {
+                                                 id: clearBtn
+                                                 Layout.preferredWidth: 20
+                                                 Layout.preferredHeight: 20
+                                                 visible: (recorderBtn.hovered || recorderBtn.activeFocus) && !!root.tempShortcuts[modelData.id]
+                                                 text: "✕"
+                                                 hoverEnabled: true
+                                                 
+                                                 background: Rectangle {
+                                                     color: clearBtn.hovered ? (isDark ? "#3f3f46" : "#e4e4e7") : "transparent"
+                                                     radius: 10
+                                                 }
+                                                 
+                                                 contentItem: Text {
+                                                     text: clearBtn.text
+                                                     color: colorTextMuted
+                                                     font.pixelSize: 10
+                                                     font.bold: true
+                                                     horizontalAlignment: Text.AlignHCenter
+                                                     verticalAlignment: Text.AlignVCenter
+                                                 }
+                                                 
+                                                 onClicked: {
+                                                     let copy = Object.assign({}, root.tempShortcuts);
+                                                     copy[modelData.id] = "";
+                                                     root.tempShortcuts = copy;
+                                                 }
+                                             }
+                                         }
+                                         
+                                         // Key Event Handler inside recorderBtn
+                                         Keys.onPressed: (event) => {
+                                             event.accepted = true;
+                                             if (event.isAutoRepeat) return;
+                                             
+                                             let key = event.key;
+                                             
+                                             // If they press a modifier by itself, don't finalize the shortcut sequence yet
+                                             if (key === Qt.Key_Control || key === Qt.Key_Shift || key === Qt.Key_Alt || key === Qt.Key_Meta) {
+                                                 return;
+                                             }
+                                             
+                                             let modifiersStr = "";
+                                             if (event.modifiers & Qt.ControlModifier) modifiersStr += "Ctrl+";
+                                             if (event.modifiers & Qt.ShiftModifier) modifiersStr += "Shift+";
+                                             if (event.modifiers & Qt.AltModifier) modifiersStr += "Alt+";
+                                             if (event.modifiers & Qt.MetaModifier) modifiersStr += "Meta+";
+                                             
+                                             let keyName = "";
+                                             switch(key) {
+                                                 case Qt.Key_Space: keyName = "Space"; break;
+                                                 case Qt.Key_Escape: keyName = "Escape"; break;
+                                                 case Qt.Key_Tab: keyName = "Tab"; break;
+                                                 case Qt.Key_Backspace: keyName = "Backspace"; break;
+                                                 case Qt.Key_Delete: keyName = "Delete"; break;
+                                                 case Qt.Key_Insert: keyName = "Insert"; break;
+                                                 case Qt.Key_Home: keyName = "Home"; break;
+                                                 case Qt.Key_End: keyName = "End"; break;
+                                                 case Qt.Key_PageUp: keyName = "PageUp"; break;
+                                                 case Qt.Key_PageDown: keyName = "PageDown"; break;
+                                                 case Qt.Key_Left: keyName = "Left"; break;
+                                                 case Qt.Key_Right: keyName = "Right"; break;
+                                                 case Qt.Key_Up: keyName = "Up"; break;
+                                                 case Qt.Key_Down: keyName = "Down"; break;
+                                                 case Qt.Key_Return: keyName = "Return"; break;
+                                                 case Qt.Key_Enter: keyName = "Enter"; break;
+                                                 case Qt.Key_Plus: keyName = "+"; break;
+                                                 case Qt.Key_Minus: keyName = "-"; break;
+                                                 case Qt.Key_Equal: keyName = "="; break;
+                                                 case Qt.Key_Asterisk: keyName = "*"; break;
+                                                 case Qt.Key_Slash: keyName = "/"; break;
+                                                 case Qt.Key_Comma: keyName = ","; break;
+                                                 case Qt.Key_Period: keyName = "."; break;
+                                                 default:
+                                                     keyName = Qt.keyToString(key);
+                                                     break;
+                                             }
+                                             
+                                             if (keyName && keyName.length > 0) {
+                                                 let finalSeq = modifiersStr + keyName;
+                                                 let copy = Object.assign({}, root.tempShortcuts);
+                                                 copy[modelData.id] = finalSeq;
+                                                 root.tempShortcuts = copy;
+                                                 
+                                                 // Release active focus
+                                                 shortcutCol.forceActiveFocus();
+                                             }
+                                         }
+                                     }
                                 }
                             }
                         }
