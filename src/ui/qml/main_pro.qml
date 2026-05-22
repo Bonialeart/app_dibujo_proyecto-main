@@ -4630,6 +4630,34 @@ Window {
                     }
                 }
 
+                // 1.75 PANEL DE GLOBOS (Bubble Settings - Premium Draggable/Resizable)
+                PremiumPanel {
+                    id: bubbleSettingsPanel
+                    panelVisible: comicOverlay.visible && comicOverlay.selectedBubbleId >= 0 && !isStudioMode
+                    panelTitle: "Bubble Settings"
+                    panelIcon: "shapes.svg"
+                    accentColor: colorAccent
+                    initialX: canvasPage.width - 350
+                    initialY: 100
+                    defaultWidth: 300
+                    defaultHeight: 520
+                    minWidth: 260
+                    maxWidth: 450
+                    minHeight: 300
+                    maxHeight: 800
+                    z: 1960
+                    
+                    onCloseRequested: comicOverlay.selectedBubbleId = -1
+                    onPanelClicked: z = 2100
+                    
+                    BubbleSettingsPanel {
+                        id: bubbleSettingsInternal
+                        anchors.fill: parent
+                        comicOverlay: comicOverlay
+                        accentColor: colorAccent
+                    }
+                }
+
                 // 2. PANEL DE CAPAS - Premium Draggable/Resizable
                 PremiumPanel {
                     id: layersPanel

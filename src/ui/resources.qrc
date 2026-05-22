@@ -51,6 +51,7 @@
     <file>qml/components/ShapeLibrary.qml</file>
     <file>qml/components/SelectionToolbar.qml</file>
     <file>qml/components/ToolSettingsPanel.qml</file>
+    <file>qml/components/BubbleSettingsPanel.qml</file>
     <file>qml/components/HistoryPanel.qml</file>
     <file>qml/components/InfoPanel.qml</file>
     <file>qml/components/ReferencePanel.qml</file>
