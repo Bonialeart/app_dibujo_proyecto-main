@@ -49,6 +49,8 @@
 
 using namespace artflow;
 
+static QString getAutoSaveDir();
+
 static QCursor getModernCursor() {
   static QCursor modernCursor;
   static bool initialized = false;
@@ -300,6 +302,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 
   // Apply initial
   updateTheme();
+  setupAutoSave();
 }
 
 void CanvasItem::clearRenderCaches() {
@@ -3169,6 +3172,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
       capture_timelapse_frame();
       update();
       updateLayersList(); // Update thumbnails after stroke
+      setProjectDirty(true);
     }
   }
 }
@@ -3415,6 +3419,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     capture_timelapse_frame();
     update();           // Refrescar vista
     updateLayersList(); // Update thumbnails after stroke
+    setProjectDirty(true);
     event->accept();
   }
 }
@@ -5718,6 +5723,8 @@ bool CanvasItem::loadProject(const QString &path) {
   emit currentProjectNameChanged();
   updateLayersList();
 
+  setProjectDirty(false);
+
   emit notificationRequested("Project loaded: " + m_currentProjectName,
                              "success");
 
@@ -5735,7 +5742,7 @@ bool CanvasItem::saveProject(const QString &pathText) {
 
   QString baseDirStr =
       QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-      "/ArtFlowProjects";
+      "/KromoStudioProjects";
   QDir baseDir(baseDirStr);
   if (!baseDir.exists())
     baseDir.mkpath(".");
@@ -5745,8 +5752,8 @@ bool CanvasItem::saveProject(const QString &pathText) {
     targetPath = baseDir.filePath(targetPath);
   }
 
-  if (!targetPath.endsWith(".stxf")) {
-    targetPath += ".stxf";
+  if (!targetPath.endsWith(".stxf") && !targetPath.endsWith(".aflow") && !targetPath.endsWith(".artflow") && !targetPath.endsWith(".kromo") && !targetPath.endsWith(".kstudio")) {
+    targetPath += ".kromo";
   }
 
   qDebug() << "Saving project (Single File) to:" << targetPath;
@@ -5852,6 +5859,30 @@ bool CanvasItem::saveProject(const QString &pathText) {
   emit currentProjectPathChanged();
   emit currentProjectNameChanged();
 
+  // Clean dirty state and remove matching autosave
+  setProjectDirty(false);
+  if (!targetPath.isEmpty()) {
+    QFileInfo saveInfo(targetPath);
+    QString autosaveName = saveInfo.completeBaseName() + ".autosave.kromo";
+    QFile::remove(QDir(getAutoSaveDir()).filePath(autosaveName));
+    QString autosaveNameKStudio = saveInfo.completeBaseName() + ".autosave.kstudio";
+    QFile::remove(QDir(getAutoSaveDir()).filePath(autosaveNameKStudio));
+    QString autosaveNameAflow = saveInfo.completeBaseName() + ".autosave.aflow";
+    QFile::remove(QDir(getAutoSaveDir()).filePath(autosaveNameAflow));
+    QString autosaveNameArtflow = saveInfo.completeBaseName() + ".autosave.artflow";
+    QFile::remove(QDir(getAutoSaveDir()).filePath(autosaveNameArtflow));
+  }
+  if (!m_currentProjectName.isEmpty()) {
+    QString untitledAutosaveK = "untitled_" + m_currentProjectName + ".autosave.kromo";
+    QFile::remove(QDir(getAutoSaveDir()).filePath(untitledAutosaveK));
+    QString untitledAutosaveKS = "untitled_" + m_currentProjectName + ".autosave.kstudio";
+    QFile::remove(QDir(getAutoSaveDir()).filePath(untitledAutosaveKS));
+    QString untitledAutosave = "untitled_" + m_currentProjectName + ".autosave.aflow";
+    QFile::remove(QDir(getAutoSaveDir()).filePath(untitledAutosave));
+    QString untitledAutosave2 = "untitled_" + m_currentProjectName + ".autosave.artflow";
+    QFile::remove(QDir(getAutoSaveDir()).filePath(untitledAutosave2));
+  }
+
   // NOTIFY UI TO REFRESH LISTS
   emit projectListChanged();
 
@@ -5865,7 +5896,7 @@ QVariantList CanvasItem::_scanSync() {
   // (Home/Gallery)
   QString path =
       QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-      "/ArtFlowProjects";
+      "/KromoStudioProjects";
 
   if (!QFileInfo(path).isDir()) {
     QDir().mkpath(path);
@@ -5881,7 +5912,8 @@ QVariantList CanvasItem::_scanSync() {
     if (info.fileName().endsWith(".json"))
       continue;
 
-    if (info.isFile() && info.suffix() == "stxf") {
+    QString suffix = info.suffix().toLower();
+    if (info.isFile() && (suffix == "stxf" || suffix == "aflow" || suffix == "artflow" || suffix == "kromo" || suffix == "kstudio")) {
       QVariantMap item;
       item["name"] = info.completeBaseName();
       item["path"] = info.absoluteFilePath();
@@ -5913,7 +5945,7 @@ QVariantList CanvasItem::_scanSync() {
 
       // Scan folder for internal thumbnails to show the "stack" look
       QDir subDir(info.absoluteFilePath());
-      QFileInfoList subEntries = subDir.entryInfoList(QStringList() << "*.stxf",
+      QFileInfoList subEntries = subDir.entryInfoList(QStringList() << "*.kromo" << "*.kstudio" << "*.stxf" << "*.aflow" << "*.artflow",
                                                       QDir::Files, QDir::Time);
       QVariantList thumbs;
       for (int i = 0; i < qMin(subEntries.size(), 3); ++i) {
@@ -5944,7 +5976,7 @@ QVariantList CanvasItem::get_sketchbook_pages(const QString &folderPath) {
     return results;
 
   QFileInfoList entries =
-      dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Name);
+      dir.entryInfoList(QStringList() << "*.kromo" << "*.kstudio" << "*.stxf" << "*.aflow" << "*.artflow", QDir::Files, QDir::Name);
   for (const QFileInfo &info : entries) {
     QVariantMap item;
     item["name"] = info.completeBaseName();
@@ -5976,7 +6008,7 @@ QString CanvasItem::create_new_sketchbook(const QString &name,
                                           const QString &coverColor) {
   QString baseDirStr =
       QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-      "/ArtFlowProjects";
+      "/KromoStudioProjects";
   QDir baseDir(baseDirStr);
   if (!baseDir.exists())
     baseDir.mkpath(".");
@@ -6017,16 +6049,21 @@ QString CanvasItem::create_new_page(const QString &folderPath,
 
   // Determine page number
   QFileInfoList existing =
-      dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Name);
+      dir.entryInfoList(QStringList() << "*.kromo" << "*.kstudio" << "*.stxf" << "*.aflow" << "*.artflow", QDir::Files, QDir::Name);
   int pageNum = existing.size() + 1;
 
   QString safeName = pageName;
   if (safeName.isEmpty())
     safeName = "Page";
 
-  // Zero-pad for sorting: Page_001.stxf
+  QString activeSuffix = "kromo";
+  if (!existing.isEmpty()) {
+    activeSuffix = existing.first().suffix();
+  }
+
+  // Zero-pad for sorting: Page_001.aflow
   QString fileName =
-      QString("%1_%2.stxf").arg(safeName).arg(pageNum, 3, 10, QChar('0'));
+      QString("%1_%2.%3").arg(safeName).arg(pageNum, 3, 10, QChar('0')).arg(activeSuffix);
   QString filePath = dir.absoluteFilePath(fileName);
 
   // Create a minimal .stxf project file with the current canvas dimensions
@@ -6122,6 +6159,7 @@ bool CanvasItem::duplicatePage(const QString &sourcePath) {
 
   QDir dir = fileInfo.dir();
   QString baseName = fileInfo.completeBaseName(); // e.g. "Page_002"
+  QString activeSuffix = fileInfo.suffix();
   
   int lastUnderscore = baseName.lastIndexOf('_');
   QString prefix = "Page";
@@ -6133,19 +6171,19 @@ bool CanvasItem::duplicatePage(const QString &sourcePath) {
     sourceNum = baseName.mid(lastUnderscore + 1).toInt(&ok);
   }
 
-  QFileInfoList existing = dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Name);
+  QFileInfoList existing = dir.entryInfoList(QStringList() << "*.kromo" << "*.kstudio" << "*.stxf" << "*.aflow" << "*.artflow", QDir::Files, QDir::Name);
 
   if (lastUnderscore == -1 || !ok) {
     int nextNum = existing.size() + 1;
-    QString destFileName = QString("Page_%1.stxf").arg(nextNum, 3, 10, QChar('0'));
+    QString destFileName = QString("Page_%1.%2").arg(nextNum, 3, 10, QChar('0')).arg(activeSuffix);
     QString destPath = dir.absoluteFilePath(destFileName);
     return QFile::copy(localPath, destPath);
   }
 
   // Shift pages starting from the highest index down to sourceNum + 1.
   for (int i = existing.size(); i >= sourceNum + 1; --i) {
-    QString oldFileName = QString("%1_%2.stxf").arg(prefix).arg(i, 3, 10, QChar('0'));
-    QString newFileName = QString("%1_%2.stxf").arg(prefix).arg(i + 1, 3, 10, QChar('0'));
+    QString oldFileName = QString("%1_%2.%3").arg(prefix).arg(i, 3, 10, QChar('0')).arg(activeSuffix);
+    QString newFileName = QString("%1_%2.%3").arg(prefix).arg(i + 1, 3, 10, QChar('0')).arg(activeSuffix);
     
     QString oldPath = dir.absoluteFilePath(oldFileName);
     QString newPath = dir.absoluteFilePath(newFileName);
@@ -6158,7 +6196,7 @@ bool CanvasItem::duplicatePage(const QString &sourcePath) {
     }
   }
 
-  QString destFileName = QString("%1_%2.stxf").arg(prefix).arg(sourceNum + 1, 3, 10, QChar('0'));
+  QString destFileName = QString("%1_%2.%3").arg(prefix).arg(sourceNum + 1, 3, 10, QChar('0')).arg(activeSuffix);
   QString destPath = dir.absoluteFilePath(destFileName);
 
   if (!QFile::copy(localPath, destPath)) {
@@ -6213,7 +6251,8 @@ bool CanvasItem::reorderPages(const QString &folderPath, const QVariantList &new
       return false;
     }
     
-    QString tempName = QString("reorder_temp_%1_%2.stxf.tmp").arg(QDateTime::currentMSecsSinceEpoch()).arg(i);
+    QString ext = srcInfo.suffix();
+    QString tempName = QString("reorder_temp_%1_%2.%3.tmp").arg(QDateTime::currentMSecsSinceEpoch()).arg(i).arg(ext);
     QString tempPath = dir.absoluteFilePath(tempName);
     
     if (!QFile::rename(srcPath, tempPath)) {
@@ -6228,7 +6267,11 @@ bool CanvasItem::reorderPages(const QString &folderPath, const QVariantList &new
 
   for (int i = 0; i < tempPaths.size(); ++i) {
     QString tempPath = tempPaths[i];
-    QString finalFileName = QString("Page_%1.stxf").arg(i + 1, 3, 10, QChar('0'));
+    QFileInfo tempInfo(tempPath);
+    QString ext = QFileInfo(tempInfo.completeBaseName()).suffix();
+    if (ext.isEmpty()) ext = "kromo";
+    
+    QString finalFileName = QString("Page_%1.%2").arg(i + 1, 3, 10, QChar('0')).arg(ext);
     QString finalPath = dir.absoluteFilePath(finalFileName);
     
     if (QFile::exists(finalPath)) {
@@ -6346,7 +6389,7 @@ bool CanvasItem::exportAllPages(const QString &folderPath,
     outDir.mkpath(".");
 
   QFileInfoList entries =
-      dir.entryInfoList(QStringList() << "*.stxf", QDir::Files, QDir::Name);
+      dir.entryInfoList(QStringList() << "*.kromo" << "*.kstudio" << "*.stxf" << "*.aflow" << "*.artflow", QDir::Files, QDir::Name);
 
   int exportCount = 0;
   QString ext = format.toLower();
@@ -6382,7 +6425,7 @@ bool CanvasItem::deleteProject(const QString &path) {
     // Cleanup if the folder is now empty (and not the root)
     QString rootPath =
         QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-        "/ArtFlowProjects";
+        "/KromoStudioProjects";
     QDir dir(dirPath);
     if (dirPath != rootPath && dir.exists() &&
         dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries).isEmpty()) {
@@ -6447,10 +6490,10 @@ bool CanvasItem::moveProjectOutOfFolder(const QString &path) {
     return false;
 
   QString sourceDirPath = info.absolutePath();
-  // Root ArtFlowProjects path
+  // Root KromoStudioProjects path
   QString rootPath =
       QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-      "/ArtFlowProjects";
+      "/KromoStudioProjects";
   QString newPath = rootPath + "/" + info.fileName();
 
   if (QFile::rename(localPath, newPath)) {
@@ -6475,6 +6518,16 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
   if (!m_layerManager)
     return false;
 
+  QString localPath = path;
+  if (localPath.startsWith("file:///")) {
+    localPath = QUrl(path).toLocalFile();
+  }
+
+  if (format.toUpper() == "PSD" || localPath.endsWith(".psd", Qt::CaseInsensitive)) {
+    syncGpuToCpu();
+    return exportPSD(localPath);
+  }
+
   // Create a composite image
   ImageBuffer composite(m_canvasWidth, m_canvasHeight);
   m_layerManager->compositeAll(composite);
@@ -6485,12 +6538,6 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
   QImage img = QImage(composite.data(), m_canvasWidth, m_canvasHeight,
                       QImage::Format_RGBA8888_Premultiplied)
                    .copy();
-
-  // Convert path to local file if it's a URL
-  QString localPath = path;
-  if (localPath.startsWith("file:///")) {
-    localPath = QUrl(path).toLocalFile();
-  }
 
   qDebug() << "Exporting image to:" << localPath;
   bool success = img.save(localPath, format.toUpper().toStdString().c_str());
@@ -8725,6 +8772,7 @@ void CanvasItem::undo() {
   }
   if (m_undoManager && m_undoManager->canUndo()) {
     m_undoManager->undo();
+    setProjectDirty(true);
     update();
   }
 }
@@ -8735,6 +8783,7 @@ void CanvasItem::redo() {
   }
   if (m_undoManager && m_undoManager->canRedo()) {
     m_undoManager->redo();
+    setProjectDirty(true);
     update();
   }
 }
@@ -9861,4 +9910,482 @@ void PreviewPadItem::paint(QPainter *painter) {
   }
 
   painter->drawImage(boundingRect(), img);
+}
+
+// ==================== AUTO-SAVE & CRASH RECOVERY SYSTEM ====================
+
+static QString getAutoSaveDir() {
+  QString path = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/KromoStudioProjects/.autosave";
+  QDir dir(path);
+  if (!dir.exists()) {
+    dir.mkpath(".");
+  }
+  return path;
+}
+
+void CanvasItem::setupAutoSave() {
+  m_autoSaveTimer = new QTimer(this);
+  m_autoSaveTimer->setInterval(120000); // 2 minutes
+  connect(m_autoSaveTimer, &QTimer::timeout, this, &CanvasItem::handleAutoSave);
+  m_autoSaveTimer->start();
+}
+
+void CanvasItem::handleAutoSave() {
+  if (!m_projectDirty || m_isDrawing) {
+    return;
+  }
+
+  qDebug() << "[AutoSave] Executing background auto-save...";
+  syncGpuToCpu();
+
+  QString autosaveName;
+  if (!m_currentProjectPath.isEmpty()) {
+    QFileInfo info(m_currentProjectPath);
+    autosaveName = info.completeBaseName() + ".autosave.kromo";
+  } else {
+    autosaveName = "untitled_" + m_currentProjectName + ".autosave.kromo";
+  }
+
+  QString autosavePath = QDir(getAutoSaveDir()).filePath(autosaveName);
+
+  QJsonObject obj;
+  obj["title"] = m_currentProjectName;
+  obj["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+  obj["width"] = m_canvasWidth;
+  obj["height"] = m_canvasHeight;
+  obj["version"] = 2; // Embedded Data format
+  obj["originalPath"] = m_currentProjectPath;
+
+  QJsonArray layersArray;
+  if (m_layerManager) {
+    for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+      Layer *layer = m_layerManager->getLayer(i);
+      if (!layer)
+        continue;
+
+      QJsonObject layerObj;
+      layerObj["name"] = QString::fromStdString(layer->name);
+      layerObj["opacity"] = layer->opacity;
+      layerObj["visible"] = layer->visible;
+      layerObj["locked"] = layer->locked;
+      layerObj["alphaLock"] = layer->alphaLock;
+      layerObj["reference"] = layer->reference;
+      layerObj["blendMode"] = (int)layer->blendMode;
+      layerObj["type"] = (int)layer->type;
+
+      QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                 QImage::Format_RGBA8888_Premultiplied);
+      QBuffer buffer;
+      buffer.open(QIODevice::WriteOnly);
+      if (img.save(&buffer, "PNG")) {
+        QString b64 = QString::fromLatin1(buffer.data().toBase64());
+        layerObj["data"] = b64;
+        layersArray.append(layerObj);
+      }
+    }
+  }
+  obj["layers"] = layersArray;
+
+  // Generate composite thumbnail
+  ImageBuffer composite(m_canvasWidth, m_canvasHeight);
+  if (m_layerManager) {
+    m_layerManager->compositeAll(composite);
+  }
+  QImage imgComp(composite.data(), m_canvasWidth, m_canvasHeight,
+                 QImage::Format_RGBA8888_Premultiplied);
+
+  QSize thumbSize(m_canvasWidth, m_canvasHeight);
+  thumbSize.scale(300, 300, Qt::KeepAspectRatio);
+  QImage thumbFinal(thumbSize, QImage::Format_ARGB32);
+  if (m_backgroundColor.alpha() > 0) {
+    thumbFinal.fill(m_backgroundColor);
+  } else {
+    thumbFinal.fill(Qt::white);
+  }
+
+  QPainter p(&thumbFinal);
+  p.setRenderHint(QPainter::SmoothPixmapTransform);
+  p.setRenderHint(QPainter::Antialiasing);
+  QImage scaled = imgComp.scaled(thumbSize, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+  p.drawImage(0, 0, scaled);
+  p.end();
+
+  QBuffer thumbBuf;
+  thumbBuf.open(QIODevice::WriteOnly);
+  thumbFinal.save(&thumbBuf, "PNG");
+  QString thumbB64 = QString::fromLatin1(thumbBuf.data().toBase64());
+  obj["thumbnail"] = thumbB64;
+
+  QFile file(autosavePath);
+  if (file.open(QIODevice::WriteOnly)) {
+    QJsonDocument doc(obj);
+    file.write(doc.toJson(QJsonDocument::Compact));
+    file.close();
+    qDebug() << "[AutoSave] Saved copy to:" << autosavePath;
+  } else {
+    qWarning() << "[AutoSave] Could not write to" << autosavePath;
+  }
+}
+
+bool CanvasItem::checkForAutosave() {
+  QDir dir(getAutoSaveDir());
+  QStringList filters;
+  filters << "*.autosave.kromo" << "*.autosave.kstudio" << "*.autosave.aflow" << "*.autosave.artflow";
+  return !dir.entryInfoList(filters, QDir::Files).isEmpty();
+}
+
+QVariantList CanvasItem::getAutosaveList() {
+  QVariantList list;
+  QDir dir(getAutoSaveDir());
+  QStringList filters;
+  filters << "*.autosave.kromo" << "*.autosave.kstudio" << "*.autosave.aflow" << "*.autosave.artflow";
+  QFileInfoList entries = dir.entryInfoList(filters, QDir::Files, QDir::Time);
+  for (const QFileInfo &info : entries) {
+    QVariantMap item;
+    item["name"] = info.completeBaseName().section('.', 0, 0);
+    item["path"] = info.absoluteFilePath();
+    item["date"] = info.lastModified().toString("dd MMM yyyy, hh:mm AP");
+    list.append(item);
+  }
+  return list;
+}
+
+bool CanvasItem::recoverAutosave(const QString &autosavePath) {
+  QString localPath = autosavePath;
+  if (localPath.startsWith("file:///")) {
+    localPath = QUrl(autosavePath).toLocalFile();
+  }
+
+  qDebug() << "[Recovery] Recovering project state from autosave:" << localPath;
+
+  QFile file(localPath);
+  if (!file.open(QIODevice::ReadOnly)) {
+    return false;
+  }
+
+  QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+  file.close();
+  QJsonObject obj = doc.object();
+
+  int w = obj["width"].toInt();
+  int h = obj["height"].toInt();
+  if (w <= 0 || h <= 0) {
+    w = 1920;
+    h = 1080;
+  }
+
+  resizeCanvas(w, h);
+
+  QJsonArray layersArray = obj["layers"].toArray();
+  if (!layersArray.isEmpty()) {
+    if (m_layerManager->getLayerCount() > 0) {
+      m_layerManager->removeLayer(0);
+    }
+
+    for (const QJsonValue &val : layersArray) {
+      QJsonObject layerObj = val.toObject();
+      QString name = layerObj["name"].toString();
+
+      int newIdx = m_layerManager->addLayer(name.toStdString());
+      Layer *newLayer = m_layerManager->getLayer(newIdx);
+
+      if (newLayer) {
+        newLayer->opacity = (float)layerObj["opacity"].toDouble(1.0);
+        newLayer->visible = layerObj["visible"].toBool(true);
+        newLayer->locked = layerObj["locked"].toBool(false);
+        newLayer->alphaLock = layerObj["alphaLock"].toBool(false);
+        newLayer->reference = layerObj["reference"].toBool(false);
+        newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
+        newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
+
+        QString b64Data = layerObj["data"].toString();
+        if (!b64Data.isEmpty()) {
+          QByteArray data = QByteArray::fromBase64(b64Data.toLatin1());
+          QImage img;
+          if (img.loadFromData(data, "PNG")) {
+            img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+            if (img.width() == w && img.height() == h) {
+              newLayer->buffer->loadRawData(img.constBits());
+            } else {
+              QImage scaled = img.scaled(w, h, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+              scaled = scaled.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
+              newLayer->buffer->loadRawData(scaled.constBits());
+            }
+          }
+        }
+      }
+    }
+  }
+
+  QString originalPath = obj["originalPath"].toString();
+  if (!originalPath.isEmpty()) {
+    m_currentProjectPath = originalPath;
+    m_currentProjectName = QFileInfo(originalPath).baseName();
+  } else {
+    m_currentProjectPath = "";
+    m_currentProjectName = obj["title"].toString("Untitled");
+  }
+
+  emit currentProjectPathChanged();
+  emit currentProjectNameChanged();
+  updateLayersList();
+
+  setProjectDirty(true);
+
+  emit notificationRequested("Session recovered successfully", "success");
+  
+  fitToView();
+  update();
+
+  QFile::remove(localPath);
+  return true;
+}
+
+void CanvasItem::discardAutosaves() {
+  QDir dir(getAutoSaveDir());
+  QStringList filters;
+  filters << "*.autosave.kromo" << "*.autosave.kstudio" << "*.autosave.aflow" << "*.autosave.artflow";
+  QFileInfoList entries = dir.entryInfoList(filters, QDir::Files);
+  for (const QFileInfo &info : entries) {
+    QFile::remove(info.absoluteFilePath());
+  }
+  qDebug() << "[AutoSave] Cleared all pending autosaves.";
+}
+
+void CanvasItem::setProjectDirty(bool dirty) {
+  if (m_projectDirty != dirty) {
+    m_projectDirty = dirty;
+    emit projectDirtyChanged();
+  }
+}
+
+// ==================== PSD EXPORTER SYSTEM ====================
+
+static void write16(QDataStream &out, uint16_t val) {
+  out << val;
+}
+
+static void write32(QDataStream &out, uint32_t val) {
+  out << val;
+}
+
+static QByteArray getPsdBlendModeKey(BlendMode mode) {
+  switch (mode) {
+    case BlendMode::Normal: return "norm";
+    case BlendMode::Multiply: return "mul ";
+    case BlendMode::Screen: return "scrn";
+    case BlendMode::Overlay: return "over";
+    case BlendMode::Darken: return "dark";
+    case BlendMode::Lighten: return "lite";
+    case BlendMode::ColorDodge: return "div ";
+    case BlendMode::ColorBurn: return "idiv";
+    case BlendMode::HardLight: return "hLIt";
+    case BlendMode::SoftLight: return "sLIt";
+    case BlendMode::Difference: return "diff";
+    default: return "norm";
+  }
+}
+
+bool CanvasItem::exportPSD(const QString &path) {
+  QFile file(path);
+  if (!file.open(QIODevice::WriteOnly)) {
+    qWarning() << "exportPSD: Could not open file for writing:" << path;
+    return false;
+  }
+
+  QDataStream out(&file);
+  out.setByteOrder(QDataStream::BigEndian);
+
+  // 1. File Header (26 bytes)
+  out.writeRawData("8BPS", 4);
+  write16(out, 1); // Version
+  for (int i = 0; i < 6; ++i) out << (uint8_t)0; // Reserved
+  write16(out, 4); // RGBA (4 channels)
+  write32(out, m_canvasHeight);
+  write32(out, m_canvasWidth);
+  write16(out, 8); // 8 bits per channel
+  write16(out, 3); // Color Mode: RGB
+
+  // 2. Color Mode Data (4 bytes)
+  write32(out, 0);
+
+  // 3. Image Resources (4 bytes)
+  write32(out, 0);
+
+  // 4. Layer and Mask Information
+  QList<Layer*> exportLayers;
+  if (m_layerManager) {
+    for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+      Layer *l = m_layerManager->getLayer(i);
+      if (l && l->type != Layer::Type::Group && l->buffer) {
+        exportLayers.append(l);
+      }
+    }
+  }
+
+  QByteArray layerInfoBytes;
+  QBuffer layerInfoBuf(&layerInfoBytes);
+  layerInfoBuf.open(QIODevice::WriteOnly);
+  QDataStream layerInfoOut(&layerInfoBuf);
+  layerInfoOut.setByteOrder(QDataStream::BigEndian);
+
+  // Write Layer Records
+  for (Layer *layer : exportLayers) {
+    write32(layerInfoOut, 0); // Top
+    write32(layerInfoOut, 0); // Left
+    write32(layerInfoOut, m_canvasHeight); // Bottom
+    write32(layerInfoOut, m_canvasWidth); // Right
+
+    write16(layerInfoOut, 4); // 4 channels
+
+    uint32_t channelLength = 2 + (m_canvasWidth * m_canvasHeight);
+    
+    // Channels: Red, Green, Blue, Alpha
+    write16(layerInfoOut, 0); write32(layerInfoOut, channelLength);
+    write16(layerInfoOut, 1); write32(layerInfoOut, channelLength);
+    write16(layerInfoOut, 2); write32(layerInfoOut, channelLength);
+    write16(layerInfoOut, -1); write32(layerInfoOut, channelLength);
+
+    layerInfoOut.writeRawData("8BIM", 4);
+    QByteArray blendKey = getPsdBlendModeKey(layer->blendMode);
+    layerInfoOut.writeRawData(blendKey.constData(), 4);
+
+    uint8_t opacityVal = qBound(0, qRound(layer->opacity * 255.0f), 255);
+    layerInfoOut << opacityVal;
+
+    uint8_t clippingVal = layer->clipped ? 1 : 0;
+    layerInfoOut << clippingVal;
+
+    uint8_t flagsVal = (layer->visible ? 0 : 2) | 8;
+    layerInfoOut << flagsVal;
+
+    layerInfoOut << (uint8_t)0; // Filler
+
+    // Extra fields
+    QString name = QString::fromStdString(layer->name);
+    QByteArray nameBytes = name.toUtf8();
+    int nameLen = nameBytes.length();
+    int pascalStringLen = 1 + nameLen;
+    int paddedPascalStringLen = pascalStringLen;
+    while (paddedPascalStringLen % 4 != 0) paddedPascalStringLen++;
+
+    uint32_t extraFieldsLength = 4 + 4 + paddedPascalStringLen;
+    write32(layerInfoOut, extraFieldsLength);
+
+    write32(layerInfoOut, 0); // Mask data length
+    write32(layerInfoOut, 0); // Blending ranges length
+
+    // Pascal name string with padding
+    layerInfoOut << (uint8_t)nameLen;
+    layerInfoOut.writeRawData(nameBytes.constData(), nameLen);
+    int paddingBytes = paddedPascalStringLen - pascalStringLen;
+    for (int p = 0; p < paddingBytes; ++p) {
+      layerInfoOut << (uint8_t)0;
+    }
+  }
+
+  // Write Channel Image Data
+  int totalPixels = m_canvasWidth * m_canvasHeight;
+  for (Layer *layer : exportLayers) {
+    const uint8_t *pixels = layer->buffer->data();
+
+    // Red Channel
+    write16(layerInfoOut, 0);
+    for (int p = 0; p < totalPixels; ++p) {
+      uint8_t a = pixels[p * 4 + 3];
+      uint8_t r = pixels[p * 4 + 0];
+      if (a > 0 && a < 255) {
+        r = qBound(0, qRound((r * 255.0) / a), 255);
+      }
+      layerInfoOut << r;
+    }
+
+    // Green Channel
+    write16(layerInfoOut, 0);
+    for (int p = 0; p < totalPixels; ++p) {
+      uint8_t a = pixels[p * 4 + 3];
+      uint8_t g = pixels[p * 4 + 1];
+      if (a > 0 && a < 255) {
+        g = qBound(0, qRound((g * 255.0) / a), 255);
+      }
+      layerInfoOut << g;
+    }
+
+    // Blue Channel
+    write16(layerInfoOut, 0);
+    for (int p = 0; p < totalPixels; ++p) {
+      uint8_t a = pixels[p * 4 + 3];
+      uint8_t b = pixels[p * 4 + 2];
+      if (a > 0 && a < 255) {
+        b = qBound(0, qRound((b * 255.0) / a), 255);
+      }
+      layerInfoOut << b;
+    }
+
+    // Alpha Channel
+    write16(layerInfoOut, 0);
+    for (int p = 0; p < totalPixels; ++p) {
+      layerInfoOut << pixels[p * 4 + 3];
+    }
+  }
+
+  layerInfoBuf.close();
+
+  // Write Layer Info section to file
+  uint32_t layerInfoSectionLength = 4 + 2 + layerInfoBytes.size();
+  uint32_t totalSectionLength = 4 + layerInfoSectionLength + 4;
+
+  write32(out, totalSectionLength);
+  write32(out, layerInfoSectionLength);
+  write16(out, (int16_t)exportLayers.size());
+  out.writeRawData(layerInfoBytes.constData(), layerInfoBytes.size());
+  write32(out, 0); // Global layer mask length
+
+  // 5. Global/Merged Image Data Section
+  ImageBuffer composite(m_canvasWidth, m_canvasHeight);
+  if (m_layerManager) {
+    m_layerManager->compositeAll(composite);
+  }
+  const uint8_t *compPixels = composite.data();
+
+  write16(out, 0); // Raw compression
+
+  // Red
+  for (int p = 0; p < totalPixels; ++p) {
+    uint8_t a = compPixels[p * 4 + 3];
+    uint8_t r = compPixels[p * 4 + 0];
+    if (a > 0 && a < 255) {
+      r = qBound(0, qRound((r * 255.0) / a), 255);
+    }
+    out << r;
+  }
+
+  // Green
+  for (int p = 0; p < totalPixels; ++p) {
+    uint8_t a = compPixels[p * 4 + 3];
+    uint8_t g = compPixels[p * 4 + 1];
+    if (a > 0 && a < 255) {
+      g = qBound(0, qRound((g * 255.0) / a), 255);
+    }
+    out << g;
+  }
+
+  // Blue
+  for (int p = 0; p < totalPixels; ++p) {
+    uint8_t a = compPixels[p * 4 + 3];
+    uint8_t b = compPixels[p * 4 + 2];
+    if (a > 0 && a < 255) {
+      b = qBound(0, qRound((b * 255.0) / a), 255);
+    }
+    out << b;
+  }
+
+  // Alpha
+  for (int p = 0; p < totalPixels; ++p) {
+    out << compPixels[p * 4 + 3];
+  }
+
+  file.close();
+  qDebug() << "[PSD Export] PSD file successfully exported to:" << path;
+  return true;
 }

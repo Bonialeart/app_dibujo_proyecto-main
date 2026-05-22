@@ -294,7 +294,7 @@ Item {
 
                         // Subtitle
                         Text {
-                            text: "ArtFlow Studio"
+                            text: "Kromo Studio"
                             color: Qt.lighter(colorAccent, 1.4)
                             font.pixelSize: 18
                             font.weight: Font.DemiBold

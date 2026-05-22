@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import ArtFlow 1.0
+import Kromo 1.0
 
 // ============================================================================
 // BrushStudioDialog.qml — Premium Brush Editor (Procreate-inspired)
@@ -1520,7 +1520,7 @@ Rectangle {
                                     color: bgSurface; border.color: borderDim; border.width: 1
                                     TextInput {
                                         anchors.fill: parent; anchors.margins: 10
-                                        text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "author") || "ArtFlow Studio") : "ArtFlow Studio"
+                                        text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "author") || "Kromo Studio") : "Kromo Studio"
                                         color: textPrimary; font.pixelSize: 13
                                         verticalAlignment: TextInput.AlignVCenter
                                         onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "author", text)

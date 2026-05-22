@@ -6,5 +6,5 @@ set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin
 set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
 cd build_mingw
-cmake --build . --target ArtFlowStudio
+cmake --build . --target KromoStudio
 pause

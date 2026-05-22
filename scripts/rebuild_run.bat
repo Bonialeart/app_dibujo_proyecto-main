@@ -12,7 +12,7 @@ if %errorlevel% neq 0 (
     exit /b %errorlevel%
 )
 
-echo Running ArtFlowStudio...
-build_mingw\ArtFlowStudio.exe
+echo Running KromoStudio...
+build_mingw\KromoStudio.exe
 echo Exit Code: %ERRORLEVEL%
 pause

@@ -9,7 +9,7 @@ import QtQuick.Effects
 // import Qt5Compat.GraphicalEffects
 
 
-import ArtFlow 1.0
+import Kromo 1.0
 import "../components"
 
             Item {

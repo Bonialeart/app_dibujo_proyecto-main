@@ -44,16 +44,16 @@ int main(int argc, char *argv[]) {
 #endif
 
   QGuiApplication app(argc, argv);
-  app.setOrganizationName("ArtFlowStudio");
-  app.setApplicationName("ArtFlow Pro");
+  app.setOrganizationName("KromoStudio");
+  app.setApplicationName("Kromo Studio");
 
   // Registro del componente de dibujo nativo
   // Registro de tipos QML
-  qmlRegisterType<CanvasItem>("ArtFlow", 1, 0, "QCanvasItem");
-  qmlRegisterType<PreviewPadItem>("ArtFlow", 1, 0, "QPreviewPadItem");
-  qmlRegisterType<ColorPicker>("ArtFlow", 1, 0, "ColorPicker");
+  qmlRegisterType<CanvasItem>("Kromo", 1, 0, "QCanvasItem");
+  qmlRegisterType<PreviewPadItem>("Kromo", 1, 0, "QPreviewPadItem");
+  qmlRegisterType<ColorPicker>("Kromo", 1, 0, "ColorPicker");
   qmlRegisterUncreatableType<artflow::PanelListModel>(
-      "ArtFlow", 1, 0, "PanelListModel",
+      "Kromo", 1, 0, "PanelListModel",
       "PanelListModel is managed by PanelManager");
 
   QQmlApplicationEngine engine;

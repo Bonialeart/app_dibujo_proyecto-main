@@ -121,6 +121,7 @@ public:
                  isFlippedVChanged)
   Q_PROPERTY(float canvasRotation READ canvasRotation WRITE setCanvasRotation
                  NOTIFY canvasRotationChanged)
+  Q_PROPERTY(bool projectDirty READ projectDirty NOTIFY projectDirtyChanged)
 
   // Aliases for QML compatibility
   Q_PROPERTY(float canvasScale READ zoomLevel WRITE setZoomLevel NOTIFY
@@ -311,6 +312,12 @@ public:
   Q_INVOKABLE bool saveProject(const QString &path);
   Q_INVOKABLE bool saveProjectAs(const QString &path);
   Q_INVOKABLE bool exportImage(const QString &path, const QString &format);
+  Q_INVOKABLE bool checkForAutosave();
+  Q_INVOKABLE QVariantList getAutosaveList();
+  Q_INVOKABLE bool recoverAutosave(const QString &autosavePath);
+  Q_INVOKABLE void discardAutosaves();
+  bool projectDirty() const { return m_projectDirty; }
+  void setProjectDirty(bool dirty);
   Q_INVOKABLE bool importImageAsLayer(const QString &path);
   Q_INVOKABLE bool importABR(const QString &path);
   Q_INVOKABLE void updateTransformProperties(float x, float y, float scale,
@@ -524,6 +531,7 @@ signals:
   void isFlippedHChanged();
   void isFlippedVChanged();
   void canvasRotationChanged();
+  void projectDirtyChanged();
 
   void hasSelectionChanged();
   void selectionAddModeChanged();
@@ -877,6 +885,13 @@ private:
 
   // Cache para las imágenes de vista previa de pinceles codificadas en base64
   QMap<QString, QString> m_brushPreviewCache;
+
+  // Auto-save members
+  QTimer *m_autoSaveTimer = nullptr;
+  bool m_projectDirty = false;
+  void handleAutoSave();
+  void setupAutoSave();
+  bool exportPSD(const QString &path);
 };
 
 class PreviewPadItem : public QQuickPaintedItem {

@@ -5,5 +5,5 @@ set NINJA_DIR=C:\Qt\Tools\Ninja
 set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin
 set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
-echo Running ArtFlowStudio...
-build_mingw\ArtFlowStudio.exe
+echo Running KromoStudio...
+build_mingw\KromoStudio.exe

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
-import ArtFlow 1.0
+import Kromo 1.0
 
 // ══════════════════════════════════════════════════════════════════
 //  LIQUIFY BAR  —  Floating bottom toolbar for Liquify/Deformation

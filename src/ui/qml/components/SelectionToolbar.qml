@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import ArtFlow 1.0
+import Kromo 1.0
 
 Item {
     id: root

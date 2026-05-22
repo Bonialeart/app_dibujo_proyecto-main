@@ -52,7 +52,7 @@ void ProjectModel::refresh(const QString &dirPath)
 {
     QString targetPath = dirPath;
     if (targetPath.isEmpty()) {
-        targetPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/ArtFlowProjects";
+        targetPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/KromoStudioProjects";
     }
 
     QDir dir(targetPath);
@@ -90,14 +90,14 @@ void ProjectModel::refresh(const QString &dirPath)
             // Scan for thumbnails
             QDir subDir(info.absoluteFilePath());
             QStringList filters;
-            filters << "*.png" << "*.jpg" << "*.jpeg" << "*.aflow";
+            filters << "*.png" << "*.jpg" << "*.jpeg" << "*.kromo" << "*.kstudio" << "*.aflow" << "*.artflow" << "*.stxf";
             QFileInfoList subFiles = subDir.entryInfoList(filters, QDir::Files, QDir::Time);
             
             for (int i = 0; i < qMin(3, (int)subFiles.size()); ++i) {
                 QString path = subFiles[i].absoluteFilePath();
-                if (path.endsWith(".aflow")) {
+                if (path.endsWith(".kromo") || path.endsWith(".kstudio") || path.endsWith(".aflow") || path.endsWith(".artflow") || path.endsWith(".stxf")) {
                     // Extract preview path (assuming system extractor works as before)
-                    QString tempPath = QDir::tempPath() + "/ArtFlowPreviews/" + subFiles[i].fileName() + ".png";
+                    QString tempPath = QDir::tempPath() + "/KromoStudioPreviews/" + subFiles[i].fileName() + ".png";
                     entry.thumbnails << "file:///" + tempPath;
                 } else {
                     entry.thumbnails << "file:///" + path;
@@ -106,8 +106,8 @@ void ProjectModel::refresh(const QString &dirPath)
             if (!entry.thumbnails.isEmpty()) entry.preview = entry.thumbnails[0];
         } else {
             // It's a file
-            if (info.fileName().endsWith(".aflow")) {
-                QString tempPath = QDir::tempPath() + "/ArtFlowPreviews/" + info.fileName() + ".png";
+            if (info.fileName().endsWith(".kromo") || info.fileName().endsWith(".kstudio") || info.fileName().endsWith(".aflow") || info.fileName().endsWith(".artflow") || info.fileName().endsWith(".stxf")) {
+                QString tempPath = QDir::tempPath() + "/KromoStudioPreviews/" + info.fileName() + ".png";
                 entry.preview = "file:///" + tempPath;
             } else if (info.fileName().endsWith(".png") || info.fileName().endsWith(".jpg")) {
                 entry.preview = "file:///" + info.absoluteFilePath();

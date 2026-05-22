@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ArtFlowStudio VERSION 1.0.0 LANGUAGES CXX)
+project(KromoStudio VERSION 1.0.0 LANGUAGES CXX)
 
 message(STATUS "--------------------------------------------------")
 message(STATUS "Compilador C++ detectado: ${CMAKE_CXX_COMPILER}")

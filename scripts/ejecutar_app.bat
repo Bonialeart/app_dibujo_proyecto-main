@@ -1,6 +1,6 @@
 @echo off
 echo =========================================
-echo    Lanzador de ArtFlow Studio (Con Consola)
+echo    Lanzador de Kromo Studio (Con Consola)
 echo =========================================
 echo.
 
@@ -33,10 +33,10 @@ if %errorlevel% neq 0 (
 )
 
 echo 4. Verificando ejecutable...
-if exist "build_mingw\ArtFlowStudio.exe" (
-    set EXE_PATH=build_mingw\ArtFlowStudio.exe
+if exist "build_mingw\KromoStudio.exe" (
+    set EXE_PATH=build_mingw\KromoStudio.exe
 ) else (
-    echo ERROR: No se encuentra build_mingw\ArtFlowStudio.exe
+    echo ERROR: No se encuentra build_mingw\KromoStudio.exe
     pause
     exit /b
 )

@@ -8,9 +8,9 @@ set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin
 set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
 cd build_mingw
-if exist ArtFlowStudio.exe (
-    start "" ArtFlowStudio.exe
+if exist KromoStudio.exe (
+    start "" KromoStudio.exe
 ) else (
-    echo Error: ArtFlowStudio.exe not found in build_mingw!
+    echo Error: KromoStudio.exe not found in build_mingw!
     pause
 )

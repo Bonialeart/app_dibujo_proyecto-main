@@ -11,14 +11,14 @@ import Qt.labs.settings 1.0 // For Window persistence
 // import Qt5Compat.GraphicalEffects
 
 
-import ArtFlow 1.0
+import Kromo 1.0
 import "components"
 
 Window {
     id: mainWindow
     visible: true
     width: 1440; height: 900
-    title: "ArtFlow Studio Pro"
+    title: "Kromo Studio Pro"
     color: "#050507"
     property alias comicOverlayManager: comicOverlay
     property alias simpleAnimationBar: simpleAnimationBar
@@ -108,6 +108,11 @@ Window {
 
     Component.onCompleted: {
         Qt.callLater(loadRecentProjects)
+        Qt.callLater(function() {
+            if (mainCanvas.checkForAutosave()) {
+                autosaveRecoveryPopup.openWithAutosaves()
+            }
+        })
     }
 
     // === DESIGN TOKENS ===
@@ -7728,7 +7733,7 @@ Window {
     FileDialog {
         id: openProjectDialog
         title: "Open Project"
-        nameFilters: ["ArtFlow Projects (*.aflow)", "Photoshop Document (*.psd)", "All Files (*)"]
+        nameFilters: ["Kromo Projects (*.kromo *.kstudio *.aflow *.artflow *.stxf)", "Photoshop Document (*.psd)", "All Files (*)"]
         onAccepted: {
             if (mainCanvas.loadProject(selectedFile)) {
                 isProjectActive = true
@@ -7746,7 +7751,7 @@ Window {
         id: saveProjectDialog
         title: "Save Project As"
         fileMode: FileDialog.SaveFile
-        nameFilters: ["ArtFlow Projects (*.aflow)", "Photoshop Document (*.psd)"]
+        nameFilters: ["Kromo Projects (*.kromo)", "Kromo Studio Legacy (*.kstudio)", "Legacy ArtFlow (*.aflow)", "Legacy ArtFlow Studio (*.artflow)", "Photoshop Document (*.psd)"]
         // defaultSuffix: "aflow" // Removed to allow extension switching based on filter
         onAccepted: {
             if (mainCanvas.saveProjectAs(selectedFile)) {
@@ -7903,7 +7908,7 @@ Window {
                         font.bold: true
                     }
                     Text {
-                        text: "ArtFlow Studio Pro"
+                        text: "Kromo Studio Pro"
                         color: colorAccent
                         font.pixelSize: 11 * uiScale
                         font.bold: true
@@ -8494,6 +8499,212 @@ Window {
                 color: "#888"
                 font.pixelSize: 14
                 anchors.horizontalCenter: parent.horizontalCenter
+            }
+        }
+    }
+
+    Popup {
+        id: autosaveRecoveryPopup
+        width: 520 * uiScale
+        height: 400 * uiScale
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+        anchors.centerIn: parent
+        
+        property var autosavesList: []
+        
+        function openWithAutosaves() {
+            autosavesList = mainCanvas.getAutosaveList()
+            if (autosavesList.length > 0) {
+                open()
+            }
+        }
+        
+        background: Rectangle {
+            color: "#ee121216"
+            radius: 24 * uiScale
+            border.color: "#30ffffff"
+            border.width: 1.5 * uiScale
+            
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowColor: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4)
+                shadowBlur: 1.0
+                shadowVerticalOffset: 4
+                shadowOpacity: 0.3
+            }
+        }
+        
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 25 * uiScale
+            spacing: 16 * uiScale
+            
+            RowLayout {
+                spacing: 15 * uiScale
+                Layout.fillWidth: true
+                
+                Text {
+                    text: "⚠️"
+                    font.pixelSize: 28 * uiScale
+                }
+                
+                ColumnLayout {
+                    spacing: 4 * uiScale
+                    Text {
+                        text: "Recuperación de Sesión"
+                        color: "white"
+                        font.pixelSize: 20 * uiScale
+                        font.bold: true
+                    }
+                    Text {
+                        text: "Se detectaron dibujos no guardados tras un cierre inesperado"
+                        color: "#aaa"
+                        font.pixelSize: 12 * uiScale
+                    }
+                }
+            }
+            
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                
+                Column {
+                    width: parent.width - 10
+                    spacing: 10 * uiScale
+                    
+                    Repeater {
+                        model: autosaveRecoveryPopup.autosavesList
+                        delegate: Rectangle {
+                            width: parent.width
+                            height: 60 * uiScale
+                            color: "#1d1d26"
+                            radius: 12 * uiScale
+                            border.color: "#25ffffff"
+                            border.width: 1 * uiScale
+                            
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 15 * uiScale
+                                anchors.rightMargin: 15 * uiScale
+                                spacing: 10 * uiScale
+                                
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 2 * uiScale
+                                    
+                                    Text {
+                                        text: modelData.name || "Sin Título"
+                                        color: "white"
+                                        font.pixelSize: 13 * uiScale
+                                        font.bold: true
+                                        elide: Text.ElideRight
+                                    }
+                                    Text {
+                                        text: "Guardado: " + modelData.date
+                                        color: colorTextMuted
+                                        font.pixelSize: 11 * uiScale
+                                    }
+                                }
+                                
+                                Button {
+                                    Layout.preferredHeight: 32 * uiScale
+                                    Layout.preferredWidth: 90 * uiScale
+                                    contentItem: Text {
+                                        text: "Recuperar"
+                                        color: "white"
+                                        font.pixelSize: 12 * uiScale
+                                        font.bold: true
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    background: Rectangle {
+                                        color: recoveryBtnMa.containsMouse ? Qt.lighter(colorAccent, 1.1) : colorAccent
+                                        radius: 8 * uiScale
+                                    }
+                                    MouseArea {
+                                        id: recoveryBtnMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (mainCanvas.recoverAutosave(modelData.path)) {
+                                                isProjectActive = true
+                                                currentPage = 1
+                                                autosaveRecoveryPopup.close()
+                                            } else {
+                                                toastManager.show("Error al recuperar sesión", "error")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 15 * uiScale
+                
+                Button {
+                    Layout.fillWidth: true
+                    height: 40 * uiScale
+                    contentItem: Text {
+                        text: "Descartar Todo"
+                        color: "#ef4444"
+                        font.pixelSize: 13 * uiScale
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: discardBtnMa.containsMouse ? "#2a1515" : "#1a1010"
+                        border.color: "#30ef4444"
+                        border.width: 1 * uiScale
+                        radius: 10 * uiScale
+                    }
+                    MouseArea {
+                        id: discardBtnMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            mainCanvas.discardAutosaves()
+                            autosaveRecoveryPopup.close()
+                            toastManager.show("Sesiones de autoguardado descartadas", "info")
+                        }
+                    }
+                }
+                
+                Button {
+                    Layout.fillWidth: true
+                    height: 40 * uiScale
+                    contentItem: Text {
+                        text: "Recordar Más Tarde"
+                        color: "white"
+                        font.pixelSize: 13 * uiScale
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: laterBtnMa.containsMouse ? "#30ffffff" : "#15ffffff"
+                        radius: 10 * uiScale
+                    }
+                    MouseArea {
+                        id: laterBtnMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: autosaveRecoveryPopup.close()
+                    }
+                }
             }
         }
     }

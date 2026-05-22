@@ -7,5 +7,5 @@ set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
 echo Running Clean Rebuild...
 cd build_mingw
-cmake --build . --target ArtFlowStudio --clean-first
+cmake --build . --target KromoStudio --clean-first
 pause

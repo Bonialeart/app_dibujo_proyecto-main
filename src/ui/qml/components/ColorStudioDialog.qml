@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Shapes
 import QtQuick.Dialogs
-import ArtFlow 1.0
+import Kromo 1.0
 
 Popup {
     id: root

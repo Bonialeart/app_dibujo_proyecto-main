@@ -1,5 +1,5 @@
 """
-ArtFlow Studio — Regenerador de Texturas de Pinceles Pequeñas
+Kromo Studio — Regenerador de Texturas de Pinceles Pequeñas
 =============================================================
 Este script detecta las texturas PNG en assets/textures/ que son molto
 pequeñas (< 8 KB) y las reemplaza con versiones de 512x512 pixel generadas
@@ -360,7 +360,7 @@ def main():
         if size < SIZE_THRESHOLD_BYTES:
             small_files.append((fname, size))
 
-    print(f"\n🎨 ArtFlow Studio — Regenerador de Texturas")
+    print(f"\n🎨 Kromo Studio — Regenerador de Texturas")
     print(f"  Directorio: {textures_path}")
     print(f"  Total PNGs: {len(all_files)}")
     print(f"  Texturas pequeñas (< {SIZE_THRESHOLD_BYTES} bytes): {len(small_files)}")
