@@ -7447,6 +7447,15 @@ void CanvasItem::updateLayersList() {
     case BlendMode::Luminosity:
       bModeStr = "Luminosity";
       break;
+    case BlendMode::GlowDodge:
+      bModeStr = "GlowDodge";
+      break;
+    case BlendMode::HardMix:
+      bModeStr = "HardMix";
+      break;
+    case BlendMode::Divide:
+      bModeStr = "Divide";
+      break;
     default:
       bModeStr = "Normal";
     }
@@ -8022,6 +8031,12 @@ void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
       newMode = BlendMode::Color;
     else if (mode == "Luminosity")
       newMode = BlendMode::Luminosity;
+    else if (mode == "Glow Dodge" || mode == "GlowDodge" || mode == "Glow")
+      newMode = BlendMode::GlowDodge;
+    else if (mode == "Hard Mix" || mode == "HardMix")
+      newMode = BlendMode::HardMix;
+    else if (mode == "Divide")
+      newMode = BlendMode::Divide;
 
     if (l->blendMode == newMode)
       return;

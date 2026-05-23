@@ -19,7 +19,10 @@ enum class BlendMode {
   Hue,
   Saturation,
   Color,
-  Luminosity
+  Luminosity,
+  GlowDodge,
+  HardMix,
+  Divide
 };
 
 } // namespace artflow

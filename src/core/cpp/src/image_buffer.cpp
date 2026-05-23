@@ -607,6 +607,30 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
         r_blend = dR_U + sR_U - 2.0f * dR_U * sR_U;
         g_blend = dG_U + sG_U - 2.0f * dG_U * sG_U;
         b_blend = dB_U + sB_U - 2.0f * dB_U * sB_U;
+      } else if (mode == BlendMode::GlowDodge) {
+        auto glow = [](float b, float s) {
+          if (b == 0.0f) return 0.0f;
+          if (s == 1.0f) return 1.0f;
+          return std::min(1.0f, (b * b) / (1.0f - s));
+        };
+        r_blend = glow(dR_U, sR_U);
+        g_blend = glow(dG_U, sG_U);
+        b_blend = glow(dB_U, sB_U);
+      } else if (mode == BlendMode::HardMix) {
+        auto hardmix = [](float b, float s) {
+          return (b + s >= 1.0f) ? 1.0f : 0.0f;
+        };
+        r_blend = hardmix(dR_U, sR_U);
+        g_blend = hardmix(dG_U, sG_U);
+        b_blend = hardmix(dB_U, sB_U);
+      } else if (mode == BlendMode::Divide) {
+        auto divide = [](float b, float s) {
+          if (s == 0.0f) return 1.0f;
+          return std::min(1.0f, b / s);
+        };
+        r_blend = divide(dR_U, sR_U);
+        g_blend = divide(dG_U, sG_U);
+        b_blend = divide(dB_U, sB_U);
       }
       // HSL Modes
       else if (mode == BlendMode::Hue || mode == BlendMode::Saturation ||

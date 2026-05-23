@@ -233,7 +233,7 @@ Item {
             
             contentItem: ListView {
                 clip: true
-                model: ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Soft Light", "Hard Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity"]
+                model: ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Soft Light", "Hard Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity", "Glow Dodge", "Hard Mix", "Divide"]
                 delegate: ItemDelegate {
                     width: parent.width; height: 32
                     contentItem: Text {

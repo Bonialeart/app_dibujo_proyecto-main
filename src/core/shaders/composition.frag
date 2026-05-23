@@ -35,6 +35,9 @@ const int MODE_HUE = 12;
 const int MODE_SATURATION = 13;
 const int MODE_COLOR = 14;
 const int MODE_LUMINOSITY = 15;
+const int MODE_GLOWDODGE = 16;
+const int MODE_HARDMIX = 17;
+const int MODE_DIVIDE = 18;
 
 float getLum(vec3 c) { return 0.3 * c.r + 0.59 * c.g + 0.11 * c.b; }
 float getSat(vec3 c) { return max(max(c.r, c.g), c.b) - min(min(c.r, c.g), c.b); }
@@ -152,6 +155,27 @@ void main() {
     else if (uMode == MODE_SATURATION) { B = setLum(setSat(Cb, getSat(Cs)), getLum(Cb)); }
     else if (uMode == MODE_COLOR) { B = setLum(Cs, getLum(Cb)); }
     else if (uMode == MODE_LUMINOSITY) { B = setLum(Cb, getLum(Cs)); }
+    else if (uMode == MODE_GLOWDODGE) {
+        B = vec3(
+            (Cb.r == 0.0) ? 0.0 : ((Cs.r == 1.0) ? 1.0 : min(1.0, (Cb.r * Cb.r) / (1.0 - Cs.r))),
+            (Cb.g == 0.0) ? 0.0 : ((Cs.g == 1.0) ? 1.0 : min(1.0, (Cb.g * Cb.g) / (1.0 - Cs.g))),
+            (Cb.b == 0.0) ? 0.0 : ((Cs.b == 1.0) ? 1.0 : min(1.0, (Cb.b * Cb.b) / (1.0 - Cs.b)))
+        );
+    }
+    else if (uMode == MODE_HARDMIX) {
+        B = vec3(
+            (Cb.r + Cs.r >= 1.0) ? 1.0 : 0.0,
+            (Cb.g + Cs.g >= 1.0) ? 1.0 : 0.0,
+            (Cb.b + Cs.b >= 1.0) ? 1.0 : 0.0
+        );
+    }
+    else if (uMode == MODE_DIVIDE) {
+        B = vec3(
+            (Cs.r == 0.0) ? 1.0 : min(1.0, Cb.r / Cs.r),
+            (Cs.g == 0.0) ? 1.0 : min(1.0, Cb.g / Cs.g),
+            (Cs.b == 0.0) ? 1.0 : min(1.0, Cb.b / Cs.b)
+        );
+    }
     else { B = Cs; }
 
     // --- FINAL COMPOSITING ---

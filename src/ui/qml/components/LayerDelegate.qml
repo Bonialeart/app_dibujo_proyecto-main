@@ -878,7 +878,7 @@ Item {
                             preferredHighlightEnd: height/2 + centerOffset + 22
                             highlightMoveDuration: 0 // Start instant to avoid jump on load
                             
-                            model: ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Soft Light", "Hard Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity"]
+                            model: ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Soft Light", "Hard Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity", "Glow Dodge", "Hard Mix", "Divide"]
                             
                             delegate: Item {
                                 width: blendModeList.width; height: 44
