@@ -52,6 +52,10 @@ using namespace artflow;
 
 static QString getAutoSaveDir();
 
+static void warpQuadBilinear(const QImage &srcImg, QImage &dstImg,
+                             const QPolygonF &srcQuad, const QPolygonF &dstQuad,
+                             int canvasWidth, int canvasHeight);
+
 static QCursor getModernCursor() {
   static QCursor modernCursor;
   static bool initialized = false;
@@ -848,9 +852,7 @@ void CanvasItem::paint(QPainter *painter) {
   if (m_layerManager->getLayerCount() > 0) {
     QOpenGLContext *ctx = QOpenGLContext::currentContext();
     bool drewNative = false;
-    bool gpuTransformReady =
-        ctx && (m_updateTransformTextures ||
-                (m_transformShader && m_transformStaticTex && m_selectionTex));
+    bool gpuTransformReady = false; // Always use QPainter high-fidelity CPU path to prevent FBO viewport shift and vertical flipping bugs
 
     if (m_isTransforming && gpuTransformReady) {
       painter->beginNativePainting();
@@ -914,17 +916,39 @@ void CanvasItem::paint(QPainter *painter) {
 
       if (m_transformShader && m_transformStaticTex && m_selectionTex) {
         QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+        
+        // Save current viewport and apply item-local viewport mapping relative to the physical window/FBO size (High-DPI and layout aware)
+        GLint prevViewport[4];
+        f->glGetIntegerv(GL_VIEWPORT, prevViewport);
+        
+        double dpr = window() ? window()->devicePixelRatio() : 1.0;
+        QPointF scenePos = mapToScene(QPointF(0, 0));
+        int devHeight = painter->device()->height();
+        int itemX = qRound(scenePos.x() * dpr);
+        int itemY = qRound(scenePos.y() * dpr);
+        int itemW = qRound(width() * dpr);
+        int itemH = qRound(height() * dpr);
+        f->glViewport(itemX, devHeight - (itemY + itemH), itemW, itemH);
+
         f->glEnable(GL_BLEND);
         f->glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
         m_transformShader->bind();
         QMatrix4x4 ortho;
         ortho.ortho(0, width(), height(), 0, -1, 1);
+
+        QMatrix4x4 canvasRotMat;
+        if (!qFuzzyIsNull(m_canvasRotation)) {
+          canvasRotMat.translate(width() / 2.0f, height() / 2.0f);
+          canvasRotMat.rotate(m_canvasRotation, 0.0f, 0.0f, 1.0f);
+          canvasRotMat.translate(-width() / 2.0f, -height() / 2.0f);
+        }
+
         QMatrix4x4 view;
         view.translate(m_viewOffset.x() * m_zoomLevel,
                        m_viewOffset.y() * m_zoomLevel);
         view.scale(m_zoomLevel, m_zoomLevel);
-        QMatrix4x4 orthoView = ortho * view;
+        QMatrix4x4 orthoView = ortho * canvasRotMat * view;
 
         // Draw Static Cache (Background)
         m_transformShader->setUniformValue("MVP", orthoView);
@@ -935,13 +959,13 @@ void CanvasItem::paint(QPainter *painter) {
         float cw = m_canvasWidth;
         float ch = m_canvasHeight;
         GLfloat bgVertices[] = {
-            0, 0,   0, 1,  // Top-Left
-            cw, 0,  1, 1,  // Top-Right
-            0, ch,  0, 0,  // Bottom-Left
+            0, 0,   0, 0,  // Top-Left
+            cw, 0,  1, 0,  // Top-Right
+            0, ch,  0, 1,  // Bottom-Left
 
-            0, ch,  0, 0,  // Bottom-Left
-            cw, 0,  1, 1,  // Top-Right
-            cw, ch, 1, 0   // Bottom-Right
+            0, ch,  0, 1,  // Bottom-Left
+            cw, 0,  1, 0,  // Top-Right
+            cw, ch, 1, 1   // Bottom-Right
         };
 
         m_transformShader->enableAttributeArray(0);
@@ -976,10 +1000,10 @@ void CanvasItem::paint(QPainter *painter) {
               float u_BR = (col + 1) / 3.0f;
               float u_BL = col / 3.0f;
 
-              float v_TL = 1.0f - (row / 3.0f);
-              float v_TR = 1.0f - (row / 3.0f);
-              float v_BR = 1.0f - ((row + 1) / 3.0f);
-              float v_BL = 1.0f - ((row + 1) / 3.0f);
+              float v_TL = row / 3.0f;
+              float v_TR = row / 3.0f;
+              float v_BR = (row + 1) / 3.0f;
+              float v_BL = (row + 1) / 3.0f;
 
               // Triangle 1: TL, TR, BL
               vertices.push_back(TL.x()); vertices.push_back(TL.y());
@@ -1012,30 +1036,20 @@ void CanvasItem::paint(QPainter *painter) {
 
         } else {
           // Draw Selection Frame natively with perspective correction
-          QMatrix4x4 qtMat;
-          qtMat.setColumn(0, QVector4D(m_transformMatrix.m11(),
-                                       m_transformMatrix.m12(), 0,
-                                       m_transformMatrix.m13()));
-          qtMat.setColumn(1, QVector4D(m_transformMatrix.m21(),
-                                       m_transformMatrix.m22(), 0,
-                                       m_transformMatrix.m23()));
-          qtMat.setColumn(2, QVector4D(0, 0, 1, 0));
-          qtMat.setColumn(3, QVector4D(m_transformMatrix.m31(),
-                                       m_transformMatrix.m32(), 0,
-                                       m_transformMatrix.m33()));
+          QMatrix4x4 qtMat(m_transformMatrix);
 
           m_transformShader->setUniformValue("MVP", orthoView * qtMat);
 
           float sw = m_selectionBuffer.width();
           float sh = m_selectionBuffer.height();
           GLfloat selVertices[] = {
-              0, 0,   0, 1,  // Top-Left
-              sw, 0,  1, 1,  // Top-Right
-              0, sh,  0, 0,  // Bottom-Left
+              0, 0,   0, 0,  // Top-Left
+              sw, 0,  1, 0,  // Top-Right
+              0, sh,  0, 1,  // Bottom-Left
 
-              0, sh,  0, 0,  // Bottom-Left
-              sw, 0,  1, 1,  // Top-Right
-              sw, sh, 1, 0   // Bottom-Right
+              0, sh,  0, 1,  // Bottom-Left
+              sw, 0,  1, 0,  // Top-Right
+              sw, sh, 1, 1   // Bottom-Right
           };
           m_transformShader->enableAttributeArray(0);
           m_transformShader->enableAttributeArray(1);
@@ -1049,6 +1063,9 @@ void CanvasItem::paint(QPainter *painter) {
         m_transformShader->disableAttributeArray(0);
         m_transformShader->disableAttributeArray(1);
         m_transformShader->release();
+        
+        // Restore viewport to previous state
+        f->glViewport(prevViewport[0], prevViewport[1], prevViewport[2], prevViewport[3]);
       }
       painter->endNativePainting();
     } else {
@@ -1244,6 +1261,9 @@ void CanvasItem::paint(QPainter *painter) {
       painter->setRenderHint(QPainter::Antialiasing);
 
       if (m_isMeshTransform && m_meshPoints.size() == 16) {
+        QImage tempImg(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
+        tempImg.fill(Qt::transparent);
+
         float sw = m_selectionBuffer.width();
         float sh = m_selectionBuffer.height();
 
@@ -1268,20 +1288,28 @@ void CanvasItem::paint(QPainter *painter) {
                        << QPointF((col + 1) * sw / 3.0f, (row + 1) * sh / 3.0f)
                        << QPointF(col * sw / 3.0f, (row + 1) * sh / 3.0f);
 
-            QTransform trans;
-            if (QTransform::quadToQuad(srcPolygon, dstPolygon, trans)) {
-              QPainterPath clipPath;
-              clipPath.addPolygon(dstPolygon);
-
-              painter->save();
-              painter->setClipPath(clipPath);
-              painter->setTransform(trans * painter->transform());
-              painter->drawImage(0, 0, m_selectionBuffer);
-              painter->restore();
-            }
+            warpQuadBilinear(m_selectionBuffer, tempImg, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
           }
         }
-      } else {
+        painter->drawImage(0, 0, tempImg);
+      } else if (m_meshPoints.size() == 4) { // Perspective mode preview
+        QImage tempImg(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
+        tempImg.fill(Qt::transparent);
+
+        float sw = m_selectionBuffer.width();
+        float sh = m_selectionBuffer.height();
+
+        QPolygonF srcPolygon;
+        srcPolygon << QPointF(0, 0) << QPointF(sw, 0) << QPointF(sw, sh) << QPointF(0, sh);
+
+        QPolygonF dstPolygon;
+        for (int i = 0; i < 4; ++i) {
+          dstPolygon << m_meshPoints[i];
+        }
+
+        warpQuadBilinear(m_selectionBuffer, tempImg, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
+        painter->drawImage(0, 0, tempImg);
+      } else { // Free transform (affine)
         painter->setTransform(m_transformMatrix * painter->transform());
         painter->drawImage(0, 0, m_selectionBuffer);
       }
@@ -2783,6 +2811,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       } else {
         // Clic fuera -> Confirmar y terminar
         commitTransform();
+        return;
       }
     }
 
@@ -5041,6 +5070,74 @@ void CanvasItem::updateTransformCorners(const QVariantList &corners) {
   requestUpdate(); // throttled — no update() directo aquí
 }
 
+static void warpQuadBilinear(const QImage &srcImg, QImage &dstImg,
+                             const QPolygonF &srcQuad, const QPolygonF &dstQuad,
+                             int canvasWidth, int canvasHeight) {
+  QTransform trans;
+  if (!QTransform::quadToQuad(srcQuad, dstQuad, trans))
+    return;
+
+  QTransform invTrans = trans.inverted();
+  QRectF bound = dstQuad.boundingRect();
+  QRect bbox = bound.toRect().intersected(QRect(0, 0, canvasWidth, canvasHeight));
+
+  int sw = srcImg.width();
+  int sh = srcImg.height();
+
+  for (int y = bbox.top(); y <= bbox.bottom(); ++y) {
+    for (int x = bbox.left(); x <= bbox.right(); ++x) {
+      QPointF pt(x + 0.5, y + 0.5);
+      if (dstQuad.containsPoint(pt, Qt::OddEvenFill)) {
+        QPointF srcPt = invTrans.map(pt);
+        float sx = srcPt.x();
+        float sy = srcPt.y();
+        if (sx >= 0 && sx < sw && sy >= 0 && sy < sh) {
+          // Bilinear interpolation
+          int x0 = qBound(0, (int)std::floor(sx), sw - 1);
+          int y0 = qBound(0, (int)std::floor(sy), sh - 1);
+          int x1 = qBound(0, x0 + 1, sw - 1);
+          int y1 = qBound(0, y0 + 1, sh - 1);
+
+          float tx = sx - std::floor(sx);
+          float ty = sy - std::floor(sy);
+
+          QRgb p00 = srcImg.pixel(x0, y0);
+          QRgb p10 = srcImg.pixel(x1, y0);
+          QRgb p01 = srcImg.pixel(x0, y1);
+          QRgb p11 = srcImg.pixel(x1, y1);
+
+          float a = (1.0f - tx) * (1.0f - ty) * qAlpha(p00) + tx * (1.0f - ty) * qAlpha(p10) +
+                    (1.0f - tx) * ty * qAlpha(p01) + tx * ty * qAlpha(p11);
+          float r = (1.0f - tx) * (1.0f - ty) * qRed(p00) + tx * (1.0f - ty) * qRed(p10) +
+                    (1.0f - tx) * ty * qRed(p01) + tx * ty * qRed(p11);
+          float g = (1.0f - tx) * (1.0f - ty) * qGreen(p00) + tx * (1.0f - ty) * qGreen(p10) +
+                    (1.0f - tx) * ty * qGreen(p01) + tx * ty * qGreen(p11);
+          float b = (1.0f - tx) * (1.0f - ty) * qBlue(p00) + tx * (1.0f - ty) * qBlue(p10) +
+                    (1.0f - tx) * ty * qBlue(p01) + tx * ty * qBlue(p11);
+
+          QRgb srcColor = qRgba((int)r, (int)g, (int)b, (int)a);
+          
+          int srcA = qAlpha(srcColor);
+          if (srcA == 0) continue;
+
+          QRgb dstColor = dstImg.pixel(x, y);
+          int dstA = qAlpha(dstColor);
+
+          if (dstA == 0) {
+            dstImg.setPixel(x, y, srcColor);
+          } else {
+            int outA = srcA + (dstA * (255 - srcA) + 127) / 255;
+            int outR = qRed(srcColor) + (qRed(dstColor) * (255 - srcA) + 127) / 255;
+            int outG = qGreen(srcColor) + (qGreen(dstColor) * (255 - srcA) + 127) / 255;
+            int outB = qBlue(srcColor) + (qBlue(dstColor) * (255 - srcA) + 127) / 255;
+            dstImg.setPixel(x, y, qRgba(outR, outG, outB, outA));
+          }
+        }
+      }
+    }
+  }
+}
+
 void CanvasItem::applyTransform() {
   if (!m_isTransforming)
     return;
@@ -5054,9 +5151,6 @@ void CanvasItem::applyTransform() {
   if (layer && layer->buffer) {
     QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
                QImage::Format_RGBA8888_Premultiplied);
-    QPainter p(&img);
-    p.setRenderHint(QPainter::SmoothPixmapTransform);
-    p.setRenderHint(QPainter::Antialiasing);
 
     if (m_isMeshTransform && m_meshPoints.size() == 16) {
       float sw = m_selectionBuffer.width();
@@ -5083,24 +5177,33 @@ void CanvasItem::applyTransform() {
                      << QPointF((col + 1) * sw / 3.0f, (row + 1) * sh / 3.0f)
                      << QPointF(col * sw / 3.0f, (row + 1) * sh / 3.0f);
 
-          QTransform trans;
-          if (QTransform::quadToQuad(srcPolygon, dstPolygon, trans)) {
-            QPainterPath clipPath;
-            clipPath.addPolygon(dstPolygon);
-
-            p.save();
-            p.setClipPath(clipPath);
-            p.setTransform(trans);
-            p.drawImage(0, 0, m_selectionBuffer);
-            p.restore();
-          }
+          warpQuadBilinear(m_selectionBuffer, img, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
         }
       }
-    } else {
+    } else if (m_meshPoints.size() == 4) { // Perspective transform (projective quad-to-quad)
+      float sw = m_selectionBuffer.width();
+      float sh = m_selectionBuffer.height();
+
+      QPolygonF srcPolygon;
+      srcPolygon << QPointF(0, 0) << QPointF(sw, 0) << QPointF(sw, sh) << QPointF(0, sh);
+
+      QPolygonF dstPolygon;
+      for (int i = 0; i < 4; ++i) {
+        dstPolygon << m_meshPoints[i];
+      }
+
+      warpQuadBilinear(m_selectionBuffer, img, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
+    } else { // Free transform (affine)
+      QPainter p(&img);
+      p.setRenderHint(QPainter::SmoothPixmapTransform);
+      p.setRenderHint(QPainter::Antialiasing);
       p.setTransform(m_transformMatrix);
       p.drawImage(0, 0, m_selectionBuffer);
+      p.end();
     }
-    p.end();
+
+    // Sync QImage modifications (m_cachedData) back to ImageBuffer tiles!
+    layer->buffer->loadRawData(layer->buffer->data());
 
     layer->dirty = true;
 
@@ -5131,6 +5234,10 @@ void CanvasItem::cancelTransform() {
     p.drawImage(m_transformBox.topLeft(),
                 m_selectionBuffer); // Draw back original at its position
     p.end();
+
+    // Sync QImage modifications (m_cachedData) back to ImageBuffer tiles!
+    layer->buffer->loadRawData(layer->buffer->data());
+
     layer->dirty = true;
   }
 
@@ -7201,6 +7308,11 @@ void CanvasItem::updateTransformProperties(float x, float y, float scale,
   // 4. Move local coordinates to center around (0,0) (called last, applied 1st)
   m_transformMatrix.translate(-m_transformBox.width() / 2.0f,
                               -m_transformBox.height() / 2.0f);
+
+  qDebug() << "[TransformDebug] QML Input: x=" << x << "y=" << y << "w=" << w << "h=" << h
+           << "| Box: x=" << m_transformBox.x() << "y=" << m_transformBox.y() << "w=" << m_transformBox.width() << "h=" << m_transformBox.height()
+           << "| Computed: Cx=" << newCx << "Cy=" << newCy
+           << "| Matrix translation: tx=" << m_transformMatrix.dx() << "ty=" << m_transformMatrix.dy();
 
   update();
 }

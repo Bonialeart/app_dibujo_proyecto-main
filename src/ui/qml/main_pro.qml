@@ -77,6 +77,8 @@ Window {
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Fit to Screen"] ? mainWindow.sm["Fit to Screen"] : "Ctrl+0"; onActivated: mainCanvas.fitToView() }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Zoom In"] ? mainWindow.sm["Zoom In"] : "Ctrl++"; onActivated: mainCanvas.zoomLevel *= 1.2 }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Zoom Out"] ? mainWindow.sm["Zoom Out"] : "Ctrl+-"; onActivated: mainCanvas.zoomLevel *= 0.8 }
+    Shortcut { enabled: mainCanvas.isTransforming; sequences: ["Return", "Enter"]; onActivated: mainCanvas.applyTransform() }
+    Shortcut { enabled: mainCanvas.isTransforming; sequences: ["Escape"]; onActivated: mainCanvas.cancelTransform() }
 
 
     Component.onCompleted: {
