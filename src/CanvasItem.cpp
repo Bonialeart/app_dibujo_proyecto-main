@@ -671,6 +671,259 @@ void CanvasItem::resetTransformState() {
   update();
 }
 
+// --- HSL helper functions for Hue/Saturation/Color/Luminosity blend modes ---
+// Follows the W3C compositing spec / Krita's non-separable blend mode math.
+static inline float hslLuminosity(float r, float g, float b) {
+  return 0.3f * r + 0.59f * g + 0.11f * b;
+}
+
+static inline float hslSaturation(float r, float g, float b) {
+  return std::max({r, g, b}) - std::min({r, g, b});
+}
+
+static inline void hslClipColor(float &r, float &g, float &b) {
+  float l = hslLuminosity(r, g, b);
+  float mn = std::min({r, g, b});
+  float mx = std::max({r, g, b});
+  if (mn < 0.0f) {
+    float denom = l - mn;
+    if (denom > 1e-7f) {
+      r = l + (r - l) * l / denom;
+      g = l + (g - l) * l / denom;
+      b = l + (b - l) * l / denom;
+    } else {
+      r = g = b = l;
+    }
+  }
+  if (mx > 1.0f) {
+    float denom = mx - l;
+    if (denom > 1e-7f) {
+      r = l + (r - l) * (1.0f - l) / denom;
+      g = l + (g - l) * (1.0f - l) / denom;
+      b = l + (b - l) * (1.0f - l) / denom;
+    } else {
+      r = g = b = l;
+    }
+  }
+}
+
+static inline void hslSetLum(float &r, float &g, float &b, float lum) {
+  float d = lum - hslLuminosity(r, g, b);
+  r += d; g += d; b += d;
+  hslClipColor(r, g, b);
+}
+
+// Set the saturation of (r,g,b) to the given sat value while preserving
+// the component ordering.  This is the "SetSat" algorithm from the spec.
+static inline void hslSetSat(float &r, float &g, float &b, float sat) {
+  // Identify min, mid, max by pointer
+  float *cmin = &r, *cmid = &g, *cmax = &b;
+  if (*cmin > *cmid) std::swap(cmin, cmid);
+  if (*cmid > *cmax) std::swap(cmid, cmax);
+  if (*cmin > *cmid) std::swap(cmin, cmid);
+
+  if (*cmax > *cmin) {
+    *cmid = ((*cmid - *cmin) * sat) / (*cmax - *cmin);
+    *cmax = sat;
+  } else {
+    *cmid = 0.0f;
+    *cmax = 0.0f;
+  }
+  *cmin = 0.0f;
+}
+
+static void blendImagesCustom(QImage &backdrop, const QImage &source, const QRect &rect, const QPoint &targetPos, artflow::BlendMode mode, float opacity) {
+  int xStart = std::max(0, rect.left());
+  int yStart = std::max(0, rect.top());
+  int xEnd = std::min(source.width() - 1, rect.right());
+  int yEnd = std::min(source.height() - 1, rect.bottom());
+
+  // Offset between source coordinates and backdrop coordinates
+  int dx = targetPos.x() - rect.x();
+  int dy = targetPos.y() - rect.y();
+
+  for (int y = yStart; y <= yEnd; ++y) {
+    int destY = y + dy;
+    if (destY < 0 || destY >= backdrop.height()) continue;
+
+    QRgb *dstLine = reinterpret_cast<QRgb*>(backdrop.scanLine(destY));
+    const QRgb *srcLine = reinterpret_cast<const QRgb*>(source.scanLine(y));
+
+    for (int x = xStart; x <= xEnd; ++x) {
+      int destX = x + dx;
+      if (destX < 0 || destX >= backdrop.width()) continue;
+
+      QRgb srcPixel = srcLine[x];
+      int sa_i = qAlpha(srcPixel);
+      if (sa_i <= 0) continue;
+
+      float sa_f = (sa_i / 255.0f) * opacity;
+      if (sa_f <= 0.0f) continue;
+
+      QRgb dstPixel = dstLine[destX];
+      int da_i = qAlpha(dstPixel);
+      float da_f = da_i / 255.0f;
+
+      // Un-premultiply source and destination for correct blend math
+      float sa_raw = sa_i / 255.0f;
+      float sR_U = sa_raw > 1e-7f ? (qRed(srcPixel) / 255.0f) / sa_raw : 0.0f;
+      float sG_U = sa_raw > 1e-7f ? (qGreen(srcPixel) / 255.0f) / sa_raw : 0.0f;
+      float sB_U = sa_raw > 1e-7f ? (qBlue(srcPixel) / 255.0f) / sa_raw : 0.0f;
+
+      float dR_U = 0.0f, dG_U = 0.0f, dB_U = 0.0f;
+      if (da_i > 0) {
+        dR_U = (qRed(dstPixel) / 255.0f) / da_f;
+        dG_U = (qGreen(dstPixel) / 255.0f) / da_f;
+        dB_U = (qBlue(dstPixel) / 255.0f) / da_f;
+      }
+
+      float r_blend = 0.0f, g_blend = 0.0f, b_blend = 0.0f;
+
+      if (mode == artflow::BlendMode::Normal) {
+        r_blend = sR_U;
+        g_blend = sG_U;
+        b_blend = sB_U;
+      } else if (mode == artflow::BlendMode::Multiply) {
+        r_blend = dR_U * sR_U;
+        g_blend = dG_U * sG_U;
+        b_blend = dB_U * sB_U;
+      } else if (mode == artflow::BlendMode::Screen) {
+        r_blend = dR_U + sR_U - dR_U * sR_U;
+        g_blend = dG_U + sG_U - dG_U * sG_U;
+        b_blend = dB_U + sB_U - dB_U * sB_U;
+      } else if (mode == artflow::BlendMode::Overlay) {
+        auto overlay = [](float b, float s) {
+          return (b < 0.5f) ? (2.0f * b * s)
+                            : (1.0f - 2.0f * (1.0f - b) * (1.0f - s));
+        };
+        r_blend = overlay(dR_U, sR_U);
+        g_blend = overlay(dG_U, sG_U);
+        b_blend = overlay(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::Darken) {
+        r_blend = std::min(dR_U, sR_U);
+        g_blend = std::min(dG_U, sG_U);
+        b_blend = std::min(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::Lighten) {
+        r_blend = std::max(dR_U, sR_U);
+        g_blend = std::max(dG_U, sG_U);
+        b_blend = std::max(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::ColorDodge) {
+        auto dodge = [](float b, float s) {
+          if (b == 0.0f)
+            return 0.0f;
+          if (s == 1.0f)
+            return 1.0f;
+          return std::min(1.0f, b / (1.0f - s));
+        };
+        r_blend = dodge(dR_U, sR_U);
+        g_blend = dodge(dG_U, sG_U);
+        b_blend = dodge(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::ColorBurn) {
+        auto burn = [](float b, float s) {
+          if (b == 1.0f)
+            return 1.0f;
+          if (s == 0.0f)
+            return 0.0f;
+          return 1.0f - std::min(1.0f, (1.0f - b) / s);
+        };
+        r_blend = burn(dR_U, sR_U);
+        g_blend = burn(dG_U, sG_U);
+        b_blend = burn(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::HardLight) {
+        auto hardlight = [](float b, float s) {
+          return (s < 0.5f) ? (2.0f * b * s)
+                            : (1.0f - 2.0f * (1.0f - b) * (1.0f - s));
+        };
+        r_blend = hardlight(dR_U, sR_U);
+        g_blend = hardlight(dG_U, sG_U);
+        b_blend = hardlight(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::SoftLight) {
+        auto softlight = [](float b, float s) {
+          if (s <= 0.5f)
+            return b - (1.0f - 2.0f * s) * b * (1.0f - b);
+          float d = (b <= 0.25f) ? (((16.0f * b - 12.0f) * b + 4.0f) * b)
+                                 : std::sqrt(b);
+          return b + (2.0f * s - 1.0f) * (d - b);
+        };
+        r_blend = softlight(dR_U, sR_U);
+        g_blend = softlight(dG_U, sG_U);
+        b_blend = softlight(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::Difference) {
+        r_blend = std::abs(dR_U - sR_U);
+        g_blend = std::abs(dG_U - sG_U);
+        b_blend = std::abs(dB_U - sB_U);
+      } else if (mode == artflow::BlendMode::Exclusion) {
+        r_blend = dR_U + sR_U - 2.0f * dR_U * sR_U;
+        g_blend = dG_U + sG_U - 2.0f * dG_U * sG_U;
+        b_blend = dB_U + sB_U - 2.0f * dB_U * sB_U;
+      } else if (mode == artflow::BlendMode::GlowDodge) {
+        auto glow = [](float b, float s) {
+          if (b == 0.0f) return 0.0f;
+          if (s == 1.0f) return 1.0f;
+          return std::min(1.0f, (b * b) / (1.0f - s));
+        };
+        r_blend = glow(dR_U, sR_U);
+        g_blend = glow(dG_U, sG_U);
+        b_blend = glow(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::HardMix) {
+        auto hardmix = [](float b, float s) {
+          return (b + s >= 1.0f) ? 1.0f : 0.0f;
+        };
+        r_blend = hardmix(dR_U, sR_U);
+        g_blend = hardmix(dG_U, sG_U);
+        b_blend = hardmix(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::Divide) {
+        auto divide = [](float b, float s) {
+          if (s == 0.0f) return 1.0f;
+          return std::min(1.0f, b / s);
+        };
+        r_blend = divide(dR_U, sR_U);
+        g_blend = divide(dG_U, sG_U);
+        b_blend = divide(dB_U, sB_U);
+      } else if (mode == artflow::BlendMode::Hue) {
+        // Result: Hue of source, Saturation and Luminosity of backdrop
+        r_blend = sR_U; g_blend = sG_U; b_blend = sB_U;
+        hslSetSat(r_blend, g_blend, b_blend, hslSaturation(dR_U, dG_U, dB_U));
+        hslSetLum(r_blend, g_blend, b_blend, hslLuminosity(dR_U, dG_U, dB_U));
+      } else if (mode == artflow::BlendMode::Saturation) {
+        // Result: Saturation of source, Hue and Luminosity of backdrop
+        r_blend = dR_U; g_blend = dG_U; b_blend = dB_U;
+        hslSetSat(r_blend, g_blend, b_blend, hslSaturation(sR_U, sG_U, sB_U));
+        hslSetLum(r_blend, g_blend, b_blend, hslLuminosity(dR_U, dG_U, dB_U));
+      } else if (mode == artflow::BlendMode::Color) {
+        // Result: Hue and Saturation of source, Luminosity of backdrop
+        r_blend = sR_U; g_blend = sG_U; b_blend = sB_U;
+        hslSetLum(r_blend, g_blend, b_blend, hslLuminosity(dR_U, dG_U, dB_U));
+      } else if (mode == artflow::BlendMode::Luminosity) {
+        // Result: Luminosity of source, Hue and Saturation of backdrop
+        r_blend = dR_U; g_blend = dG_U; b_blend = dB_U;
+        hslSetLum(r_blend, g_blend, b_blend, hslLuminosity(sR_U, sG_U, sB_U));
+      } else {
+        r_blend = sR_U;
+        g_blend = sG_U;
+        b_blend = sB_U;
+      }
+
+      // Compositing
+      float finalR = (1.0f - da_f) * sa_f * sR_U + (1.0f - sa_f) * da_f * dR_U + sa_f * da_f * r_blend;
+      float finalG = (1.0f - da_f) * sa_f * sG_U + (1.0f - sa_f) * da_f * dG_U + sa_f * da_f * g_blend;
+      float finalB = (1.0f - da_f) * sa_f * sB_U + (1.0f - sa_f) * da_f * dB_U + sa_f * da_f * b_blend;
+
+      float outA = sa_f + da_f - sa_f * da_f;
+
+      if (outA > 1e-6f) {
+        int outA_i = std::clamp(static_cast<int>(outA * 255.0f), 0, 255);
+        int outR_i = std::clamp(static_cast<int>(finalR * 255.0f), 0, outA_i);
+        int outG_i = std::clamp(static_cast<int>(finalG * 255.0f), 0, outA_i);
+        int outB_i = std::clamp(static_cast<int>(finalB * 255.0f), 0, outA_i);
+        dstLine[destX] = qRgba(outR_i, outG_i, outB_i, outA_i);
+      } else {
+        dstLine[destX] = qRgba(0, 0, 0, 0);
+      }
+    }
+  }
+}
+
 void CanvasItem::paint(QPainter *painter) {
   if (!m_layerManager)
     return;
@@ -1107,6 +1360,26 @@ void CanvasItem::paint(QPainter *painter) {
           cpuPainter.setRenderHint(QPainter::Antialiasing, false);
           cpuPainter.setRenderHint(QPainter::SmoothPixmapTransform, false);
 
+          auto drawLayerWithBlend = [&](QPainter &painter, QImage &destImg, Layer *lyr, const QPoint &targetPos, const QRect &rect) {
+            if (!lyr || !lyr->visible || !lyr->buffer || !lyr->buffer->data())
+              return;
+
+            QImage srcImg(lyr->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
+
+            // Use software blender for all non-Normal modes to ensure mathematically correct W3C alpha compositing
+            if (lyr->blendMode != artflow::BlendMode::Normal) {
+              painter.end();
+              blendImagesCustom(destImg, srcImg, rect, targetPos, lyr->blendMode, lyr->opacity);
+              painter.begin(&destImg);
+              painter.setRenderHint(QPainter::Antialiasing, false);
+              painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+            } else {
+              painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+              painter.setOpacity(lyr->opacity);
+              painter.drawImage(targetPos, srcImg, rect);
+            }
+          };
+
           // Clear only the dirty region to transparent
           cpuPainter.setCompositionMode(QPainter::CompositionMode_Source);
           cpuPainter.fillRect(dirtyUnion, Qt::transparent);
@@ -1145,10 +1418,7 @@ void CanvasItem::paint(QPainter *painter) {
             // Draw base layer normally if visible
             if (baseLayer->visible && baseLayer->buffer &&
                 baseLayer->buffer->data()) {
-              QImage baseImg(baseLayer->buffer->data(), cw, ch,
-                             QImage::Format_RGBA8888_Premultiplied);
-              cpuPainter.setOpacity(baseLayer->opacity);
-              cpuPainter.drawImage(dirtyUnion.topLeft(), baseImg, dirtyUnion);
+              drawLayerWithBlend(cpuPainter, m_cachedCanvasImage, baseLayer, dirtyUnion.topLeft(), dirtyUnion);
             }
 
             baseLayer->dirty = false;
@@ -1175,10 +1445,7 @@ void CanvasItem::paint(QPainter *painter) {
                   Layer *cLayer = m_layerManager->getLayer(k);
                   if (cLayer && cLayer->visible && cLayer->buffer &&
                       cLayer->buffer->data()) {
-                    QImage cImg(cLayer->buffer->data(), cw, ch,
-                                QImage::Format_RGBA8888_Premultiplied);
-                    groupPainter.setOpacity(cLayer->opacity);
-                    groupPainter.drawImage(QPoint(0, 0), cImg, dirtyUnion);
+                    drawLayerWithBlend(groupPainter, groupImg, cLayer, QPoint(0, 0), dirtyUnion);
                   }
                   if (cLayer) {
                     cLayer->dirty = false;
