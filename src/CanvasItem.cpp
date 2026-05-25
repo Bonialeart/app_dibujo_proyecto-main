@@ -308,6 +308,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   // Apply initial
   updateTheme();
   setupAutoSave();
+  m_edgeDetector = new EdgeDetector();
 }
 
 void CanvasItem::clearRenderCaches() {
@@ -580,6 +581,8 @@ CanvasItem::~CanvasItem() {
     delete m_impastoShader;
   if (m_liquifyEngine)
     delete m_liquifyEngine;
+  if (m_edgeDetector)
+    delete m_edgeDetector;
 
   // Cleanup layer textures
   for (auto *tex : m_layerTextures.values()) {
@@ -661,6 +664,7 @@ void CanvasItem::resetTransformState() {
   m_activeLassoPath = QPainterPath();
   m_isLassoDragging = false;
   m_isMagneticLassoActive = false;
+  m_magneticPreviewPath = QPainterPath();
   m_hasSelection = false;
 
   if (m_marchingAntsTimer)
@@ -1726,13 +1730,37 @@ void CanvasItem::paint(QPainter *painter) {
     painter->drawPath(m_activeLassoPath);
 
     // Rubber-band line from last point to cursor
-    if ((m_tool == ToolType::Lasso && m_lassoMode == 1) ||
-        m_tool == ToolType::MagneticLasso) {
+    if (m_tool == ToolType::Lasso && m_lassoMode == 1) {
       QPointF lastPt = m_activeLassoPath.currentPosition();
       QPen rubberPen(lassoColor, 1.2f / m_zoomLevel, Qt::DashLine);
       rubberPen.setDashPattern({3, 3});
       painter->setPen(rubberPen);
       painter->drawLine(lastPt, m_lassoCursorPos);
+
+      // Closing rubber-band to start
+      QPointF startPt = m_activeLassoPath.elementAt(0);
+      const float snapRadius = 12.0f / m_zoomLevel;
+      if (QLineF(m_lassoCursorPos, startPt).length() < snapRadius) {
+        // Snap circle: highlight first vertex when near
+        painter->setPen(QPen(Qt::white, 2.0f / m_zoomLevel));
+        painter->setBrush(QColor(lassoColor.red(), lassoColor.green(), lassoColor.blue(), 180));
+        painter->drawEllipse(startPt, snapRadius, snapRadius);
+      } else {
+        // First vertex marker
+        painter->setPen(QPen(Qt::white, 1.5f / m_zoomLevel));
+        painter->setBrush(lassoColor);
+        float markerR = 4.0f / m_zoomLevel;
+        painter->drawEllipse(startPt, markerR, markerR);
+      }
+    } else if (m_tool == ToolType::MagneticLasso) {
+      QPen rubberPen(lassoColor, 1.2f / m_zoomLevel, Qt::DashLine);
+      rubberPen.setDashPattern({3, 3});
+      painter->setPen(rubberPen);
+      if (!m_magneticPreviewPath.isEmpty()) {
+        painter->drawPath(m_magneticPreviewPath);
+      } else {
+        painter->drawLine(m_activeLassoPath.currentPosition(), m_lassoCursorPos);
+      }
 
       // Closing rubber-band to start
       QPointF startPt = m_activeLassoPath.elementAt(0);
@@ -3023,18 +3051,37 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
         }
       }
     } else if (m_tool == ToolType::MagneticLasso) {
-      // Polygonal/Magnetic: add vertices on click
+      // Magnetic: snap vertex to nearest edge, trace edge path
       const float snapRadius = 12.0f / m_zoomLevel;
       if (!m_activeLassoPath.isEmpty() &&
           QLineF(canvasPos, m_activeLassoPath.elementAt(0)).length() < snapRadius) {
         m_activeLassoPath.closeSubpath();
         _commitLassoPath();
+        m_magneticPreviewPath = QPainterPath();
       } else {
-        if (m_activeLassoPath.isEmpty())
-          m_activeLassoPath.moveTo(canvasPos);
-        else
-          m_activeLassoPath.lineTo(canvasPos);
+        // Precompute gradient map if dirty
+        if (m_gradientMapDirty) {
+          Layer *layer = m_layerManager->getActiveLayer();
+          if (layer && layer->buffer) {
+            QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888);
+            m_edgeDetector->computeGradientMap(img);
+            m_gradientMapDirty = false;
+          }
+        }
+        
+        // Snap clicked coordinate to nearest edge point
+        QPointF snapped = m_edgeDetector->findEdgePoint(canvasPos, m_magneticSearchRadius);
+        if (m_activeLassoPath.isEmpty()) {
+          m_activeLassoPath.moveTo(snapped);
+        } else {
+          // Trace optimal edge path between last node and snapped point
+          auto edgePath = m_edgeDetector->traceEdgePath(m_activeLassoPath.currentPosition(), snapped);
+          for (auto &pt : edgePath) {
+            m_activeLassoPath.lineTo(pt);
+          }
+        }
         m_isMagneticLassoActive = true;
+        m_magneticPreviewPath = QPainterPath();
       }
     } else {
       // RectSelect / EllipseSelect: start drag
@@ -3334,7 +3381,33 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   }
 
   // Update cursor pos for all lasso tools even without button held (rubber-band)
-  if (m_tool == ToolType::Lasso || m_tool == ToolType::MagneticLasso) {
+  if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive && !m_activeLassoPath.isEmpty()) {
+    m_lassoCursorPos = screenToCanvas(event->position());
+    // Precompute gradient map if dirty
+    if (m_gradientMapDirty) {
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->buffer) {
+        QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888);
+        m_edgeDetector->computeGradientMap(img);
+        m_gradientMapDirty = false;
+      }
+    }
+    
+    QPointF snappedCursor = m_edgeDetector->findEdgePoint(m_lassoCursorPos, m_magneticSearchRadius);
+    auto previewPts = m_edgeDetector->traceEdgePath(m_activeLassoPath.currentPosition(), snappedCursor);
+    
+    m_magneticPreviewPath = QPainterPath();
+    if (!previewPts.empty()) {
+      m_magneticPreviewPath.moveTo(m_activeLassoPath.currentPosition());
+      for (auto &pt : previewPts) {
+        m_magneticPreviewPath.lineTo(pt);
+      }
+    } else {
+      m_magneticPreviewPath.moveTo(m_activeLassoPath.currentPosition());
+      m_magneticPreviewPath.lineTo(snappedCursor);
+    }
+    update();
+  } else if (m_tool == ToolType::Lasso || m_tool == ToolType::MagneticLasso) {
     m_lassoCursorPos = screenToCanvas(event->position());
     if (!m_activeLassoPath.isEmpty()) update();
   }
@@ -3521,6 +3594,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
       m_quickShapeTimer->stop();
       bool wasHolding = m_isHoldingForShape;
       m_isDrawing = false;
+      m_gradientMapDirty = true;
       m_isHoldingForShape = false;
       m_quickShapeType = QuickShapeType::None;
       m_hasPrediction = false;
@@ -4246,6 +4320,7 @@ void CanvasItem::_commitLassoPath() {
   m_activeLassoPath = QPainterPath();
   m_isMagneticLassoActive = false;
   m_isLassoDragging = false;
+  m_magneticPreviewPath = QPainterPath();
 
   if (closed.elementCount() < 3)
     return;
@@ -8332,6 +8407,7 @@ void CanvasItem::setActiveLayer(int index) {
 
     m_activeLayerIndex = index;
     m_layerManager->setActiveLayer(index);
+    m_gradientMapDirty = true;
     emit activeLayerChanged();
     updateLayersList();
 
@@ -11273,4 +11349,86 @@ bool CanvasItem::exportPSD(const QString &path) {
   file.close();
   qDebug() << "[PSD Export] PSD file successfully exported to:" << path;
   return true;
+}
+
+void CanvasItem::setMagneticEdgeSensitivity(float value) {
+  if (qFuzzyCompare(m_magneticEdgeSensitivity, value)) return;
+  m_magneticEdgeSensitivity = value;
+  if (m_edgeDetector) {
+    m_edgeDetector->setEdgeSensitivity(value);
+  }
+  emit magneticEdgeSensitivityChanged();
+}
+
+void CanvasItem::setMagneticSearchRadius(int value) {
+  if (m_magneticSearchRadius == value) return;
+  m_magneticSearchRadius = value;
+  if (m_edgeDetector) {
+    m_edgeDetector->setSearchRadius(value);
+  }
+  emit magneticSearchRadiusChanged();
+}
+
+void CanvasItem::selectByColorRange(const QColor &color, float tolerance, int channelMode, float fuzziness, bool invert) {
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer) return;
+
+  QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888);
+  ColorRangeSelector selector;
+  QImage mask = selector.selectByColor(layerImg, color, tolerance, channelMode, fuzziness, invert);
+  QPainterPath selectionPath = selector.maskToPath(mask);
+
+  QPainterPath beforePath = m_selectionPath;
+  bool beforeHasSel = m_hasSelection;
+
+  if (m_selectionAddMode == 0) {
+    m_selectionPath = selectionPath;
+  } else if (m_selectionAddMode == 1) {
+    m_selectionPath = m_selectionPath.united(selectionPath);
+  } else if (m_selectionAddMode == 2) {
+    m_selectionPath = m_selectionPath.subtracted(selectionPath);
+  }
+
+  m_hasSelection = !m_selectionPath.isEmpty();
+  emit hasSelectionChanged();
+
+  if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+    m_marchingAntsTimer->start();
+  else if (!m_hasSelection && m_marchingAntsTimer)
+    m_marchingAntsTimer->stop();
+
+  update();
+
+  auto updateSelCb = [this](const QPainterPath &path, bool hasSel) {
+    m_selectionPath = path;
+    m_hasSelection = hasSel;
+    emit hasSelectionChanged();
+    if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+      m_marchingAntsTimer->start();
+    else if (!m_hasSelection && m_marchingAntsTimer)
+      m_marchingAntsTimer->stop();
+    update();
+  };
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<artflow::SelectionUndoCommand>(
+        updateSelCb, beforePath, beforeHasSel, m_selectionPath, m_hasSelection));
+  }
+}
+
+QString CanvasItem::getColorRangePreview(const QColor &color, float tolerance, int channelMode, float fuzziness, bool invert) {
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer) return QString();
+
+  QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888);
+  ColorRangeSelector selector;
+  QImage mask = selector.selectByColor(layerImg, color, tolerance, channelMode, fuzziness, invert);
+  QImage preview = selector.previewMask(layerImg, mask);
+
+  // Convert QImage to Base64 PNG
+  QByteArray ba;
+  QBuffer buffer(&ba);
+  buffer.open(QIODevice::WriteOnly);
+  preview.save(&buffer, "PNG");
+  return QString("data:image/png;base64,") + ba.toBase64();
 }

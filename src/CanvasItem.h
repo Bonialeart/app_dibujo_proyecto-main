@@ -9,6 +9,8 @@
 #include "core/cpp/include/stroke_undo_command.h"
 #include "core/cpp/include/undo_manager.h"
 #include "core/cpp/include/watercolor_engine.h"
+#include "core/cpp/include/edge_detector.h"
+#include "core/cpp/include/color_range_selector.h"
 #include <QColor>
 #include <QCursor>
 #include <QImage>
@@ -153,6 +155,8 @@ public:
   Q_PROPERTY(bool isSelectionModeActive READ isSelectionModeActive WRITE
                  setIsSelectionModeActive NOTIFY isSelectionModeActiveChanged)
   Q_PROPERTY(int lassoMode READ lassoMode WRITE setLassoMode NOTIFY lassoModeChanged)
+  Q_PROPERTY(float magneticEdgeSensitivity READ magneticEdgeSensitivity WRITE setMagneticEdgeSensitivity NOTIFY magneticEdgeSensitivityChanged)
+  Q_PROPERTY(int magneticSearchRadius READ magneticSearchRadius WRITE setMagneticSearchRadius NOTIFY magneticSearchRadiusChanged)
   Q_PROPERTY(bool isImporting READ isImporting NOTIFY isImportingChanged)
   Q_PROPERTY(
       float importProgress READ importProgress NOTIFY importProgressChanged)
@@ -245,6 +249,8 @@ public:
   float panelGutterSize() const { return m_panelGutterSize; }
   QString panelBorderStyle() const { return m_panelBorderStyle; }
   float panelBorderWidth() const { return m_panelBorderWidth; }
+  float magneticEdgeSensitivity() const { return m_magneticEdgeSensitivity; }
+  int magneticSearchRadius() const { return m_magneticSearchRadius; }
 
   // Setters
   void setBrushSize(int size);
@@ -263,6 +269,8 @@ public:
   void setBrushWetness(float value);
   void setBrushSmudge(float value);
   void setImpastoShininess(float value);
+  void setMagneticEdgeSensitivity(float value);
+  void setMagneticSearchRadius(int value);
   void setImpastoStrength(float strength);
   void setLightAngle(float angle);
   void setLightElevation(float elevation);
@@ -365,6 +373,8 @@ public:
   int lassoMode() const { return m_lassoMode; }
   void setLassoMode(int mode);
   Q_INVOKABLE void closeLasso();     // close lasso path on demand (polygonal mode)
+  Q_INVOKABLE void selectByColorRange(const QColor &color, float tolerance, int channelMode, float fuzziness, bool invert);
+  Q_INVOKABLE QString getColorRangePreview(const QColor &color, float tolerance, int channelMode, float fuzziness, bool invert);
 
   // Color Utilities (HCL support for Pro Sliders)
   Q_INVOKABLE QString hclToHex(float h, float c, float l);
@@ -538,6 +548,8 @@ signals:
   void selectionThresholdChanged();
   void isSelectionModeActiveChanged();
   void lassoModeChanged();
+  void magneticEdgeSensitivityChanged();
+  void magneticSearchRadiusChanged();
   void projectListChanged();
   void brushCategoriesChanged();
   void isImportingChanged();
@@ -762,6 +774,12 @@ private:
   bool m_isMagneticLassoActive = false;  // polygonal lasso: waiting for next click
   int  m_lassoMode = 0;                  // 0=freehand, 1=polygonal
   QPointF m_lassoCursorPos;              // current cursor pos in canvas space (for rubber-band preview)
+
+  float m_magneticEdgeSensitivity = 0.85f;
+  int m_magneticSearchRadius = 12;
+  artflow::EdgeDetector *m_edgeDetector = nullptr;
+  bool m_gradientMapDirty = true;
+  QPainterPath m_magneticPreviewPath;
 
   // Panel Cut State
   QPointF m_panelCutStartPos;

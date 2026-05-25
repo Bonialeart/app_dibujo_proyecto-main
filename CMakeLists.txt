@@ -45,6 +45,10 @@ set(CORE_SOURCES
     src/core/cpp/src/watercolor_engine.cpp
     # ABR Parser (brush pack importer)
     src/core/brushes/abr_parser.cpp
+    src/core/cpp/src/edge_detector.cpp
+    src/core/cpp/src/color_range_selector.cpp
+    src/core/cpp/include/edge_detector.h
+    src/core/cpp/include/color_range_selector.h
     src/core/cpp/include/ColorPicker.h
     src/core/cpp/include/ColorPickerImpl.h
     src/core/cpp/include/panel_manager.h

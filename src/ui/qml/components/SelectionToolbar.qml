@@ -3,6 +3,14 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Kromo 1.0
 
+// ColorRangeDialog is loaded on demand
+ColorRangeDialog {
+    id: colorRangeDialog
+    canvas: root.canvas
+    uiScale: root.uiScale
+    accentColor: root.accentColor
+}
+
 Item {
     id: root
     property var canvas
@@ -110,6 +118,18 @@ Item {
         // ─── DIVIDER ───
         Divider {}
 
+        // ─── COLOR RANGE BUTTON ───
+        ToolBtn {
+            id: colorRangeBtn
+            icon: "dropper.svg"
+            tip: "Select by Color Range..."
+            active: false
+            onClicked: colorRangeDialog.open()
+        }
+
+        // ─── DIVIDER ───
+        Divider {}
+
         // ─── LASSO SUB-MODE (only when lasso is active) ───
         Row {
             spacing: 4 * uiScale
@@ -126,6 +146,124 @@ Item {
                 tooltip: "Polygonal Lasso (click to add vertices, double-click or click start to close)"
                 active: canvas && canvas.lassoMode === 1
                 onClicked: canvas.lassoMode = 1
+            }
+        }
+
+        // ─── MAGNETIC LASSO SETTINGS ───
+        Row {
+            spacing: 8 * uiScale
+            visible: canvas && canvas.currentTool === "magnetic_lasso"
+
+            Column {
+                spacing: 4 * uiScale
+
+                Text {
+                    text: "Sensitivity"
+                    color: "#aaaaaa"
+                    font.pixelSize: 9 * uiScale
+                }
+
+                Row {
+                    spacing: 4 * uiScale
+
+                    Slider {
+                        id: sensitivitySlider
+                        width: 72 * uiScale
+                        height: 24 * uiScale
+                        from: 0.1
+                        to: 1.0
+                        stepSize: 0.05
+                        value: canvas ? canvas.magneticEdgeSensitivity : 0.85
+                        onMoved: if (canvas) canvas.magneticEdgeSensitivity = value
+
+                        background: Rectangle {
+                            x: 0
+                            y: (parent.height - height) / 2
+                            width: parent.width; height: 4 * uiScale
+                            radius: 2 * uiScale
+                            color: "#22ffffff"
+                            Rectangle {
+                                width: sensitivitySlider.visualPosition * parent.width
+                                height: parent.height
+                                radius: parent.radius
+                                color: root.accentColor
+                            }
+                        }
+                        handle: Rectangle {
+                            x: sensitivitySlider.leftPadding + sensitivitySlider.visualPosition * (sensitivitySlider.availableWidth - width)
+                            y: (sensitivitySlider.height - height) / 2
+                            width: 12 * uiScale; height: 12 * uiScale
+                            radius: 6 * uiScale
+                            color: "white"
+                            border.color: root.accentColor
+                            border.width: 2 * uiScale
+                        }
+                    }
+
+                    Text {
+                        text: Math.round((canvas ? canvas.magneticEdgeSensitivity : 0.85) * 100) + "%"
+                        color: root.accentColor
+                        font.pixelSize: 10 * uiScale
+                        font.family: "Monospace"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+            }
+
+            Column {
+                spacing: 4 * uiScale
+
+                Text {
+                    text: "Snap Radius"
+                    color: "#aaaaaa"
+                    font.pixelSize: 9 * uiScale
+                }
+
+                Row {
+                    spacing: 4 * uiScale
+
+                    Slider {
+                        id: radiusSlider
+                        width: 64 * uiScale
+                        height: 24 * uiScale
+                        from: 5
+                        to: 30
+                        stepSize: 1
+                        value: canvas ? canvas.magneticSearchRadius : 12
+                        onMoved: if (canvas) canvas.magneticSearchRadius = value
+
+                        background: Rectangle {
+                            x: 0
+                            y: (parent.height - height) / 2
+                            width: parent.width; height: 4 * uiScale
+                            radius: 2 * uiScale
+                            color: "#22ffffff"
+                            Rectangle {
+                                width: radiusSlider.visualPosition * parent.width
+                                height: parent.height
+                                radius: parent.radius
+                                color: root.accentColor
+                            }
+                        }
+                        handle: Rectangle {
+                            x: radiusSlider.leftPadding + radiusSlider.visualPosition * (radiusSlider.availableWidth - width)
+                            y: (radiusSlider.height - height) / 2
+                            width: 12 * uiScale; height: 12 * uiScale
+                            radius: 6 * uiScale
+                            color: "white"
+                            border.color: root.accentColor
+                            border.width: 2 * uiScale
+                        }
+                    }
+
+                    Text {
+                        text: Math.round(canvas ? canvas.magneticSearchRadius : 12) + "px"
+                        color: root.accentColor
+                        font.pixelSize: 10 * uiScale
+                        font.family: "Monospace"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
             }
         }
 
