@@ -72,13 +72,28 @@ Window {
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Hand Tool"] ? mainWindow.sm["Hand Tool"] : "H"; onActivated: canvasPage.activeToolIdx = 12 }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: canvasPage.activeToolIdx = 11 }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Move Tool"] ? mainWindow.sm["Move Tool"] : "V"; onActivated: canvasPage.activeToolIdx = 4 }
-    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Transform"] ? mainWindow.sm["Transform"] : "Ctrl+T"; onActivated: canvasPage.activeToolIdx = 4 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Transform"] ? mainWindow.sm["Transform"] : "Ctrl+T"; onActivated: { mainCanvas.isFreeTransformActive = true; canvasPage.activeToolIdx = 4; } }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Select None"] ? mainWindow.sm["Select None"] : "Ctrl+D"; onActivated: { mainCanvas.deselect(); mainCanvas.update() } }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Fit to Screen"] ? mainWindow.sm["Fit to Screen"] : "Ctrl+0"; onActivated: mainCanvas.fitToView() }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Zoom In"] ? mainWindow.sm["Zoom In"] : "Ctrl++"; onActivated: mainCanvas.zoomLevel *= 1.2 }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Zoom Out"] ? mainWindow.sm["Zoom Out"] : "Ctrl+-"; onActivated: mainCanvas.zoomLevel *= 0.8 }
     Shortcut { enabled: mainCanvas.isTransforming; sequences: ["Return", "Enter"]; onActivated: mainCanvas.applyTransform() }
     Shortcut { enabled: mainCanvas.isTransforming; sequences: ["Escape"]; onActivated: mainCanvas.cancelTransform() }
+
+    Shortcut {
+        sequences: ["Tab"]
+        context: Qt.ApplicationShortcut
+        onActivated: {
+            isZenMode = !isZenMode
+            if (toastManager) {
+                if (isZenMode) {
+                    toastManager.show("Modo Estudio Minimalista (Distraction-Free)", "info")
+                } else {
+                    toastManager.show("Modo Estudio Estándar", "info")
+                }
+            }
+        }
+    }
 
 
     Component.onCompleted: {
@@ -225,6 +240,8 @@ Window {
         }
     }
     property string currentStoryPath: ""
+    property bool transformBilinear: true
+    property bool transformAdvancedMesh: false
     
     // Sidebar visibility (hidden by default when on canvas for minimalist experience)
     property bool showSidebar: currentPage !== 1
@@ -598,6 +615,8 @@ Window {
                     menuItems: [
                         { text: "Undo", shortcut: mainWindow.sm && mainWindow.sm["Undo"] ? mainWindow.sm["Undo"] : "Ctrl+Z", action: function() { mainCanvas.undo() } },
                         { text: "Redo", shortcut: mainWindow.sm && mainWindow.sm["Redo"] ? mainWindow.sm["Redo"] : "Ctrl+Y", action: function() { mainCanvas.redo() } },
+                        { isSeparator: true },
+                        { text: "Free Transform", shortcut: "Ctrl+T", action: function() { mainCanvas.isFreeTransformActive = true; canvasPage.activeToolIdx = 4; } },
                         { isSeparator: true },
                         { text: "Pen Pressure Config...", action: function() { pressureDialog.open() } },
                         { text: "Preferences", action: function() { preferencesDialog.open() } }
@@ -1087,6 +1106,7 @@ Window {
                             // The Manipulator Item (The selection bounding box)
                             Rectangle {
                                 id: manipulator
+                                visible: mainCanvas.isTransforming && mainCanvas.isFreeTransformActive
                                 // Set size and position dynamically when shown
                                 width: mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.width : parent.width
                                 height: mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.height : parent.height
@@ -1124,13 +1144,24 @@ Window {
                                 }
                             }
                             
-                            // Connect to mainCanvas to reset points when transformMode changes
+                            // Connect to mainCanvas to reset points and bounds when transformMode or transformBox changes
                             Connections {
                                 target: mainCanvas
                                 function onTransformModeChanged() {
                                     if (mainCanvas.isTransforming) {
                                         manipulator.initializePointsForMode(mainCanvas.transformMode);
                                         manipulator.updateTransform();
+                                    }
+                                }
+                                function onTransformBoxChanged() {
+                                    if (mainCanvas.isTransforming) {
+                                        manipulator.x = mainCanvas.transformBox.x
+                                        manipulator.y = mainCanvas.transformBox.y
+                                        manipulator.width = mainCanvas.transformBox.width
+                                        manipulator.height = mainCanvas.transformBox.height
+                                        manipulator.scale = 1
+                                        manipulator.rotation = 0
+                                        manipulator.initializePointsForMode(mainCanvas.transformMode);
                                     }
                                 }
                             }
@@ -1993,37 +2024,7 @@ Window {
                 }
 
 
-                // --- CONTEXT BAR (APPLY/CANCEL TRANSFORM) ---
-                Rectangle {
-                    id: contextBar
-                    anchors.bottom: parent.bottom; anchors.bottomMargin: 30
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    width: 240; height: 48; radius: 24
-                    color: "#222226"
-                    border.color: "#3e3e42"
-                    border.width: 1
-                    visible: mainCanvas.isTransforming
-                    z: 500
-                    
-                    Row {
-                         anchors.centerIn: parent
-                         spacing: 15
-                         
-                         // Cancel Button
-                         Rectangle {
-                             width: 90; height: 32; radius: 16; color: "#3a3a3c"
-                             Text { text: "Cancel"; color: "white"; anchors.centerIn: parent; font.bold: true }
-                             MouseArea { anchors.fill: parent; onClicked: mainCanvas.cancelTransform() }
-                         }
-                         
-                         // Apply Button
-                         Rectangle {
-                             width: 90; height: 32; radius: 16; color: colorAccent
-                             Text { text: "Apply"; color: "white"; anchors.centerIn: parent; font.bold: true }
-                             MouseArea { anchors.fill: parent; onClicked: mainCanvas.applyTransform() }
-                         }
-                    }
-                }
+                // --- CONTEXT BAR REMOVED AND CONSOLIDATED IN TRANSFORM OPTIONS HUD ---
                 
                 // === ADVANCED PROFESSIONAL TOOLBAR MODEL ===
                 ListModel {
@@ -3206,78 +3207,392 @@ Window {
 
 
                 // === TRANSFORM CONTROLS (Floating Bar) ===
-                Rectangle {
-                    id: transformBar
-                    width: 520; height: 64
-                    anchors.bottom: parent.bottom; anchors.bottomMargin: 80
+                // === TRANSFORM OPTIONS HUD (Ultra-Premium Redesign) ===
+                Item {
+                    id: transformOptionsHUD
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 30
                     anchors.horizontalCenter: parent.horizontalCenter
-                    color: "#f21c1c1e"
-                    radius: 32
-                    border.color: colorAccent
-                    border.width: 1
-                    visible: mainCanvas.isTransforming
+                    width: hudContainer.width + 120
+                    height: 104
+                    visible: mainCanvas.isTransforming && mainCanvas.isFreeTransformActive
                     z: 500
-                    
-                    Rectangle { anchors.fill: parent; anchors.margins: -10; z: -1; radius: 42; color: "black"; opacity: 0.5 }
 
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 20
-                        
-                        // Modes
-                        Row {
-                            spacing: 8
-                            TransformModeBtn { label: "Scale"; mode: 0 }
-                            TransformModeBtn { label: "Persp"; mode: 1 }
-                            TransformModeBtn { label: "Warp"; mode: 2 }
-                            TransformModeBtn { label: "Mesh"; mode: 3 }
-                        }
-
-                        Rectangle { width: 1; height: 30; color: "#33ffffff" }
-
-                        // Actions
-                        Row {
-                            spacing: 15
-                            // Cancel
-                            Rectangle {
-                                width: 44; height: 44; radius: 22; color: "#1affffff"
-                                Text { text: "✕"; color: "white"; anchors.centerIn: parent; font.pixelSize: 20 }
-                                MouseArea { anchors.fill: parent; onClicked: mainCanvas.cancelTransform() }
-                            }
-                            
-                            // Confirm
-                            Rectangle {
-                                width: 44; height: 44; radius: 22; color: colorAccent
-                                Text { text: "✓"; color: "white"; anchors.centerIn: parent; font.pixelSize: 20; font.bold: true }
-                                MouseArea { anchors.fill: parent; onClicked: mainCanvas.applyTransform() }
-                            }
-                        }
-                    }
-
-                    component TransformModeBtn : Rectangle {
-                        property string label: ""
-                        property int mode: 0
-                        width: 70; height: 36; radius: 18
-                        color: mainCanvas.transformMode === mode ? colorAccent : "#1affffff"
-                        border.color: mainCanvas.transformMode === mode ? "white" : "transparent"
-                        border.width: 1
-                        Text {
-                            text: label
-                            color: "white"
-                            anchors.centerIn: parent
-                            font.pixelSize: 12
-                            font.bold: mainCanvas.transformMode === mode
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: mainCanvas.transformMode = mode
-                        }
-                    }
-                    
+                    // Entry and exit animations
                     opacity: visible ? 1.0 : 0.0
                     scale: visible ? 1.0 : 0.8
-                    Behavior on opacity { NumberAnimation { duration: 200 } }
-                    Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                    Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                    Behavior on scale { NumberAnimation { duration: 350; easing.type: Easing.OutBack } }
+
+                    // --- Left Discard Wing ---
+                    Rectangle {
+                        id: discardWing
+                        width: 48
+                        height: 48
+                        radius: 24
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: "#eb121216"
+                        border.color: "#3a3a40"
+                        border.width: 1
+
+                        Text {
+                            text: "✕"
+                            color: "#ff2a5f"
+                            font.pixelSize: 18
+                            font.bold: true
+                            anchors.centerIn: parent
+                        }
+
+                        MouseArea {
+                            id: discardMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mainCanvas.cancelTransform()
+                        }
+
+                        scale: discardMa.containsMouse ? 1.08 : (discardMa.pressed ? 0.95 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 24
+                            color: "white"
+                            opacity: discardMa.containsMouse ? 0.05 : 0.0
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                        }
+                    }
+
+                    // --- Main Options HUD Container ---
+                    Rectangle {
+                        id: hudContainer
+                        width: 520
+                        height: parent.height
+                        radius: 24
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        color: "#eb121216"
+                        border.color: "#3a3a40"
+                        border.width: 1
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -8
+                            z: -1
+                            radius: 32
+                            color: "black"
+                            opacity: 0.4
+                        }
+
+                        Column {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: 12
+
+                            // 1. TOP ROW: Mode Selector
+                            Rectangle {
+                                width: 380
+                                height: 32
+                                radius: 16
+                                color: "#15ffffff"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                clip: true
+
+                                Rectangle {
+                                    id: modeAccentPill
+                                    width: 380 / 4
+                                    height: 32
+                                    radius: 16
+                                    color: "#ff2a5f"
+                                    x: mainCanvas.transformMode * (380 / 4)
+                                    Behavior on x {
+                                        NumberAnimation { duration: 250; easing.type: Easing.OutQuad }
+                                    }
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 16
+                                        color: "#ff2a5f"
+                                        opacity: 0.3
+                                        scale: 1.08
+                                    }
+                                }
+
+                                Row {
+                                    anchors.fill: parent
+                                    Repeater {
+                                        model: [
+                                            { name: "Freeform", val: 0 },
+                                            { name: "Uniform", val: 1 },
+                                            { name: "Distort", val: 2 },
+                                            { name: "Warp", val: 3 }
+                                        ]
+                                        delegate: Item {
+                                            width: 380 / 4
+                                            height: 32
+
+                                            Text {
+                                                text: modelData.name
+                                                anchors.centerIn: parent
+                                                color: mainCanvas.transformMode === modelData.val ? "white" : "#888"
+                                                font.pixelSize: 10
+                                                font.weight: mainCanvas.transformMode === modelData.val ? Font.Bold : Font.Normal
+                                                font.family: "System-UI, Segoe UI, sans-serif"
+                                                Behavior on color { ColorAnimation { duration: 150 } }
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: mainCanvas.transformMode = modelData.val
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Horizontal Divider Line
+                            Rectangle {
+                                width: parent.width - 24
+                                height: 1
+                                color: "#22ffffff"
+                                anchors.horizontalCenter: parent.horizontalCenter
+                            }
+
+                            // 2. BOTTOM ROW: Actions (6 Nodes)
+                            Row {
+                                width: parent.width
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                spacing: 0
+
+                                Repeater {
+                                    model: [
+                                        {
+                                            name: "Flip Horizontal",
+                                            icon: "flip_horizontal.svg",
+                                            isActive: mainCanvas.isFlippedH,
+                                            isToggle: true,
+                                            action: function() { mainCanvas.isFlippedH = !mainCanvas.isFlippedH }
+                                        },
+                                        {
+                                            name: "Flip Vertical",
+                                            icon: "flip_horizontal.svg",
+                                            isActive: mainCanvas.isFlippedV,
+                                            isToggle: true,
+                                            rotation: 90,
+                                            action: function() { mainCanvas.isFlippedV = !mainCanvas.isFlippedV }
+                                        },
+                                        {
+                                            name: "Rotate 45°",
+                                            icon: "rotate.svg",
+                                            isToggle: false,
+                                            action: function() { mainCanvas.rotateCanvasBy(45) }
+                                        },
+                                        {
+                                            name: "Bilinear",
+                                            icon: "",
+                                            isActive: transformBilinear,
+                                            isToggle: true,
+                                            isCustomIcon: "bilinear",
+                                            action: function() { transformBilinear = !transformBilinear }
+                                        },
+                                        {
+                                            name: "Advanced Mesh",
+                                            icon: "",
+                                            isActive: transformAdvancedMesh,
+                                            isToggle: true,
+                                            isCustomIcon: "mesh",
+                                            action: function() { 
+                                                transformAdvancedMesh = !transformAdvancedMesh 
+                                                if (transformAdvancedMesh) {
+                                                    mainCanvas.transformMode = 3
+                                                }
+                                            }
+                                        },
+                                        {
+                                            name: "Reset",
+                                            icon: "rotate.svg",
+                                            isToggle: false,
+                                            action: function() {
+                                                mainCanvas.isFlippedH = false;
+                                                mainCanvas.isFlippedV = false;
+                                                if (manipulator) {
+                                                    manipulator.x = mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.x : 0;
+                                                    manipulator.y = mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.y : 0;
+                                                    manipulator.width = mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.width : parent.width;
+                                                    manipulator.height = mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.height : parent.height;
+                                                    manipulator.scale = 1;
+                                                    manipulator.rotation = 0;
+                                                    manipulator.initializePointsForMode(mainCanvas.transformMode);
+                                                    manipulator.updateTransform();
+                                                }
+                                            }
+                                        }
+                                    ]
+                                    delegate: Item {
+                                        width: hudContainer.width / 6 - 4
+                                        height: 38
+
+                                        Column {
+                                            anchors.centerIn: parent
+                                            spacing: 4
+
+                                            Item {
+                                                width: 20
+                                                height: 20
+                                                anchors.horizontalCenter: parent.horizontalCenter
+
+                                                Rectangle {
+                                                    anchors.fill: parent
+                                                    anchors.margins: -4
+                                                    radius: 4
+                                                    color: "#33ff2a5f"
+                                                    visible: modelData.isToggle && modelData.isActive
+                                                }
+
+                                                Rectangle {
+                                                    visible: modelData.isCustomIcon === "bilinear"
+                                                    width: 14
+                                                    height: 14
+                                                    radius: 7
+                                                    anchors.centerIn: parent
+                                                    color: "transparent"
+                                                    border.color: modelData.isActive ? "#ff2a5f" : "white"
+                                                    border.width: 1.5
+                                                    opacity: modelData.isActive ? 1.0 : 0.7
+
+                                                    Rectangle {
+                                                        anchors.centerIn: parent
+                                                        width: 1.5; height: 10
+                                                        color: modelData.isActive ? "#ff2a5f" : "white"
+                                                        opacity: 0.5
+                                                    }
+                                                    Rectangle {
+                                                        anchors.centerIn: parent
+                                                        width: 10; height: 1.5
+                                                        color: modelData.isActive ? "#ff2a5f" : "white"
+                                                        opacity: 0.5
+                                                    }
+                                                }
+
+                                                Rectangle {
+                                                    visible: modelData.isCustomIcon === "mesh"
+                                                    width: 16
+                                                    height: 12
+                                                    radius: 2
+                                                    anchors.centerIn: parent
+                                                    color: "transparent"
+                                                    border.color: modelData.isActive ? "#ff2a5f" : "white"
+                                                    border.width: 1.5
+                                                    opacity: modelData.isActive ? 1.0 : 0.7
+
+                                                    Rectangle { x: 5; y: 0; width: 1; height: 12; color: modelData.isActive ? "#ff2a5f" : "white"; opacity: 0.5 }
+                                                    Rectangle { x: 10; y: 0; width: 1; height: 12; color: modelData.isActive ? "#ff2a5f" : "white"; opacity: 0.5 }
+                                                    Rectangle { x: 0; y: 5; width: 16; height: 1; color: modelData.isActive ? "#ff2a5f" : "white"; opacity: 0.5 }
+                                                }
+
+                                                Image {
+                                                    visible: !modelData.isCustomIcon
+                                                    source: modelData.icon ? iconPath(modelData.icon) : ""
+                                                    width: 14
+                                                    height: 14
+                                                    anchors.centerIn: parent
+                                                    rotation: modelData.rotation || 0
+                                                    opacity: modelData.isActive ? 1.0 : 0.7
+                                                }
+                                            }
+
+                                            Text {
+                                                text: modelData.name
+                                                font.pixelSize: 8
+                                                font.weight: modelData.isActive ? Font.Bold : Font.Normal
+                                                font.family: "System-UI, Segoe UI, sans-serif"
+                                                color: modelData.isActive ? "#ff2a5f" : "#aaa"
+                                                anchors.horizontalCenter: parent.horizontalCenter
+                                                Behavior on color { ColorAnimation { duration: 150 } }
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            id: actionMa
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: modelData.action()
+                                        }
+
+                                        scale: actionMa.containsMouse ? 1.05 : (actionMa.pressed ? 0.95 : 1.0)
+                                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            radius: 6
+                                            color: "white"
+                                            opacity: actionMa.containsMouse ? 0.05 : 0.0
+                                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // --- Right Apply Wing ---
+                    Rectangle {
+                        id: applyWing
+                        width: 48
+                        height: 48
+                        radius: 24
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: "#eb121216"
+                        border.color: "#3a3a40"
+                        border.width: 1
+
+                        Text {
+                            text: "✓"
+                            color: "#2ed573"
+                            font.pixelSize: 18
+                            font.bold: true
+                            anchors.centerIn: parent
+                        }
+
+                        MouseArea {
+                            id: applyMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: mainCanvas.applyTransform()
+                        }
+
+                        scale: applyMa.containsMouse ? 1.08 : (applyMa.pressed ? 0.95 : 1.0)
+                        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 24
+                            color: "white"
+                            opacity: applyMa.containsMouse ? 0.05 : 0.0
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
+                        }
+                    }
+                }
+
+                LiquifyBar {
+                    id: liquifyBar
+                    canvas: mainCanvas
+                    uiScale: mainWindow.uiScale
+                    accentColor: colorAccent
+                    active: mainCanvas ? mainCanvas.isLiquifying : false
+                    z: 5001
+
+                    onApplyRequested: {
+                        if (mainCanvas) mainCanvas.applyLiquify()
+                    }
+                    onCancelRequested: {
+                        if (mainCanvas) mainCanvas.cancelLiquify()
+                    }
                 }
 
                 // === TOP BAR REDESIGN: PREMIUM ICON-ONLY FLOATING CAPSULES ===
@@ -5079,6 +5394,9 @@ Window {
                         property int optionsIndex: -1
                         property int draggedIndex: -1 // For tracking drag operations
                         property int dropTargetIndex: -1 // For visual feedback
+                        property int groupDropTarget: -1 // For folder dragging
+                        property var targetCanvas: mainCanvas
+                        property var layerModel: model
                         
                         // Close any swiped layer when clicking on list background
                         MouseArea {
@@ -5092,7 +5410,7 @@ Window {
                         }
                         
                         delegate: LayerDelegate {
-                            // Delegate logic extracted to src/ui/qml/components/LayerDelegate.qml
+                            rootRef: layersList
                             dragGhostRef: dragGhost
                             onRequestBackgroundEdit: bgColorDialog.open()
                         }

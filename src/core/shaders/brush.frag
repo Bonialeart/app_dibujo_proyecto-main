@@ -145,6 +145,13 @@ void main() {
     float shapeAlpha = 1.0;
     float dist = distance(TexCoords, vec2(0.5));
 
+    bool isWcTip = (brushType == 4 || wetness > 0.3);
+    if (isWcTip && uHasGrain == 1 && grainIntensity > 0.01) {
+        vec2 globalCoord = vWorldPos / (5.0 * grainScale);
+        float grainVal = texture(grainTexture, globalCoord).r;
+        dist += (grainVal - 0.5) * grainIntensity * 0.16 * smoothstep(0.18, 0.5, dist);
+    }
+
     if (uHasTip == 1) {
         // CUSTOM BRUSH TIP — sample the tip texture in local UV space
         // GL_CLAMP_TO_BORDER (configurado en C++) devuelve alpha=0 fuera del rang [0,1]
@@ -452,9 +459,15 @@ void main() {
                 float maxNeighborA = blendedA / weightSum;
                 baseAlpha = clamp(maxNeighborA * blendStrength * 0.80, 0.0, maxNeighborA * 0.95);
             } else {
-                // Sin pigmento → no pinta NADA
-                baseAlpha = 0.0;
-                finalRGB  = vec3(0.0);
+                // Sin pigmento → no pinta NADA en el canvas, pero si es acuarela
+                // necesitamos el alpha de la forma para el mapa de agua!
+                if (isWatercolor) {
+                    baseAlpha = shapeAlpha * grainFactor * effectiveFlow;
+                    finalRGB = vec3(0.0);
+                } else {
+                    baseAlpha = 0.0;
+                    finalRGB  = vec3(0.0);
+                }
             }
         }
 

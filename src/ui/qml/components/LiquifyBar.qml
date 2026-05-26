@@ -5,9 +5,8 @@ import QtQuick.Effects
 import Kromo 1.0
 
 // ══════════════════════════════════════════════════════════════════
-//  LIQUIFY BAR  —  Floating bottom toolbar for Liquify/Deformation
-//  Premium glassmorphism design with mode selection & parameter sliders
-//  Inspired by Procreate / Clip Studio liquify panels
+//  LIQUIFY BAR  —  Premium Redesigned Floating Bottom Toolbar for Liquify
+//  Consolidated capsule design with settings sliders toggle animation
 // ══════════════════════════════════════════════════════════════════
 Item {
     id: root
@@ -15,25 +14,25 @@ Item {
     // ── Public API ──────────────────────────────────────────────
     property var    canvas:       null
     property real   uiScale:      1.0
-    property color  accentColor:  "#6366f1"
+    property color  accentColor:  "#389fff" // Sleek sky-blue active accent
 
     // Liquify state (bound to C++ LiquifyEngine via CanvasItem)
     property bool   active:       false
     property int    currentMode:  0       // Maps to LiquifyMode enum
-    property real   brushSize:    80.0
+    property real   brushSize:    250.0   // Matches 50% initial size (50 * 5)
     property real   morpher:      0.0     // 0–100 range for UI
     property real   strength:     100.0   // 0–100 range for UI
+    property real   momentum:     0.0     // 0–100 range for UI
+    
+    // Sliders pill toggle state
+    property bool   showSliders:  true
 
     // ── Signals ─────────────────────────────────────────────────
-    signal modeChanged(int mode)
-    signal sizeChanged(real size)
-    signal morpherChanged(real morpher)
-    signal strengthChanged(real strength)
     signal applyRequested()
     signal cancelRequested()
 
-    // ── Dimensions ──────────────────────────────────────────────
-    height: active ? (mainPill.height + sliderPill.height + 16 * uiScale) : 0
+    // ── Dimensions & Anchors ────────────────────────────────────
+    height: active ? (mainPill.height + (showSliders ? sliderPill.height + 12 * uiScale : 0) + 16 * uiScale) : 0
     width: parent ? parent.width : 800
     anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
     anchors.bottom: parent ? parent.bottom : undefined
@@ -41,171 +40,232 @@ Item {
 
     visible: active
     opacity: active ? 1.0 : 0.0
-    Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
 
-    // ── Entry Animation ─────────────────────────────────────────
-    property bool _ready: false
-    Component.onCompleted: Qt.callLater(function() { root._ready = true })
+    onActiveChanged: {
+        if (active && canvas) {
+            canvas.setLiquifyMode(currentMode)
+            canvas.setLiquifyRadius(brushSize)
+            canvas.setLiquifyStrength(strength / 100.0)
+            canvas.setLiquifyMorpher(morpher / 100.0)
+        }
+    }
+    
+    // Smooth transition animations when showing or toggling sliders bar
+    Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+    Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.InOutQuad } }
 
     // ── Icon helper ─────────────────────────────────────────────
     function iconPath(name) {
         return "image://icons/" + name
     }
 
-    // ── Mode definitions ────────────────────────────────────────
+    // ── 8 Core Modes mapping to C++ ─────────────────────────────
     readonly property var modes: [
         { name: "Push",        icon: "liquify-push.svg",        mode: 0 },
-        { name: "Twirl CW",   icon: "liquify-twirl-cw.svg",    mode: 1 },
-        { name: "Twirl CCW",  icon: "liquify-twirl-ccw.svg",   mode: 2 },
-        { name: "Pinch",      icon: "liquify-pinch.svg",       mode: 3 },
-        { name: "Expand",     icon: "liquify-expand.svg",      mode: 4 },
-        { name: "Crystalize", icon: "liquify-crystalize.svg",  mode: 5 },
-        { name: "Reconstruct",icon: "liquify-reconstruct.svg", mode: 7 },
-        { name: "Smooth",     icon: "liquify-smooth.svg",      mode: 8 }
+        { name: "Twirl CW",    icon: "liquify-twirl-cw.svg",    mode: 1 },
+        { name: "Twirl CCW",   icon: "liquify-twirl-ccw.svg",   mode: 2 },
+        { name: "Pinch",       icon: "liquify-pinch.svg",       mode: 3 },
+        { name: "Expand",      icon: "liquify-expand.svg",      mode: 4 },
+        { name: "Crystals",    icon: "liquify-crystalize.svg",  mode: 5 },
+        { name: "Edge",        icon: "liquify-edge.svg",        mode: 6 },
+        { name: "Reconstruct", icon: "liquify-reconstruct.svg", mode: 7 }
     ]
 
     // ════════════════════════════════════════════════════════════
-    //  MAIN TOOLBAR PILL (Mode Icons + Apply/Cancel)
+    //  MAIN TOOLBAR PILL (Mode Icons + Actions + Commit/Cancel)
     // ════════════════════════════════════════════════════════════
     Rectangle {
         id: mainPill
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: sliderPill.top
-        anchors.bottomMargin: 8 * uiScale
+        anchors.bottom: showSliders ? sliderPill.top : parent.bottom
+        anchors.bottomMargin: showSliders ? 8 * uiScale : 4 * uiScale
 
         width: mainRow.implicitWidth + 32 * uiScale
         height: 52 * uiScale
         radius: 26 * uiScale
 
-        // Glassmorphism background
-        color: "#e8101014"
-        border.color: "#30ffffff"
-        border.width: 1.2
+        // Sleek slate dark glassmorphism
+        color: "#eb121216"
+        border.color: "#3a3a40"
+        border.width: 1
 
-        // Soft shadow
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: "#60000000"
-            shadowBlur: 0.6
-            shadowVerticalOffset: 4
-        }
-
-        // Premium top highlight
+        // Drop shadow for floating premium depth
         Rectangle {
-            width: parent.width * 0.4; height: 1
-            anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0; color: "transparent" }
-                GradientStop { position: 0.5; color: "#20ffffff" }
-                GradientStop { position: 1; color: "transparent" }
-            }
+            anchors.fill: parent
+            anchors.margins: -8
+            z: -1
+            radius: 34 * uiScale
+            color: "black"
+            opacity: 0.4
         }
 
         RowLayout {
             id: mainRow
             anchors.centerIn: parent
-            spacing: 4 * uiScale
+            spacing: 8 * uiScale
 
-            // ── Settings toggle ──
-            LiqModeBtn {
-                iconSrc: iconPath("liquify-settings.svg")
-                label: ""
-                isActive: settingsPopup.visible
-                isAccent: false
-                onClicked: settingsPopup.visible = !settingsPopup.visible
+            // ── Settings Toggle (Far Left) ──
+            Rectangle {
+                width: 36 * uiScale; height: 36 * uiScale; radius: 18 * uiScale
+                color: root.showSliders ? "#22ffffff" : "transparent"
+                Layout.alignment: Qt.AlignVCenter
+                scale: settingsMa.pressed ? 0.92 : 1.0
+                Behavior on scale { NumberAnimation { duration: 80 } }
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                Image {
+                    source: iconPath("sliders.svg")
+                    sourceSize.width: 18 * uiScale
+                    sourceSize.height: 18 * uiScale
+                    anchors.centerIn: parent
+                    opacity: root.showSliders ? 1.0 : 0.65
+                }
+                MouseArea {
+                    id: settingsMa; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.showSliders = !root.showSliders
+                }
+                
+                // Subtle hover highlight
+                Rectangle {
+                    anchors.fill: parent; radius: 18 * uiScale; color: "white"; opacity: settingsMa.containsMouse ? 0.05 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
             }
 
-            // Separator
+            // Divider
             Rectangle {
                 width: 1; height: 24 * uiScale
-                color: "#25ffffff"
+                color: "#22ffffff"
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            // ── Mode Buttons ──
-            Repeater {
-                model: root.modes
-
-                LiqModeBtn {
-                    iconSrc: iconPath(modelData.icon)
-                    label: modelData.name
-                    isActive: root.currentMode === modelData.mode
-                    isAccent: root.currentMode === modelData.mode
-                    onClicked: {
-                        root.currentMode = modelData.mode
-                        root.modeChanged(modelData.mode)
-                        if (root.canvas) root.canvas.setLiquifyMode(modelData.mode)
+            // ── 6 Core Modes ──
+            RowLayout {
+                spacing: 4 * uiScale
+                Repeater {
+                    model: root.modes
+                    delegate: LiqModeBtn {
+                        iconSrc: iconPath(modelData.icon)
+                        label: modelData.name
+                        isActive: root.currentMode === modelData.mode
+                        onClicked: {
+                            root.currentMode = modelData.mode
+                            if (root.canvas) root.canvas.setLiquifyMode(modelData.mode)
+                        }
                     }
                 }
             }
 
-            // Separator
+            // Divider
             Rectangle {
                 width: 1; height: 24 * uiScale
-                color: "#25ffffff"
+                color: "#22ffffff"
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            // ── Cancel ──
+            // ── Reset Button ──
             Rectangle {
                 width: 36 * uiScale; height: 36 * uiScale; radius: 18 * uiScale
-                color: cancelMa.containsMouse ? "#40ff4444" : "#25ff4444"
-                border.color: "#ff4444"; border.width: 1.2
+                color: "transparent"
                 Layout.alignment: Qt.AlignVCenter
-                scale: cancelMa.pressed ? 0.9 : 1.0
+                scale: resetMa.pressed ? 0.92 : 1.0
                 Behavior on scale { NumberAnimation { duration: 80 } }
-                Behavior on color { ColorAnimation { duration: 120 } }
+
+                Image {
+                    source: iconPath("rotate.svg")
+                    sourceSize.width: 16 * uiScale
+                    sourceSize.height: 16 * uiScale
+                    anchors.centerIn: parent
+                    opacity: 0.65
+                }
+                MouseArea {
+                    id: resetMa; anchors.fill: parent; hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (root.canvas) {
+                            root.canvas.cancelLiquify()
+                            root.canvas.beginLiquify()
+                            // Re-apply current mode and values
+                            root.canvas.setLiquifyMode(root.currentMode)
+                            root.canvas.setLiquifyRadius(root.brushSize)
+                            root.canvas.setLiquifyStrength(root.strength / 100.0)
+                            root.canvas.setLiquifyMorpher(root.morpher / 100.0)
+                        }
+                    }
+                }
+
+                Rectangle {
+                    anchors.fill: parent; radius: 18 * uiScale; color: "white"; opacity: resetMa.containsMouse ? 0.05 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
+            }
+
+            // Divider
+            Rectangle {
+                width: 1; height: 24 * uiScale
+                color: "#22ffffff"
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            // ── Discard / Cancel Button (✕ Red Circle) ──
+            Rectangle {
+                width: 36 * uiScale; height: 36 * uiScale; radius: 18 * uiScale
+                color: "#ff4757"
+                Layout.alignment: Qt.AlignVCenter
+                scale: cancelMa.pressed ? 0.92 : 1.0
+                Behavior on scale { NumberAnimation { duration: 80 } }
 
                 Text {
                     anchors.centerIn: parent
                     text: "✕"
-                    color: "#ff6666"
-                    font.pixelSize: 16 * uiScale
-                    font.weight: Font.Bold
+                    color: "white"
+                    font.pixelSize: 15 * uiScale
+                    font.bold: true
                 }
                 MouseArea {
                     id: cancelMa; anchors.fill: parent; hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.cancelRequested()
                 }
-                ToolTip.visible: cancelMa.containsMouse
-                ToolTip.text: "Cancel Liquify"
-                ToolTip.delay: 400
+
+                Rectangle {
+                    anchors.fill: parent; radius: 18 * uiScale; color: "white"; opacity: cancelMa.containsMouse ? 0.08 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
             }
 
-            // ── Apply ──
+            // ── Commit / Apply Button (✓ Green Circle) ──
             Rectangle {
                 width: 36 * uiScale; height: 36 * uiScale; radius: 18 * uiScale
-                color: applyMa.containsMouse ? "#4044ff44" : "#2544ff44"
-                border.color: "#44cc66"; border.width: 1.2
+                color: "#2ed573"
                 Layout.alignment: Qt.AlignVCenter
-                scale: applyMa.pressed ? 0.9 : 1.0
+                scale: applyMa.pressed ? 0.92 : 1.0
                 Behavior on scale { NumberAnimation { duration: 80 } }
-                Behavior on color { ColorAnimation { duration: 120 } }
 
                 Text {
                     anchors.centerIn: parent
                     text: "✓"
-                    color: "#66ff88"
-                    font.pixelSize: 18 * uiScale
-                    font.weight: Font.Bold
+                    color: "white"
+                    font.pixelSize: 15 * uiScale
+                    font.bold: true
                 }
                 MouseArea {
                     id: applyMa; anchors.fill: parent; hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: root.applyRequested()
                 }
-                ToolTip.visible: applyMa.containsMouse
-                ToolTip.text: "Apply Liquify"
-                ToolTip.delay: 400
+
+                Rectangle {
+                    anchors.fill: parent; radius: 18 * uiScale; color: "white"; opacity: applyMa.containsMouse ? 0.08 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                }
             }
         }
     }
 
     // ════════════════════════════════════════════════════════════
-    //  SLIDER PILL (Size / Morpher / Strength)
+    //  SLIDERS PILL (Size / Morpher / Strength - Side-by-Side)
     // ════════════════════════════════════════════════════════════
     Rectangle {
         id: sliderPill
@@ -213,52 +273,86 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 4 * uiScale
 
-        width: sliderRow.implicitWidth + 40 * uiScale
+        width: sliderRow.implicitWidth + 36 * uiScale
         height: 48 * uiScale
         radius: 24 * uiScale
 
-        color: "#e8101014"
-        border.color: "#25ffffff"
+        // Matching glassmorphic design
+        color: "#eb121216"
+        border.color: "#3a3a40"
         border.width: 1
+
+        visible: root.showSliders && root.active
+        opacity: visible ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 150 } }
+
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -6
+            z: -1
+            radius: 30 * uiScale
+            color: "black"
+            opacity: 0.35
+        }
 
         RowLayout {
             id: sliderRow
             anchors.centerIn: parent
-            spacing: 20 * uiScale
+            spacing: 12 * uiScale
 
-            // Size
+            // 1. Size Slider (Mapped 1% - 100%)
             LiqSlider {
                 label: "Size"
-                value: root.brushSize
-                from: 5; to: 500
-                suffix: "px"
+                value: root.brushSize / 5.0
+                from: 1; to: 100
+                suffix: "%"
                 accentColor: root.accentColor
                 uiScale: root.uiScale
                 onMoved: function(v) {
-                    root.brushSize = v
-                    root.sizeChanged(v)
-                    if (root.canvas) root.canvas.setLiquifyRadius(v)
+                    var radiusVal = v * 5.0
+                    root.brushSize = radiusVal
+                    if (root.canvas) root.canvas.setLiquifyRadius(radiusVal)
                 }
             }
 
             // Separator
             Rectangle {
                 width: 1; height: 20 * uiScale
-                color: "#20ffffff"
+                color: "#22ffffff"
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            // Morpher
+            // 2. Pressure Slider
             LiqSlider {
-                label: "Morpher"
+                label: "Pressure"
+                value: root.strength
+                from: 1; to: 100
+                suffix: "%"
+                accentColor: root.accentColor
+                uiScale: root.uiScale
+                onMoved: function(v) {
+                    root.strength = v
+                    if (root.canvas) root.canvas.setLiquifyStrength(v / 100.0)
+                }
+            }
+
+            // Separator
+            Rectangle {
+                width: 1; height: 20 * uiScale
+                color: "#22ffffff"
+                Layout.alignment: Qt.AlignVCenter
+            }
+
+            // 3. Distortion Slider
+            LiqSlider {
+                label: "Distortion"
                 value: root.morpher
                 from: 0; to: 100
                 suffix: "%"
-                accentColor: "#f0d060"
+                accentColor: root.accentColor
                 uiScale: root.uiScale
                 onMoved: function(v) {
                     root.morpher = v
-                    root.morpherChanged(v)
                     if (root.canvas) root.canvas.setLiquifyMorpher(v / 100.0)
                 }
             }
@@ -266,160 +360,44 @@ Item {
             // Separator
             Rectangle {
                 width: 1; height: 20 * uiScale
-                color: "#20ffffff"
+                color: "#22ffffff"
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            // Strength
+            // 4. Momentum Slider
             LiqSlider {
-                label: "Strength"
-                value: root.strength
-                from: 1; to: 100
+                label: "Momentum"
+                value: root.momentum
+                from: 0; to: 100
                 suffix: "%"
-                accentColor: "#e84393"
+                accentColor: root.accentColor
                 uiScale: root.uiScale
                 onMoved: function(v) {
-                    root.strength = v
-                    root.strengthChanged(v)
-                    if (root.canvas) root.canvas.setLiquifyStrength(v / 100.0)
+                    root.momentum = v
                 }
             }
         }
     }
 
     // ════════════════════════════════════════════════════════════
-    //  SETTINGS POPUP (Extra options)
+    //  INTERNAL COMPONENT: Mode Button Capsule
     // ════════════════════════════════════════════════════════════
-    Rectangle {
-        id: settingsPopup
-        visible: false
-        anchors.bottom: mainPill.top
-        anchors.bottomMargin: 8 * uiScale
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: 220 * uiScale
-        height: settingsCol.implicitHeight + 28 * uiScale
-        radius: 16 * uiScale
-
-        color: "#f0101014"
-        border.color: "#25ffffff"
-        border.width: 1
-
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            shadowEnabled: true
-            shadowColor: "#50000000"
-            shadowBlur: 0.4
-            shadowVerticalOffset: 3
-        }
-
-        opacity: visible ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-
-        ColumnLayout {
-            id: settingsCol
-            anchors.fill: parent
-            anchors.margins: 14 * uiScale
-            spacing: 10 * uiScale
-
-            Text {
-                text: "Liquify Settings"
-                color: "#8e8e93"
-                font.pixelSize: 10 * uiScale
-                font.weight: Font.DemiBold
-                font.letterSpacing: 1
-                font.capitalization: Font.AllUppercase
-            }
-
-            // Edge Mode toggle
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8 * uiScale
-
-                Text {
-                    text: "Edge Mode"
-                    color: "#ccc"
-                    font.pixelSize: 12 * uiScale
-                    Layout.fillWidth: true
-                }
-                Rectangle {
-                    width: 36 * uiScale; height: 20 * uiScale; radius: 10 * uiScale
-                    color: root.currentMode === 6 ? root.accentColor : "#333"
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    Rectangle {
-                        x: root.currentMode === 6 ? parent.width - width - 2 : 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 16 * uiScale; height: 16 * uiScale; radius: 8 * uiScale
-                        color: "white"
-                        Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            if (root.currentMode === 6) {
-                                root.currentMode = 0
-                            } else {
-                                root.currentMode = 6
-                            }
-                            root.modeChanged(root.currentMode)
-                            if (root.canvas) root.canvas.setLiquifyMode(root.currentMode)
-                        }
-                    }
-                }
-            }
-
-            // Pressure sensitivity toggle
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8 * uiScale
-
-                Text {
-                    text: "Pen Pressure"
-                    color: "#ccc"
-                    font.pixelSize: 12 * uiScale
-                    Layout.fillWidth: true
-                }
-                Rectangle {
-                    id: pressureToggle
-                    property bool enabled: true
-                    width: 36 * uiScale; height: 20 * uiScale; radius: 10 * uiScale
-                    color: enabled ? root.accentColor : "#333"
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    Rectangle {
-                        x: pressureToggle.enabled ? parent.width - width - 2 : 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 16 * uiScale; height: 16 * uiScale; radius: 8 * uiScale
-                        color: "white"
-                        Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: pressureToggle.enabled = !pressureToggle.enabled
-                    }
-                }
-            }
-        }
-    }
-
-    // ════════════════════════════════════════════════════════════
-    //  INTERNAL COMPONENTS
-    // ════════════════════════════════════════════════════════════
-
-    // ── Mode Button ─────────────────────────────────────────────
     component LiqModeBtn : Rectangle {
         id: modeBtn
         property string iconSrc: ""
         property string label: ""
         property bool isActive: false
-        property bool isAccent: false
         signal clicked()
 
-        width: isActive && label !== "" ? (iconImg.width + labelTxt.implicitWidth + 18 * uiScale) : (36 * uiScale)
+        clip: true
+        width: isActive && label !== "" ? (iconImg.width + labelTxt.implicitWidth + 24 * uiScale) : (36 * uiScale)
         height: 36 * uiScale
         radius: 18 * uiScale
         Layout.alignment: Qt.AlignVCenter
+        Layout.preferredWidth: width
+        Layout.preferredHeight: height
 
+        // Sky blue highlight active pill capsule, clean transparent for inactive
         color: isActive ? root.accentColor
                         : (modeMa.containsMouse ? "#20ffffff" : "transparent")
 
@@ -431,13 +409,13 @@ Item {
 
         Row {
             anchors.centerIn: parent
-            spacing: 5 * uiScale
+            spacing: 6 * uiScale
 
             Image {
                 id: iconImg
                 source: modeBtn.iconSrc
-                sourceSize.width: 18 * uiScale
-                sourceSize.height: 18 * uiScale
+                sourceSize.width: 16 * uiScale
+                sourceSize.height: 16 * uiScale
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: isActive ? 1.0 : 0.65
             }
@@ -446,9 +424,12 @@ Item {
                 id: labelTxt
                 text: modeBtn.label
                 color: "white"
-                font.pixelSize: 11 * uiScale
+                font.pixelSize: 10 * uiScale
                 font.weight: Font.DemiBold
-                visible: modeBtn.isActive && modeBtn.label !== ""
+                font.family: "System-UI, Segoe UI, sans-serif"
+                opacity: modeBtn.isActive ? 1.0 : 0.0
+                visible: opacity > 0.0
+                Behavior on opacity { NumberAnimation { duration: 150 } }
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -458,13 +439,11 @@ Item {
             cursorShape: Qt.PointingHandCursor
             onClicked: modeBtn.clicked()
         }
-
-        ToolTip.visible: modeMa.containsMouse && !modeBtn.isActive
-        ToolTip.text: modeBtn.label
-        ToolTip.delay: 500
     }
 
-    // ── Parameter Slider ────────────────────────────────────────
+    // ════════════════════════════════════════════════════════════
+    //  INTERNAL COMPONENT: Parameter Slider Nodes
+    // ════════════════════════════════════════════════════════════
     component LiqSlider : Item {
         id: sliderItem
         property string label: ""
@@ -476,11 +455,11 @@ Item {
         property real uiScale: 1.0
         signal moved(real newValue)
 
-        implicitWidth: 160 * uiScale
+        implicitWidth: 112 * uiScale
         implicitHeight: 36 * uiScale
         Layout.alignment: Qt.AlignVCenter
 
-        // Label + Value
+        // Label (Left) + Value (Right)
         RowLayout {
             anchors.top: parent.top
             anchors.left: parent.left; anchors.right: parent.right
@@ -491,6 +470,7 @@ Item {
                 color: "#999"
                 font.pixelSize: 10 * uiScale
                 font.weight: Font.Medium
+                font.family: "System-UI, Segoe UI, sans-serif"
             }
             Item { Layout.fillWidth: true }
             Text {
@@ -502,7 +482,7 @@ Item {
             }
         }
 
-        // Track
+        // Track & Thumb (Bottom)
         Item {
             anchors.bottom: parent.bottom
             anchors.left: parent.left; anchors.right: parent.right
@@ -515,26 +495,23 @@ Item {
                 radius: 2 * uiScale
                 color: "#20ffffff"
 
-                // Fill
+                // Fill value
                 Rectangle {
                     width: parent.width * ((sliderItem.value - sliderItem.from) / (sliderItem.to - sliderItem.from))
                     height: parent.height
                     radius: parent.radius
                     color: sliderItem.accentColor
-
-                    Behavior on width { NumberAnimation { duration: 60 } }
                 }
             }
 
-            // Thumb
+            // Sleek Round Thumb
             Rectangle {
                 x: (parent.width - width) * ((sliderItem.value - sliderItem.from) / (sliderItem.to - sliderItem.from))
                 anchors.verticalCenter: parent.verticalCenter
                 width: 12 * uiScale; height: 12 * uiScale; radius: 6 * uiScale
-                color: sliderDrag.pressed ? Qt.lighter(sliderItem.accentColor, 1.3) : "white"
-                border.color: sliderItem.accentColor; border.width: 1.5
-
-                Behavior on color { ColorAnimation { duration: 100 } }
+                color: "white"
+                border.color: sliderItem.accentColor
+                border.width: 1.5
             }
 
             MouseArea {

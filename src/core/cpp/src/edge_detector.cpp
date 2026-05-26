@@ -27,15 +27,17 @@ void EdgeDetector::computeGradientMap(const QImage &image) {
 
     std::vector<float> luminance(m_width * m_height, 0.0f);
 
-    // Compute luminance map
+    // Compute luminance map with virtual white background blending
     if (image.format() == QImage::Format_RGBA8888 || image.format() == QImage::Format_RGBA8888_Premultiplied) {
         for (int y = 0; y < m_height; ++y) {
             const uint8_t *line = image.constScanLine(y);
             int idx = y * m_width;
             for (int x = 0; x < m_width; ++x) {
-                float r = line[4 * x + 0] / 255.0f;
-                float g = line[4 * x + 1] / 255.0f;
-                float b = line[4 * x + 2] / 255.0f;
+                float a = line[4 * x + 3] / 255.0f;
+                // Since internal layer buffers are premultiplied:
+                float r = (line[4 * x + 0] / 255.0f) + (1.0f - a);
+                float g = (line[4 * x + 1] / 255.0f) + (1.0f - a);
+                float b = (line[4 * x + 2] / 255.0f) + (1.0f - a);
                 luminance[idx + x] = 0.299f * r + 0.587f * g + 0.114f * b;
             }
         }
@@ -44,9 +46,10 @@ void EdgeDetector::computeGradientMap(const QImage &image) {
             int idx = y * m_width;
             for (int x = 0; x < m_width; ++x) {
                 QRgb rgb = image.pixel(x, y);
-                float r = qRed(rgb) / 255.0f;
-                float g = qGreen(rgb) / 255.0f;
-                float b = qBlue(rgb) / 255.0f;
+                float a = qAlpha(rgb) / 255.0f;
+                float r = (qRed(rgb) / 255.0f) * a + (1.0f - a);
+                float g = (qGreen(rgb) / 255.0f) * a + (1.0f - a);
+                float b = (qBlue(rgb) / 255.0f) * a + (1.0f - a);
                 luminance[idx + x] = 0.299f * r + 0.587f * g + 0.114f * b;
             }
         }

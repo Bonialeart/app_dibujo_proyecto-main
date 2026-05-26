@@ -44,6 +44,7 @@ public:
         float dryingRate     = 0.40f; // Velocidad de secado
         float edgeDarkening  = 0.60f; // Intensidad del tide-mark
         float grainIntensity = 0.50f; // Grano de papel
+        bool  blendOnly      = false; // Si es true, solo mezcla/difumina (agua pura)
     };
 
     explicit WatercolorEngine(QObject *parent = nullptr);

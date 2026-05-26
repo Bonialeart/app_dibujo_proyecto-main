@@ -143,13 +143,14 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_tool(ToolType::Pen), m_canvasWidth(1920), m_canvasHeight(1080),
       m_viewOffset(50, 50), m_activeLayerIndex(0), m_isTransforming(false),
       m_brushAngle(0.0f), m_cursorRotation(0.0f),
-      m_backgroundColor(Qt::transparent), m_currentProjectPath(""),
+      m_backgroundColor(Qt::white), m_currentProjectPath(""),
       m_currentProjectName("Untitled"), m_brushTip("round"),
       m_lastPressure(1.0f), m_isDrawing(false),
       m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()),
       m_lastActiveLayerIndex(-1), m_updateTransformTextures(false),
       m_transformShader(nullptr), m_transformStaticTex(nullptr),
-      m_selectionTex(nullptr) {
+      m_selectionTex(nullptr), m_isDraggingTransformInCpp(false),
+      m_isFreeTransformActive(false) {
   m_customOpenHandCursor = loadCustomSvgCursor("hand-open.svg");
   m_customClosedHandCursor = loadCustomSvgCursor("hand-closed.svg");
 
@@ -654,6 +655,7 @@ void CanvasItem::requestUpdate() {
 
 void CanvasItem::resetTransformState() {
   m_isTransforming = false;
+  setIsFreeTransformActive(false);
   m_selectionBuffer = QImage();
   m_transformStaticCache = QImage();
   m_updateTransformTextures = false;
@@ -736,6 +738,18 @@ static inline void hslSetSat(float &r, float &g, float &b, float sat) {
   *cmin = 0.0f;
 }
 
+static inline uint8_t getRedRGBA(uint32_t px) { return (px & 0xFF); }
+static inline uint8_t getGreenRGBA(uint32_t px) { return ((px >> 8) & 0xFF); }
+static inline uint8_t getBlueRGBA(uint32_t px) { return ((px >> 16) & 0xFF); }
+static inline uint8_t getAlphaRGBA(uint32_t px) { return (px >> 24); }
+
+static inline uint32_t makeRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+  return (static_cast<uint32_t>(a) << 24) |
+         (static_cast<uint32_t>(b) << 16) |
+         (static_cast<uint32_t>(g) << 8)  |
+         static_cast<uint32_t>(r);
+}
+
 static void blendImagesCustom(QImage &backdrop, const QImage &source, const QRect &rect, const QPoint &targetPos, artflow::BlendMode mode, float opacity) {
   int xStart = std::max(0, rect.left());
   int yStart = std::max(0, rect.top());
@@ -750,35 +764,35 @@ static void blendImagesCustom(QImage &backdrop, const QImage &source, const QRec
     int destY = y + dy;
     if (destY < 0 || destY >= backdrop.height()) continue;
 
-    QRgb *dstLine = reinterpret_cast<QRgb*>(backdrop.scanLine(destY));
-    const QRgb *srcLine = reinterpret_cast<const QRgb*>(source.scanLine(y));
+    uint32_t *dstLine = reinterpret_cast<uint32_t*>(backdrop.scanLine(destY));
+    const uint32_t *srcLine = reinterpret_cast<const uint32_t*>(source.scanLine(y));
 
     for (int x = xStart; x <= xEnd; ++x) {
       int destX = x + dx;
       if (destX < 0 || destX >= backdrop.width()) continue;
 
-      QRgb srcPixel = srcLine[x];
-      int sa_i = qAlpha(srcPixel);
+      uint32_t srcPixel = srcLine[x];
+      int sa_i = getAlphaRGBA(srcPixel);
       if (sa_i <= 0) continue;
 
       float sa_f = (sa_i / 255.0f) * opacity;
       if (sa_f <= 0.0f) continue;
 
-      QRgb dstPixel = dstLine[destX];
-      int da_i = qAlpha(dstPixel);
+      uint32_t dstPixel = dstLine[destX];
+      int da_i = getAlphaRGBA(dstPixel);
       float da_f = da_i / 255.0f;
 
       // Un-premultiply source and destination for correct blend math
       float sa_raw = sa_i / 255.0f;
-      float sR_U = sa_raw > 1e-7f ? (qRed(srcPixel) / 255.0f) / sa_raw : 0.0f;
-      float sG_U = sa_raw > 1e-7f ? (qGreen(srcPixel) / 255.0f) / sa_raw : 0.0f;
-      float sB_U = sa_raw > 1e-7f ? (qBlue(srcPixel) / 255.0f) / sa_raw : 0.0f;
+      float sR_U = sa_raw > 1e-7f ? (getRedRGBA(srcPixel) / 255.0f) / sa_raw : 0.0f;
+      float sG_U = sa_raw > 1e-7f ? (getGreenRGBA(srcPixel) / 255.0f) / sa_raw : 0.0f;
+      float sB_U = sa_raw > 1e-7f ? (getBlueRGBA(srcPixel) / 255.0f) / sa_raw : 0.0f;
 
       float dR_U = 0.0f, dG_U = 0.0f, dB_U = 0.0f;
       if (da_i > 0) {
-        dR_U = (qRed(dstPixel) / 255.0f) / da_f;
-        dG_U = (qGreen(dstPixel) / 255.0f) / da_f;
-        dB_U = (qBlue(dstPixel) / 255.0f) / da_f;
+        dR_U = (getRedRGBA(dstPixel) / 255.0f) / da_f;
+        dG_U = (getGreenRGBA(dstPixel) / 255.0f) / da_f;
+        dB_U = (getBlueRGBA(dstPixel) / 255.0f) / da_f;
       }
 
       float r_blend = 0.0f, g_blend = 0.0f, b_blend = 0.0f;
@@ -920,9 +934,9 @@ static void blendImagesCustom(QImage &backdrop, const QImage &source, const QRec
         int outR_i = std::clamp(static_cast<int>(finalR * 255.0f), 0, outA_i);
         int outG_i = std::clamp(static_cast<int>(finalG * 255.0f), 0, outA_i);
         int outB_i = std::clamp(static_cast<int>(finalB * 255.0f), 0, outA_i);
-        dstLine[destX] = qRgba(outR_i, outG_i, outB_i, outA_i);
+        dstLine[destX] = makeRGBA(outR_i, outG_i, outB_i, outA_i);
       } else {
-        dstLine[destX] = qRgba(0, 0, 0, 0);
+        dstLine[destX] = makeRGBA(0, 0, 0, 0);
       }
     }
   }
@@ -1330,6 +1344,19 @@ void CanvasItem::paint(QPainter *painter) {
         const int cw = m_canvasWidth;
         const int ch = m_canvasHeight;
 
+        // Check if background layer is visible to determine composition backdrop
+        bool isBgVisible = true;
+        if (m_layerManager) {
+          for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+            artflow::Layer *l = m_layerManager->getLayer(i);
+            if (l && l->type == artflow::Layer::Type::Background) {
+              isBgVisible = l->visible;
+              break;
+            }
+          }
+        }
+        bool fillBg = isBgVisible && m_backgroundColor.alpha() > 0;
+
         // Initialize full cache if size changed or first run
         bool needsFullRedraw = m_cachedCanvasImage.isNull() ||
                                m_cachedCanvasImage.width() != cw ||
@@ -1337,7 +1364,11 @@ void CanvasItem::paint(QPainter *painter) {
         if (needsFullRedraw) {
           m_cachedCanvasImage =
               QImage(cw, ch, QImage::Format_RGBA8888_Premultiplied);
-          m_cachedCanvasImage.fill(Qt::transparent);
+          if (fillBg) {
+            m_cachedCanvasImage.fill(m_backgroundColor);
+          } else {
+            m_cachedCanvasImage.fill(Qt::transparent);
+          }
         }
 
         // Compute union of all dirty rects across dirty layers
@@ -1384,9 +1415,13 @@ void CanvasItem::paint(QPainter *painter) {
             }
           };
 
-          // Clear only the dirty region to transparent
+          // Clear only the dirty region to transparent or background color
           cpuPainter.setCompositionMode(QPainter::CompositionMode_Source);
-          cpuPainter.fillRect(dirtyUnion, Qt::transparent);
+          if (fillBg) {
+            cpuPainter.fillRect(dirtyUnion, m_backgroundColor);
+          } else {
+            cpuPainter.fillRect(dirtyUnion, Qt::transparent);
+          }
 
           // Re-composite all visible layers over the dirty region only
           cpuPainter.setCompositionMode(QPainter::CompositionMode_SourceOver);
@@ -1419,10 +1454,14 @@ void CanvasItem::paint(QPainter *painter) {
               }
             }
 
-            // Draw base layer normally if visible
+            // Draw base layer normally if visible (only if it has no clipping group!)
             if (baseLayer->visible && baseLayer->buffer &&
                 baseLayer->buffer->data()) {
-              drawLayerWithBlend(cpuPainter, m_cachedCanvasImage, baseLayer, dirtyUnion.topLeft(), dirtyUnion);
+              if (!hasClippingGroup) {
+                if (!(m_isLiquifying && i == m_activeLayerIndex)) {
+                  drawLayerWithBlend(cpuPainter, m_cachedCanvasImage, baseLayer, dirtyUnion.topLeft(), dirtyUnion);
+                }
+              }
             }
 
             baseLayer->dirty = false;
@@ -1437,9 +1476,9 @@ void CanvasItem::paint(QPainter *painter) {
                 QImage baseImg(baseLayer->buffer->data(), cw, ch,
                                QImage::Format_RGBA8888_Premultiplied);
 
-                QImage groupImg(dirtyUnion.size(),
-                                QImage::Format_RGBA8888_Premultiplied);
-                groupImg.fill(Qt::transparent);
+                // Copy the base layer's content corresponding to the dirty union first!
+                QImage groupImg = baseImg.copy(dirtyUnion);
+
                 QPainter groupPainter(&groupImg);
                 groupPainter.setRenderHint(QPainter::SmoothPixmapTransform,
                                            false);
@@ -1449,7 +1488,9 @@ void CanvasItem::paint(QPainter *painter) {
                   Layer *cLayer = m_layerManager->getLayer(k);
                   if (cLayer && cLayer->visible && cLayer->buffer &&
                       cLayer->buffer->data()) {
-                    drawLayerWithBlend(groupPainter, groupImg, cLayer, QPoint(0, 0), dirtyUnion);
+                    if (!(m_isLiquifying && k == m_activeLayerIndex)) {
+                      drawLayerWithBlend(groupPainter, groupImg, cLayer, QPoint(0, 0), dirtyUnion);
+                    }
                   }
                   if (cLayer) {
                     cLayer->dirty = false;
@@ -1466,7 +1507,7 @@ void CanvasItem::paint(QPainter *painter) {
                 groupPainter.drawImage(QPoint(0, 0), baseImg, dirtyUnion);
                 groupPainter.end();
 
-                // Draw the clipped group over the canvas
+                // Draw the entire clipped group over the canvas
                 cpuPainter.setOpacity(1.0f);
                 cpuPainter.drawImage(dirtyUnion.topLeft(), groupImg);
 
@@ -2180,6 +2221,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       m_pongFBO = nullptr;
     }
     m_lastActiveLayerIndex = m_activeLayerIndex;
+    m_gradientMapDirty = true;
   }
 
   QPointF lastCanvasPos = m_lastPos;
@@ -3055,6 +3097,11 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       const float snapRadius = 12.0f / m_zoomLevel;
       if (!m_activeLassoPath.isEmpty() &&
           QLineF(canvasPos, m_activeLassoPath.elementAt(0)).length() < snapRadius) {
+        QPointF startPt = m_activeLassoPath.elementAt(0);
+        auto edgePath = m_edgeDetector->traceEdgePath(m_activeLassoPath.currentPosition(), startPt);
+        for (auto &pt : edgePath) {
+          m_activeLassoPath.lineTo(pt);
+        }
         m_activeLassoPath.closeSubpath();
         _commitLassoPath();
         m_magneticPreviewPath = QPainterPath();
@@ -3114,58 +3161,80 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
   if (m_tool == ToolType::Transform) {
     QPointF canvasPos = screenToCanvas(event->position());
 
-    // Si ya estamos transformando, ver si clicamos dentro para mover
-    if (m_isTransforming) {
-      QRectF transformedBox = m_transformMatrix.mapRect(m_transformBox);
-      if (transformedBox.contains(canvasPos)) {
-        m_transformMode = TransformMode::Move;
-        m_transformStartPos = canvasPos;
-        m_initialMatrix = m_transformMatrix;
-        return;
-      } else {
-        // Clic fuera -> Confirmar y terminar
-        commitTransform();
-        return;
+    // 1. Hit test layers from top to bottom to find if we clicked on a stroke of any visible, unlocked layer
+    int targetLayerIdx = -1;
+    int cx = qRound(canvasPos.x());
+    int cy = qRound(canvasPos.y());
+    if (m_layerManager && cx >= 0 && cx < m_canvasWidth && cy >= 0 && cy < m_canvasHeight) {
+      for (int i = m_layerManager->getLayerCount() - 1; i >= 0; --i) {
+        Layer *lyr = m_layerManager->getLayer(i);
+        if (lyr && lyr->visible && !lyr->locked && lyr->type == Layer::Type::Drawing) {
+          // Exclude background layers if any
+          QString layerName = QString::fromStdString(lyr->name).toLower();
+          if (layerName.contains("background") || layerName.contains("fondo") || layerName.contains("papel")) {
+             continue;
+          }
+          if (lyr->buffer) {
+            const uint8_t *pixel = lyr->buffer->pixelAt(cx, cy);
+            if (pixel && pixel[3] > 0) { // Alpha > 0 means there is a stroke/color!
+              targetLayerIdx = i;
+              break;
+            }
+          }
+        }
       }
     }
 
-    // Si NO estamos transformando, empezar ahora al hacer clic
-    if (!m_isTransforming) {
-      Layer *layer = m_layerManager->getActiveLayer();
-      if (layer && layer->buffer) {
-        // Si no hay selección previa, seleccionar todo
-        if (!m_hasSelection || m_selectionPath.isEmpty()) {
-          m_selectionPath = QPainterPath();
-          m_selectionPath.addRect(0, 0, m_canvasWidth, m_canvasHeight);
-          m_hasSelection = true;
+    if (m_isTransforming) {
+      QRectF transformedBox = m_transformMatrix.mapRect(m_transformBox);
+      if (transformedBox.contains(canvasPos)) {
+        if (m_currentToolStr == "move") {
+          m_isDraggingTransformInCpp = true;
+          m_dragStartMousePos = event->position();
+          m_dragStartTransformBox = m_transformBox;
+          event->accept();
+          return;
         }
-
-        m_isTransforming = true;
-        m_transformMatrix = QTransform();
-        m_transformBox = m_selectionPath.boundingRect();
-
-        QImage full(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                    QImage::Format_RGBA8888);
-        m_selectionBuffer =
-            QImage(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888);
-        m_selectionBuffer.fill(Qt::transparent);
-
-        QPainter p(&m_selectionBuffer);
-        p.setClipPath(m_selectionPath);
-        p.drawImage(0, 0, full);
-        p.end();
-
-        QPainter p2(&full);
-        p2.setCompositionMode(QPainter::CompositionMode_Clear);
-        p2.setClipPath(m_selectionPath);
-        p2.fillRect(full.rect(), Qt::transparent);
-        p2.end();
-
-        layer->dirty = true;
-        m_transformMode = TransformMode::Move;
-        m_transformStartPos = canvasPos;
-        m_initialMatrix = m_transformMatrix;
-        update();
+        // Clicked inside transformedBox -> let QML's DragHandler handle standard dragging.
+      } else {
+        // Clicked outside transformedBox!
+        // Check if we clicked on a stroke of another layer
+        if (targetLayerIdx != -1 && targetLayerIdx != m_activeLayerIndex) {
+          // Commit current transform, switch to the target layer, and start transform on it!
+          commitTransform();
+          setActiveLayer(targetLayerIdx);
+          beginTransform();
+          if (m_isTransforming) {
+            m_isDraggingTransformInCpp = true;
+            m_dragStartMousePos = event->position();
+            m_dragStartTransformBox = m_transformBox;
+          }
+          event->accept();
+          return;
+        } else {
+          // Clicked on empty space or active layer's blank space -> commit and end transform
+          commitTransform();
+          event->accept();
+          return;
+        }
+      }
+    } else {
+      // If NOT currently transforming, start transforming if we clicked on a stroke of any layer!
+      if (targetLayerIdx != -1) {
+        if (targetLayerIdx != m_activeLayerIndex) {
+          setActiveLayer(targetLayerIdx);
+        }
+        beginTransform();
+        if (m_isTransforming) {
+          m_isDraggingTransformInCpp = true;
+          m_dragStartMousePos = event->position();
+          m_dragStartTransformBox = m_transformBox;
+        }
+        event->accept();
+        return;
+      } else {
+        // Clicked on empty space when not transforming -> ignore / do not start transform
+        event->ignore();
         return;
       }
     }
@@ -3241,6 +3310,28 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   event->accept(); // Evita que el evento suba a QML
+
+  // Handle C++ transform dragging
+  if (m_tool == ToolType::Transform && m_isDraggingTransformInCpp && m_isTransforming) {
+    QPointF mouseDelta = event->position() - m_dragStartMousePos;
+    float rad = qDegreesToRadians(-m_canvasRotation);
+    float cosA = std::cos(rad);
+    float sinA = std::sin(rad);
+    QPointF rotatedDelta(mouseDelta.x() * cosA - mouseDelta.y() * sinA,
+                         mouseDelta.x() * sinA + mouseDelta.y() * cosA);
+    QPointF canvasDelta = rotatedDelta / m_zoomLevel;
+
+    m_transformBox.moveTo(m_dragStartTransformBox.topLeft() + canvasDelta);
+
+    // Crucial: Update m_transformMatrix in C++ directly since QML manipulator
+    // is invisible and won't trigger updateTransformProperties via onXChanged/onYChanged!
+    m_transformMatrix = QTransform();
+    m_transformMatrix.translate(m_transformBox.x(), m_transformBox.y());
+
+    emit transformBoxChanged();
+    update();
+    return;
+  }
 
   // Actualizar cursor si estamos arrastrando
   if (m_spacePressed || m_tool == ToolType::Hand) {
@@ -3344,14 +3435,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     return;
   }
 
-  if (m_tool == ToolType::Transform && m_transformMode == TransformMode::Move) {
-    QPointF canvasPos = screenToCanvas(event->position());
-    QPointF delta = canvasPos - m_transformStartPos;
-    m_transformMatrix = m_initialMatrix;
-    m_transformMatrix.translate(delta.x(), delta.y());
-    requestUpdate();
-    return;
-  }
+
 
   if ((m_tool == ToolType::Lasso || m_tool == ToolType::RectSelect ||
        m_tool == ToolType::EllipseSelect ||
@@ -3383,6 +3467,13 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   // Update cursor pos for all lasso tools even without button held (rubber-band)
   if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive && !m_activeLassoPath.isEmpty()) {
     m_lassoCursorPos = screenToCanvas(event->position());
+    
+    static QPointF lastTraceTarget(-9999.0f, -9999.0f);
+    if (QLineF(m_lassoCursorPos, lastTraceTarget).length() < 4.0f) {
+      return; // Skip heavy Dijkstra on micro-movements to eliminate lag!
+    }
+    lastTraceTarget = m_lassoCursorPos;
+
     // Precompute gradient map if dirty
     if (m_gradientMapDirty) {
       Layer *layer = m_layerManager->getActiveLayer();
@@ -3579,6 +3670,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
   }
 
   if (m_tool == ToolType::Transform) {
+    m_isDraggingTransformInCpp = false;
     m_transformMode = TransformMode::None;
     update();
     return;
@@ -3661,7 +3753,15 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
 
 void CanvasItem::mouseDoubleClickEvent(QMouseEvent *event) {
   if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive) {
-    // Double-click closes the polygonal / magnetic lasso
+    // Snap the final double-click point and trace path to it before closing!
+    QPointF canvasPos = screenToCanvas(event->position());
+    QPointF snapped = m_edgeDetector->findEdgePoint(canvasPos, m_magneticSearchRadius);
+    if (!m_activeLassoPath.isEmpty()) {
+      auto edgePath = m_edgeDetector->traceEdgePath(m_activeLassoPath.currentPosition(), snapped);
+      for (auto &pt : edgePath) {
+        m_activeLassoPath.lineTo(pt);
+      }
+    }
     closeLasso();
   } else if (m_tool == ToolType::Lasso && m_lassoMode == 1) {
     // Double-click also closes polygonal free lasso
@@ -4896,12 +4996,20 @@ void CanvasItem::setIsEraser(bool eraser) {
 }
 
 void CanvasItem::setCurrentTool(const QString &tool) {
-  if (m_currentToolStr == tool)
+  if (m_currentToolStr == tool) {
+    if (tool == "liquify" && !m_isLiquifying) {
+      beginLiquify();
+    }
     return;
+  }
 
   // Commit transformation if switching away from transform/move tool
   if (m_isTransforming) {
     commitTransform();
+  }
+
+  if (tool == "liquify") {
+    m_previousToolStr = m_currentToolStr;
   }
 
   m_currentToolStr = tool;
@@ -4952,6 +5060,7 @@ void CanvasItem::setCurrentTool(const QString &tool) {
       m_tool = ToolType::Lasso;
     } else if (tool == "magnetic_lasso") {
       m_tool = ToolType::MagneticLasso;
+      m_gradientMapDirty = true;
     } else if (tool == "select_rect") {
       m_tool = ToolType::RectSelect;
     } else if (tool == "select_ellipse") {
@@ -5073,6 +5182,7 @@ void CanvasItem::beginTransform() {
     QRect bbox = m_transformBox.toRect();
     if (bbox.isEmpty() || bbox.width() <= 0 || bbox.height() <= 0) {
       resetTransformState();
+      emit notificationRequested("La capa activa está vacía", "warning");
       return;
     }
 
@@ -5096,6 +5206,7 @@ void CanvasItem::beginTransform() {
 
   m_initialMatrix = QTransform();
   m_transformMatrix = QTransform();
+  m_transformMatrix.translate(m_transformBox.x(), m_transformBox.y());
   m_isTransforming = true;
   m_isMeshTransform = false;
   m_meshPoints.clear();
@@ -6498,6 +6609,13 @@ bool CanvasItem::loadProject(const QString &path) {
   // 1. Reset Canvas
   resizeCanvas(w, h);
 
+  // Load background color
+  if (obj.contains("backgroundColor")) {
+    setBackgroundColor(obj["backgroundColor"].toString());
+  } else {
+    setBackgroundColor("white"); // Default to white for backwards compatibility
+  }
+
   // 2. Load Layers from Embedded Data
   QJsonArray layersArray = obj["layers"].toArray();
 
@@ -6599,6 +6717,7 @@ bool CanvasItem::saveProject(const QString &pathText) {
   obj["width"] = m_canvasWidth;
   obj["height"] = m_canvasHeight;
   obj["version"] = 2; // Version 2: Embedded Data
+  obj["backgroundColor"] = m_backgroundColor.name(QColor::HexArgb);
 
   QJsonArray layersArray;
   if (m_layerManager) {
@@ -8559,8 +8678,7 @@ void CanvasItem::syncGpuToCpu() {
     return;
 
   QImage img = m_pingFBO->toImage();
-  if (img.format() != QImage::Format_RGBA8888 &&
-      img.format() != QImage::Format_RGBA8888_Premultiplied) {
+  if (img.format() != QImage::Format_RGBA8888_Premultiplied) {
     img = img.convertToFormat(QImage::Format_RGBA8888_Premultiplied);
   }
 
@@ -10652,7 +10770,7 @@ void CanvasItem::applyLiquify() {
   emit notificationRequested("Liquify applied", "success");
 
   // Switch back to previous tool
-  m_previousToolStr = m_currentToolStr;
+  setCurrentTool(m_previousToolStr);
   update();
 }
 
@@ -10676,6 +10794,9 @@ void CanvasItem::cancelLiquify() {
   clearRenderCaches();
   emit isLiquifyingChanged();
   emit notificationRequested("Liquify cancelled", "info");
+
+  // Switch back to previous tool
+  setCurrentTool(m_previousToolStr);
   update();
 }
 
@@ -10772,8 +10893,9 @@ WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
     if (!preset) return params;
 
     // WetMixSettings
+    params.blendOnly  = preset->wetMix.blendOnly;
     params.wetness    = preset->wetMix.wetness;
-    params.pigment    = std::max(0.1f, preset->wetMix.pigment);
+    params.pigment    = params.blendOnly ? 0.0f : std::max(0.1f, preset->wetMix.pigment);
     params.bleed      = preset->wetMix.bleed;
     params.dilution   = preset->wetMix.dilution;
     params.absorption = std::max(0.1f, preset->wetMix.absorptionRate);

@@ -31,6 +31,7 @@
     <file>qml/components/BrushStudioDialog.qml</file>
     <file>qml/components/ColorStudioDialog.qml</file>
     <file>qml/components/StudioCanvasLayout.qml</file>
+    <file>qml/components/RadialMenu.qml</file>
     <file>qml/components/DockArea.qml</file>
     <file>qml/components/DockablePanel.qml</file>
     <file>qml/components/ImpastoControls.qml</file>

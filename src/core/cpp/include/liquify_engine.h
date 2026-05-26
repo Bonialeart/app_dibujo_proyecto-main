@@ -128,6 +128,8 @@ private:
   void applyCrystalize(int px, int py, float fx, float fy);
   void applyReconstruct(int px, int py, float fx, float fy);
   void applySmooth(int px, int py, float fx, float fy);
+  void applyEdge(int px, int py, float fx, float fy, float cx, float cy,
+                 float prevCx, float prevCy);
 
   // Bilinear sample from the original snapshot
   void sampleOriginal(float sx, float sy, uint8_t &r, uint8_t &g, uint8_t &b,

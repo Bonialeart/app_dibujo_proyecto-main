@@ -119,6 +119,37 @@ Item {
                     // Crosshair
                     Rectangle { width: 10; height: 1; color: root.accentColor; anchors.centerIn: parent; opacity: 0.5 }
                     Rectangle { width: 1; height: 10; color: root.accentColor; anchors.centerIn: parent; opacity: 0.5 }
+
+                    // Viewport drag area
+                    MouseArea {
+                        id: viewportDragArea
+                        anchors.fill: parent
+                        cursorShape: Qt.SizeAllCursor
+                        
+                        property point lastPos
+                        
+                        onPressed: (mouse) => {
+                            var pt = mapToItem(_previewContainer, mouse.x, mouse.y)
+                            lastPos = pt
+                        }
+                        
+                        onPositionChanged: (mouse) => {
+                            if (pressed && targetCanvas) {
+                                var pt = mapToItem(_previewContainer, mouse.x, mouse.y)
+                                var dx = pt.x - lastPos.x
+                                var dy = pt.y - lastPos.y
+                                
+                                var real_dx = -dx / _viewportRect.scaleX
+                                var real_dy = -dy / _viewportRect.scaleY
+                                
+                                targetCanvas.canvasOffset = Qt.point(
+                                    targetCanvas.viewOffset.x + real_dx,
+                                    targetCanvas.viewOffset.y + real_dy
+                                )
+                                lastPos = pt
+                            }
+                        }
+                    }
                 }
             }
 
@@ -131,13 +162,16 @@ Item {
                 Text { text: "No canvas"; color: "#666"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
             }
 
-            // Click-to-pan interaction
+            // Click-to-pan & Click-to-Jump interaction
             MouseArea {
                 anchors.fill: parent
                 cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                 property point lastPos
 
-                onPressed: (mouse) => { lastPos = Qt.point(mouse.x, mouse.y) }
+                onPressed: (mouse) => {
+                    lastPos = Qt.point(mouse.x, mouse.y)
+                    jumpToPoint(mouse)
+                }
                 onPositionChanged: (mouse) => {
                     if (pressed && targetCanvas) {
                         var dx = mouse.x - lastPos.x
@@ -153,6 +187,29 @@ Item {
                     if (targetCanvas) {
                         if (wheel.angleDelta.y > 0) targetCanvas.zoomLevel = targetCanvas.zoomLevel * 1.15
                         else targetCanvas.zoomLevel = targetCanvas.zoomLevel * 0.85
+                    }
+                }
+                
+                function jumpToPoint(mouse) {
+                    if (!targetCanvas || _previewImage.status !== Image.Ready) return
+                    
+                    var local = _previewImage.mapFromItem(parent, mouse.x, mouse.y)
+                    var imgDisplayW = _previewImage.paintedWidth
+                    var imgDisplayH = _previewImage.paintedHeight
+                    var ox = (_previewImage.width - imgDisplayW) / 2
+                    var oy = (_previewImage.height - imgDisplayH) / 2
+                    
+                    var px = local.x - ox
+                    var py = local.y - oy
+                    
+                    if (px >= 0 && px <= imgDisplayW && py >= 0 && py <= imgDisplayH) {
+                        var rx = px / imgDisplayW
+                        var ry = py / imgDisplayH
+                        
+                        targetCanvas.canvasOffset = Qt.point(
+                            -rx * targetCanvas.canvasWidth + targetCanvas.width / (2 * targetCanvas.zoomLevel),
+                            -ry * targetCanvas.canvasHeight + targetCanvas.height / (2 * targetCanvas.zoomLevel)
+                        )
                     }
                 }
             }

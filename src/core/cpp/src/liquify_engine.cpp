@@ -169,6 +169,9 @@ void LiquifyEngine::applyBrush(float cx, float cy, float prevCx, float prevCy) {
       case LiquifyMode::Crystalize:
         applyCrystalize(px, py, f, dist);
         break;
+      case LiquifyMode::Edge:
+        applyEdge(px, py, f, dist, cx, cy, prevCx, prevCy);
+        break;
       case LiquifyMode::Reconstruct:
         applyReconstruct(px, py, f, dist);
         break;
@@ -300,6 +303,37 @@ void LiquifyEngine::applySmooth(int px, int py, float fx, float fy) {
   }
 }
 
+void LiquifyEngine::applyEdge(int px, int py, float fx, float fy, float cx, float cy, float prevCx, float prevCy) {
+  int i = m_dispMap.idx(px, py);
+  if (i < 0)
+    return;
+
+  // Sucks surrounding pixels inwards to the brush stroke line segment (prevPos -> currentPos)
+  // If the stroke has no length (first press), pull toward the brush center cx, cy
+  float dx = cx - static_cast<float>(px);
+  float dy = cy - static_cast<float>(py);
+
+  float strokeX = cx - prevCx;
+  float strokeY = cy - prevCy;
+  float strokeLenSq = strokeX * strokeX + strokeY * strokeY;
+
+  if (strokeLenSq > 0.001f) {
+    // Project pixel onto the stroke line segment
+    float t = ((px - prevCx) * strokeX + (py - prevCy) * strokeY) / strokeLenSq;
+    t = std::max(0.0f, std::min(1.0f, t)); // Clamp to segment
+
+    float projX = prevCx + t * strokeX;
+    float projY = prevCy + t * strokeY;
+
+    dx = projX - static_cast<float>(px);
+    dy = projY - static_cast<float>(py);
+  }
+
+  float scale = fx * 0.06f;
+  m_dispMap.dx[i] += dx * scale;
+  m_dispMap.dy[i] += dy * scale;
+}
+
 // ── Bilinear sampling from original snapshot ─────────────────────
 void LiquifyEngine::sampleOriginal(float sx, float sy, uint8_t &r, uint8_t &g,
                                    uint8_t &b, uint8_t &a) const {
@@ -351,7 +385,7 @@ QImage LiquifyEngine::renderPreview() const {
   if (m_width <= 0 || m_height <= 0 || m_original.empty())
     return QImage();
 
-  QImage result(m_width, m_height, QImage::Format_RGBA8888);
+  QImage result(m_width, m_height, QImage::Format_RGBA8888_Premultiplied);
 
   // Parallel-friendly: each row is independent
   uint8_t *dst = result.bits();

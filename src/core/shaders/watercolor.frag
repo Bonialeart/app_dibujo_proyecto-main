@@ -42,6 +42,7 @@ uniform float uTime;               // Tiempo global para animación de secado
 // 1 = DIFUNDIR (spread_wet) — expandir pigmento según wetmap
 // 2 = SECAR (dry_step)      — avanzar el secado del mapa de humedad
 uniform int uMode;
+uniform int uBlendOnly;
 
 // ── Constantes ──
 const float PI = 3.14159265;
@@ -60,6 +61,24 @@ vec3 mixKubelkaMunk(vec3 colorA, vec3 colorB, float t) {
     vec3 kmMix = mix(kmA, kmB, t);
     // Volver al espacio RGB
     return 1.0 + kmMix - sqrt(kmMix * kmMix + 2.0 * kmMix);
+}
+
+// Superposición física de pigmentos estilo Kubelka-Munk (modelo aditivo/sustractivo)
+// Simula cómo las capas transparentes de acuarela se acumulan y oscurecen al cruzarse
+vec3 layerKubelkaMunk(vec3 canvasColor, vec3 brushColor, float amount) {
+    vec3 c = clamp(canvasColor, 0.01, 0.99);
+    vec3 b = clamp(brushColor, 0.01, 0.99);
+    
+    // Convertir a coeficientes K/S de absorción/dispersión de pigmento
+    vec3 kmCanvas = (1.0 - c) * (1.0 - c) / (2.0 * c);
+    vec3 kmBrush  = (1.0 - b) * (1.0 - b) / (2.0 * b);
+    
+    // Sumamos la densidad de pigmento
+    vec3 kmFinal  = kmCanvas + kmBrush * amount;
+    
+    // Volver al espacio RGB
+    vec3 rgbFinal = 1.0 + kmFinal - sqrt(kmFinal * kmFinal + 2.0 * kmFinal);
+    return clamp(rgbFinal, 0.0, 1.0);
 }
 
 // Luminancia perceptual
@@ -100,7 +119,7 @@ vec4 paintDab() {
 
     // ── DILUCIÓN: el agua diluye el pigmento del pincel ──
     // Mayor dilución = pigmento más transparente pero mayor depósito de agua
-    float effectivePigment = uPigment * (1.0 - uDilution * 0.7);
+    float effectivePigment = (uBlendOnly == 1) ? 1.0 : (uPigment * (1.0 - uDilution * 0.7));
     dabAlpha *= effectivePigment;
 
     if (dabAlpha < 0.001) {
@@ -114,8 +133,16 @@ vec4 paintDab() {
         return canvasSample;
     }
 
+    // Si es agua pura, no pintamos nada sobre lienzo transparente
+    if (uBlendOnly == 1 && canvasSample.a <= 0.001) {
+        return canvasSample;
+    }
+
     // ── COLOR DEL PINCEL ──
     vec3 brushRGB = uBrushColor.rgb;
+    if (dabSample.a > 0.001) {
+        brushRGB = clamp(dabSample.rgb / dabSample.a, 0.0, 1.0);
+    }
 
     // ── GRANULACIÓN: los pigmentos se aglomeran según la textura del papel ──
     if (uGranulation > 0.01 && uGrainIntensity > 0.001) {
@@ -144,7 +171,12 @@ vec4 paintDab() {
 
             // Mezcla física de pigmentos
             vec3 mixedRGB = mixKubelkaMunk(brushRGB, canvasRGB, blendFactor);
-            finalRGB = mix(brushRGB, mixedRGB, blendFactor);
+            
+            if (uBlendOnly == 1) {
+                finalRGB = mixedRGB;
+            } else {
+                finalRGB = layerKubelkaMunk(mixedRGB, brushRGB, uPressure * 0.40);
+            }
 
             // En zonas húmedas, el pigmento se expande (alpha mayor en bordes)
             // El Bleed controla cuánto se expande el borde mojado
@@ -153,17 +185,20 @@ vec4 paintDab() {
 
         } else {
             // ━━━ ÁREA SECA: Acumulación de pigmento ━━━
-            // Pintar sobre zona seca OSCURECE (como en acuarela real)
-            // Implementado como Multiply blend del pigmento nuevo sobre el existente
-            float accumulation = (1.0 - uDilution * 0.5);
-            vec3 multiplyResult = brushRGB * canvasRGB;
-            // Mayor acumulación de pigmento donde la presión es alta
-            float blendToMultiply = accumulation * uPressure;
-            finalRGB = mix(brushRGB, multiplyResult, blendToMultiply * canvasSample.a);
+            if (uBlendOnly == 1) {
+                finalRGB = brushRGB;
+                finalAlpha = dabAlpha;
+            } else {
+                // Súper acumulación física utilizando el modelo aditivo K-M
+                // Aumenta proporcionalmente a la presión del lápiz para oscurecer
+                float accumulation = (1.0 - uDilution * 0.40) * uPressure * 1.55;
+                finalRGB = layerKubelkaMunk(canvasRGB, brushRGB, accumulation);
 
-            // En zonas secas, la opacidad se acumula también (se oscurece)
-            float extraAlpha = canvasSample.a * blendToMultiply * 0.4;
-            finalAlpha = min(finalAlpha + extraAlpha, 1.0);
+                // En zonas secas, la opacidad se acumula también (se oscurece)
+                float blendToMultiply = (1.0 - uDilution * 0.5) * uPressure;
+                float extraAlpha = canvasSample.a * blendToMultiply * 0.55;
+                finalAlpha = min(finalAlpha + extraAlpha, 1.0);
+            }
         }
     }
 

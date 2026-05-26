@@ -99,6 +99,7 @@ public:
       int activeLayerIndex READ activeLayerIndex NOTIFY activeLayerChanged)
   Q_PROPERTY(
       bool isTransforming READ isTransforming NOTIFY isTransformingChanged)
+  Q_PROPERTY(bool isFreeTransformActive READ isFreeTransformActive WRITE setIsFreeTransformActive NOTIFY isFreeTransformActiveChanged)
   Q_PROPERTY(float brushAngle READ brushAngle WRITE setBrushAngle NOTIFY
                  brushAngleChanged)
   Q_PROPERTY(float cursorRotation READ cursorRotation WRITE setCursorRotation
@@ -224,6 +225,14 @@ public:
   int activeLayerIndex() const { return m_activeLayerIndex; }
   QVariantList layerModel() const { return m_layerModel; }
   bool isTransforming() const { return m_isTransforming; }
+  bool isFreeTransformActive() const { return m_isFreeTransformActive; }
+  void setIsFreeTransformActive(bool active) {
+    if (m_isFreeTransformActive == active)
+      return;
+    m_isFreeTransformActive = active;
+    emit isFreeTransformActiveChanged();
+    update();
+  }
   float brushAngle() const { return m_brushAngle; }
   float cursorRotation() const { return m_cursorRotation; }
   QString currentProjectPath() const { return m_currentProjectPath; }
@@ -525,6 +534,7 @@ signals:
   void viewOffsetChanged();
   void activeLayerChanged();
   void isTransformingChanged();
+  void isFreeTransformActiveChanged();
   void transformModeChanged();
   void brushAngleChanged();
   void cursorRotationChanged();
@@ -750,6 +760,7 @@ private:
   QTransform m_transformMatrix;
   QRectF m_transformBox;
   bool m_isTransforming = false;
+  bool m_isFreeTransformActive = false;
   std::vector<QPointF> m_meshPoints;
   bool m_isMeshTransform = false;
   QImage m_transformStaticCache;
@@ -798,8 +809,10 @@ private:
   enum class TransformMode { None, Move, Scale, Rotate };
   TransformMode m_transformMode = TransformMode::None;
   TransformSubMode m_transformSubMode = Free;
-  QPointF m_transformStartPos;
   QTransform m_initialMatrix;
+  bool m_isDraggingTransformInCpp = false;
+  QPointF m_dragStartMousePos;
+  QRectF m_dragStartTransformBox;
 
   QPointF m_stabilizedPos;
   std::deque<QPointF> m_stabPosQueue; // Position buffer for lazy stabilizer
