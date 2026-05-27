@@ -6,8 +6,8 @@ import "../Translations.js" as Trans
 
 Popup {
     id: root
-    width: 500
-    height: 380
+    width: 560
+    height: 440
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -48,7 +48,7 @@ Popup {
         
         // --- SIDEBAR ---
         Rectangle {
-            Layout.preferredWidth: 160
+            Layout.preferredWidth: 170
             Layout.fillHeight: true
             color: Qt.rgba(0,0,0,0.1)
             
@@ -58,7 +58,7 @@ Popup {
                 spacing: 4
 
                 Text {
-                    text: "Settings"
+                    text: "Opciones"
                     color: colorText
                     font.pixelSize: 14; font.bold: true
                     Layout.leftMargin: 10
@@ -73,13 +73,14 @@ Popup {
                     spacing: 2
                     
                     model: ListModel {
-                        ListElement { name: "Actions"; icon: "edit-2.svg"; type: "page" }
+                        ListElement { name: "Editar"; icon: "edit-2.svg"; type: "page" }
+                        ListElement { name: "Herramientas"; icon: "sliders.svg"; type: "page" }
                         ListElement { name: "Canvas"; icon: "image.svg"; type: "page" }
-                        ListElement { name: "Touch"; icon: "smartphone.svg"; type: "page" }
+                        ListElement { name: "Táctil"; icon: "smartphone.svg"; type: "page" }
                         ListElement { name: "Cursor"; icon: "mouse-pointer.svg"; type: "page" }
-                        ListElement { name: "Advance"; icon: "sliders.svg"; type: "page" }
-                        ListElement { name: "Export"; icon: "save.svg"; type: "page" }
-                        ListElement { name: "Exit"; icon: "log-out.svg"; type: "action" }
+                        ListElement { name: "Avanzado"; icon: "settings.svg"; type: "page" }
+                        ListElement { name: "Exportar"; icon: "save.svg"; type: "page" }
+                        ListElement { name: "Salir"; icon: "log-out.svg"; type: "action" }
                     }
                     
                     delegate: Rectangle {
@@ -131,69 +132,86 @@ Popup {
                 anchors.margins: 20
                 currentIndex: root.currentCategoryIndex
                 
-                // 0. ACTIONS
+                // 0. EDITAR (Edit / Actions)
                 ColumnLayout {
                     spacing: 8
-                    Text { text: "Actions"; color: colorText; font.bold: true; font.pixelSize: 14 }
+                    Text { text: "Editar"; color: colorText; font.bold: true; font.pixelSize: 14 }
                     Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
-                    ActionButton { text: "Undo"; onClicked: { if(canvasRef) canvasRef.undo(); root.close() } }
-                    ActionButton { text: "Redo"; onClicked: { if(canvasRef) canvasRef.redo(); root.close() } }
+                    ActionButton { text: "Deshacer"; shortcutText: "Ctrl+Z"; onClicked: { if(canvasRef) canvasRef.undo(); root.close() } }
+                    ActionButton { text: "Rehacer"; shortcutText: "Ctrl+Y"; onClicked: { if(canvasRef) canvasRef.redo(); root.close() } }
                     Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff"; Layout.topMargin: 4; Layout.bottomMargin: 4 }
-                    ActionButton { text: "Cut"; onClicked: { if(canvasRef) canvasRef.cut(); root.close() } }
-                    ActionButton { text: "Copy"; onClicked: { if(canvasRef) canvasRef.copy(); root.close() } }
-                    ActionButton { text: "Paste"; onClicked: { if(canvasRef) canvasRef.paste(); root.close() } }
+                    ActionButton { text: "Cortar"; shortcutText: "Ctrl+X"; onClicked: { if(canvasRef) canvasRef.cut(); root.close() } }
+                    ActionButton { text: "Copiar"; shortcutText: "Ctrl+C"; onClicked: { if(canvasRef) canvasRef.copy(); root.close() } }
+                    ActionButton { text: "Pegar"; shortcutText: "Ctrl+V"; onClicked: { if(canvasRef) canvasRef.paste(); root.close() } }
                     Item { Layout.fillHeight: true }
                 }
                 
-                // 1. CANVAS
+                // 1. HERRAMIENTAS (Tools)
+                ColumnLayout {
+                    spacing: 8
+                    Text { text: "Herramientas"; color: colorText; font.bold: true; font.pixelSize: 14 }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
+                    ActionButton { text: "Transformación libre"; shortcutText: "Ctrl+T"; onClicked: { if(canvasRef) { canvasRef.isFreeTransformActive = true }; root.close() } }
+                    ActionButton { text: "Licuar (Liquify)"; onClicked: { if(canvasRef) canvasRef.currentTool = "liquify"; root.close() } }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff"; Layout.topMargin: 4; Layout.bottomMargin: 4 }
+                    ActionButton { text: "Reglas y guías"; onClicked: { root.close() } }
+                    ActionButton { text: "Guías de perspectiva"; onClicked: { root.close() } }
+                    ActionButton { text: "Simetría"; onClicked: { if(canvasRef) { canvasRef.symmetryEnabled = !canvasRef.symmetryEnabled }; root.close() } }
+                    ActionButton { text: "Ajuste (Snapping)"; onClicked: { root.close() } }
+                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff"; Layout.topMargin: 4; Layout.bottomMargin: 4 }
+                    ActionButton { text: "Selección por rango de color"; onClicked: { colorRangeDialog.open(); root.close() } }
+                    Item { Layout.fillHeight: true }
+                }
+
+                // 2. CANVAS
                 ColumnLayout {
                     spacing: 8
                     Text { text: "Canvas"; color: colorText; font.bold: true; font.pixelSize: 14 }
                     Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
-                    ActionButton { text: "Flip Horizontal"; onClicked: if(canvasRef) canvasRef.flipCanvasHorizontal() }
-                    ActionButton { text: "Flip Vertical"; onClicked: if(canvasRef) canvasRef.flipCanvasVertical() }
-                    ActionButton { text: "Reset View"; onClicked: if(canvasRef) canvasRef.fitToView() }
+                    ActionButton { text: "Voltear horizontal"; onClicked: if(canvasRef) canvasRef.flipCanvasHorizontal() }
+                    ActionButton { text: "Voltear vertical"; onClicked: if(canvasRef) canvasRef.flipCanvasVertical() }
+                    ActionButton { text: "Ajustar a pantalla"; onClicked: if(canvasRef) canvasRef.fitToView() }
                     Item { Layout.fillHeight: true }
                 }
 
-                // 2. TOUCH
+                // 3. TÁCTIL (Touch)
                 ColumnLayout {
                     spacing: 12
-                    Text { text: "Touch Gestures"; color: colorText; font.bold: true; font.pixelSize: 14 }
+                    Text { text: "Gestos táctiles"; color: colorText; font.bold: true; font.pixelSize: 14 }
                     Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
-                    CheckBoxOption { text: "Enable Touch Painting"; checked: true }
-                    CheckBoxOption { text: "Undo with 2 Fingers"; checked: true }
-                    CheckBoxOption { text: "Redo with 3 Fingers"; checked: true }
+                    CheckBoxOption { text: "Pintar con el dedo"; checked: true }
+                    CheckBoxOption { text: "Deshacer con 2 dedos"; checked: true }
+                    CheckBoxOption { text: "Rehacer con 3 dedos"; checked: true }
                     Item { Layout.fillHeight: true }
                 }
 
-                // 3. CURSOR
+                // 4. CURSOR
                 ColumnLayout {
                     spacing: 12
                     Text { text: "Cursor"; color: colorText; font.bold: true; font.pixelSize: 14 }
                     Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
-                    CheckBoxOption { text: "Show Brush Outline"; checked: true }
-                    CheckBoxOption { text: "Show Crosshair"; checked: false }
+                    CheckBoxOption { text: "Mostrar contorno del pincel"; checked: true }
+                    CheckBoxOption { text: "Mostrar punto de mira"; checked: false }
                     Item { Layout.fillHeight: true }
                 }
 
-                // 4. ADVANCE
+                // 5. AVANZADO (Advance)
                 ColumnLayout {
                     spacing: 12
-                    Text { text: "Advance"; color: colorText; font.bold: true; font.pixelSize: 14 }
+                    Text { text: "Avanzado"; color: colorText; font.bold: true; font.pixelSize: 14 }
                     Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
-                    ActionButton { text: "Pressure Curve Settings"; onClicked: { pressureDialog.open(); root.close() } }
-                    CheckBoxOption { text: "High Precision Mode"; checked: true }
+                    ActionButton { text: "Curva de presión"; onClicked: { pressureDialog.open(); root.close() } }
+                    CheckBoxOption { text: "Modo de alta precisión"; checked: true }
                     Item { Layout.fillHeight: true }
                 }
 
-                // 5. EXPORT
+                // 6. EXPORTAR (Export)
                 ColumnLayout {
                     spacing: 8
-                    Text { text: "Export & Save"; color: colorText; font.bold: true; font.pixelSize: 14 }
+                    Text { text: "Exportar y guardar"; color: colorText; font.bold: true; font.pixelSize: 14 }
                     Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
-                    ActionButton { text: "Save Project (.stxf)"; onClicked: { if(windowRef) windowRef.saveProjectAndRefresh(); root.close() } }
-                    ActionButton { text: "Export Image..."; onClicked: { exportImageDialog.open(); root.close() } }
+                    ActionButton { text: "Guardar proyecto (.stxf)"; onClicked: { if(windowRef) windowRef.saveProjectAndRefresh(); root.close() } }
+                    ActionButton { text: "Exportar imagen..."; onClicked: { exportImageDialog.open(); root.close() } }
                     Item { Layout.fillHeight: true }
                 }
             }
@@ -201,7 +219,7 @@ Popup {
     }
     
     function handleAction(name) {
-        if (name === "Exit") {
+        if (name === "Salir") {
             Qt.quit();
         }
     }
@@ -222,6 +240,7 @@ Popup {
     
     component ActionButton : MouseArea {
         property string text: ""
+        property string shortcutText: ""
         Layout.fillWidth: true
         height: 30
         hoverEnabled: true
@@ -232,12 +251,23 @@ Popup {
             radius: 4
         }
         
-        Text {
-            text: parent.text
-            color: colorText
-            font.pixelSize: 13
-            anchors.left: parent.left; anchors.leftMargin: 10
-            anchors.verticalCenter: parent.verticalCenter
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+
+            Text {
+                text: parent.parent.text
+                color: colorText
+                font.pixelSize: 13
+                Layout.fillWidth: true
+            }
+            Text {
+                text: parent.parent.shortcutText
+                color: colorTextMuted
+                font.pixelSize: 10
+                visible: parent.parent.shortcutText !== ""
+            }
         }
     }
 }

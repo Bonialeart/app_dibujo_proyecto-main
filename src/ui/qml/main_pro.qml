@@ -483,12 +483,12 @@ Window {
             Row {
                 anchors.fill: parent; anchors.leftMargin: 8; spacing: 0
                 
-                // Reusable Menu Component
+                // Reusable Menu Component with Submenu support
                 component MenuButton : Rectangle {
                     id: mBtn
                     property string label
                     property var menuItems: []
-                    width: mText.width + 20; height: parent.height // Reduced padding
+                    width: mText.width + 20; height: parent.height
                     color: mBtnMouse.containsMouse || menuPopup.visible ? "#25ffffff" : "transparent"
                     radius: 6
                     
@@ -516,9 +516,12 @@ Window {
                         id: menuPopup
                         y: parent.height + 4
                         x: 0
-                        width: 220
+                        width: 240
                         padding: 0
                         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+                        // Track which submenu index is hovered (-1 = none)
+                        property int activeSubMenuIndex: -1
                         
                         enter: Transition {
                             ParallelAnimation {
@@ -533,56 +536,150 @@ Window {
                                 NumberAnimation { property: "scale"; to: 0.95; duration: 100 }
                             }
                         }
+
+                        onClosed: activeSubMenuIndex = -1
                         
                         background: Rectangle {
-                            color: "#cc141418" // Slight transparency
+                            color: "#cc141418"
                             border.color: "#25ffffff"
                             radius: 12
                             layer.enabled: true
                             
-                            // Glassmorphism blur (simulated with color)
                             Rectangle { anchors.fill: parent; color: Qt.rgba(0.1,0.1,0.1,0.8); radius: 12; z: -1 }
                             
-                            // Subtle shadow simulation
                             Rectangle {
                                 anchors.fill: parent; anchors.margins: -8
                                 z: -2; radius: 18; color: "black"; opacity: 0.6
                             }
                         }
                         
-                        Column {
-                            width: parent.width; spacing: 2
-                            topPadding: 6; bottomPadding: 6
-                            
-                            Repeater {
-                                model: mBtn.menuItems
-                                delegate: Rectangle {
-                                    width: parent.width; height: modelData.isSeparator ? 1 : 30
-                                    color: modelData.isSeparator ? "#15ffffff" : (actionMouse.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : "transparent")
-                                    visible: true
-                                    
-                                    property bool isSep: modelData.isSeparator === true
-                                    
-                                    Behavior on color { ColorAnimation { duration: 100 } }
-                                    
-                                    // Menu Item Content
-                                    RowLayout {
-                                        anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14
-                                        visible: !parent.isSep
-                                        spacing: 10
+                        contentItem: Item {
+                            implicitWidth: menuPopup.width
+                            implicitHeight: mainMenuCol.implicitHeight
+
+                            Column {
+                                id: mainMenuCol
+                                width: parent.width; spacing: 2
+                                topPadding: 6; bottomPadding: 6
+                                
+                                Repeater {
+                                    model: mBtn.menuItems
+                                    delegate: Rectangle {
+                                        id: menuItemDelegate
+                                        width: mainMenuCol.width; height: modelData.isSeparator ? 1 : 30
+                                        color: modelData.isSeparator ? "#15ffffff" : (itemMouse.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : "transparent")
+                                        visible: true
                                         
-                                        Text { text: modelData.text || ""; color: actionMouse.containsMouse ? "#ffffff" : "#d0d0d5"; font.pixelSize: 12; Layout.fillWidth: true }
-                                        Text { text: modelData.shortcut || ""; color: "#666"; font.pixelSize: 10 }
-                                    }
-                                    
-                                    MouseArea {
-                                        id: actionMouse
-                                        anchors.fill: parent
-                                        hoverEnabled: !parent.isSep
-                                        enabled: !parent.isSep
-                                        onClicked: {
-                                            menuPopup.close()
-                                            if (modelData.action) modelData.action()
+                                        property bool isSep: modelData.isSeparator === true
+                                        property bool hasSubItems: modelData.subItems !== undefined && modelData.subItems !== null && modelData.subItems.length > 0
+                                        
+                                        Behavior on color { ColorAnimation { duration: 100 } }
+                                        
+                                        RowLayout {
+                                            anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14
+                                            visible: !menuItemDelegate.isSep
+                                            spacing: 6
+                                            
+                                            Text { text: modelData.text || ""; color: itemMouse.containsMouse ? "#ffffff" : "#d0d0d5"; font.pixelSize: 12; Layout.fillWidth: true }
+                                            Text { text: menuItemDelegate.hasSubItems ? "▸" : (modelData.shortcut || ""); color: menuItemDelegate.hasSubItems ? "#aaa" : "#666"; font.pixelSize: menuItemDelegate.hasSubItems ? 14 : 10 }
+                                        }
+                                        
+                                        MouseArea {
+                                            id: itemMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: !menuItemDelegate.isSep
+                                            enabled: !menuItemDelegate.isSep
+                                            onClicked: {
+                                                if (menuItemDelegate.hasSubItems) return // Don't close, submenu handles it
+                                                menuPopup.close()
+                                                if (modelData.action) modelData.action()
+                                            }
+                                            onContainsMouseChanged: {
+                                                if (containsMouse && menuItemDelegate.hasSubItems) {
+                                                    menuPopup.activeSubMenuIndex = index
+                                                } else if (!containsMouse && menuItemDelegate.hasSubItems) {
+                                                    // Delay closing to allow mouse to reach submenu
+                                                    subMenuCloseTimer.start()
+                                                }
+                                            }
+                                        }
+
+                                        Timer {
+                                            id: subMenuCloseTimer
+                                            interval: 300
+                                            onTriggered: {
+                                                if (menuPopup.activeSubMenuIndex === index && !subMenuPanel.containsMouse_) {
+                                                    menuPopup.activeSubMenuIndex = -1
+                                                }
+                                            }
+                                        }
+
+                                        // --- SUBMENU FLYOUT ---
+                                        Rectangle {
+                                            id: subMenuPanel
+                                            visible: menuItemDelegate.hasSubItems && menuPopup.activeSubMenuIndex === index
+                                            x: mainMenuCol.width - 4
+                                            y: -6
+                                            width: 260
+                                            height: subMenuCol.implicitHeight + 12
+                                            color: "#cc141418"
+                                            border.color: "#25ffffff"
+                                            radius: 12
+
+                                            property bool containsMouse_: subPanelMouse.containsMouse
+
+                                            // Glassmorphism
+                                            Rectangle { anchors.fill: parent; color: Qt.rgba(0.1,0.1,0.1,0.85); radius: 12; z: -1 }
+                                            // Shadow
+                                            Rectangle { anchors.fill: parent; anchors.margins: -6; z: -2; radius: 16; color: "black"; opacity: 0.5 }
+
+                                            MouseArea {
+                                                id: subPanelMouse
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                onExited: {
+                                                    menuPopup.activeSubMenuIndex = -1
+                                                }
+                                            }
+
+                                            Column {
+                                                id: subMenuCol
+                                                anchors.left: parent.left; anchors.right: parent.right
+                                                anchors.top: parent.top; anchors.topMargin: 6
+                                                spacing: 2
+
+                                                Repeater {
+                                                    model: menuItemDelegate.hasSubItems ? modelData.subItems : []
+                                                    delegate: Rectangle {
+                                                        id: subItemDel
+                                                        width: subMenuCol.width; height: modelData.isSeparator ? 1 : 30
+                                                        color: modelData.isSeparator ? "#15ffffff" : (subItemMouse.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.25) : "transparent")
+
+                                                        property bool isSep: modelData.isSeparator === true
+
+                                                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                                                        RowLayout {
+                                                            anchors.fill: parent; anchors.leftMargin: 14; anchors.rightMargin: 14
+                                                            visible: !subItemDel.isSep
+                                                            spacing: 10
+                                                            Text { text: modelData.text || ""; color: subItemMouse.containsMouse ? "#ffffff" : "#d0d0d5"; font.pixelSize: 12; Layout.fillWidth: true }
+                                                            Text { text: modelData.shortcut || ""; color: "#666"; font.pixelSize: 10 }
+                                                        }
+
+                                                        MouseArea {
+                                                            id: subItemMouse
+                                                            anchors.fill: parent
+                                                            hoverEnabled: !subItemDel.isSep
+                                                            enabled: !subItemDel.isSep
+                                                            onClicked: {
+                                                                menuPopup.close()
+                                                                if (modelData.action) modelData.action()
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -617,6 +714,20 @@ Window {
                         { text: "Redo", shortcut: mainWindow.sm && mainWindow.sm["Redo"] ? mainWindow.sm["Redo"] : "Ctrl+Y", action: function() { mainCanvas.redo() } },
                         { isSeparator: true },
                         { text: "Free Transform", shortcut: "Ctrl+T", action: function() { mainCanvas.isFreeTransformActive = true; canvasPage.activeToolIdx = 4; } },
+                        { isSeparator: true },
+                        { text: "Corrección tonal", subItems: [
+                            { text: "Brillo/Contraste...", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "brightness_contrast", {}) } },
+                            { text: "Tono/Saturación/Luminosidad", shortcut: "Ctrl+U", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "hsl", {"hue": 0, "saturation": 1.0, "lightness": 1.0}) } },
+                            { text: "Posterización...", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "posterize", {}) } },
+                            { isSeparator: true },
+                            { text: "Invertir", shortcut: "Ctrl+I", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "invert", {}) } },
+                            { text: "Corrección de nivel...", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "levels", {}) } },
+                            { text: "Curva de tonos...", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "curves", {}) } },
+                            { isSeparator: true },
+                            { text: "Equilibrio de color...", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "color_balance", {}) } },
+                            { text: "Binarización...", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "binarize", {}) } },
+                            { text: "Mapa de degradado...", action: function() { mainCanvas.applyEffect(mainCanvas.activeLayerIndex, "gradient_map", {}) } }
+                        ]},
                         { isSeparator: true },
                         { text: "Pen Pressure Config...", action: function() { pressureDialog.open() } },
                         { text: "Preferences", action: function() { preferencesDialog.open() } }
@@ -3708,10 +3819,10 @@ Window {
                             // Separator
                             Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
 
-                            // Settings Button
+                            // Options Button
                             TopBarButton {
                                 iconSource: iconPath("settings.svg")
-                                tooltip: "Configuración"
+                                tooltip: "Opciones"
                                 onClicked: settingsMenu.open()
                             }
 
@@ -8467,7 +8578,7 @@ Window {
         }
     }
 
-    // Main Settings Menu
+    // Opciones Menu (Options / Tools)
     SettingsMenu {
         id: settingsMenu
         windowRef: mainWindow
