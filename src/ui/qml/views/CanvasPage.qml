@@ -517,6 +517,38 @@ import "../components"
                 property bool isSampling: false
                 property point samplePos: Qt.point(0,0)
                 
+                // Color History system (premium recent colors capsule)
+                property var recentColors: ["#ffffff", "#ee5253", "#ff9f43", "#feca57", "#1dd1a1", "#00d2d3", "#54a0ff", "#5f27cd"]
+                
+                Timer {
+                    id: recentColorDebounceTimer
+                    interval: 500
+                    repeat: false
+                    onTriggered: {
+                        var c = mainCanvas.brushColor.toString()
+                        var list = []
+                        for (var i = 0; i < recentColors.length; i++) {
+                            list.push(recentColors[i])
+                        }
+                        var idx = list.indexOf(c)
+                        if (idx !== -1) {
+                            list.splice(idx, 1)
+                        }
+                        list.unshift(c)
+                        if (list.length > 6) {
+                            list.pop()
+                        }
+                        recentColors = list
+                    }
+                }
+                
+                Connections {
+                    target: mainCanvas
+                    function onBrushColorChanged() {
+                        recentColorDebounceTimer.restart()
+                    }
+                }
+                
                 // Shortcuts (Now managed globally in main_pro.qml)                
                 // Alt logic: Need to capture Alt press/release
                 focus: isProjectActive
@@ -676,9 +708,7 @@ import "../components"
                 Shortcut { sequences: ["H"]; onActivated: mainCanvas.currentTool = "hand" }
                 Shortcut { sequences: ["Tab"]; onActivated: isZenMode = !isZenMode }
                 */
-
-                // === MOVABLE PREMIUM SLIDERS TOOLBOX (Adaptive Orientation) ===
-                Rectangle {
+                // === MOVABLE PREMIUM SLIDERS TOOLBOX (Adaptive Orientation & Color History Morfosis) ===                Rectangle {
                     id: sliderToolbox
                     x: 20
                     y: 150 // Static initial Y to avoid startup loops
@@ -688,11 +718,12 @@ import "../components"
                     
                     // Adaptive dimensions based on orientation
                     property bool isHorizontal: false
+                    property bool showRecentColors: false
                     
                     // Hysteresis logic to prevent flickering
                     onYChanged: {
                         var topDist = 100
-                        var bottomDist = parent.height - 480
+                        var bottomDist = parent.height - 380
                         
                         if (y < topDist) {
                             if (!isHorizontal) isHorizontal = true
@@ -709,128 +740,217 @@ import "../components"
                             y = (parent.height - height) / 2
                         }
                     }                    
-                    width: isHorizontal ? 420 : 46
-                    height: isHorizontal ? 60 : 420
-                    radius: isHorizontal ? 30 : 23
-                    color: "#cc1c1c1e"
-                    border.color: "#ffffff"
+                    
+                    width: isHorizontal ? 330 * uiScale : 40 * uiScale
+                    height: isHorizontal ? 40 * uiScale : 360 * uiScale
+                    radius: 20 * uiScale
+                    clip: false
+                    
+                    // Unified Pure Premium Dark Capsule (Image 2 style)
+                    color: "#252528"
+                    border.color: Qt.rgba(1, 1, 1, 0.03)
                     border.width: 0.5
-                    opacity: 0.98
                     z: 90
                     
-                    Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
-                    Behavior on height { NumberAnimation { duration: 200; easing.type: Easing.OutQuad } }
-                    Behavior on radius { NumberAnimation { duration: 200 } }
+                    Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                    Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                     
-                    // Glass Background Blur Simulation
-                    Rectangle { anchors.fill: parent; radius: parent.radius; color: "#ffffff"; opacity: 0.03 }
-                    
-                    // Shadow
+                    // Soft Shadow
                     Rectangle {
-                        anchors.fill: parent; anchors.margins: -10
-                        z: -1; radius: parent.radius + 10; color: "black"; opacity: 0.4
+                        anchors.fill: parent; anchors.margins: -4
+                        z: -1; radius: parent.radius + 4; color: "black"; opacity: 0.18
                     }
 
-                    // Drag Handle (Only this area is draggable)
-                    Rectangle {
-                        id: toolboxHeader
-                        width: sliderToolbox.isHorizontal ? 50 : parent.width
-                        height: sliderToolbox.isHorizontal ? parent.height : 36
-                        color: "transparent"
-                        anchors.left: sliderToolbox.isHorizontal ? parent.left : undefined
-                        anchors.top: sliderToolbox.isHorizontal ? parent.top : parent.top
-                        anchors.horizontalCenter: sliderToolbox.isHorizontal ? undefined : parent.horizontalCenter
+                    // Background drag area (so the whole background of the bar can be dragged cleanly!)
+                    MouseArea {
+                        id: toolboxDrag
+                        anchors.fill: parent
+                        drag.target: sliderToolbox
+                        drag.axis: Drag.XAndYAxis
+                        drag.minimumX: 10
+                        drag.maximumX: mainWindow.width - sliderToolbox.width - 10
+                        drag.minimumY: 50
+                        drag.maximumY: mainWindow.height - sliderToolbox.height - 20
+                        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
                         
-                        // Drag Indicator
-                        Row {
-                            visible: sliderToolbox.isHorizontal
-                            anchors.centerIn: parent
-                            spacing: 3
-                            Rectangle { width: 1.5; height: 14; radius: 1; color: "#666" }
-                            Rectangle { width: 1.5; height: 14; radius: 1; color: "#666" }
-                        }
-                        Column {
-                            visible: !sliderToolbox.isHorizontal
-                            anchors.centerIn: parent
-                            spacing: 3
-                            Rectangle { width: 14; height: 1.5; radius: 1; color: "#666" }
-                            Rectangle { width: 14; height: 1.5; radius: 1; color: "#666" }
-                        }
-                        
-                        MouseArea {
-                            id: toolboxDrag
-                            anchors.fill: parent
-                            drag.target: sliderToolbox
-                            drag.axis: Drag.XAndYAxis
-                            drag.minimumX: 10
-                            drag.maximumX: mainWindow.width - sliderToolbox.width - 10
-                            drag.minimumY: 50
-                            drag.maximumY: mainWindow.height - sliderToolbox.height - 20
-                            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                            
-                            onPressed: sliderToolbox.scale = 1.02
-                            onReleased: sliderToolbox.scale = 1.0
-                        }
+                        onPressed: sliderToolbox.scale = 1.01
+                        onReleased: sliderToolbox.scale = 1.0
                     }
 
-                    // === VERTICAL LAYOUT (Left/Right edges) ===
+                    // === VERTICAL LAYOUT: SLIDERS MODE (Size, Active Color Well, Opacity) ===
                     Column {
-                        visible: !sliderToolbox.isHorizontal
-                        anchors.top: toolboxHeader.bottom
-                        anchors.topMargin: 5
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        spacing: 25
+                        visible: !sliderToolbox.isHorizontal && !sliderToolbox.showRecentColors
+                        anchors.centerIn: parent
+                        spacing: 10 * uiScale
+                        width: parent.width
+                        
+                        opacity: visible ? 1.0 : 0.0
+                        scale: visible ? 1.0 : 0.8
+                        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                         
                         ProSlider {
                             label: "Size"
-                            maxVal: 1000.0
-                            value: mainCanvas.brushSize / 1000.0
+                            width: parent.width
+                            maxVal: 100.0
+                            value: mainCanvas ? (mainCanvas.brushSize / 100.0) : 0.0
                             previewType: "size"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
-                            accentColor: canvasPage.colorAccent
-                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
+                            brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            implicitHeight: 140 * uiScale
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 100 }
+                        }
+                        
+                        // Middle Circle Button (Active color well and morph toggle!)
+                        Rectangle {
+                            id: middleColorToggleBtn
+                            width: 32 * uiScale; height: 32 * uiScale; radius: 16 * uiScale
+                            color: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            border.color: Qt.rgba(0, 0, 0, 0.15)
+                            border.width: 1.0 * uiScale
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            scale: toggleMa.containsMouse ? 1.1 : 1.0
+                            Behavior on scale { NumberAnimation { duration: 150 } }
+                            
+                            MouseArea {
+                                id: toggleMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: sliderToolbox.showRecentColors = true
+                            }
                         }
                         
                         ProSlider {
                             label: "Opac"
-                            value: mainCanvas.brushOpacity
+                            width: parent.width
+                            value: mainCanvas ? mainCanvas.brushOpacity : 1.0
                             previewType: "opacity"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
-                            accentColor: canvasPage.colorAccent
+                            brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            implicitHeight: 140 * uiScale
                             onMoved: (val) => { if (mainCanvas) mainCanvas.brushOpacity = val }
+                        }
+                    }
+
+                    // === VERTICAL LAYOUT: RECENT COLORS MODE (Morphing) ===
+                    Column {
+                        visible: !sliderToolbox.isHorizontal && sliderToolbox.showRecentColors
+                        anchors.centerIn: parent
+                        spacing: 6 * uiScale
+                        width: parent.width
+                        
+                        opacity: visible ? 1.0 : 0.0
+                        scale: visible ? 1.0 : 0.8
+                        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                        
+                        // Recent colors 0, 1, 2, 3 (Up to 4 swatches)
+                        Repeater {
+                            model: Math.min(4, canvasPage.recentColors.length)
+                            delegate: Rectangle {
+                                width: 22 * uiScale; height: 22 * uiScale; radius: 11 * uiScale
+                                color: canvasPage.recentColors[index]
+                                border.color: Qt.rgba(0, 0, 0, 0.15)
+                                border.width: 0.5 * uiScale
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                scale: swatchMa.containsMouse ? 1.15 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 150 } }
+                                
+                                MouseArea {
+                                    id: swatchMa
+                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (mainCanvas) mainCanvas.brushColor = parent.color
+                                        sliderToolbox.showRecentColors = false
+                                    }
+                                }
+                            }
+                        }
+
+                        // Middle active color toggle button in color mode (shows an '✕' to close)
+                        Rectangle {
+                            id: activeColorSwatchBtn
+                            width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
+                            color: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            border.color: Qt.rgba(0, 0, 0, 0.15)
+                            border.width: 1.0 * uiScale
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            scale: activeColorSwatchMa.containsMouse ? 1.15 : 1.0
+                            Behavior on scale { NumberAnimation { duration: 150 } }
+                            
+                            // Visual indicator inside showing we can go back
+                            Text {
+                                text: "✕"
+                                color: "white"
+                                font.pixelSize: 8 * uiScale
+                                font.bold: true
+                                style: Text.Outline
+                                styleColor: "black"
+                                anchors.centerIn: parent
+                            }
+
+                            MouseArea {
+                                id: activeColorSwatchMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: sliderToolbox.showRecentColors = false
+                            }
+                        }
+
+                        // Recent colors 4, 5, 6, 7 (Up to 4 remaining swatches)
+                        Repeater {
+                            model: Math.max(0, Math.min(4, canvasPage.recentColors.length - 4))
+                            delegate: Rectangle {
+                                width: 22 * uiScale; height: 22 * uiScale; radius: 11 * uiScale
+                                color: canvasPage.recentColors[index + 4]
+                                border.color: Qt.rgba(0, 0, 0, 0.15)
+                                border.width: 0.5 * uiScale
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                scale: swatchMa2.containsMouse ? 1.15 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 150 } }
+                                
+                                MouseArea {
+                                    id: swatchMa2
+                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (mainCanvas) mainCanvas.brushColor = parent.color
+                                        sliderToolbox.showRecentColors = false
+                                    }
+                                }
+                            }
                         }
                     }
 
                     // === HORIZONTAL LAYOUT (Top/Bottom edges) ===
                     Row {
                         visible: sliderToolbox.isHorizontal
-                        anchors.left: toolboxHeader.right
-                        anchors.leftMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 30
+                        anchors.centerIn: parent
+                        spacing: 12 * uiScale
                         
                         ProSliderHorizontal {
                             label: "Size"
-                            maxVal: 1000.0
-                            value: mainCanvas.brushSize / 1000.0
+                            maxVal: 100.0
+                            value: mainCanvas ? (mainCanvas.brushSize / 100.0) : 0.0
                             previewType: "size"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
-                            accentColor: canvasPage.colorAccent
-                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
+                            brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            implicitWidth: 110 * uiScale
+                            implicitHeight: parent.height
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 100 }
                         }
                         
                         ProSliderHorizontal {
                             label: "Opac"
-                            value: mainCanvas.brushOpacity
+                            value: mainCanvas ? mainCanvas.brushOpacity : 1.0
                             previewType: "opacity"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
-                            accentColor: canvasPage.colorAccent
+                            brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            implicitWidth: 110 * uiScale
+                            implicitHeight: parent.height
                             onMoved: (val) => { if (mainCanvas) mainCanvas.brushOpacity = val }
                         }
                     }
                     
                     Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                }
+                }    }}
 
                 // === TRANSFORM OPTIONS HUD (Ultra-Premium Redesign) ===
                 Item {
@@ -2175,7 +2295,7 @@ import "../components"
                                     Slider {
                                         id: sliderSize
                                         width: parent.width; height: 28
-                                        from: 1; to: 1000; value: mainCanvas.brushSize
+                                        from: 1; to: 100; value: mainCanvas.brushSize
                                         onValueChanged: mainCanvas.brushSize = value
                                         
                                         background: Rectangle {

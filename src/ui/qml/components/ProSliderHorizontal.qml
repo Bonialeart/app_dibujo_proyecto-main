@@ -7,224 +7,224 @@ Item {
     
     property string label: ""
     property real value: 0.0
+    property real from: 0.0
+    property real to: 1.0
+    property string valueText: ""
     property real maxVal: 100.0
     property string previewType: "" // "size", "opacity"
     property bool previewOnBottom: false
     property string brushTipSource: ""
     property color brushColor: "black"
-    property color accentColor: "#6366f1"
+    property color accentColor: "#3e3e42"
+    
+    readonly property real visualPosition: (to > from) ? Math.max(0.0, Math.min(1.0, (value - from) / (to - from))) : 0.0
     
     signal moved(real val)
     
-    implicitWidth: 200 * uiScale
-    implicitHeight: 60 * uiScale
+    implicitWidth: 140 * uiScale
+    implicitHeight: 40 * uiScale
     
     readonly property real uiScale: (typeof mainWindow !== "undefined" && mainWindow.uiScale) ? mainWindow.uiScale : 1.0
     
-    Row {
+    // Main Container
+    Item {
         anchors.fill: parent
-        anchors.leftMargin: 15 * uiScale
-        anchors.rightMargin: 15 * uiScale
-        spacing: 12 * uiScale
         
-        // Label
-        Text {
-            width: 45 * uiScale
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.label
-            color: slideMouse.containsMouse || slideMouse.pressed ? "white" : "#888"
-            font.pixelSize: 10 * uiScale
-            font.letterSpacing: 0.5
-            font.capitalization: Font.AllUppercase
-            font.weight: Font.DemiBold
-            horizontalAlignment: Text.AlignRight
-            
-            Behavior on color { ColorAnimation { duration: 200 } }
-        }
-
-        // Slider Logic
+        // Transparent Track - The slider handle slides directly inside the unified horizontal toolbox background
         Item {
-            id: trackArea
-            width: parent.width - (70 * uiScale)
-            height: 30 * uiScale
-            anchors.verticalCenter: parent.verticalCenter
+            id: trackBg
+            width: parent.width
+            height: parent.height
+            anchors.centerIn: parent
 
-            // Background Track (Premium Etched/Glass look)
+            // Dynamic Progress Fill (Image 2 style: fills the main capsule up to the handle horizontally)
             Rectangle {
-                id: trackBg
-                width: parent.width; height: 6 * uiScale
-                radius: 3 * uiScale; anchors.centerIn: parent
-                color: Qt.rgba(0.1, 0.1, 0.11, 0.8)
-                border.color: Qt.rgba(1, 1, 1, 0.08); border.width: 1
-                clip: true // ⇠ FIXES THE LEAKING
-
-                // Progress Fill (Inside the clipped background)
-                Rectangle {
-                    width: (trackBg.width * root.value) + trackBg.radius
-                    height: parent.height
-                    anchors.left: parent.left
-                    anchors.leftMargin: -trackBg.radius
-                    anchors.verticalCenter: parent.verticalCenter
-                    radius: trackBg.radius
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: root.accentColor }
-                        GradientStop { position: 1.0; color: Qt.lighter(root.accentColor, 1.2) }
-                    }
-                    
-                    // Subtle inner shine for the fill
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.bottomMargin: parent.height * 0.5
-                        color: "white"
-                        opacity: 0.1
-                    }
-                }
+                id: progressFill
+                height: parent.height - 8 * uiScale // Matches capsule height
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: 4 * uiScale
+                
+                // Width goes from left up to handle position
+                width: (trackBg.width - thumbHandle.width) * root.visualPosition + thumbHandle.width
+                radius: height / 2
+                
+                // Elegant translucent white/light-gray that fills the capsule
+                color: Qt.rgba(255, 255, 255, 0.14)
+                
+                Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
             }
 
-            // Handle
+            // The Flat Pill Handle (Image 2 style: solid/translucent capsule directly in the bar)
             Rectangle {
-                id: handle
-                width: 12 * uiScale; height: 24 * uiScale
-                radius: 6 * uiScale; color: "#ffffff"
-                x: parent.width * root.value - width/2
+                id: thumbHandle
+                height: parent.height - 8 * uiScale // elegant 4px margins on each side
+                width: 54 * uiScale // Long pill capsule
+                radius: height / 2
                 anchors.verticalCenter: parent.verticalCenter
                 
-                // Line
-                Rectangle {
-                    width: 2 * uiScale; height: 10 * uiScale; radius: 1; 
-                    color: slideMouse.pressed ? "white" : root.accentColor
-                    anchors.centerIn: parent
-                    Behavior on color { ColorAnimation { duration: 150 } }
-                }
+                // Position: left = min, right = max
+                x: (trackBg.width - width) * root.visualPosition
                 
-                // Glow
-                Rectangle {
-                    anchors.centerIn: parent; width: parent.width + 12; height: parent.height + 12
-                    radius: 12 * uiScale; color: root.accentColor
-                    opacity: slideMouse.pressed ? 0.2 : (slideMouse.containsMouse ? 0.1 : 0.0)
-                    z: -1
-                    Behavior on opacity { NumberAnimation { duration: 200 } }
-                }
+                // Translucent gray capsule that responds gracefully to interaction
+                color: slideMouse.pressed 
+                       ? Qt.rgba(255, 255, 255, 0.22) 
+                       : (slideMouse.containsMouse ? Qt.rgba(255, 255, 255, 0.16) : Qt.rgba(255, 255, 255, 0.10))
                 
-                scale: slideMouse.pressed ? 1.15 : (slideMouse.containsMouse ? 1.05 : 1.0)
-                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                Behavior on color { ColorAnimation { duration: 100 } }
+                Behavior on x { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+                
+                // Subtle scale effect on press
+                scale: slideMouse.pressed ? 0.97 : 1.0
+                Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
             }
+        }
 
-            // === BRUSH PREVIEW TOOLTIP ===
-            Item {
-                id: previewTooltip
-                
-                visible: slideMouse.pressed || slideMouse.containsMouse
-                opacity: visible ? 1.0 : 0.0
-                
-                // Bubble Size
-                width: 70 * uiScale
-                height: 70 * uiScale
-                
-                // Position above handle
-                anchors.bottom: parent.top
-                anchors.bottomMargin: 12 * uiScale
-                anchors.horizontalCenter: (handle.x + handle.width/2) > parent.width/2 ? undefined : handle.horizontalCenter
-                x: (handle.x + handle.width/2) > parent.width/2 ? (handle.x + handle.width/2 - width) : undefined
-                // Wait, precise positioning:
-                // Let's just center it on handle X, but clamp to avoid going off-screen?
-                // For now, anchor to handle horizontalCenter is fine as track has margins.
-                anchors.horizontalCenter: handle.horizontalCenter
-                
-                Behavior on opacity { NumberAnimation { duration: 200 } }
+        // === ICONIC PROCREATE PREVIEW CARD (Large popup next to the sidebar!) ===
+        Item {
+            id: procreatePreviewCard
+            
+            // Only show while actively dragging the slider
+            visible: slideMouse.pressed
+            opacity: visible ? 1.0 : 0.0
+            scale: visible ? 1.0 : 0.85
+            
+            width: 180 * uiScale
+            height: 180 * uiScale
+            
+            // Anchored next to the slider track (above or below depending on previewOnBottom)
+            anchors.horizontalCenter: parent.horizontalCenter
+            
+            anchors.bottom: !root.previewOnBottom ? trackBg.top : undefined
+            anchors.bottomMargin: !root.previewOnBottom ? 18 * uiScale : undefined
+            
+            anchors.top: root.previewOnBottom ? trackBg.bottom : undefined
+            anchors.topMargin: root.previewOnBottom ? 18 * uiScale : undefined
+            
+            Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutBack } }
 
-                // Bubble Background
-                Rectangle {
-                    anchors.fill: parent
-                    radius: 12 * uiScale
-                    color: "#cc1a1a1e"
-                    border.color: "#333"
-                    border.width: 1
-                    
-                    layer.enabled: true
-                    layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
-                }
-
-                // Content
-                Item {
-                    anchors.fill: parent; anchors.margins: 6 * uiScale
-                    
-                    Image {
-                        id: tipImg
-                        anchors.centerIn: parent
-                        source: root.brushTipSource
-                        visible: status === Image.Ready && root.brushTipSource !== ""
-                        
-                        property real sizeFactor: (root.previewType === "size") ? Math.max(0.2, root.value) : 0.7
-                        width: parent.width * sizeFactor
-                        height: parent.height * sizeFactor
-                        
-                        fillMode: Image.PreserveAspectFit
-                        mipmap: true
-                        smooth: true
-                        
-                        opacity: (root.previewType === "opacity") ? root.value : 1.0
-                        
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            colorization: 1.0
-                            colorizationColor: root.brushColor
-                        }
-                    }
-                    
-                    // Fallback Circle
-                    Rectangle {
-                        anchors.centerIn: parent
-                        visible: tipImg.status !== Image.Ready || root.brushTipSource === ""
-                        
-                        property real sizeFactor: (root.previewType === "size") ? Math.max(0.2, root.value) : 0.7
-                        width: parent.width * sizeFactor
-                        height: width
-                        radius: width/2
-                        color: root.brushColor
-                        opacity: (root.previewType === "opacity") ? root.value : 1.0
-                    }
-                    
-                    // Percentage Text
-                    Text {
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: previewType === "size" ? Math.round(root.value * root.maxVal) + "px" : Math.round(root.value * 100) + "%"
-                        color: "white"
-                        font.pixelSize: 10 * uiScale
-                        font.bold: true
-                        style: Text.Outline
-                        styleColor: "black"
-                    }
-                }
-                
-                // Arrow (Pointing Down)
-                Rectangle {
-                    width: 8; height: 8; rotation: 45
-                    color: "#cc1a1a1e"
-                    border.color: "#333"
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: -4
-                    z: -1
-                }
-            }
-
-            MouseArea {
-                id: slideMouse
+            // Card Backdrop (Translucent Glassmorphism)
+            Rectangle {
                 anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
+                radius: 24 * uiScale
+                color: "#eb1c1c1f"
+                border.color: Qt.rgba(1, 1, 1, 0.06)
+                border.width: 0.5
                 
-                onPositionChanged: {
-                    if (pressed) {
-                        var val = mouseX / width
-                        val = Math.max(0.0, Math.min(1.0, val))
-                        root.moved(val)
-                    }
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    shadowEnabled: true
+                    shadowBlur: 0.8
+                    shadowVerticalOffset: 6
+                    shadowColor: "#80000000"
+                    shadowOpacity: 0.45
                 }
-                onPressed: positionChanged(mouse)
+            }
+
+            // Top-Left Crosshair Symbol (Detail from the photo!)
+            Item {
+                width: 16 * uiScale; height: 16 * uiScale
+                anchors.left: parent.left; anchors.leftMargin: 18 * uiScale
+                anchors.top: parent.top; anchors.topMargin: 18 * uiScale
+                
+                Rectangle { width: 10 * uiScale; height: 1 * uiScale; color: "#55ffffff"; anchors.centerIn: parent }
+                Rectangle { width: 1 * uiScale; height: 10 * uiScale; color: "#55ffffff"; anchors.centerIn: parent }
+            }
+
+            // Top Center Readout (e.g., "60 px" or "100 %")
+            Text {
+                anchors.top: parent.top
+                anchors.topMargin: 16 * uiScale
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: root.previewType === "size" 
+                      ? Math.round(root.value * root.maxVal) + " px" 
+                      : Math.round(root.value * 100) + " %"
+                color: "#e2e2e7"
+                font.pixelSize: 13 * uiScale
+                font.bold: true
+                font.letterSpacing: 0.2
+            }
+
+            // Center Dynamic Brush Tip Preview (Grows/shrinks beautifully with Easing.OutBack micro-animation)
+            Rectangle {
+                id: brushTipPreview
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: 6 * uiScale
+                
+                // Color is the active brush color!
+                color: root.brushColor
+                
+                // Diameter scales organically
+                property real targetWidth: (root.previewType === "size")
+                                           ? Math.max(3 * uiScale, (90 * uiScale) * root.visualPosition)
+                                           : 60 * uiScale
+                                           
+                width: targetWidth
+                height: width
+                radius: width / 2
+                
+                opacity: (root.previewType === "opacity") ? Math.max(0.04, root.visualPosition) : 1.0
+                
+                // Elegant fluid animation as it expands/shrinks
+                Behavior on width { 
+                    NumberAnimation { duration: 180; easing.type: Easing.OutBack } 
+                }
+                Behavior on opacity { 
+                    NumberAnimation { duration: 120; easing.type: Easing.OutCubic } 
+                }
+                
+                // Sutil border for lighter brushes
+                border.color: Qt.rgba(0, 0, 0, 0.12)
+                border.width: 0.5 * uiScale
+            }
+        }
+
+        // Full Interactive MouseArea with relative Friction Scrubbing
+        MouseArea {
+            id: slideMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            
+            property real pressedX: 0.0
+            property real startValue: 0.0
+            
+            onPressed: (mouse) => {
+                // Jump-to-tap immediately on press
+                var clickVal = mouse.x / width
+                clickVal = Math.max(0.0, Math.min(1.0, clickVal))
+                
+                var calculatedVal = root.from + clickVal * (root.to - root.from)
+                root.value = calculatedVal
+                root.moved(calculatedVal)
+                
+                pressedX = mouse.x
+                startValue = clickVal
+            }
+            
+            onPositionChanged: (mouse) => {
+                if (pressed) {
+                    var dy = Math.abs(mouse.y - height / 2)
+                    var dx = mouse.x - pressedX
+                    
+                    // Friction: farther vertically = finer horizontal control
+                    var friction = 1.0
+                    if (dy > 30 * uiScale) {
+                        friction = Math.max(0.08, 1.0 - (dy - 30 * uiScale) / (120 * uiScale))
+                    }
+                    
+                    var deltaVal = (dx / trackBg.width) * friction
+                    var newVal = startValue + deltaVal
+                    newVal = Math.max(0.0, Math.min(1.0, newVal))
+                    
+                    var calculatedVal = root.from + newVal * (root.to - root.from)
+                    root.value = calculatedVal
+                    root.moved(calculatedVal)
+                    
+                    pressedX = mouse.x
+                    startValue = newVal
+                }
             }
         }
     }

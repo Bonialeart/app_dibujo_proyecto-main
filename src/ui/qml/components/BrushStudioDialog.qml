@@ -1498,15 +1498,15 @@ Rectangle {
 
                             StudioSlider {
                                 label: "Tamaño por Defecto"
-                                from: 1; to: 500
+                                from: 1; to: 100
                                 value: targetCanvas ? targetCanvas.getBrushProperty("customize", "default_size") || 20 : 20
                                 suffix: "px"
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("customize", "default_size", value)
                             }
                             StudioSlider {
                                 label: "Tamaño Máximo"
-                                from: 1; to: 1000
-                                value: targetCanvas ? targetCanvas.getBrushProperty("customize", "max_size") || 500 : 500
+                                from: 1; to: 100
+                                value: targetCanvas ? targetCanvas.getBrushProperty("customize", "max_size") || 100 : 100
                                 suffix: "px"
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("customize", "max_size", value)
                             }
@@ -2075,7 +2075,7 @@ Rectangle {
                                     width: 20; height: 150
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     orientation: Qt.Vertical
-                                    from: 2; to: 200
+                                    from: 2; to: 100
                                     value: drawingPad.padBrushSize
                                     onMoved: {
                                         drawingPad.padBrushSize = value

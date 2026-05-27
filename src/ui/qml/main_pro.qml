@@ -249,6 +249,32 @@ Window {
     // Zen Mode State
     property bool isZenMode: false
     
+    // Color History system (premium recent colors capsule)
+    property var recentColors: ["#ffffff", "#ff2a5f", "#ff9f43", "#feca57", "#1dd1a1", "#00d2d3", "#54a0ff", "#5f27cd"]
+    
+    Timer {
+        id: recentColorDebounceTimer
+        interval: 300
+        repeat: false
+        onTriggered: {
+            if (!mainCanvas) return
+            var c = mainCanvas.brushColor.toString()
+            var list = []
+            for (var i = 0; i < recentColors.length; i++) {
+                list.push(recentColors[i])
+            }
+            var idx = list.indexOf(c)
+            if (idx !== -1) {
+                list.splice(idx, 1)
+            }
+            list.unshift(c)
+            if (list.length > 8) {
+                list.pop()
+            }
+            recentColors = list
+        }
+    }
+    
     // Canvas Mode: "essential" (Procreate-like) or "studio" (Clip Studio-like)
     property string canvasMode: "essential"
     property bool isStudioMode: canvasMode === "studio"
@@ -332,6 +358,10 @@ Window {
         function onProjectListChanged() {
             // Reload recent projects list in Home
             loadRecentProjects()
+        }
+
+        function onBrushColorChanged() {
+            recentColorDebounceTimer.restart()
         }
 
         function onNotificationRequested(message, type) {
@@ -615,31 +645,34 @@ Window {
                                         }
 
                                         // --- SUBMENU FLYOUT ---
-                                        Rectangle {
+                                        MouseArea {
                                             id: subMenuPanel
                                             visible: menuItemDelegate.hasSubItems && menuPopup.activeSubMenuIndex === index
                                             x: mainMenuCol.width - 4
                                             y: -6
                                             width: 260
                                             height: subMenuCol.implicitHeight + 12
-                                            color: "#cc141418"
-                                            border.color: "#25ffffff"
-                                            radius: 12
+                                            hoverEnabled: true
+                                            propagateComposedEvents: true
 
-                                            property bool containsMouse_: subPanelMouse.containsMouse
+                                            property bool containsMouse_: containsMouse
 
-                                            // Glassmorphism
-                                            Rectangle { anchors.fill: parent; color: Qt.rgba(0.1,0.1,0.1,0.85); radius: 12; z: -1 }
-                                            // Shadow
-                                            Rectangle { anchors.fill: parent; anchors.margins: -6; z: -2; radius: 16; color: "black"; opacity: 0.5 }
-
-                                            MouseArea {
-                                                id: subPanelMouse
-                                                anchors.fill: parent
-                                                hoverEnabled: true
-                                                onExited: {
+                                            onContainsMouseChanged: {
+                                                if (!containsMouse && !itemMouse.containsMouse) {
                                                     menuPopup.activeSubMenuIndex = -1
                                                 }
+                                            }
+
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                color: "#cc141418"
+                                                border.color: "#25ffffff"
+                                                radius: 12
+
+                                                // Glassmorphism
+                                                Rectangle { anchors.fill: parent; color: Qt.rgba(0.1,0.1,0.1,0.85); radius: 12; z: -1 }
+                                                // Shadow
+                                                Rectangle { anchors.fill: parent; anchors.margins: -6; z: -2; radius: 16; color: "black"; opacity: 0.5 }
                                             }
 
                                             Column {
@@ -3172,11 +3205,12 @@ Window {
                     
                     // Adaptive dimensions based on orientation
                     property bool isHorizontal: false
+                    property bool showRecentColors: false
                     
                     // Hysteresis logic to prevent flickering
                     onYChanged: {
                         var topDist = 100
-                        var bottomDist = parent.height - 480
+                        var bottomDist = parent.height - 380
                         
                         if (y < topDist) {
                             if (!isHorizontal) isHorizontal = true
@@ -3194,88 +3228,82 @@ Window {
                         }
                     }                    
                     
-                    width: isHorizontal ? 460 * mainWindow.uiScale : 54 * mainWindow.uiScale
-                    height: isHorizontal ? 54 * mainWindow.uiScale : 480 * mainWindow.uiScale
-                    radius: 27 * mainWindow.uiScale
-                    clip: false // Disable clip to allow shadows/popups if needed, or keep true if content overflows
+                    width: isHorizontal ? 330 * mainWindow.uiScale : 40 * mainWindow.uiScale
+                    height: isHorizontal ? 40 * mainWindow.uiScale : 360 * mainWindow.uiScale
+                    radius: 20 * mainWindow.uiScale
+                    clip: false
                     
-                    // Premium Matte Dark Body (Image 2 Style)
-                    color: "#1c1c1e"
-                    border.color: Qt.rgba(1, 1, 1, 0.05)
-                    border.width: 1
+                    // Unified Pure Premium Dark Capsule (Image 2 style)
+                    color: "#252528"
+                    border.color: Qt.rgba(1, 1, 1, 0.03)
+                    border.width: 0.5
                     z: 90
                     
                     Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                     Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                     
-                    // Glass Background Blur Simulation (Subtle)
-                    Rectangle { anchors.fill: parent; radius: parent.radius; color: "#ffffff"; opacity: 0.02 }
-                    
                     // Soft Shadow
                     Rectangle {
                         anchors.fill: parent; anchors.margins: -4
-                        z: -1; radius: parent.radius + 4; color: "black"; opacity: 0.25
+                        z: -1; radius: parent.radius + 4; color: "black"; opacity: 0.18
                     }
 
-                    // Drag Handle (Only this area is draggable)
-                    Rectangle {
-                        id: toolboxHeader
-                        width: sliderToolbox.isHorizontal ? 50 * mainWindow.uiScale : parent.width
-                        height: sliderToolbox.isHorizontal ? parent.height : 36 * mainWindow.uiScale
-                        color: "transparent"
-                        anchors.left: sliderToolbox.isHorizontal ? parent.left : undefined
-                        anchors.top: sliderToolbox.isHorizontal ? parent.top : parent.top
-                        anchors.horizontalCenter: sliderToolbox.isHorizontal ? undefined : parent.horizontalCenter
+                    // Background drag area (so the whole background of the bar can be dragged cleanly!)
+                    MouseArea {
+                        id: toolboxDrag
+                        anchors.fill: parent
+                        drag.target: sliderToolbox
+                        drag.axis: Drag.XAndYAxis
+                        drag.minimumX: 10
+                        drag.maximumX: mainWindow.width - sliderToolbox.width - 10
+                        drag.minimumY: 50
+                        drag.maximumY: mainWindow.height - sliderToolbox.height - 20
+                        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
                         
-                        // Drag Indicator
-                        Row {
-                            visible: sliderToolbox.isHorizontal
-                            anchors.centerIn: parent
-                            spacing: 3
-                            Rectangle { width: 1.5; height: 14; radius: 1; color: "#666" }
-                            Rectangle { width: 1.5; height: 14; radius: 1; color: "#666" }
-                        }
-                        Column {
-                            visible: !sliderToolbox.isHorizontal
-                            anchors.centerIn: parent
-                            spacing: 3
-                            Rectangle { width: 14; height: 1.5; radius: 1; color: "#666" }
-                            Rectangle { width: 14; height: 1.5; radius: 1; color: "#666" }
-                        }
-                        
-                        MouseArea {
-                            id: toolboxDrag
-                            anchors.fill: parent
-                            drag.target: sliderToolbox
-                            drag.axis: Drag.XAndYAxis
-                            drag.minimumX: 10
-                            drag.maximumX: mainWindow.width - sliderToolbox.width - 10
-                            drag.minimumY: 50
-                            drag.maximumY: mainWindow.height - sliderToolbox.height - 20
-                            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                            
-                            onPressed: sliderToolbox.scale = 1.02
-                            onReleased: sliderToolbox.scale = 1.0
-                        }
+                        onPressed: sliderToolbox.scale = 1.01
+                        onReleased: sliderToolbox.scale = 1.0
                     }
 
-                    // === VERTICAL LAYOUT (Left/Right edges) ===
+                    // === VERTICAL LAYOUT: SLIDERS MODE (Size, Active Color Well, Opacity) ===
                     Column {
-                        visible: !sliderToolbox.isHorizontal
-                        anchors.top: toolboxHeader.bottom
-                        anchors.topMargin: 10 * mainWindow.uiScale
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: !sliderToolbox.isHorizontal && !sliderToolbox.showRecentColors
+                        anchors.centerIn: parent
+                        spacing: 10 * mainWindow.uiScale
                         width: parent.width
-                        spacing: 30 * mainWindow.uiScale
+                        
+                        opacity: visible ? 1.0 : 0.0
+                        scale: visible ? 1.0 : 0.8
+                        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                         
                         ProSlider {
                             label: "Size"
                             width: parent.width
-                            maxVal: 1000.0
-                            value: mainCanvas.brushSize / 1000.0
+                            maxVal: 100.0
+                            value: mainCanvas.brushSize / 100.0
                             previewType: "size"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
-                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
+                            brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            implicitHeight: 140 * mainWindow.uiScale
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 100 }
+                        }
+                        
+                        // Middle Circle Button (Active color well and morph toggle!)
+                        Rectangle {
+                            id: middleColorToggleBtn
+                            width: 32 * mainWindow.uiScale; height: 32 * mainWindow.uiScale; radius: 16 * mainWindow.uiScale
+                            color: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            border.color: Qt.rgba(0, 0, 0, 0.15)
+                            border.width: 1.0 * mainWindow.uiScale
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            scale: toggleMa.containsMouse ? 1.1 : 1.0
+                            Behavior on scale { NumberAnimation { duration: 150 } }
+                            
+                            MouseArea {
+                                id: toggleMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: sliderToolbox.showRecentColors = true
+                            }
                         }
                         
                         ProSlider {
@@ -3284,25 +3312,116 @@ Window {
                             value: mainCanvas.brushOpacity
                             previewType: "opacity"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
+                            brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            implicitHeight: 140 * mainWindow.uiScale
                             onMoved: (val) => { if (mainCanvas) mainCanvas.brushOpacity = val }
+                        }
+                    }
+
+                    // === VERTICAL LAYOUT: RECENT COLORS MODE (Morphing) ===
+                    Column {
+                        visible: !sliderToolbox.isHorizontal && sliderToolbox.showRecentColors
+                        anchors.centerIn: parent
+                        spacing: 6 * mainWindow.uiScale
+                        width: parent.width
+                        
+                        opacity: visible ? 1.0 : 0.0
+                        scale: visible ? 1.0 : 0.8
+                        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                        
+                        // Recent colors 0, 1, 2, 3 (Up to 4 swatches)
+                        Repeater {
+                            model: Math.min(4, mainWindow.recentColors.length)
+                            delegate: Rectangle {
+                                width: 22 * mainWindow.uiScale; height: 22 * mainWindow.uiScale; radius: 11 * mainWindow.uiScale
+                                color: mainWindow.recentColors[index]
+                                border.color: Qt.rgba(0, 0, 0, 0.15)
+                                border.width: 0.5 * mainWindow.uiScale
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                scale: swatchMa.containsMouse ? 1.15 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 150 } }
+                                
+                                MouseArea {
+                                    id: swatchMa
+                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (mainCanvas) mainCanvas.brushColor = parent.color
+                                        sliderToolbox.showRecentColors = false
+                                    }
+                                }
+                            }
+                        }
+
+                        // Middle active color toggle button in color mode (shows an '✕' to close)
+                        Rectangle {
+                            id: activeColorSwatchBtn
+                            width: 26 * mainWindow.uiScale; height: 26 * mainWindow.uiScale; radius: 13 * mainWindow.uiScale
+                            color: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            border.color: Qt.rgba(0, 0, 0, 0.15)
+                            border.width: 1.0 * mainWindow.uiScale
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            scale: activeColorSwatchMa.containsMouse ? 1.15 : 1.0
+                            Behavior on scale { NumberAnimation { duration: 150 } }
+                            
+                            // Visual indicator inside showing we can go back
+                            Text {
+                                text: "✕"
+                                color: "white"
+                                font.pixelSize: 8 * mainWindow.uiScale
+                                font.bold: true
+                                style: Text.Outline
+                                styleColor: "black"
+                                anchors.centerIn: parent
+                            }
+
+                            MouseArea {
+                                id: activeColorSwatchMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: sliderToolbox.showRecentColors = false
+                            }
+                        }
+
+                        // Recent colors 4, 5, 6, 7 (Up to 4 remaining swatches)
+                        Repeater {
+                            model: Math.max(0, Math.min(4, mainWindow.recentColors.length - 4))
+                            delegate: Rectangle {
+                                width: 22 * mainWindow.uiScale; height: 22 * mainWindow.uiScale; radius: 11 * mainWindow.uiScale
+                                color: mainWindow.recentColors[index + 4]
+                                border.color: Qt.rgba(0, 0, 0, 0.15)
+                                border.width: 0.5 * mainWindow.uiScale
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                scale: swatchMa2.containsMouse ? 1.15 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 150 } }
+                                
+                                MouseArea {
+                                    id: swatchMa2
+                                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (mainCanvas) mainCanvas.brushColor = parent.color
+                                        sliderToolbox.showRecentColors = false
+                                    }
+                                }
+                            }
                         }
                     }
 
                     // === HORIZONTAL LAYOUT (Top/Bottom edges) ===
                     Row {
                         visible: sliderToolbox.isHorizontal
-                        anchors.left: toolboxHeader.right
-                        anchors.leftMargin: 10 * uiScale
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 30 * uiScale
+                        anchors.centerIn: parent
+                        spacing: 12 * mainWindow.uiScale
                         
                         ProSliderHorizontal {
                             label: "Size"
-                            maxVal: 1000.0
-                            value: mainCanvas.brushSize / 1000.0
+                            maxVal: 100.0
+                            value: mainCanvas.brushSize / 100.0
                             previewType: "size"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
-                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
+                            brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            implicitWidth: 110 * mainWindow.uiScale
+                            implicitHeight: parent.height
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 100 }
                         }
                         
                         ProSliderHorizontal {
@@ -3310,6 +3429,9 @@ Window {
                             value: mainCanvas.brushOpacity
                             previewType: "opacity"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
+                            brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
+                            implicitWidth: 110 * mainWindow.uiScale
+                            implicitHeight: parent.height
                             onMoved: (val) => { if (mainCanvas) mainCanvas.brushOpacity = val }
                         }
                     }
@@ -3801,7 +3923,17 @@ Window {
                             anchors.centerIn: parent
                             spacing: 4 * uiScale
 
-                            // Sidebar Toggle
+                            // 1. Circular Back Button
+                            TopBarButton {
+                                iconSource: iconPath("chevron-left.svg")
+                                tooltip: "Volver al inicio"
+                                radius: 18 * uiScale
+                                border.color: Qt.rgba(1, 1, 1, 0.25)
+                                border.width: 1.5
+                                onClicked: currentPage = 0
+                            }
+
+                            // 2. Sidebar Toggle
                             TopBarButton {
                                 iconSource: iconPath("sidebar.svg")
                                 tooltip: showSidebar ? "Ocultar panel lateral" : "Mostrar panel lateral"
@@ -3809,87 +3941,251 @@ Window {
                                 onClicked: showSidebar = !showSidebar
                             }
 
-                            // Back Arrow
-                            TopBarButton {
-                                iconSource: iconPath("arrow-left.svg")
-                                tooltip: "Volver al inicio"
-                                onClicked: currentPage = 0
-                            }
-
                             // Separator
                             Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
 
-                            // Options Button
+                            // 3. Settings Button
                             TopBarButton {
                                 iconSource: iconPath("settings.svg")
-                                tooltip: "Opciones"
-                                onClicked: settingsMenu.open()
-                            }
-
-                            // Reference Button
-                            TopBarButton {
-                                iconSource: iconPath("image.svg")
-                                tooltip: refWindow.active ? "Cerrar referencia" : "Abrir referencia / navegador"
-                                active: refWindow.active
-                                onClicked: refWindow.active = !refWindow.active
-                            }
-
-                            // Timelapse Recording
-                            TopBarButton {
-                                id: tlIndicator
-                                property bool tlRecording: true
-                                tooltip: "Timelapse"
-                                useCustomContent: true
-                                onClicked: tlMiniMenu.visible = !tlMiniMenu.visible
-
-                                // Recording indicator dot
-                                Rectangle {
-                                    width: 10 * uiScale; height: 10 * uiScale; radius: 5 * uiScale
-                                    anchors.centerIn: parent
-                                    color: tlIndicator.tlRecording ? "#ff3b30" : "#555"
-                                    SequentialAnimation on opacity {
-                                        running: tlIndicator.tlRecording; loops: Animation.Infinite
-                                        NumberAnimation { to: 0.3; duration: 800; easing.type: Easing.InOutQuad }
-                                        NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutQuad }
-                                    }
-                                    // Glow ring when recording
-                                    Rectangle {
-                                        visible: tlIndicator.tlRecording
-                                        anchors.centerIn: parent
-                                        width: parent.width + 6 * uiScale; height: parent.height + 6 * uiScale
-                                        radius: width / 2; color: "transparent"
-                                        border.color: Qt.rgba(1, 0.23, 0.19, 0.3); border.width: 1.5
-                                    }
+                                tooltip: "Ajustes y Opciones"
+                                active: settingsMenu.visible
+                                onClicked: {
+                                    if (settingsMenu.visible) settingsMenu.close()
+                                    else settingsMenu.open()
                                 }
                             }
 
-                            // Animation Timeline Toggle (moved from right)
+                            // 4. Cube Tools Button (Herramientas)
                             TopBarButton {
-                                iconSource: iconPath("animation.svg")
-                                tooltip: showAnimationBar ? "Cerrar Timeline" : "Abrir Timeline de Animación"
-                                active: showAnimationBar
-                                activeColor: colorAccent
-                                onClicked: showAnimationBar = !showAnimationBar
+                                id: cubeToolsBtn
+                                iconSource: iconPath("tools-cube.svg")
+                                tooltip: "Herramientas"
+                                active: toolsDropdown.visible
+                                onClicked: {
+                                    if (toolsDropdown.visible) toolsDropdown.close()
+                                    else toolsDropdown.open()
+                                }
                             }
 
-                            // Studio Mode Toggle (moved from right)
+                            // 5. Gallery/Launcher Button
+                            TopBarButton {
+                                iconSource: iconPath("layout.svg")
+                                tooltip: "Galería / Diseños"
+                                onClicked: toastManager.show("Galería de Diseños", "info")
+                            }
+
+                            // 6. Sparkle/Effects Button
+                            TopBarButton {
+                                iconSource: iconPath("star.svg")
+                                tooltip: "Efectos y Ajustes"
+                                onClicked: toastManager.show("Efectos y Ajustes", "info")
+                            }
+
+                            // 7. Studio Mode Button
                             TopBarButton {
                                 iconSource: iconPath("studio.svg")
-                                tooltip: "Modo Studio"
+                                tooltip: "Cambiar a Modo Studio"
                                 onClicked: {
                                     modeChangeConfirmDialog.targetMode = "studio"
                                     modeChangeConfirmDialog.open()
                                 }
                             }
+                        }
 
-                            // Separator
-                            Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
+                        // --- CUBE TOOLS DROPDOWN (Procreate-style) ---
+                        Popup {
+                            id: toolsDropdown
+                            x: leftLayout.x + cubeToolsBtn.x + (cubeToolsBtn.width - width) / 2
+                            y: leftLayout.y + cubeToolsBtn.y + cubeToolsBtn.height + 10 * uiScale
+                            width: 280 * uiScale
+                            padding: 0
+                            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+                            
+                            enter: Transition {
+                                ParallelAnimation {
+                                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                                    NumberAnimation { property: "scale"; from: 0.95; to: 1; duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+                            
+                            exit: Transition {
+                                ParallelAnimation {
+                                    NumberAnimation { property: "opacity"; to: 0; duration: 140; easing.type: Easing.InQuad }
+                                    NumberAnimation { property: "scale"; to: 0.95; duration: 140; easing.type: Easing.InQuad }
+                                }
+                            }
+                            
+                            background: Rectangle {
+                                color: "#141416"
+                                border.color: Qt.rgba(1, 1, 1, 0.08)
+                                border.width: 1
+                                radius: 20 * uiScale
 
-                            // Save Button (icon-only)
-                            TopBarButton {
-                                iconSource: iconPath("save.svg")
-                                tooltip: "Guardar proyecto (Ctrl+S)"
-                                onClicked: mainWindow.saveProjectAndRefresh()
+                                // Soft shadow
+                                Rectangle {
+                                    anchors.fill: parent; anchors.margins: -10 * uiScale
+                                    z: -1; radius: 28 * uiScale
+                                    color: "black"; opacity: 0.5
+                                }
+                            }
+                            
+                            contentItem: ColumnLayout {
+                                spacing: 0
+                                anchors.fill: parent
+                                anchors.margins: 12 * uiScale
+                                
+                                // Header title — italic bold like Settings
+                                Text {
+                                    text: "Herramientas"
+                                    color: "#ffffff"
+                                    font.pixelSize: 16 * uiScale
+                                    font.bold: true
+                                    font.italic: true
+                                    Layout.leftMargin: 8 * uiScale
+                                    Layout.topMargin: 6 * uiScale
+                                    Layout.bottomMargin: 10 * uiScale
+                                }
+
+                                // Clean separator after title
+                                Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.06); Layout.bottomMargin: 4 * uiScale }
+                                
+                                // Reusable dropdown item with circular icon container
+                                component DropdownItem : MouseArea {
+                                    id: dropItem
+                                    property string text: ""
+                                    property string iconName: ""
+                                    property string shortcut: ""
+                                    signal clicked()
+                                    
+                                    Layout.fillWidth: true
+                                    height: 38 * uiScale
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+
+                                    onClicked: {
+                                        toolsDropdown.close()
+                                        dropItem.clicked()
+                                    }
+                                    
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 8 * uiScale
+                                        color: dropItem.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                                        Behavior on color { ColorAnimation { duration: 100 } }
+                                    }
+                                    
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 6 * uiScale
+                                        anchors.rightMargin: 10 * uiScale
+                                        spacing: 10 * uiScale
+                                        
+                                        // Circular icon container
+                                        Rectangle {
+                                            width: 28 * uiScale; height: 28 * uiScale
+                                            radius: 14 * uiScale
+                                            color: dropItem.containsMouse ? Qt.rgba(1,1,1,0.10) : Qt.rgba(1,1,1,0.06)
+                                            Layout.alignment: Qt.AlignVCenter
+                                            visible: iconName !== ""
+
+                                            Behavior on color { ColorAnimation { duration: 100 } }
+
+                                            Image {
+                                                source: iconName !== "" ? iconPath(iconName) : ""
+                                                width: 13 * uiScale; height: 13 * uiScale
+                                                sourceSize.width: 13 * uiScale
+                                                sourceSize.height: 13 * uiScale
+                                                fillMode: Image.PreserveAspectFit
+                                                anchors.centerIn: parent
+                                                opacity: dropItem.containsMouse ? 1.0 : 0.7
+                                                Behavior on opacity { NumberAnimation { duration: 100 } }
+                                            }
+                                        }
+                                        
+                                        Text {
+                                            text: dropItem.text
+                                            color: dropItem.containsMouse ? "#ffffff" : "#8e8e93"
+                                            font.pixelSize: 14 * uiScale
+                                            Layout.fillWidth: true
+                                            Behavior on color { ColorAnimation { duration: 100 } }
+                                        }
+                                        
+                                        Text {
+                                            text: shortcut
+                                            color: "#555"
+                                            font.pixelSize: 10 * uiScale
+                                            visible: shortcut !== ""
+                                        }
+                                    }
+                                }
+                                
+                                DropdownItem {
+                                    text: "Transformación Libre"
+                                    iconName: "move.svg"
+                                    shortcut: "Ctrl+T"
+                                    onClicked: {
+                                        mainCanvas.isFreeTransformActive = true
+                                        canvasPage.activeToolIdx = 4
+                                    }
+                                }
+                                
+                                DropdownItem {
+                                    text: "Licuar (Liquify)"
+                                    iconName: "sliders.svg"
+                                    onClicked: mainCanvas.currentTool = "liquify"
+                                }
+                                
+                                Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.06); Layout.topMargin: 4 * uiScale; Layout.bottomMargin: 4 * uiScale }
+                                
+                                DropdownItem {
+                                    text: "Reglas y Guías"
+                                    iconName: "layout.svg"
+                                    onClicked: toastManager.show("Reglas y Guías activadas", "info")
+                                }
+                                
+                                DropdownItem {
+                                    text: "Guías de Perspectiva"
+                                    iconName: "compass.svg"
+                                    onClicked: toastManager.show("Guías de Perspectiva activadas", "info")
+                                }
+                                
+                                DropdownItem {
+                                    text: "Simetría"
+                                    iconName: "swap.svg"
+                                    onClicked: {
+                                        mainCanvas.symmetryEnabled = !mainCanvas.symmetryEnabled
+                                        toastManager.show("Simetría " + (mainCanvas.symmetryEnabled ? "Activada" : "Desactivada"), "info")
+                                    }
+                                }
+                                
+                                DropdownItem {
+                                    text: "Ajuste (Snapping)"
+                                    iconName: "magnet.svg"
+                                    onClicked: toastManager.show("Snapping activado", "info")
+                                }
+                                
+                                Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.06); Layout.topMargin: 4 * uiScale; Layout.bottomMargin: 4 * uiScale }
+                                
+                                DropdownItem {
+                                    text: "Rango de Color..."
+                                    iconName: "eyedropper.svg"
+                                    onClicked: colorRangeDialog.open()
+                                }
+
+                                Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.06); Layout.topMargin: 4 * uiScale; Layout.bottomMargin: 4 * uiScale }
+
+                                DropdownItem {
+                                    text: "Guardar Proyecto"
+                                    iconName: "save.svg"
+                                    shortcut: "Ctrl+S"
+                                    onClicked: mainWindow.saveProjectAndRefresh()
+                                }
+
+                                DropdownItem {
+                                    text: "Grabar/Exportar Timelapse"
+                                    iconName: "video.svg"
+                                    onClicked: videoConfigDialog.open()
+                                }
                             }
                         }
                     }
@@ -4716,7 +5012,7 @@ Window {
                                     Slider {
                                         id: sliderSize
                                         width: parent.width; height: 28
-                                        from: 1; to: 1000; value: mainCanvas.brushSize
+                                        from: 1; to: 100; value: mainCanvas.brushSize
                                         onValueChanged: mainCanvas.brushSize = value
                                         
                                         background: Rectangle {
@@ -8018,257 +8314,7 @@ Window {
         }
     }
 
-    // === PREMIUM PRO SLIDER (ArtFlow V3 - Liquid Fill Style) ===
-    component ProSlider : Item {
-        id: sliderRoot
-        width: parent.width; height: 195 * mainWindow.uiScale
-        
-        property string label: ""
-        property real value: 0.5
-        property real maxVal: 100.0
-        property string previewType: "size"
-        property bool previewOnRight: true
-        
-        signal moved(real val)
-        
-        // Track Background (The "Empty" Pill Segment)
-        Rectangle {
-            id: track
-            anchors.fill: parent
-            anchors.margins: 2 * mainWindow.uiScale
-            radius: width/2
-            color: "#1c1c1e" // Dark base
-            clip: true
-            
-            // The "Liquid" Fill (Image 2 Style - Rellenando)
-            Rectangle {
-                id: fillArea
-                width: parent.width
-                height: (track.height * sliderRoot.value) + track.radius
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: -track.radius
-                radius: track.radius
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: Qt.lighter(colorAccent, 1.2) }
-                    GradientStop { position: 1.0; color: colorAccent }
-                }
-                
-                opacity: sliderRoot.value > 0.005 ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-                
-                // Inner Shine for premium look
-                Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: parent.radius
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.2) }
-                        GradientStop { position: 1.0; color: "transparent" }
-                    }
-                }
-            }
-        }
-        
-        MouseArea {
-            id: dragArea
-            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-            function updateVal(my) {
-                var v = 1.0 - (my / parent.height)
-                var val = Math.max(0, Math.min(1.0, v))
-                sliderRoot.moved(val)
-            }
-            onPressed: updateVal(mouseY)
-            onPositionChanged: if (pressed) updateVal(mouseY)
-        }
-        
-        // Floating Preview (Only shows on drag)
-        Rectangle {
-            id: previewPanel
-            x: previewOnRight ? parent.width + 15 : -215
-            y: (parent.height * (1 - sliderRoot.value)) - height/2
-            width: 200; height: 220; radius: 16
-            color: "#2c2c2e"; border.color: "#48484a"; border.width: 1
-            visible: dragArea.pressed; z: 5000
-            
-            scale: visible ? 1.0 : 0.8; opacity: visible ? 1.0 : 0.0
-            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-            Behavior on opacity { NumberAnimation { duration: 150 } }
-            
-            Rectangle { anchors.fill: parent; anchors.margins: -10; z: -1; radius: 24; color: "black"; opacity: 0.4 }
-            
-            Column {
-                anchors.fill: parent; anchors.margins: 18; spacing: 12
-                Text { 
-                    text: sliderRoot.previewType === "size" ? "Size " + Math.round(sliderRoot.value * sliderRoot.maxVal) + "px" : "Opacity " + Math.round(sliderRoot.value * 100) + "%"
-                    color: "white"; font.pixelSize: 18; font.weight: Font.DemiBold; anchors.horizontalCenter: parent.horizontalCenter 
-                }
-                Rectangle {
-                    width: 164; height: 140; radius: 12; color: "#1a1a1c"; clip: true
-                    
-                    // The actual Brush Tip Preview
-                    Image {
-                        id: brushTipImage
-                        property real ds: sliderRoot.previewType === "size" ? Math.max(8, 120 * sliderRoot.value) : 60
-                        width: ds; height: ds
-                        anchors.centerIn: parent
-                        source: (mainCanvas && mainCanvas.brushTipImage) ? mainCanvas.brushTipImage : ""
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                        asynchronous: false // We want immediate feedback during drag
-                        
-                        opacity: sliderRoot.previewType === "opacity" ? sliderRoot.value : 1.0
-                        
-                        // Fallback circle if image fails to load or empty
-                        Rectangle {
-                            anchors.fill: parent; radius: width/2; color: mainCanvas ? mainCanvas.brushColor : "white"
-                            visible: brushTipImage.status !== Image.Ready
-                            border.color: Qt.rgba(1,1,1,0.2); border.width: 1
-                        }
-                        
-                        // If it's the size slider, we might want to color the tip? 
-                        // The base64 from C++ is white. We can use color overlay if needed, but white is standard for tip previews.
-                    }
-                }
-            }
-        }
-    }
-
-    // === PREMIUM HORIZONTAL SLIDER (Liquid Fill Style) ===
-    component ProSliderHorizontal : Item {
-        id: hSliderRoot
-        width: 180 * mainWindow.uiScale; height: 32 * mainWindow.uiScale
-        
-        property string label: "Size"
-        property real value: 0.5
-        property real maxVal: 100.0
-        property string previewType: "size"
-        property bool previewOnBottom: true
-        property string valueText: previewType === "size" ? Math.round(hSliderRoot.value * maxVal) + "px" : Math.round(hSliderRoot.value * 100) + "%"
-        property bool showValueInLabel: true
-        
-        signal moved(real val)
-        
-        // Track Background ("Empty" Capsule)
-        Rectangle {
-            id: hTrack
-            anchors.fill: parent
-            radius: height/2
-            color: "#1c1c1e" // Dark base
-            clip: true
-            
-            // Liquid Fill
-            Rectangle {
-                id: hFillArea
-                height: parent.height
-                width: (hTrack.width * hSliderRoot.value) + hTrack.radius
-                anchors.left: parent.left
-                anchors.leftMargin: -hTrack.radius
-                radius: hTrack.radius
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position: 0.0; color: colorAccent }
-                    GradientStop { position: 1.0; color: Qt.lighter(colorAccent, 1.2) }
-                }
-                
-                opacity: hSliderRoot.value > 0.01 ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 200 } }
-                
-                // Inner Shine
-                Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: parent.radius
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, 0.2) }
-                        GradientStop { position: 1.0; color: "transparent" }
-                    }
-                }
-            }
-            
-            // Label Overlay (Subtle indication)
-            Text {
-                text: hSliderRoot.label
-                anchors.left: parent.left; anchors.leftMargin: 12 * mainWindow.uiScale
-                anchors.verticalCenter: parent.verticalCenter
-                color: "white"; opacity: 0.4
-                font.pixelSize: 11 * mainWindow.uiScale; font.weight: Font.DemiBold
-            }
-        }
-        
-        // Interaction
-        MouseArea {
-            id: hDragArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            
-            function updateVal(mx) {
-                var v = mx / parent.width
-                var val = Math.max(0, Math.min(1.0, v))
-                hSliderRoot.moved(val)
-            }
-            
-            onPressed: updateVal(mouseX)
-            onPositionChanged: if (pressed) updateVal(mouseX)
-        }
-        
-        // Floating Preview
-        Rectangle {
-            id: hPreviewPanel
-            x: (parent.width * hSliderRoot.value) - (width/2)
-            y: previewOnBottom ? parent.height + 15 : -height - 15
-            width: 140; height: 120
-            radius: 12
-            color: "#2c2c2e"
-            border.color: "#48484a"
-            border.width: 1
-            visible: hDragArea.pressed
-            z: 5000
-            
-            scale: visible ? 1.0 : 0.8; opacity: visible ? 1.0 : 0.0
-            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
-            Behavior on opacity { NumberAnimation { duration: 150 } }
-            
-            // Shadow
-            Rectangle {
-                anchors.fill: parent; anchors.margins: -4
-                z: -1; radius: 16; color: "black"; opacity: 0.4
-            }
-            
-            Column {
-                anchors.centerIn: parent
-                spacing: 8
-                
-                Text {
-                    text: hSliderRoot.label + (hSliderRoot.showValueInLabel ? " " + hSliderRoot.valueText : "")
-                    color: "white"
-                    font.pixelSize: 13; font.weight: Font.DemiBold
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-                
-                Rectangle {
-                    visible: hSliderRoot.previewType !== "none"
-                    width: 100; height: 100; radius: 8; color: "#1a1a1c"; clip: true
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    
-                    Image {
-                        id: hBrushTipImage
-                        property real ds: hSliderRoot.previewType === "size" ? Math.max(8, 70 * hSliderRoot.value) : 40
-                        width: ds; height: ds
-                        anchors.centerIn: parent
-                        source: (mainCanvas && mainCanvas.brushTipImage) ? mainCanvas.brushTipImage : ""
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                        asynchronous: false
-                        opacity: hSliderRoot.previewType === "opacity" ? hSliderRoot.value : 1.0
-
-                        Rectangle {
-                            anchors.fill: parent; radius: width/2; color: mainCanvas ? mainCanvas.brushColor : "white"
-                            visible: hBrushTipImage.status !== Image.Ready
-                            border.color: Qt.rgba(1,1,1,0.2); border.width: 1
-                        }
-                    }
-                }
-            }
-        }
-    }
-
+    // Inline ProSlider and ProSliderHorizontal components removed to use modular ProSlider.qml and ProSliderHorizontal.qml from components/
 
 
     // === HERO ANIMATION OVERLAY (Refactored) ===

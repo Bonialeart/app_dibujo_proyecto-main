@@ -34,11 +34,11 @@ Item {
             StudioSlider {
                 Layout.fillWidth: true
                 label: "Size"; unit: "px"
-                value: mainCanvas ? mainCanvas.brushSize / 1000.0 : 0.01
+                value: mainCanvas ? mainCanvas.brushSize / 100.0 : 0.01
                 displayValue: mainCanvas ? Math.round(mainCanvas.brushSize) : 10
                 decimals: 0
                 accent: accentColor
-                onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 1000 }
+                onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 100 }
             }
 
             // Opacity
@@ -192,12 +192,12 @@ Item {
             StudioSlider {
                 Layout.fillWidth: true
                 label: "Border Width"; unit: "px"
-                value: mainCanvas ? mainCanvas.brushSize / 1000.0 : 0.01
+                value: mainCanvas ? mainCanvas.brushSize / 100.0 : 0.01
                 displayValue: mainCanvas ? Math.round(mainCanvas.brushSize) : 10
                 decimals: 0
                 accent: accentColor
                 onMoved: (val) => { 
-                    var bWidth = val * 1000;
+                    var bWidth = val * 100;
                     if (mainCanvas) mainCanvas.brushSize = bWidth;
                     if (typeof mainWindow !== "undefined" && mainWindow.comicOverlayManager) {
                         mainWindow.comicOverlayManager.setSelectedBorderWidth(bWidth);

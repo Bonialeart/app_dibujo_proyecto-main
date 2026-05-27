@@ -6,15 +6,32 @@ import "../Translations.js" as Trans
 
 Popup {
     id: root
-    width: 560
-    height: 440
-    modal: true
+    width: 520
+    height: 460
+    modal: false
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     
-    // Position near top left, under the top bar capsule
+    // Position just below the top bar capsule, aligned left
     x: 20
-    y: 70
+    y: 80
+
+    transformOrigin: Item.TopLeft
+
+    enter: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 220; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.92; to: 1; duration: 250; easing.type: Easing.OutBack; easing.overshoot: 0.6 }
+            NumberAnimation { property: "y"; from: 60; to: 80; duration: 220; easing.type: Easing.OutCubic }
+        }
+    }
+    exit: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; to: 0; duration: 160; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; to: 0.94; duration: 160; easing.type: Easing.InCubic }
+            NumberAnimation { property: "y"; to: 65; duration: 160; easing.type: Easing.InCubic }
+        }
+    }
     
     // --- PROPERTIES & SIGNALS ---
     signal settingsChanged
@@ -28,41 +45,57 @@ Popup {
     
     readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey"
     
-    readonly property color colorBg: isDark ? "#1e1e20" : "#f3f4f6"
-    readonly property color colorPanel: isDark ? "#252526" : "#ffffff"
+    readonly property color colorBg: "#141416"
+    readonly property color colorPanel: "#1a1a1c"
     readonly property color colorAccent: themeAccent
-    readonly property color colorText: isDark ? "#ffffff" : "#1f2937"
-    readonly property color colorTextMuted: isDark ? "#a1a1aa" : "#6b7280"
-    readonly property color colorBorder: isDark ? "#3f3f46" : "#e5e7eb"
+    readonly property color colorText: "#ffffff"
+    readonly property color colorTextMuted: "#8e8e93"
+    readonly property color colorBorder: "#2a2a2e"
 
     background: Rectangle {
         color: colorBg
-        border.color: "#33ffffff"
+        border.color: Qt.rgba(1, 1, 1, 0.08)
         border.width: 1
-        radius: 16
-        layer.enabled: true
+        radius: 20
+
+        // Soft shadow
+        Rectangle {
+            anchors.fill: parent; anchors.margins: -10
+            z: -1; radius: 28
+            color: "black"; opacity: 0.5
+        }
+    }
+
+    // Transparent overlay — replaces modal gray overlay
+    Overlay.modal: Rectangle {
+        color: "transparent"
     }
     
     contentItem: RowLayout {
         spacing: 0
         
-        // --- SIDEBAR ---
-        Rectangle {
-            Layout.preferredWidth: 170
+        // --- SIDEBAR (Procreate-style) ---
+        Item {
+            Layout.preferredWidth: 160
             Layout.fillHeight: true
-            color: Qt.rgba(0,0,0,0.1)
             
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 4
+                anchors.topMargin: 16
+                anchors.leftMargin: 12
+                anchors.rightMargin: 8
+                anchors.bottomMargin: 12
+                spacing: 0
 
+                // Title — italic bold like Procreate
                 Text {
-                    text: "Opciones"
+                    text: "Settings"
                     color: colorText
-                    font.pixelSize: 14; font.bold: true
-                    Layout.leftMargin: 10
-                    Layout.bottomMargin: 10
+                    font.pixelSize: 18
+                    font.bold: true
+                    font.italic: true
+                    Layout.leftMargin: 8
+                    Layout.bottomMargin: 14
                 }
 
                 ListView {
@@ -84,33 +117,66 @@ Popup {
                     }
                     
                     delegate: Rectangle {
-                        width: parent.width
-                        height: 32
-                        radius: 8
-                        color: (index === root.currentCategoryIndex && model.type === "page") ? colorAccent : (hoverMa.containsMouse ? Qt.rgba(1,1,1,0.05) : "transparent")
+                        id: catDelegate
+                        width: categoryList.width
+                        height: 36
+                        radius: 18
+                        
+                        property bool isActive: (index === root.currentCategoryIndex && model.type === "page")
+
+                        // Blue gradient pill for active, subtle hover for others
+                        gradient: isActive ? activeGrad : null
+                        color: isActive ? "transparent" : (catHoverMa.containsMouse ? Qt.rgba(1,1,1,0.06) : "transparent")
+
+                        Gradient {
+                            id: activeGrad
+                            orientation: Gradient.Horizontal
+                            GradientStop { position: 0.0; color: "#3478F6" }
+                            GradientStop { position: 1.0; color: "#5A9BF6" }
+                        }
+
+                        Behavior on color { ColorAnimation { duration: 120 } }
                         
                         RowLayout {
-                            anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
+                            anchors.fill: parent
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 10
                             spacing: 8
-                            
-                            Image {
-                                source: "image://icons/" + model.icon
-                                sourceSize.width: 14; sourceSize.height: 14
+
+                            // Circular icon container
+                            Rectangle {
+                                width: 26; height: 26
+                                radius: 13
+                                color: catDelegate.isActive ? Qt.rgba(1,1,1,0.15) : Qt.rgba(1,1,1,0.06)
                                 Layout.alignment: Qt.AlignVCenter
-                                opacity: (index === root.currentCategoryIndex && model.type === "page") ? 1.0 : 0.7
+
+                                Behavior on color { ColorAnimation { duration: 120 } }
+
+                                Image {
+                                    source: "image://icons/" + model.icon
+                                    width: 13; height: 13
+                                    sourceSize.width: 13; sourceSize.height: 13
+                                    anchors.centerIn: parent
+                                    opacity: catDelegate.isActive ? 1.0 : 0.7
+                                    Behavior on opacity { NumberAnimation { duration: 100 } }
+                                }
                             }
                             
                             Text {
                                 text: model.name
-                                color: (index === root.currentCategoryIndex && model.type === "page") ? "white" : colorText
-                                font.pixelSize: 12
+                                color: catDelegate.isActive ? "white" : (catHoverMa.containsMouse ? "#e0e0e0" : colorTextMuted)
+                                font.pixelSize: 13
+                                font.weight: catDelegate.isActive ? Font.DemiBold : Font.Normal
                                 Layout.fillWidth: true
+                                Behavior on color { ColorAnimation { duration: 100 } }
                             }
                         }
                         
                         MouseArea {
-                            id: hoverMa
-                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            id: catHoverMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 if (model.type === "action") root.handleAction(model.name)
                                 else root.currentCategoryIndex = index
@@ -120,12 +186,20 @@ Popup {
                 }
             }
         }
+
+        // Subtle vertical divider
+        Rectangle {
+            Layout.fillHeight: true
+            Layout.topMargin: 16
+            Layout.bottomMargin: 16
+            width: 1
+            color: Qt.rgba(1, 1, 1, 0.06)
+        }
         
         // --- CONTENT AREA ---
-        Rectangle {
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "transparent"
             
             StackLayout {
                 anchors.fill: parent
@@ -134,12 +208,12 @@ Popup {
                 
                 // 0. EDITAR (Edit / Actions)
                 ColumnLayout {
-                    spacing: 8
-                    Text { text: "Editar"; color: colorText; font.bold: true; font.pixelSize: 14 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
+                    spacing: 0
+                    ContentHeader { text: "Editar" }
+                    ContentSeparator {}
                     ActionButton { text: "Deshacer"; shortcutText: "Ctrl+Z"; onClicked: { if(canvasRef) canvasRef.undo(); root.close() } }
                     ActionButton { text: "Rehacer"; shortcutText: "Ctrl+Y"; onClicked: { if(canvasRef) canvasRef.redo(); root.close() } }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff"; Layout.topMargin: 4; Layout.bottomMargin: 4 }
+                    ContentSeparator {}
                     ActionButton { text: "Cortar"; shortcutText: "Ctrl+X"; onClicked: { if(canvasRef) canvasRef.cut(); root.close() } }
                     ActionButton { text: "Copiar"; shortcutText: "Ctrl+C"; onClicked: { if(canvasRef) canvasRef.copy(); root.close() } }
                     ActionButton { text: "Pegar"; shortcutText: "Ctrl+V"; onClicked: { if(canvasRef) canvasRef.paste(); root.close() } }
@@ -148,26 +222,26 @@ Popup {
                 
                 // 1. HERRAMIENTAS (Tools)
                 ColumnLayout {
-                    spacing: 8
-                    Text { text: "Herramientas"; color: colorText; font.bold: true; font.pixelSize: 14 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
+                    spacing: 0
+                    ContentHeader { text: "Herramientas" }
+                    ContentSeparator {}
                     ActionButton { text: "Transformación libre"; shortcutText: "Ctrl+T"; onClicked: { if(canvasRef) { canvasRef.isFreeTransformActive = true }; root.close() } }
                     ActionButton { text: "Licuar (Liquify)"; onClicked: { if(canvasRef) canvasRef.currentTool = "liquify"; root.close() } }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff"; Layout.topMargin: 4; Layout.bottomMargin: 4 }
+                    ContentSeparator {}
                     ActionButton { text: "Reglas y guías"; onClicked: { root.close() } }
                     ActionButton { text: "Guías de perspectiva"; onClicked: { root.close() } }
                     ActionButton { text: "Simetría"; onClicked: { if(canvasRef) { canvasRef.symmetryEnabled = !canvasRef.symmetryEnabled }; root.close() } }
                     ActionButton { text: "Ajuste (Snapping)"; onClicked: { root.close() } }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff"; Layout.topMargin: 4; Layout.bottomMargin: 4 }
+                    ContentSeparator {}
                     ActionButton { text: "Selección por rango de color"; onClicked: { colorRangeDialog.open(); root.close() } }
                     Item { Layout.fillHeight: true }
                 }
 
                 // 2. CANVAS
                 ColumnLayout {
-                    spacing: 8
-                    Text { text: "Canvas"; color: colorText; font.bold: true; font.pixelSize: 14 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
+                    spacing: 0
+                    ContentHeader { text: "Canvas" }
+                    ContentSeparator {}
                     ActionButton { text: "Voltear horizontal"; onClicked: if(canvasRef) canvasRef.flipCanvasHorizontal() }
                     ActionButton { text: "Voltear vertical"; onClicked: if(canvasRef) canvasRef.flipCanvasVertical() }
                     ActionButton { text: "Ajustar a pantalla"; onClicked: if(canvasRef) canvasRef.fitToView() }
@@ -176,9 +250,9 @@ Popup {
 
                 // 3. TÁCTIL (Touch)
                 ColumnLayout {
-                    spacing: 12
-                    Text { text: "Gestos táctiles"; color: colorText; font.bold: true; font.pixelSize: 14 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
+                    spacing: 0
+                    ContentHeader { text: "Gestos táctiles" }
+                    ContentSeparator {}
                     CheckBoxOption { text: "Pintar con el dedo"; checked: true }
                     CheckBoxOption { text: "Deshacer con 2 dedos"; checked: true }
                     CheckBoxOption { text: "Rehacer con 3 dedos"; checked: true }
@@ -187,9 +261,9 @@ Popup {
 
                 // 4. CURSOR
                 ColumnLayout {
-                    spacing: 12
-                    Text { text: "Cursor"; color: colorText; font.bold: true; font.pixelSize: 14 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
+                    spacing: 0
+                    ContentHeader { text: "Cursor" }
+                    ContentSeparator {}
                     CheckBoxOption { text: "Mostrar contorno del pincel"; checked: true }
                     CheckBoxOption { text: "Mostrar punto de mira"; checked: false }
                     Item { Layout.fillHeight: true }
@@ -197,9 +271,9 @@ Popup {
 
                 // 5. AVANZADO (Advance)
                 ColumnLayout {
-                    spacing: 12
-                    Text { text: "Avanzado"; color: colorText; font.bold: true; font.pixelSize: 14 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
+                    spacing: 0
+                    ContentHeader { text: "Avanzado" }
+                    ContentSeparator {}
                     ActionButton { text: "Curva de presión"; onClicked: { pressureDialog.open(); root.close() } }
                     CheckBoxOption { text: "Modo de alta precisión"; checked: true }
                     Item { Layout.fillHeight: true }
@@ -207,11 +281,12 @@ Popup {
 
                 // 6. EXPORTAR (Export)
                 ColumnLayout {
-                    spacing: 8
-                    Text { text: "Exportar y guardar"; color: colorText; font.bold: true; font.pixelSize: 14 }
-                    Rectangle { Layout.fillWidth: true; height: 1; color: "#15ffffff" }
+                    spacing: 0
+                    ContentHeader { text: "Exportar y guardar" }
+                    ContentSeparator {}
                     ActionButton { text: "Guardar proyecto (.stxf)"; onClicked: { if(windowRef) windowRef.saveProjectAndRefresh(); root.close() } }
                     ActionButton { text: "Exportar imagen..."; onClicked: { exportImageDialog.open(); root.close() } }
+                    ActionButton { text: "Grabar/Exportar Timelapse"; onClicked: { videoConfigDialog.open(); root.close() } }
                     Item { Layout.fillHeight: true }
                 }
             }
@@ -223,18 +298,54 @@ Popup {
             Qt.quit();
         }
     }
+
+    // --- Reusable content components ---
+
+    component ContentHeader : Text {
+        color: colorText
+        font.pixelSize: 15
+        font.bold: true
+        Layout.bottomMargin: 4
+    }
+
+    component ContentSeparator : Rectangle {
+        Layout.fillWidth: true
+        height: 1
+        color: Qt.rgba(1, 1, 1, 0.06)
+        Layout.topMargin: 6
+        Layout.bottomMargin: 6
+    }
     
     component CheckBoxOption : CheckBox {
+        Layout.fillWidth: true
+        topPadding: 6
+        bottomPadding: 6
+
         contentItem: Text {
-            text: parent.text; color: colorText; font.pixelSize: 12
-            verticalAlignment: Text.AlignVCenter; leftPadding: parent.indicator.width + 8
+            text: parent.text
+            color: colorText
+            font.pixelSize: 13
+            verticalAlignment: Text.AlignVCenter
+            leftPadding: parent.indicator.width + 10
         }
         indicator: Rectangle {
-            implicitWidth: 16; implicitHeight: 16; radius: 4
+            implicitWidth: 18; implicitHeight: 18; radius: 5
             x: parent.leftPadding; y: parent.height/2 - height/2
-            color: parent.checked ? colorAccent : "transparent"
-            border.color: parent.checked ? colorAccent : "#555"
-            Text { visible: parent.parent.checked; text: "✓"; color: "white"; font.pixelSize: 10; anchors.centerIn: parent }
+            color: parent.checked ? "#3478F6" : "transparent"
+            border.color: parent.checked ? "#3478F6" : "#444"
+            border.width: 1.5
+
+            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on border.color { ColorAnimation { duration: 120 } }
+
+            Text { 
+                visible: parent.parent.checked
+                text: "✓"
+                color: "white"
+                font.pixelSize: 11
+                font.bold: true
+                anchors.centerIn: parent
+            }
         }
     }
     
@@ -242,30 +353,35 @@ Popup {
         property string text: ""
         property string shortcutText: ""
         Layout.fillWidth: true
-        height: 30
+        height: 38
         hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
         
         Rectangle {
             anchors.fill: parent
+            anchors.leftMargin: -4
+            anchors.rightMargin: -4
             color: parent.containsMouse ? Qt.rgba(1,1,1,0.05) : "transparent"
-            radius: 4
+            radius: 6
+            Behavior on color { ColorAnimation { duration: 100 } }
         }
         
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 10
-            anchors.rightMargin: 10
+            anchors.leftMargin: 4
+            anchors.rightMargin: 4
 
             Text {
                 text: parent.parent.text
-                color: colorText
-                font.pixelSize: 13
+                color: parent.parent.containsMouse ? "#ffffff" : "#d0d0d5"
+                font.pixelSize: 14
                 Layout.fillWidth: true
+                Behavior on color { ColorAnimation { duration: 100 } }
             }
             Text {
                 text: parent.parent.shortcutText
                 color: colorTextMuted
-                font.pixelSize: 10
+                font.pixelSize: 11
                 visible: parent.parent.shortcutText !== ""
             }
         }

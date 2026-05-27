@@ -339,7 +339,7 @@ Item {
                             anchors.bottom: parent.bottom
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            height: parent.height * (mainCanvas ? Math.min(1.0, mainCanvas.brushSize / 1000.0) : 0)
+                            height: parent.height * (mainCanvas ? Math.min(1.0, mainCanvas.brushSize / 100.0) : 0)
                             clip: true
                             
                             Rectangle {
@@ -365,7 +365,7 @@ Item {
                         function updateValue(mouse) {
                             if (!mainCanvas) return
                             var pct = 1.0 - Math.max(0.0, Math.min(1.0, mouse.y / height))
-                            mainCanvas.brushSize = Math.max(0.1, pct * 1000.0)
+                            mainCanvas.brushSize = Math.max(0.1, pct * 100.0)
                         }
                     }
                 }
