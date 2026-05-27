@@ -7,6 +7,7 @@
 
 #include "common_types.h"
 #include "image_buffer.h"
+#include "vector_layer_data.h"
 #include <QRect>
 #include <memory>
 #include <string>
@@ -15,7 +16,7 @@
 namespace artflow {
 
 struct Layer {
-  enum class Type { Drawing, Group, Background };
+  enum class Type { Drawing, Group, Background, Vector };
 
   static uint32_t nextId() { static uint32_t s_id = 0; return ++s_id; }
   uint32_t stableId;
@@ -23,6 +24,7 @@ struct Layer {
   std::unique_ptr<ImageBuffer> buffer;     // Main RGBA display buffer
   std::unique_ptr<ImageBuffer> wetnessMap; // 0-255 map of surface wetness
   std::unique_ptr<ImageBuffer> pigmentMap; // Detailed pigment density map
+  std::unique_ptr<VectorLayerData> vectorData; // Vector data for Type::Vector
 
   float opacity = 1.0f;
   BlendMode blendMode = BlendMode::Normal;
@@ -30,8 +32,8 @@ struct Layer {
   bool locked = false;
   bool alphaLock = false;
   bool clipped = false;
-  bool dirty = true;
-  QRect dirtyRect; // Region that needs texture re-upload
+  mutable bool dirty = true;
+  mutable QRect dirtyRect; // Region that needs texture re-upload
   bool isPrivate = false;
   bool reference = false;
   Type type = Type::Drawing;
@@ -43,7 +45,11 @@ struct Layer {
       : stableId(nextId()), name(name), buffer(std::make_unique<ImageBuffer>(width, height)),
         wetnessMap(std::make_unique<ImageBuffer>(width, height)),
         pigmentMap(std::make_unique<ImageBuffer>(width, height)),
-        dirtyRect(0, 0, width, height), type(type), parentId(-1), expanded(true) {}
+        dirtyRect(0, 0, width, height), type(type), parentId(-1), expanded(true) {
+    if (type == Type::Vector) {
+      vectorData = std::make_unique<VectorLayerData>(width, height);
+    }
+  }
 
   void markDirty(const QRect &rect = QRect()) {
     dirty = true;
@@ -66,6 +72,7 @@ public:
   // Layer operations
   int addLayer(const std::string &name,
                Layer::Type type = Layer::Type::Drawing);
+  int addVectorLayer(const std::string &name);
   void removeLayer(int index);
   void moveLayer(int fromIndex, int toIndex);
   void duplicateLayer(int index);

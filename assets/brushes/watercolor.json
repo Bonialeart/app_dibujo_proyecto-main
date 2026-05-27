@@ -10,7 +10,7 @@
                 "description": "Acuarela clasica — forma de charco, borde oscuro tipo tide-mark"
             },
             "shape": {
-                "tip_texture": "",
+                "tip_texture": "wc_round.png",
                 "follow_stroke": false,
                 "roundness": 0.92,
                 "scatter": 0.0,
@@ -69,12 +69,12 @@
         {
             "meta": {
                 "uuid": "wc-pull-001",
-                "name": "Watercolor Pull (Water Only)",
+                "name": "Watercolor Watery Dilution",
                 "category": "Watercolor",
-                "description": "Agua pura — no pinta, solo arrastra y fusiona colores existentes"
+                "description": "Efecto aguada — mucha agua, pintura muy clara y transparente con hermosos bordes"
             },
             "shape": {
-                "tip_texture": "",
+                "tip_texture": "wc_wet_bloom.png",
                 "follow_stroke": false,
                 "roundness": 1.0,
                 "scatter": 0.0,
@@ -83,7 +83,7 @@
             "grain": {
                 "texture": "grain_watercolor_paper.png",
                 "scale": 60.0,
-                "intensity": 0.15,
+                "intensity": 0.28,
                 "rolling": true
             },
             "stroke": {
@@ -91,32 +91,32 @@
                 "streamline": 0.60
             },
             "wet_mix": {
-                "wetness": 0.95,
-                "dilution": 0.95,
-                "bleed": 0.85,
+                "wetness": 0.88,
+                "dilution": 0.80,
+                "bleed": 0.92,
                 "absorption_rate": 0.05,
-                "drying_time": 4.0,
-                "blend_only": true
+                "drying_time": 5.0,
+                "blend_only": false
             },
-            "pigment": { "granulation": 0.20, "flow": 0.0, "staining": 0.0 },
-            "bloom": { "enabled": true, "intensity": 0.30, "radius": 22.0 },
-            "edge_darkening": { "enabled": false, "intensity": 0.0, "width": 0.0 },
+            "pigment": { "granulation": 0.20, "flow": 0.65, "staining": 0.0 },
+            "bloom": { "enabled": true, "intensity": 0.45, "radius": 24.0 },
+            "edge_darkening": { "enabled": true, "intensity": 0.75, "width": 0.18 },
             "customize": {
                 "default_size": 75,
-                "default_opacity": 0.0,
+                "default_opacity": 0.55,
                 "default_hardness": 0.02,
-                "default_flow": 0.98
+                "default_flow": 0.85
             }
         },
         {
             "meta": {
                 "uuid": "wc-wetwet-001",
-                "name": "Watercolor Water Mixer",
+                "name": "Watercolor Soft Wash",
                 "category": "Watercolor",
-                "description": "Mezcla suave — añade poco pigmento y fusiona fuerte los colores"
+                "description": "Lavado suave y transparente — ideal para degradados y fondos fluidos"
             },
             "shape": {
-                "tip_texture": "",
+                "tip_texture": "wc_wet_on_wet.png",
                 "follow_stroke": false,
                 "roundness": 1.0,
                 "count": 1
@@ -124,26 +124,26 @@
             "grain": {
                 "texture": "grain_watercolor_paper.png",
                 "scale": 92.0,
-                "intensity": 0.22,
+                "intensity": 0.25,
                 "blend_mode": "multiply"
             },
             "stroke": { "spacing": 0.05, "streamline": 0.52 },
             "wet_mix": {
-                "wetness": 0.90,
-                "dilution": 0.88,
-                "bleed": 0.80,
+                "wetness": 0.70,
+                "dilution": 0.55,
+                "bleed": 0.48,
                 "absorption_rate": 0.15,
-                "drying_time": 3.2,
-                "blend_only": true
+                "drying_time": 2.2,
+                "blend_only": false
             },
-            "pigment": { "granulation": 0.30, "flow": 0.10 },
+            "pigment": { "granulation": 0.30, "flow": 0.70 },
             "bloom": { "enabled": false, "intensity": 0.0 },
-            "edge_darkening": { "enabled": false, "intensity": 0.0, "width": 0.0 },
+            "edge_darkening": { "enabled": true, "intensity": 0.22, "width": 0.08 },
             "customize": {
                 "default_size": 65,
-                "default_opacity": 0.0,
+                "default_opacity": 0.62,
                 "default_hardness": 0.03,
-                "default_flow": 0.90
+                "default_flow": 0.85
             }
         },
         {

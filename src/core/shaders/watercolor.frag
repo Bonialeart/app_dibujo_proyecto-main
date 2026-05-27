@@ -175,7 +175,12 @@ vec4 paintDab() {
             if (uBlendOnly == 1) {
                 finalRGB = mixedRGB;
             } else {
-                finalRGB = layerKubelkaMunk(mixedRGB, brushRGB, uPressure * 0.40);
+                // EVITAR SOBRE-ACUMULACIÓN EN EL MISMO TRAZO:
+                // Si la zona es muy fresca (freshness cercana a 1.0, parte del trazo actual),
+                // atenuamos drásticamente el layerKubelkaMunk para que el color se mezcle
+                // de forma fluida pero no se oscurezca repetidamente sobre sí mismo mientras no se levante el lápiz.
+                float wetAccumulation = uPressure * 0.40 * (1.0 - freshness * 0.95);
+                finalRGB = layerKubelkaMunk(mixedRGB, brushRGB, wetAccumulation);
             }
 
             // En zonas húmedas, el pigmento se expande (alpha mayor en bordes)
@@ -237,16 +242,29 @@ vec4 spreadWet() {
 
     vec2 texelSize = 1.0 / uCanvasSize;
 
-    // Muestrear vecinos en cruz
-    vec4 upCanvas    = texture(uCanvas, vTexCoord + vec2(0.0, texelSize.y));
-    vec4 downCanvas  = texture(uCanvas, vTexCoord - vec2(0.0, texelSize.y));
-    vec4 leftCanvas  = texture(uCanvas, vTexCoord - vec2(texelSize.x, 0.0));
-    vec4 rightCanvas = texture(uCanvas, vTexCoord + vec2(texelSize.x, 0.0));
+    // Muestrear 8 vecinos (4 cardinales + 4 diagonales)
+    vec4 neighbors[8];
+    neighbors[0] = texture(uCanvas, vTexCoord + vec2(0.0, texelSize.y));  // Up
+    neighbors[1] = texture(uCanvas, vTexCoord - vec2(0.0, texelSize.y));  // Down
+    neighbors[2] = texture(uCanvas, vTexCoord - vec2(texelSize.x, 0.0));  // Left
+    neighbors[3] = texture(uCanvas, vTexCoord + vec2(texelSize.x, 0.0));  // Right
+    
+    // Diagonales (peso espacial amortiguado por distancia 1/sqrt(2) = 0.707)
+    neighbors[4] = texture(uCanvas, vTexCoord + vec2(-texelSize.x,  texelSize.y) * 0.707); // Up-Left
+    neighbors[5] = texture(uCanvas, vTexCoord + vec2( texelSize.x,  texelSize.y) * 0.707); // Up-Right
+    neighbors[6] = texture(uCanvas, vTexCoord + vec2(-texelSize.x, -texelSize.y) * 0.707); // Down-Left
+    neighbors[7] = texture(uCanvas, vTexCoord + vec2( texelSize.x, -texelSize.y) * 0.707); // Down-Right
 
-    vec4 upWet    = texture(uWetMap, vTexCoord + vec2(0.0, texelSize.y));
-    vec4 downWet  = texture(uWetMap, vTexCoord - vec2(0.0, texelSize.y));
-    vec4 leftWet  = texture(uWetMap, vTexCoord - vec2(texelSize.x, 0.0));
-    vec4 rightWet = texture(uWetMap, vTexCoord + vec2(texelSize.x, 0.0));
+    vec4 wetNeighbors[8];
+    wetNeighbors[0] = texture(uWetMap, vTexCoord + vec2(0.0, texelSize.y));
+    wetNeighbors[1] = texture(uWetMap, vTexCoord - vec2(0.0, texelSize.y));
+    wetNeighbors[2] = texture(uWetMap, vTexCoord - vec2(texelSize.x, 0.0));
+    wetNeighbors[3] = texture(uWetMap, vTexCoord + vec2(texelSize.x, 0.0));
+    
+    wetNeighbors[4] = texture(uWetMap, vTexCoord + vec2(-texelSize.x,  texelSize.y) * 0.707);
+    wetNeighbors[5] = texture(uWetMap, vTexCoord + vec2( texelSize.x,  texelSize.y) * 0.707);
+    wetNeighbors[6] = texture(uWetMap, vTexCoord + vec2(-texelSize.x, -texelSize.y) * 0.707);
+    wetNeighbors[7] = texture(uWetMap, vTexCoord + vec2( texelSize.x, -texelSize.y) * 0.707);
 
     // ── GRANO DE PAPEL (textura de grano del papel) ──
     float paperGrain = 0.5; // Valor neutro
@@ -257,16 +275,61 @@ vec4 spreadWet() {
 
     // 1. Simulación de difusión de pigmento (Paso 2 del algoritmo)
     // El pigmento tiende a fluir hacia donde hay más agua, pesado por humedad
-    float totalWet = upWet.r + downWet.r + leftWet.r + rightWet.r + 0.001;
+    float totalWet = 0.0;
+    vec3 blendedRGB = vec3(0.0);
+    float blendedA = 0.0;
 
-    // Despremutiplicar colores vecinos para mezclar colores reales de pigmento
-    vec3 upRGB    = upCanvas.a > 0.001 ? upCanvas.rgb / upCanvas.a : vec3(0.0);
-    vec3 downRGB  = downCanvas.a > 0.001 ? downCanvas.rgb / downCanvas.a : vec3(0.0);
-    vec3 leftRGB  = leftCanvas.a > 0.001 ? leftCanvas.rgb / leftCanvas.a : vec3(0.0);
-    vec3 rightRGB = rightCanvas.a > 0.001 ? rightCanvas.rgb / rightCanvas.a : vec3(0.0);
+    // Pesos: cardinal = 1.0, diagonal = 0.707
+    float weights[8];
+    weights[0] = weights[1] = weights[2] = weights[3] = 1.0;
+    weights[4] = weights[5] = weights[6] = weights[7] = 0.707;
 
-    vec3 avgPigment = (upRGB * upWet.r + downRGB * downWet.r + leftRGB * leftWet.r + rightRGB * rightWet.r) / totalWet;
-    float avgAlpha  = (upCanvas.a * upWet.r + downCanvas.a * downWet.r + leftCanvas.a * leftWet.r + rightCanvas.a * rightWet.r) / totalWet;
+    // CAPILARIDAD ANISÓTROPA DIRECCIONAL (FIBRAS DEL PAPEL 3D):
+    // El pigmento viaja preferentemente a lo largo de los canales capilares (grano similar)
+    // y encuentra gran resistencia al intentar subir crestas o barreras de fibra.
+    if (uGrainIntensity > 0.01) {
+        float neighborGrains[8];
+        // Muestrear el grano en cada vecino
+        vec2 ts = texelSize;
+        neighborGrains[0] = dot(texture(uGrainTexture, (vTexCoord + vec2(0.0, ts.y)) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        neighborGrains[1] = dot(texture(uGrainTexture, (vTexCoord - vec2(0.0, ts.y)) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        neighborGrains[2] = dot(texture(uGrainTexture, (vTexCoord - vec2(ts.x, 0.0)) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        neighborGrains[3] = dot(texture(uGrainTexture, (vTexCoord + vec2(ts.x, 0.0)) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        
+        neighborGrains[4] = dot(texture(uGrainTexture, (vTexCoord + vec2(-ts.x,  ts.y) * 0.707) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        neighborGrains[5] = dot(texture(uGrainTexture, (vTexCoord + vec2( ts.x,  ts.y) * 0.707) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        neighborGrains[6] = dot(texture(uGrainTexture, (vTexCoord + vec2(-ts.x, -ts.y) * 0.707) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        neighborGrains[7] = dot(texture(uGrainTexture, (vTexCoord + vec2( ts.x, -ts.y) * 0.707) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+
+        for (int i = 0; i < 8; i++) {
+            // Conductividad basada en similitud capilar (diferencia de grano absoluta)
+            // A menor diferencia, el canal está más conectado
+            float diff = abs(paperGrain - neighborGrains[i]);
+            float capilarity = exp(-diff * 7.5); // Atenuación exponencial de conductividad
+            weights[i] *= capilarity;
+        }
+    }
+
+    for (int i = 0; i < 8; i++) {
+        float wWet = wetNeighbors[i].r * weights[i];
+        if (wWet > 0.001) {
+            vec4 s = neighbors[i];
+            vec3 sr = s.a > 0.001 ? s.rgb / s.a : vec3(0.0);
+            blendedRGB += sr * wWet;
+            blendedA += s.a * wWet;
+            totalWet += wWet;
+        }
+    }
+
+    vec3 avgPigment;
+    float avgAlpha;
+    if (totalWet > 0.001) {
+        avgPigment = blendedRGB / totalWet;
+        avgAlpha = blendedA / totalWet;
+    } else {
+        avgPigment = centerCenter.a > 0.001 ? centerCenter.rgb / centerCenter.a : vec3(0.0);
+        avgAlpha = centerCenter.a;
+    }
 
     // Rugosidad del papel (paperGrain) actúa como un obstáculo para la difusión del pigmento (flowResistance)
     float flowResistance = paperGrain * uGrainIntensity * 0.5;
@@ -281,9 +344,16 @@ vec4 spreadWet() {
     vec3 newPigment = mixKubelkaMunk(centerRGB_unp, avgPigment, effectiveRate);
     float newAlpha  = mix(centerCenter.a, avgAlpha, effectiveRate);
 
+    // Granulación tridimensional de pigmento en valles
+    if (uGranulation > 0.01 && uGrainIntensity > 0.01) {
+        // En valles (paperGrain bajo), el pigmento se concentra debido a la retención en los poros
+        float granulationFactor = mix(1.0 + uGranulation * 0.40, 1.0 - uGranulation * 0.25, paperGrain);
+        newAlpha = clamp(newAlpha * granulationFactor, 0.0, 1.0);
+    }
+
     // 2. Efecto de borde de acumulación (Watercolor Fringe / Tide-mark) (Paso 3 del algoritmo)
     // El pigmento se acumula donde el gradiente de agua cae drásticamente (el borde del charco)
-    float waterGradient = length(vec2(rightWet.r - leftWet.r, upWet.r - downWet.r));
+    float waterGradient = length(vec2(wetNeighbors[3].r - wetNeighbors[2].r, wetNeighbors[0].r - wetNeighbors[1].r));
     if (waterGradient > 0.05 && wetness > 0.02 && uEdgeDarkening > 0.01) {
         float fringeFactor = waterGradient * 0.20 * uEdgeDarkening;
         newPigment *= (1.0 - fringeFactor * 0.5); // Oscurece el color (el pigmento se acumula)
@@ -316,15 +386,43 @@ vec4 dryStep() {
     float leftWet  = texture(uWetMap, vTexCoord - vec2(texelSize.x, 0.0)).r;
     float rightWet = texture(uWetMap, vTexCoord + vec2(texelSize.x, 0.0)).r;
 
+    // ── GRANO DE PAPEL ──
+    float paperGrain = 0.5; // Valor neutro
+    if (uGrainIntensity > 0.001) {
+        vec4 grainSamp = texture(uGrainTexture, vTexCoord * 5.0);
+        paperGrain = dot(grainSamp.rgb, vec3(0.299, 0.587, 0.114));
+    }
+
     // 1. Simulación de flujo de agua (Paso 1 del algoritmo: Promedio de humedad vecina)
     float avgWater = (upWet + downWet + leftWet + rightWet) / 4.0;
+
+    // CAPILARIDAD ANISÓTROPA DIRECCIONAL (FIBRAS DEL PAPEL 3D):
+    // El agua fluye preferentemente a lo largo de canales con grano de papel similar.
+    if (uGrainIntensity > 0.01) {
+        float upGrain    = dot(texture(uGrainTexture, (vTexCoord + vec2(0.0, texelSize.y)) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        float downGrain  = dot(texture(uGrainTexture, (vTexCoord - vec2(0.0, texelSize.y)) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        float leftGrain  = dot(texture(uGrainTexture, (vTexCoord - vec2(texelSize.x, 0.0)) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+        float rightGrain = dot(texture(uGrainTexture, (vTexCoord + vec2(texelSize.x, 0.0)) * 5.0).rgb, vec3(0.299, 0.587, 0.114));
+
+        float wUp    = exp(-abs(paperGrain - upGrain) * 7.5);
+        float wDown  = exp(-abs(paperGrain - downGrain) * 7.5);
+        float wLeft  = exp(-abs(paperGrain - leftGrain) * 7.5);
+        float wRight = exp(-abs(paperGrain - rightGrain) * 7.5);
+
+        float totalW = wUp + wDown + wLeft + wRight;
+        if (totalW > 0.01) {
+            avgWater = (upWet * wUp + downWet * wDown + leftWet * wLeft + rightWet * wRight) / totalW;
+        }
+    }
     
     // Suavizado/difusión de la humedad
     float newWetness = mix(wetness, avgWater, uBleed * 0.25);
 
     // 2. Evaporación (Secado progresivo del charco)
     // Se evapora alrededor de un 2% base por ciclo, escalado por dryingRate y absorción
-    float evaporation = 0.02 * uDryingRate * uAbsorption;
+    // Modulado por el factor de porosidad tridimensional (valles vs crestas)
+    float grainEvaporationFactor = mix(0.5, 1.5, paperGrain);
+    float evaporation = 0.02 * uDryingRate * uAbsorption * grainEvaporationFactor;
 
     // Los bordes exteriores secan más rápido
     float minNeighbor = min(min(upWet, downWet), min(leftWet, rightWet));

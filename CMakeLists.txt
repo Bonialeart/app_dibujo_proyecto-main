@@ -57,6 +57,11 @@ set(CORE_SOURCES
     src/core/cpp/include/drag_zone_calculator.h
     src/core/cpp/include/liquify_engine.h
     src/core/cpp/include/watercolor_engine.h
+    src/core/cpp/src/vector_math.cpp
+    src/core/cpp/src/vector_layer_data.cpp
+    src/core/cpp/include/vector_types.h
+    src/core/cpp/include/vector_math.h
+    src/core/cpp/include/vector_layer_data.h
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)

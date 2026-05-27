@@ -574,6 +574,22 @@ Item {
                     }
                     Image { visible: isAlphaLocked; source: iconPath("lock.svg"); width: 10; height: 10; anchors.right:parent.right; anchors.bottom:parent.bottom; anchors.margins:2; opacity:0.8 }
                     
+                    Rectangle {
+                        visible: layerType === "vector"
+                        width: 12; height: 12; radius: 3
+                        color: "#007aff"
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: 2
+                        Text {
+                            text: "V"
+                            color: "white"
+                            font.pixelSize: 8
+                            font.weight: Font.Black
+                            anchors.centerIn: parent
+                        }
+                    }
+
                     // Group Indicator (If Group)
                     Image {
                         visible: layerDelegate.isGroup
@@ -641,7 +657,7 @@ Item {
                                     anchors.fill: parent
                                     anchors.verticalCenter: parent.verticalCenter
                                     verticalAlignment: Text.AlignVCenter
-                                    text: layerName
+                                    text: (layerType === "vector" ? "🔷 " : "") + layerName
                                     color: {
                                         if (!isVisible) return "#777"
                                         if (layerDelegate.isGroup) return layerDelegate.isGroupDropHover ? layerDelegate.groupColor : "#f8d87a"
@@ -1049,7 +1065,7 @@ Item {
     Popup {
         id: layerOptionsPopup
         width: 180
-        height: 356
+        height: (layerType === "vector") ? 390 : 356
         x: -width - 8
         y: Math.max(4, Math.min(layersListRef ? layersListRef.height - height - 4 : 400, (headerContent.height - height) / 2))
         padding: 6
@@ -1100,18 +1116,24 @@ Item {
             width: parent.width
             
             Repeater {
-                model: [
-                    { label: "Rename", icon: "edit-3.svg", action: "rename", active: false, rot: 0 },
-                    { label: "Select Pixels", icon: "selection.svg", action: "select", active: false, rot: 0 },
-                    { label: "Copy", icon: "copy.svg", action: "copy", active: false, rot: 0 },
-                    { label: "Fill Layer", icon: "paint-bucket.svg", action: "fill", active: false, rot: 0 },
-                    { label: "Clear", icon: "trash-2.svg", action: "clear", active: false, rot: 0 },
-                    { label: "Alpha Lock", icon: "lock.svg", action: "alphalock", active: isAlphaLocked, rot: 0 },
-                    { label: "Clipping Mask", icon: "arrow-down-left.svg", action: "clip", active: isClipped, rot: -90 },
-                    { label: "Invert Colors", icon: "rotate.svg", action: "invert", active: false, rot: 0 },
-                    { label: "Reference Layer", icon: "star.svg", action: "reference", active: (typeof listModel.reference !== "undefined" ? listModel.reference : false), rot: 0 },
-                    { label: "Merge Down", icon: "arrow-down-left.svg", action: "mergedown", active: false, rot: 0 }
-                ]
+                model: {
+                    var base = [
+                        { label: "Rename", icon: "edit-3.svg", action: "rename", active: false, rot: 0 },
+                        { label: "Select Pixels", icon: "selection.svg", action: "select", active: false, rot: 0 },
+                        { label: "Copy", icon: "copy.svg", action: "copy", active: false, rot: 0 }
+                    ];
+                    if (layerType === "vector") {
+                        base.push({ label: "Rasterize Layer", icon: "layers.svg", action: "rasterize", active: false, rot: 0 });
+                    }
+                    base.push({ label: "Fill Layer", icon: "paint-bucket.svg", action: "fill", active: false, rot: 0 });
+                    base.push({ label: "Clear", icon: "trash-2.svg", action: "clear", active: false, rot: 0 });
+                    base.push({ label: "Alpha Lock", icon: "lock.svg", action: "alphalock", active: isAlphaLocked, rot: 0 });
+                    base.push({ label: "Clipping Mask", icon: "arrow-down-left.svg", action: "clip", active: isClipped, rot: -90 });
+                    base.push({ label: "Invert Colors", icon: "rotate.svg", action: "invert", active: false, rot: 0 });
+                    base.push({ label: "Reference Layer", icon: "star.svg", action: "reference", active: (typeof listModel.reference !== "undefined" ? listModel.reference : false), rot: 0 });
+                    base.push({ label: "Merge Down", icon: "arrow-down-left.svg", action: "mergedown", active: false, rot: 0 });
+                    return base;
+                }
                 
                 delegate: Rectangle {
                     width: 168
@@ -1181,6 +1203,10 @@ Item {
     function handleMenuAction(action) {
         if (action === "rename") {
             layerDelegate.isRenaming = true
+        } else if (action === "rasterize") {
+            if (targetCanvas && typeof targetCanvas.rasterizeVectorLayer === "function") {
+                targetCanvas.rasterizeVectorLayer(layerIndex)
+            }
         } else if (action === "select") {
             if (targetCanvas && typeof targetCanvas.selectPixels === "function") {
                 targetCanvas.selectPixels(layerIndex)

@@ -24,7 +24,7 @@ namespace artflow {
 static QMap<QString, uint32_t> g_textureCache;
 static std::vector<QOpenGLTexture *> g_textures; // To manage lifetime
 
-static uint32_t loadTexture(const QString &name) {
+uint32_t BrushEngine::loadTexture(const QString &name) {
   if (g_textureCache.contains(name))
     return g_textureCache[name];
 
@@ -39,13 +39,20 @@ static uint32_t loadTexture(const QString &name) {
     QStringList searchPaths;
     searchPaths << "assets/textures/" + name;
     searchPaths << "assets/brushes/tips/" + name;
+    searchPaths << "assets/brushes/" + name;
     searchPaths << "../assets/textures/" + name;
     searchPaths << "../assets/brushes/tips/" + name;
+    searchPaths << "../assets/brushes/" + name;
     searchPaths << "../../assets/textures/" + name;
+    searchPaths << "../../assets/brushes/" + name;
     searchPaths << QCoreApplication::applicationDirPath() +
                        "/assets/textures/" + name;
     searchPaths << QCoreApplication::applicationDirPath() +
+                       "/assets/brushes/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() +
                        "/../assets/textures/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() +
+                       "/../assets/brushes/" + name;
     searchPaths << "src/assets/textures/" + name;
     searchPaths << ":/textures/" + name;
 
@@ -137,28 +144,41 @@ static QImage getTextureImage(const QString &name) {
     return s_imageTextureCache[name];
 
   QString path = name; // Primero verificar si es ruta absoluta
-  if (!QFile::exists(path)) {
-    // Try multiple paths (same as loadTexture)
-    path = "assets/textures/" + name;
-    if (!QFile::exists(path)) {
-      path = "src/assets/textures/" + name;
-      if (!QFile::exists(path)) {
-        path = "assets/brushes/tips/" + name;
-        if (!QFile::exists(path)) {
-          path = "src/assets/brushes/tips/" + name;
-          if (!QFile::exists(path)) {
-            path = QCoreApplication::applicationDirPath() +
-                   "/assets/textures/" + name;
-            if (!QFile::exists(path)) {
-              path = ":/textures/" + name;
-            }
-          }
-        }
+  bool found = false;
+  if (QFile::exists(path)) {
+    found = true;
+  } else {
+    // Try multiple paths (searching up to root from executable or CWD)
+    QStringList searchPaths;
+    searchPaths << "assets/textures/" + name;
+    searchPaths << "assets/brushes/tips/" + name;
+    searchPaths << "assets/brushes/" + name;
+    searchPaths << "../assets/textures/" + name;
+    searchPaths << "../assets/brushes/tips/" + name;
+    searchPaths << "../assets/brushes/" + name;
+    searchPaths << "../../assets/textures/" + name;
+    searchPaths << "../../assets/brushes/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() +
+                       "/assets/textures/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() +
+                       "/assets/brushes/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() +
+                       "/../assets/textures/" + name;
+    searchPaths << QCoreApplication::applicationDirPath() +
+                       "/../assets/brushes/" + name;
+    searchPaths << "src/assets/textures/" + name;
+    searchPaths << ":/textures/" + name;
+
+    for (const QString &p : searchPaths) {
+      if (QFile::exists(p)) {
+        path = p;
+        found = true;
+        break;
       }
     }
   }
 
-  qDebug() << "BrushEngine: getTextureImage Loading:" << name << "from" << path;
+  qDebug() << "BrushEngine: getTextureImage Loading:" << name << "Found:" << found << "from" << path;
 
   QImage img(path);
   if (img.isNull()) {

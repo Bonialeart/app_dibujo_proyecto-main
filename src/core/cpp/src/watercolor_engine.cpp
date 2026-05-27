@@ -76,6 +76,52 @@ void WatercolorEngine::endSession() {
     // NO llamamos invalidate() aqui — los FBOs se reusan en la proxima sesion
 }
 
+void WatercolorEngine::startStroke() {
+    if (!m_initialized || !m_wetMapFBO_A || !m_wetMapFBO_B || !m_gl) return;
+
+    // Shader inline para envejecer la humedad existente:
+    // Convierte el canal G (secAge) en 1.0 (viejo) para toda la humedad preexistente
+    static QOpenGLShaderProgram *ageShader = nullptr;
+    if (!ageShader) {
+        ageShader = new QOpenGLShaderProgram(this);
+        ageShader->addShaderFromSourceCode(QOpenGLShader::Vertex,
+            "#version 330 core\n"
+            "layout(location=0)in vec2 p;\n"
+            "layout(location=1)in vec2 t;\n"
+            "out vec2 v;\n"
+            "void main(){gl_Position=vec4(p,0,1);v=t;}\n");
+        ageShader->addShaderFromSourceCode(QOpenGLShader::Fragment,
+            "#version 330 core\n"
+            "in vec2 v;\n"
+            "out vec4 o;\n"
+            "uniform sampler2D uWetMapIn;\n"
+            "void main(){\n"
+            "  vec4 wet = texture(uWetMapIn, v);\n"
+            "  // Si tiene humedad (>0.01), forzar la edad (G) a 1.0 (viejo)\n"
+            "  float agedG = wet.r > 0.01 ? 1.0 : 0.0;\n"
+            "  o = vec4(wet.r, agedG, 0.0, 1.0);\n"
+            "}\n");
+        if (!ageShader->link()) {
+            qWarning() << "WatercolorEngine: age shader link failed:" << ageShader->log();
+        }
+    }
+
+    m_gl->glActiveTexture(GL_TEXTURE0);
+    m_gl->glBindTexture(GL_TEXTURE_2D, m_wetMapFBO_A->texture());
+
+    ageShader->bind();
+    ageShader->setUniformValue("uWetMapIn", 0);
+
+    m_wetMapFBO_B->bind();
+    m_gl->glViewport(0, 0, m_width, m_height);
+    m_gl->glDisable(GL_BLEND);
+    renderFullscreenQuad();
+    m_wetMapFBO_B->release();
+    ageShader->release();
+
+    std::swap(m_wetMapFBO_A, m_wetMapFBO_B);
+}
+
 void WatercolorEngine::invalidate() {
     m_spreadTimer->stop();
     m_dryTimer->stop();

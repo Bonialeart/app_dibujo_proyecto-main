@@ -149,6 +149,7 @@ struct DynamicsProperty {
   float tiltInfluence = 0.0f;
   float velocityInfluence = 0.0f;
   float jitter = 0.0f;
+  bool pressureEnabled = true;
 
   DynamicsProperty() { pressureCurve = ResponseCurve::linear(); }
 
@@ -171,6 +172,7 @@ struct DynamicsProperty {
     obj["tilt_influence"] = tiltInfluence;
     obj["velocity_influence"] = velocityInfluence;
     obj["jitter"] = jitter;
+    obj["pressure_enabled"] = pressureEnabled;
     return obj;
   }
 
@@ -181,6 +183,7 @@ struct DynamicsProperty {
     d.tiltInfluence = obj.value("tilt_influence").toDouble(0.0);
     d.velocityInfluence = obj.value("velocity_influence").toDouble(0.0);
     d.jitter = obj.value("jitter").toDouble(0.0);
+    d.pressureEnabled = obj.value("pressure_enabled").toBool(true);
 
     if (obj.contains("pressure_curve")) {
       QJsonValue cv = obj["pressure_curve"];

@@ -59,6 +59,9 @@ public:
     // Llamar al final del trazo para finalizar y transferir al buffer de capa
     void endSession();
 
+    // Llamar al iniciar una nueva pincelada para envejecer la humedad preexistente
+    void startStroke();
+
     // ─────────────────────────────────────────────────────────────────────
     // Pintar un dab en la posición dada
     // dabFBO: FBO que contiene el dab renderizado por el motor de pinceles normal

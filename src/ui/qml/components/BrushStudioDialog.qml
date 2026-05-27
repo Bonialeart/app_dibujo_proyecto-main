@@ -1398,9 +1398,17 @@ Rectangle {
                                 Text { text: "DINÁMICA DE OPACIDAD"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
                             }
                             
+                            StudioToggle {
+                                label: "Habilitar Opacidad por Presión"
+                                checked: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_pressure_enabled") !== false : true
+                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_pressure_enabled", checked)
+                            }
+                            
                             StudioSlider {
                                 label: "Opacidad Mínima"
                                 from: 0; to: 1.0
+                                enabled: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_pressure_enabled") !== false : true
+                                opacity: enabled ? 1.0 : 0.4
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_min") || 0 : 0
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_min", value)
                             }
@@ -1408,6 +1416,8 @@ Rectangle {
                             StudioSlider {
                                 label: "Influencia de Inclinación"
                                 from: 0; to: 1.0
+                                enabled: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_pressure_enabled") !== false : true
+                                opacity: enabled ? 1.0 : 0.4
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_tilt") || 0 : 0
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_tilt", value)
                             }
@@ -1415,6 +1425,8 @@ Rectangle {
                             StudioSlider {
                                 label: "Influencia de Velocidad"
                                 from: -1.0; to: 1.0
+                                enabled: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_pressure_enabled") !== false : true
+                                opacity: enabled ? 1.0 : 0.4
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_velocity") || 0 : 0
                                 offsetColor: true
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_velocity", value)

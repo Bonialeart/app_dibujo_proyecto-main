@@ -246,6 +246,7 @@ class StrokeRenderer; // Forward declaration
 
 class BrushEngine {
 public:
+  static uint32_t loadTexture(const QString &name);
   BrushEngine();
   ~BrushEngine(); // Needed for unique_ptr cleanup if used, or raw pointer
                   // delete

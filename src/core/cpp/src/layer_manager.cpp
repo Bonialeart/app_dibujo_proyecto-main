@@ -32,6 +32,10 @@ int LayerManager::addLayer(const std::string &name, Layer::Type type) {
   return m_activeIndex;
 }
 
+int LayerManager::addVectorLayer(const std::string &name) {
+  return addLayer(name, Layer::Type::Vector);
+}
+
 void LayerManager::removeLayer(int index) {
   if (index < 0 || index >= static_cast<int>(m_layers.size()))
     return;
@@ -60,7 +64,7 @@ void LayerManager::duplicateLayer(int index) {
 
   const Layer *src = m_layers[index].get();
   auto newLayer =
-      std::make_unique<Layer>(src->name + " Copy", m_width, m_height);
+      std::make_unique<Layer>(src->name + " Copy", m_width, m_height, src->type);
   newLayer->buffer->copyFrom(*src->buffer);
   newLayer->wetnessMap->copyFrom(*src->wetnessMap);
   newLayer->pigmentMap->copyFrom(*src->pigmentMap);
@@ -71,8 +75,11 @@ void LayerManager::duplicateLayer(int index) {
   newLayer->alphaLock = src->alphaLock;
   newLayer->clipped = src->clipped;
   newLayer->isPrivate = src->isPrivate;
-  newLayer->type = src->type;
   newLayer->parentId = src->parentId;
+  
+  if (src->type == Layer::Type::Vector && src->vectorData) {
+    newLayer->vectorData = std::make_unique<VectorLayerData>(*src->vectorData);
+  }
 
   m_layers.insert(m_layers.begin() + index + 1, std::move(newLayer));
 }
@@ -169,6 +176,12 @@ void LayerManager::compositeAll(ImageBuffer &output, bool skipPrivate) const {
       continue;
     if (skipPrivate && layer->isPrivate)
       continue;
+
+    if (layer->type == Layer::Type::Vector && layer->dirty && layer->vectorData) {
+      layer->buffer->clear();
+      layer->vectorData->rasterize(*layer->buffer);
+      layer->dirty = false;
+    }
 
     if (layer->clipped && currentBaseBuffer) {
       // Clipping Mask: Blend using the base layer's alpha as a mask

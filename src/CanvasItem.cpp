@@ -50,6 +50,60 @@
 
 using namespace artflow;
 
+class VectorUndoCommand : public artflow::UndoCommand {
+public:
+  VectorUndoCommand(artflow::LayerManager *manager, int layerIndex,
+                    std::unique_ptr<ImageBuffer> beforeBuffer,
+                    std::unique_ptr<ImageBuffer> afterBuffer,
+                    std::unique_ptr<artflow::VectorLayerData> beforeVector,
+                    std::unique_ptr<artflow::VectorLayerData> afterVector)
+      : m_manager(manager), m_layerIndex(layerIndex),
+        m_beforeBuffer(std::move(beforeBuffer)), m_afterBuffer(std::move(afterBuffer)),
+        m_beforeVector(std::move(beforeVector)), m_afterVector(std::move(afterVector)) {}
+
+  void undo() override {
+    artflow::Layer *layer = m_manager->getLayer(m_layerIndex);
+    if (layer) {
+      if (m_beforeBuffer) {
+        layer->buffer->copyFrom(*m_beforeBuffer);
+      }
+      if (m_beforeVector) {
+        layer->vectorData = std::make_unique<artflow::VectorLayerData>(*m_beforeVector);
+      } else {
+        layer->vectorData.reset();
+      }
+      layer->dirty = true;
+      layer->markDirty();
+    }
+  }
+
+  void redo() override {
+    artflow::Layer *layer = m_manager->getLayer(m_layerIndex);
+    if (layer) {
+      if (m_afterBuffer) {
+        layer->buffer->copyFrom(*m_afterBuffer);
+      }
+      if (m_afterVector) {
+        layer->vectorData = std::make_unique<artflow::VectorLayerData>(*m_afterVector);
+      } else {
+        layer->vectorData.reset();
+      }
+      layer->dirty = true;
+      layer->markDirty();
+    }
+  }
+
+  std::string name() const override { return "Vector Stroke"; }
+
+private:
+  artflow::LayerManager *m_manager;
+  int m_layerIndex;
+  std::unique_ptr<ImageBuffer> m_beforeBuffer;
+  std::unique_ptr<ImageBuffer> m_afterBuffer;
+  std::unique_ptr<artflow::VectorLayerData> m_beforeVector;
+  std::unique_ptr<artflow::VectorLayerData> m_afterVector;
+};
+
 static QString getAutoSaveDir();
 
 static void warpQuadBilinear(const QImage &srcImg, QImage &dstImg,
@@ -457,22 +511,45 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
         }
 
         // PERFORMANCE: Upload only dirty tiles
-        const auto &tiles = layer->buffer->getTiles();
-        for (const auto &tile : tiles) {
-          if (tile && (tile->dirty || layer->dirty)) {
-            int tx = tile->startX * artflow::ImageBuffer::TILE_SIZE;
-            int ty = tile->startY * artflow::ImageBuffer::TILE_SIZE;
-            int tw = std::min(artflow::ImageBuffer::TILE_SIZE,
-                              layer->buffer->width() - tx);
-            int th = std::min(artflow::ImageBuffer::TILE_SIZE,
-                              layer->buffer->height() - ty);
+        int cols = (layer->buffer->width() + artflow::ImageBuffer::TILE_SIZE - 1) / artflow::ImageBuffer::TILE_SIZE;
+        int rows = (layer->buffer->height() + artflow::ImageBuffer::TILE_SIZE - 1) / artflow::ImageBuffer::TILE_SIZE;
+        static std::vector<uint8_t> s_zeroTile(artflow::ImageBuffer::TILE_BYTES, 0);
 
-            f->glPixelStorei(GL_UNPACK_ROW_LENGTH,
-                             artflow::ImageBuffer::TILE_SIZE);
-            tex->setData(tx, ty, 0, tw, th, 1, QOpenGLTexture::RGBA,
-                         QOpenGLTexture::UInt8, tile->data.get());
-            f->glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-            tile->dirty = false;
+        if (layer->dirty) {
+          for (int ty = 0; ty < rows; ++ty) {
+            for (int tx = 0; tx < cols; ++tx) {
+              auto *tile = layer->buffer->getTile(tx * artflow::ImageBuffer::TILE_SIZE, ty * artflow::ImageBuffer::TILE_SIZE, false);
+              int xPos = tx * artflow::ImageBuffer::TILE_SIZE;
+              int yPos = ty * artflow::ImageBuffer::TILE_SIZE;
+              int tw = std::min(artflow::ImageBuffer::TILE_SIZE, layer->buffer->width() - xPos);
+              int th = std::min(artflow::ImageBuffer::TILE_SIZE, layer->buffer->height() - yPos);
+
+              f->glPixelStorei(GL_UNPACK_ROW_LENGTH, artflow::ImageBuffer::TILE_SIZE);
+              const uint8_t* ptr = tile ? tile->data.get() : s_zeroTile.data();
+              tex->setData(xPos, yPos, 0, tw, th, 1, QOpenGLTexture::RGBA,
+                           QOpenGLTexture::UInt8, ptr);
+              f->glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+              if (tile) tile->dirty = false;
+            }
+          }
+        } else {
+          const auto &tiles = layer->buffer->getTiles();
+          for (const auto &tile : tiles) {
+            if (tile && tile->dirty) {
+              int tx = tile->startX * artflow::ImageBuffer::TILE_SIZE;
+              int ty = tile->startY * artflow::ImageBuffer::TILE_SIZE;
+              int tw = std::min(artflow::ImageBuffer::TILE_SIZE,
+                                layer->buffer->width() - tx);
+              int th = std::min(artflow::ImageBuffer::TILE_SIZE,
+                                layer->buffer->height() - ty);
+
+              f->glPixelStorei(GL_UNPACK_ROW_LENGTH,
+                               artflow::ImageBuffer::TILE_SIZE);
+              tex->setData(tx, ty, 0, tw, th, 1, QOpenGLTexture::RGBA,
+                           QOpenGLTexture::UInt8, tile->data.get());
+              f->glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+              tile->dirty = false;
+            }
           }
         }
         layer->buffer->clearDirtyFlags();
@@ -1637,6 +1714,43 @@ void CanvasItem::paint(QPainter *painter) {
                        m_viewOffset.y() * m_zoomLevel);
     painter->scale(m_zoomLevel, m_zoomLevel);
 
+    // If active layer is a vector layer, draw its curves control/anchor points overlay!
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
+      QTransform t;
+      t.translate(-m_transformBox.x(), -m_transformBox.y());
+      t = t * m_transformMatrix;
+
+      painter->setRenderHint(QPainter::Antialiasing);
+
+      for (const auto& stroke : layer->vectorData->getStrokes()) {
+        for (const auto& seg : stroke.segments) {
+          QPointF p0 = t.map(QPointF(seg.p0.x, seg.p0.y));
+          QPointF cp1 = t.map(QPointF(seg.cp1.x, seg.cp1.y));
+          QPointF cp2 = t.map(QPointF(seg.cp2.x, seg.cp2.y));
+          QPointF p3 = t.map(QPointF(seg.p3.x, seg.p3.y));
+
+          // Draw dotted lines from endpoints to control points
+          painter->setPen(QPen(QColor(0, 122, 255, 120), 1.0f / m_zoomLevel, Qt::DashLine));
+          painter->drawLine(p0, cp1);
+          painter->drawLine(p3, cp2);
+
+          // Draw control points cp1 and cp2 as small squares with blue borders
+          painter->setPen(QPen(QColor(0, 122, 255), 1.0f / m_zoomLevel));
+          painter->setBrush(QColor(255, 255, 255));
+          float rControl = 3.0f / m_zoomLevel;
+          painter->drawRect(QRectF(cp1.x() - rControl, cp1.y() - rControl, rControl * 2, rControl * 2));
+          painter->drawRect(QRectF(cp2.x() - rControl, cp2.y() - rControl, rControl * 2, rControl * 2));
+
+          // Draw main anchors as solid blue circles
+          painter->setBrush(QColor(0, 122, 255));
+          float rAnchor = 4.0f / m_zoomLevel;
+          painter->drawEllipse(p0, rAnchor, rAnchor);
+          painter->drawEllipse(p3, rAnchor, rAnchor);
+        }
+      }
+    }
+
     // Draw Bounding Box handles
     painter->setTransform(QTransform()); // Reset for handles (screen
                                          // space?) or keep in canvas?
@@ -2229,12 +2343,24 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   // Convertir posición de pantalla a canvas (rotation-aware)
   QPointF canvasPos = screenToCanvas(targetPos);
 
+  if (m_isVectorDrawing && layer && layer->type == Layer::Type::Vector) {
+    VPoint2D vp;
+    vp.x = canvasPos.x();
+    vp.y = canvasPos.y();
+    vp.pressure = effectivePressure;
+    if (m_vectorPointBuffer.empty() || 
+        std::abs(m_vectorPointBuffer.back().x - vp.x) > 0.01f ||
+        std::abs(m_vectorPointBuffer.back().y - vp.y) > 0.01f) {
+      m_vectorPointBuffer.push_back(vp);
+    }
+  }
+
   BrushSettings settings = m_brushEngine->getBrush();
 
   // FIX: Support explicit Eraser Mode and "Transparent Color" (Clip Studio
   // Style)
   bool isTransparentColor = (m_brushColor.alpha() < 5);
-  if (m_isEraser || isTransparentColor || m_tool == ToolType::Eraser) {
+  if (m_isEraser || isTransparentColor || m_tool == ToolType::Eraser || m_tool == ToolType::VectorEraser) {
     settings.type = BrushSettings::Type::Eraser;
     // MÁSCARA DE BORRADO MÁGICA: Usamos Alpha 254 como contraseña
     // para forzar a StrokeRenderer a saber que esto es un borrador.
@@ -2306,13 +2432,13 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
     // OPACITY dynamics
     float opacT = 1.0f;
-    if (activePreset->opacityDynamics.minLimit < 0.99f || m_opacityByPressure) {
+    if (activePreset->opacityDynamics.pressureEnabled && (activePreset->opacityDynamics.minLimit < 0.99f || m_opacityByPressure)) {
       opacT = activePreset->opacityDynamics.evaluate(rawPressure);
       // Master Toggle check
       if (!m_opacityByPressure)
         opacT = 1.0f;
-      settings.opacity = m_brushOpacity * opacT;
     }
+    settings.opacity = m_brushOpacity * opacT;
 
     // FLOW dynamics
     float flowT = 1.0f;
@@ -2555,6 +2681,15 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
             // Conectar la señal de actualización del wetmap al repintado del canvas
             connect(m_watercolorEngine, &WatercolorEngine::wetMapUpdated,
                     this, [this]() { requestUpdate(); });
+        }
+
+        // FIX: Cargar dinámicamente la textura de grano en la GPU si m_brushEngine no la ha cargado de forma permanente
+        if (settings.useTexture && settings.grainTextureID == 0 && !settings.textureName.isEmpty()) {
+            settings.grainTextureID = artflow::BrushEngine::loadTexture(settings.textureName);
+            // Actualizar la caché del BrushEngine para persistirla
+            BrushSettings engineSettings = m_brushEngine->getBrush();
+            engineSettings.grainTextureID = settings.grainTextureID;
+            m_brushEngine->setBrush(engineSettings);
         }
 
         QOpenGLFunctions *gl = QOpenGLContext::currentContext()->functions();
@@ -3186,6 +3321,57 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     }
 
     if (m_isTransforming) {
+      // Check if we clicked on an anchor or control point of a vector layer!
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
+        QTransform t;
+        t.translate(-m_transformBox.x(), -m_transformBox.y());
+        t = t * m_transformMatrix;
+        
+        float clickRadius = 12.0f / m_zoomLevel;
+        bool foundPoint = false;
+
+        for (auto& stroke : layer->vectorData->getStrokes()) {
+          for (size_t segIdx = 0; segIdx < stroke.segments.size(); ++segIdx) {
+            auto& seg = stroke.segments[segIdx];
+            
+            QPointF p0_trans = t.map(QPointF(seg.p0.x, seg.p0.y));
+            QPointF cp1_trans = t.map(QPointF(seg.cp1.x, seg.cp1.y));
+            QPointF cp2_trans = t.map(QPointF(seg.cp2.x, seg.cp2.y));
+            QPointF p3_trans = t.map(QPointF(seg.p3.x, seg.p3.y));
+
+            auto checkAndLock = [&](const QPointF& transPt, int pointType) {
+              float dx = canvasPos.x() - transPt.x();
+              float dy = canvasPos.y() - transPt.y();
+              float d = std::hypot(dx, dy);
+              if (d < clickRadius) {
+                m_isDraggingVectorPoint = true;
+                m_draggedStrokeId = stroke.id;
+                m_draggedSegmentIdx = segIdx;
+                m_draggedPointType = pointType;
+                foundPoint = true;
+                return true;
+              }
+              return false;
+            };
+
+            if (checkAndLock(p0_trans, 0)) break;
+            if (checkAndLock(cp1_trans, 1)) break;
+            if (checkAndLock(cp2_trans, 2)) break;
+            if (checkAndLock(p3_trans, 3)) break;
+          }
+          if (foundPoint) break;
+        }
+
+        if (foundPoint) {
+          m_vectorBeforeData = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+          m_transformBeforeBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+          m_dragStartMousePos = event->position();
+          event->accept();
+          return;
+        }
+      }
+
       QRectF transformedBox = m_transformMatrix.mapRect(m_transformBox);
       if (transformedBox.contains(canvasPos)) {
         if (m_currentToolStr == "move") {
@@ -3259,6 +3445,23 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
     m_isDrawing = true;
     m_lastPos = canvasPos;
+    
+    Layer *layer = m_layerManager->getActiveLayer();
+    m_isVectorDrawing = (layer && layer->type == Layer::Type::Vector);
+    if (m_isVectorDrawing) {
+      m_vectorPointBuffer.clear();
+      if (layer->vectorData) {
+        m_vectorBeforeData = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+      } else {
+        m_vectorBeforeData.reset();
+      }
+      VPoint2D vp;
+      vp.x = canvasPos.x();
+      vp.y = canvasPos.y();
+      vp.pressure = 0.5f;
+      m_vectorPointBuffer.push_back(vp);
+    }
+
     m_stabPosQueue.clear(); // Reset stabilizer buffer for new stroke
     m_stabPresQueue.clear();
 
@@ -3272,7 +3475,6 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     m_hasPrediction = false;
 
     // ... rest of stroke start logic ...
-    Layer *layer = m_layerManager->getActiveLayer();
     if (layer && layer->locked) {
       emit notificationRequested("Layer is locked", "warning");
       return;
@@ -3296,6 +3498,9 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     // Emitir señal de que se ha empezado a pintar con el color actual
     if (m_tool == ToolType::Pen) {
       emit strokeStarted(m_brushColor);
+      if (m_watercolorEngine && isWatercolorBrush()) {
+        m_watercolorEngine->startStroke();
+      }
     }
 
     // Solo iniciar timer si es una herramienta de dibujo
@@ -3310,6 +3515,58 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   event->accept(); // Evita que el evento suba a QML
+
+  // Handle C++ vector point dragging
+  if (m_isTransforming && m_isDraggingVectorPoint) {
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
+      QPointF canvasPos = screenToCanvas(event->position());
+      
+      QTransform t;
+      t.translate(-m_transformBox.x(), -m_transformBox.y());
+      t = t * m_transformMatrix;
+      
+      QTransform invT = t.inverted();
+      QPointF origPos = invT.map(canvasPos);
+
+      // Now we update the dragged point inside the segment!
+      VectorStroke* stroke = layer->vectorData->getStroke(m_draggedStrokeId);
+      if (stroke && m_draggedSegmentIdx < stroke->segments.size()) {
+        auto& seg = stroke->segments[m_draggedSegmentIdx];
+        if (m_draggedPointType == 0) {
+          seg.p0.x = origPos.x(); seg.p0.y = origPos.y();
+          // Sync with previous segment's end point if there is one
+          if (m_draggedSegmentIdx > 0) {
+            stroke->segments[m_draggedSegmentIdx - 1].p3.x = origPos.x();
+            stroke->segments[m_draggedSegmentIdx - 1].p3.y = origPos.y();
+          }
+        } else if (m_draggedPointType == 1) {
+          seg.cp1.x = origPos.x(); seg.cp1.y = origPos.y();
+        } else if (m_draggedPointType == 2) {
+          seg.cp2.x = origPos.x(); seg.cp2.y = origPos.y();
+        } else if (m_draggedPointType == 3) {
+          seg.p3.x = origPos.x(); seg.p3.y = origPos.y();
+          // Sync with next segment's start point if there is one
+          if (m_draggedSegmentIdx + 1 < stroke->segments.size()) {
+            stroke->segments[m_draggedSegmentIdx + 1].p0.x = origPos.x();
+            stroke->segments[m_draggedSegmentIdx + 1].p0.y = origPos.y();
+          }
+        }
+        stroke->recalcBounds();
+      }
+
+      // Re-rasterize the entire vector layer immediately for real-time visual feedback!
+      layer->buffer->clear();
+      layer->vectorData->rasterize(*layer->buffer);
+      layer->dirty = false;
+      layer->markDirty();
+      m_cachedCanvasImage = QImage(); // Force redraw!
+      
+      update();
+      event->accept();
+      return;
+    }
+  }
 
   // Handle C++ transform dragging
   if (m_tool == ToolType::Transform && m_isDraggingTransformInCpp && m_isTransforming) {
@@ -3669,6 +3926,23 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
     return;
   }
 
+  if (m_isDraggingVectorPoint) {
+    m_isDraggingVectorPoint = false;
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
+      auto afterVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+      auto afterBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+      m_undoManager->pushCommand(std::make_unique<VectorUndoCommand>(
+          m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
+          std::move(afterBuffer), std::move(m_vectorBeforeData), std::move(afterVector)));
+    }
+    m_draggedStrokeId = 0;
+    m_draggedPointType = -1;
+    update();
+    event->accept();
+    return;
+  }
+
   if (m_tool == ToolType::Transform) {
     m_isDraggingTransformInCpp = false;
     m_transformMode = TransformMode::None;
@@ -3684,6 +3958,19 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
   if (event->button() == Qt::LeftButton) {
     if (m_isDrawing) {
       m_quickShapeTimer->stop();
+      
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->type == Layer::Type::Vector) {
+        finalizeVectorStroke();
+        m_isDrawing = false;
+        m_isHoldingForShape = false;
+        m_quickShapeType = QuickShapeType::None;
+        m_hasPrediction = false;
+        m_smudgeColorValid = false;
+        event->accept();
+        return;
+      }
+
       bool wasHolding = m_isHoldingForShape;
       m_isDrawing = false;
       m_gradientMapDirty = true;
@@ -3824,6 +4111,22 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     QPointF canvasPos = screenToCanvas(p);
     m_lastPos = canvasPos;
 
+    Layer *layer = m_layerManager->getActiveLayer();
+    m_isVectorDrawing = (layer && layer->type == Layer::Type::Vector);
+    if (m_isVectorDrawing) {
+      m_vectorPointBuffer.clear();
+      if (layer->vectorData) {
+        m_vectorBeforeData = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+      } else {
+        m_vectorBeforeData.reset();
+      }
+      VPoint2D vp;
+      vp.x = canvasPos.x();
+      vp.y = canvasPos.y();
+      vp.pressure = pressure;
+      m_vectorPointBuffer.push_back(vp);
+    }
+
     // Reset history for prediction
     m_historyPos.clear();
     m_historyPressure.clear();
@@ -3836,7 +4139,6 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     m_hasPrediction = false;
 
     // Undo Snapshot
-    Layer *layer = m_layerManager->getActiveLayer();
     if (layer && layer->locked) {
       emit notificationRequested("Layer is locked", "warning");
       return;
@@ -3861,6 +4163,9 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     // Emitir señal de que se ha empezado a pintar con el color actual
     if (m_tool == ToolType::Pen) {
       emit strokeStarted(m_brushColor);
+      if (m_watercolorEngine && isWatercolorBrush()) {
+        m_watercolorEngine->startStroke();
+      }
     }
 
     m_quickShapeTimer->start(500);
@@ -3946,6 +4251,17 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
       return;
     }
     m_quickShapeTimer->stop();
+    
+    Layer *layer = m_layerManager->getActiveLayer();
+    if (layer && layer->type == Layer::Type::Vector) {
+      finalizeVectorStroke();
+      m_isDrawing = false;
+      m_isHoldingForShape = false;
+      m_quickShapeType = QuickShapeType::None;
+      event->accept();
+      return;
+    }
+
     bool wasHolding = m_isHoldingForShape;
     m_isDrawing = false;
     m_isHoldingForShape = false;
@@ -5126,6 +5442,12 @@ void CanvasItem::beginTransform() {
   m_transformBeforeBuffer =
       std::make_unique<artflow::ImageBuffer>(*layer->buffer);
 
+  if (layer->type == Layer::Type::Vector && layer->vectorData) {
+    m_vectorBeforeData = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+  } else {
+    m_vectorBeforeData.reset();
+  }
+
   // 1. Extract content safely in cropped box
   if (m_hasSelection && !m_selectionPath.isEmpty()) {
     QRectF boundOriginal = m_selectionPath.boundingRect();
@@ -5602,69 +5924,90 @@ void CanvasItem::applyTransform() {
 
   Layer *layer = m_layerManager->getActiveLayer();
   if (layer && layer->buffer) {
-    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-               QImage::Format_RGBA8888_Premultiplied);
+    if (layer->type == Layer::Type::Vector) {
+      if (layer->vectorData) {
+        QTransform t;
+        t.translate(-m_transformBox.x(), -m_transformBox.y());
+        t = t * m_transformMatrix;
+        layer->vectorData->transformAll(t);
+        
+        layer->buffer->clear();
+        layer->vectorData->rasterize(*layer->buffer);
+        layer->dirty = false;
+        layer->markDirty();
 
-    if (m_isMeshTransform && m_meshPoints.size() == 16) {
-      float sw = m_selectionBuffer.width();
-      float sh = m_selectionBuffer.height();
+        // Push Vector Undo Command
+        auto afterVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+        auto afterBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+        m_undoManager->pushCommand(std::make_unique<VectorUndoCommand>(
+            m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
+            std::move(afterBuffer), std::move(m_vectorBeforeData), std::move(afterVector)));
+      }
+    } else {
+      QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                 QImage::Format_RGBA8888_Premultiplied);
 
-      for (int row = 0; row < 3; ++row) {
-        for (int col = 0; col < 3; ++col) {
-          int idx_TL = row * 4 + col;
-          int idx_TR = row * 4 + col + 1;
-          int idx_BR = (row + 1) * 4 + col + 1;
-          int idx_BL = (row + 1) * 4 + col;
+      if (m_isMeshTransform && m_meshPoints.size() == 16) {
+        float sw = m_selectionBuffer.width();
+        float sh = m_selectionBuffer.height();
 
-          QPointF TL = m_meshPoints[idx_TL];
-          QPointF TR = m_meshPoints[idx_TR];
-          QPointF BR = m_meshPoints[idx_BR];
-          QPointF BL = m_meshPoints[idx_BL];
+        for (int row = 0; row < 3; ++row) {
+          for (int col = 0; col < 3; ++col) {
+            int idx_TL = row * 4 + col;
+            int idx_TR = row * 4 + col + 1;
+            int idx_BR = (row + 1) * 4 + col + 1;
+            int idx_BL = (row + 1) * 4 + col;
 
-          QPolygonF dstPolygon;
-          dstPolygon << TL << TR << BR << BL;
+            QPointF TL = m_meshPoints[idx_TL];
+            QPointF TR = m_meshPoints[idx_TR];
+            QPointF BR = m_meshPoints[idx_BR];
+            QPointF BL = m_meshPoints[idx_BL];
 
-          QPolygonF srcPolygon;
-          srcPolygon << QPointF(col * sw / 3.0f, row * sh / 3.0f)
-                     << QPointF((col + 1) * sw / 3.0f, row * sh / 3.0f)
-                     << QPointF((col + 1) * sw / 3.0f, (row + 1) * sh / 3.0f)
-                     << QPointF(col * sw / 3.0f, (row + 1) * sh / 3.0f);
+            QPolygonF dstPolygon;
+            dstPolygon << TL << TR << BR << BL;
 
-          warpQuadBilinear(m_selectionBuffer, img, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
+            QPolygonF srcPolygon;
+            srcPolygon << QPointF(col * sw / 3.0f, row * sh / 3.0f)
+                       << QPointF((col + 1) * sw / 3.0f, row * sh / 3.0f)
+                       << QPointF((col + 1) * sw / 3.0f, (row + 1) * sh / 3.0f)
+                       << QPointF(col * sw / 3.0f, (row + 1) * sh / 3.0f);
+
+            warpQuadBilinear(m_selectionBuffer, img, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
+          }
         }
+      } else if (m_meshPoints.size() == 4) { // Perspective transform (projective quad-to-quad)
+        float sw = m_selectionBuffer.width();
+        float sh = m_selectionBuffer.height();
+
+        QPolygonF srcPolygon;
+        srcPolygon << QPointF(0, 0) << QPointF(sw, 0) << QPointF(sw, sh) << QPointF(0, sh);
+
+        QPolygonF dstPolygon;
+        for (int i = 0; i < 4; ++i) {
+          dstPolygon << m_meshPoints[i];
+        }
+
+        warpQuadBilinear(m_selectionBuffer, img, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
+      } else { // Free transform (affine)
+        QPainter p(&img);
+        p.setRenderHint(QPainter::SmoothPixmapTransform);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setTransform(m_transformMatrix);
+        p.drawImage(0, 0, m_selectionBuffer);
+        p.end();
       }
-    } else if (m_meshPoints.size() == 4) { // Perspective transform (projective quad-to-quad)
-      float sw = m_selectionBuffer.width();
-      float sh = m_selectionBuffer.height();
 
-      QPolygonF srcPolygon;
-      srcPolygon << QPointF(0, 0) << QPointF(sw, 0) << QPointF(sw, sh) << QPointF(0, sh);
+      // Sync QImage modifications (m_cachedData) back to ImageBuffer tiles!
+      layer->buffer->loadRawData(layer->buffer->data());
 
-      QPolygonF dstPolygon;
-      for (int i = 0; i < 4; ++i) {
-        dstPolygon << m_meshPoints[i];
-      }
+      layer->dirty = true;
 
-      warpQuadBilinear(m_selectionBuffer, img, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
-    } else { // Free transform (affine)
-      QPainter p(&img);
-      p.setRenderHint(QPainter::SmoothPixmapTransform);
-      p.setRenderHint(QPainter::Antialiasing);
-      p.setTransform(m_transformMatrix);
-      p.drawImage(0, 0, m_selectionBuffer);
-      p.end();
+      // 3. PUSH UNDO
+      auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+      m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
+          m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
+          std::move(after)));
     }
-
-    // Sync QImage modifications (m_cachedData) back to ImageBuffer tiles!
-    layer->buffer->loadRawData(layer->buffer->data());
-
-    layer->dirty = true;
-
-    // 3. PUSH UNDO
-    auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
-    m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
-        m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
-        std::move(after)));
   }
 
   resetTransformState();
@@ -5681,17 +6024,29 @@ void CanvasItem::cancelTransform() {
 
   Layer *layer = m_layerManager->getActiveLayer();
   if (layer && layer->buffer) {
-    QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-               QImage::Format_RGBA8888_Premultiplied);
-    QPainter p(&img);
-    p.drawImage(m_transformBox.topLeft(),
-                m_selectionBuffer); // Draw back original at its position
-    p.end();
+    if (layer->type == Layer::Type::Vector) {
+      if (m_vectorBeforeData) {
+        layer->vectorData = std::make_unique<artflow::VectorLayerData>(*m_vectorBeforeData);
+      }
+      layer->buffer->clear();
+      if (layer->vectorData) {
+        layer->vectorData->rasterize(*layer->buffer);
+      }
+      layer->dirty = true;
+      layer->markDirty();
+    } else {
+      QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                 QImage::Format_RGBA8888_Premultiplied);
+      QPainter p(&img);
+      p.drawImage(m_transformBox.topLeft(),
+                  m_selectionBuffer); // Draw back original at its position
+      p.end();
 
-    // Sync QImage modifications (m_cachedData) back to ImageBuffer tiles!
-    layer->buffer->loadRawData(layer->buffer->data());
+      // Sync QImage modifications (m_cachedData) back to ImageBuffer tiles!
+      layer->buffer->loadRawData(layer->buffer->data());
 
-    layer->dirty = true;
+      layer->dirty = true;
+    }
   }
 
   resetTransformState();
@@ -5901,6 +6256,214 @@ void CanvasItem::fitToView() {
   setViewOffset(QPointF(offsetX, offsetY));
 
   update();
+}
+
+class VectorRasterizeUndoCommand : public artflow::UndoCommand {
+public:
+  VectorRasterizeUndoCommand(artflow::LayerManager *manager, int layerIndex, 
+                             std::unique_ptr<artflow::VectorLayerData> oldVectorData)
+      : m_manager(manager), m_layerIndex(layerIndex), m_oldVectorData(std::move(oldVectorData)) {}
+
+  void undo() override {
+    artflow::Layer *layer = m_manager->getLayer(m_layerIndex);
+    if (layer) {
+      layer->type = artflow::Layer::Type::Vector;
+      layer->vectorData = std::make_unique<artflow::VectorLayerData>(*m_oldVectorData);
+      layer->buffer->clear();
+      layer->vectorData->rasterize(*layer->buffer);
+      layer->markDirty();
+    }
+  }
+
+  void redo() override {
+    artflow::Layer *layer = m_manager->getLayer(m_layerIndex);
+    if (layer) {
+      layer->type = artflow::Layer::Type::Drawing;
+      layer->vectorData.reset();
+      layer->markDirty();
+    }
+  }
+
+  std::string name() const override { return "Rasterize Layer"; }
+
+private:
+  artflow::LayerManager *m_manager;
+  int m_layerIndex;
+  std::unique_ptr<artflow::VectorLayerData> m_oldVectorData;
+};
+
+void CanvasItem::addVectorLayer() {
+  if (!m_layerManager) return;
+
+  int activeIdx = m_layerManager->getActiveLayerIndex();
+  int totalLayers = m_layerManager->getLayerCount();
+  artflow::Layer *activeLayer = m_layerManager->getLayer(activeIdx);
+
+  bool shouldClip = false;
+  int targetIdx = totalLayers; // default: top of the stack
+
+  if (activeLayer) {
+    QString activeName = QString::fromStdString(activeLayer->name);
+    if (activeLayer->clipped) {
+      shouldClip = true;
+      targetIdx = activeIdx + 1;
+    } else if (activeName.startsWith("Panel ", Qt::CaseInsensitive)) {
+      shouldClip = true;
+      targetIdx = activeIdx + 1;
+    } else {
+      // Normal layer: insert right above active layer
+      shouldClip = false;
+      targetIdx = activeIdx + 1;
+    }
+  }
+
+  if (targetIdx < 0) targetIdx = 0;
+  if (targetIdx > totalLayers) targetIdx = totalLayers;
+
+  m_layerManager->addVectorLayer("Vector Layer");
+  int newCount = m_layerManager->getLayerCount();
+  int newLayerIdx = newCount - 1;
+
+  artflow::Layer *newLayer = m_layerManager->getLayer(newLayerIdx);
+  if (newLayer) {
+    newLayer->clipped = shouldClip;
+  }
+
+  if (newLayerIdx != targetIdx) {
+    m_layerManager->moveLayer(newLayerIdx, targetIdx);
+  }
+
+  setActiveLayer(targetIdx);
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<LayerAddUndoCommand>(
+        m_layerManager, targetIdx, nullptr, activeIdx, targetIdx));
+  }
+
+  update();
+  updateLayersList();
+}
+
+bool CanvasItem::isVectorLayer(int index) const {
+  if (!m_layerManager) return false;
+  const artflow::Layer *layer = m_layerManager->getLayer(index);
+  return (layer && layer->type == artflow::Layer::Type::Vector);
+}
+
+void CanvasItem::rasterizeVectorLayer(int index) {
+  if (!m_layerManager) return;
+  artflow::Layer *layer = m_layerManager->getLayer(index);
+  if (!layer || layer->type != artflow::Layer::Type::Vector || !layer->vectorData) return;
+
+  auto oldVectorData = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+
+  layer->type = artflow::Layer::Type::Drawing;
+  layer->vectorData.reset();
+  layer->markDirty();
+
+  if (m_undoManager) {
+    m_undoManager->pushCommand(std::make_unique<VectorRasterizeUndoCommand>(
+        m_layerManager, index, std::move(oldVectorData)));
+  }
+
+  update();
+  updateLayersList();
+}
+
+void CanvasItem::finalizeVectorStroke() {
+  m_isVectorDrawing = false;
+  
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || !layer->buffer || !layer->vectorData) return;
+
+  if (m_strokeBeforeBuffer) {
+    layer->buffer->copyFrom(*m_strokeBeforeBuffer);
+  }
+
+  if (m_tool == ToolType::VectorEraser || 
+      (m_tool == ToolType::Eraser && layer->type == Layer::Type::Vector)) {
+    if (m_vectorPointBuffer.size() >= 2) {
+      auto eraserSegments = fitBezierChain(m_vectorPointBuffer, 1.5f);
+      if (!eraserSegments.empty()) {
+        VectorStroke eraserStroke;
+        eraserStroke.segments = std::move(eraserSegments);
+        eraserStroke.globalWidth = m_brushSize;
+        eraserStroke.isEraser = true;
+        if (m_brushEngine) {
+          BrushSettings s = m_brushEngine->getBrush();
+          eraserStroke.spacing = s.spacing;
+          eraserStroke.hardness = s.hardness;
+        }
+        eraserStroke.recalcBounds();
+
+        layer->vectorData->vectorErase(eraserStroke);
+        
+        layer->markDirty();
+        m_cachedCanvasImage = QImage();
+      }
+    }
+  } else {
+    if (m_vectorPointBuffer.size() >= 2) {
+      auto segments = fitBezierChain(m_vectorPointBuffer, 2.0f);
+      if (!segments.empty()) {
+        VectorStroke stroke;
+        stroke.segments = std::move(segments);
+        stroke.color = m_brushColor;
+        stroke.opacity = m_brushOpacity;
+        stroke.globalWidth = m_brushSize;
+        
+        if (m_brushEngine) {
+          BrushSettings s = m_brushEngine->getBrush();
+          stroke.tipTextureName = s.tipTextureName;
+          stroke.spacing = s.spacing;
+          stroke.hardness = s.hardness;
+          stroke.useTexture = s.useTexture;
+          stroke.textureName = s.textureName;
+          stroke.isEraser = false;
+        }
+
+        stroke.recalcBounds();
+
+        layer->vectorData->addStroke(std::move(stroke));
+      }
+    }
+  }
+
+  m_vectorPointBuffer.clear();
+
+  if (m_pingFBO) {
+    delete m_pingFBO;
+    m_pingFBO = nullptr;
+    delete m_pongFBO;
+    m_pongFBO = nullptr;
+  }
+
+  layer->buffer->clear();
+  layer->vectorData->rasterize(*layer->buffer);
+  layer->dirty = false;
+  layer->markDirty();
+  m_cachedCanvasImage = QImage();
+
+  if (m_strokeBeforeBuffer) {
+    auto afterBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+    if (layer->type == Layer::Type::Vector) {
+      auto afterVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+      m_undoManager->pushCommand(std::make_unique<VectorUndoCommand>(
+          m_layerManager, m_activeLayerIndex, std::move(m_strokeBeforeBuffer),
+          std::move(afterBuffer), std::move(m_vectorBeforeData), std::move(afterVector)));
+    } else {
+      m_undoManager->pushCommand(std::make_unique<StrokeUndoCommand>(
+          m_layerManager, m_activeLayerIndex, std::move(m_strokeBeforeBuffer),
+          std::move(afterBuffer)));
+    }
+    m_strokeBeforeBuffer.reset();
+  }
+
+  m_lastPos = QPointF();
+  capture_timelapse_frame();
+  update();
+  updateLayersList();
+  setProjectDirty(true);
 }
 
 void CanvasItem::addLayer() {
@@ -7804,6 +8367,8 @@ void CanvasItem::updateLayersList() {
     // Correctly map the Layer::Type enum
     if (l->type == Layer::Type::Group) {
       layer["type"] = QString("group");
+    } else if (l->type == Layer::Type::Vector) {
+      layer["type"] = QString("vector");
     } else if (l->type == Layer::Type::Background || i == 0) {
       layer["type"] = QString("background");
     } else {
@@ -8919,6 +9484,8 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.opacityDynamics.tiltInfluence;
     if (key == "opacity_velocity")
       return m_editingPreset.opacityDynamics.velocityInfluence;
+    if (key == "opacity_pressure_enabled")
+      return m_editingPreset.opacityDynamics.pressureEnabled;
     if (key == "flow_base")
       return m_editingPreset.flowDynamics.baseValue;
     if (key == "flow_min")
@@ -9171,6 +9738,9 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
       changed = true;
     } else if (key == "opacity_velocity") {
       m_editingPreset.opacityDynamics.velocityInfluence = value.toFloat();
+      changed = true;
+    } else if (key == "opacity_pressure_enabled") {
+      m_editingPreset.opacityDynamics.pressureEnabled = value.toBool();
       changed = true;
     } else if (key == "flow_base") {
       m_editingPreset.flowDynamics.baseValue = value.toFloat();

@@ -11,6 +11,8 @@
 #include "core/cpp/include/watercolor_engine.h"
 #include "core/cpp/include/edge_detector.h"
 #include "core/cpp/include/color_range_selector.h"
+#include "core/cpp/include/vector_types.h"
+#include "core/cpp/include/vector_math.h"
 #include <QColor>
 #include <QCursor>
 #include <QImage>
@@ -47,7 +49,8 @@ public:
     Fill,
     Shape,
     PanelCut,
-    Liquify
+    Liquify,
+    VectorEraser
   };
   Q_ENUM(ToolType)
 
@@ -509,6 +512,10 @@ public:
   QVariantList pressureCurvePoints() const { return m_rawPoints; }
   Q_INVOKABLE void setCurvePoints(const QVariantList &points);
 
+  Q_INVOKABLE void addVectorLayer();
+  Q_INVOKABLE void rasterizeVectorLayer(int index);
+  Q_INVOKABLE bool isVectorLayer(int index) const;
+
 signals:
   void canvasPreviewChanged();
   void brushSizeChanged();
@@ -924,6 +931,17 @@ private:
   // Auto-save members
   QTimer *m_autoSaveTimer = nullptr;
   bool m_projectDirty = false;
+  
+  // Vector stroke building state
+  std::vector<artflow::VPoint2D> m_vectorPointBuffer;
+  bool m_isVectorDrawing = false;
+  std::unique_ptr<artflow::VectorLayerData> m_vectorBeforeData;
+  bool m_isDraggingVectorPoint = false;
+  uint32_t m_draggedStrokeId = 0;
+  size_t m_draggedSegmentIdx = 0;
+  int m_draggedPointType = -1; // 0: p0, 1: cp1, 2: cp2, 3: p3
+  void finalizeVectorStroke();
+
   void handleAutoSave();
   void setupAutoSave();
   bool exportPSD(const QString &path);

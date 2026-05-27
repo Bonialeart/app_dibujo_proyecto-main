@@ -1106,7 +1106,7 @@ Window {
                             // The Manipulator Item (The selection bounding box)
                             Rectangle {
                                 id: manipulator
-                                visible: mainCanvas.isTransforming && mainCanvas.isFreeTransformActive
+                                visible: mainCanvas.isTransforming && mainCanvas.isFreeTransformActive && !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
                                 // Set size and position dynamically when shown
                                 width: mainCanvas.transformBox.width > 0 ? mainCanvas.transformBox.width : parent.width
                                 height: mainCanvas.transformBox.height > 0 ? mainCanvas.transformBox.height : parent.height
@@ -1230,14 +1230,14 @@ Window {
                                 
                                 PinchHandler { 
                                     target: manipulator
-                                    enabled: mainCanvas.transformMode === 0
+                                    enabled: mainCanvas.transformMode === 0 && !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
                                 }
                             
                             // Center drag handle
                             DragHandler { 
                                 target: manipulator
-                                xAxis.enabled: mainCanvas.transformMode === 0
-                                yAxis.enabled: mainCanvas.transformMode === 0
+                                xAxis.enabled: mainCanvas.transformMode === 0 && !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
+                                yAxis.enabled: mainCanvas.transformMode === 0 && !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
                             }
                             
                             onXChanged: if (visible) updateTransform()
@@ -1334,6 +1334,7 @@ Window {
                                          ]
                                 delegate: Rectangle {
                                     width: 24 / mainCanvas.zoomLevel; height: 24 / mainCanvas.zoomLevel
+                                    visible: !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
                                     
                                     // Switch between calculated position or perspective point
                                     x: ((mainCanvas.transformMode === 1 || mainCanvas.transformMode === 2 || mainCanvas.transformMode === 3) && manipulator.perspPoints && manipulator.perspPoints.length > modelData.idx) 

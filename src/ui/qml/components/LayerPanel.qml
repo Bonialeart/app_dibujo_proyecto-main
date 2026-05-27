@@ -136,6 +136,30 @@ Item {
                                 ToolTip.visible: addLyrMa.containsMouse; ToolTip.text: "New Layer" 
                             }
                             
+                            // Add Vector Layer
+                             Rectangle { 
+                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
+                                 color: addVecMa.containsMouse ? "#1a2238" : "transparent"
+                                 border.color: addVecMa.containsMouse ? Qt.rgba(0/255, 122/255, 255/255, 0.4) : "transparent"; border.width: 1
+                                 Behavior on color { ColorAnimation { duration: 150 } }
+                                 Behavior on border.color { ColorAnimation { duration: 150 } }
+                                 
+                                 Image { 
+                                     source: "image://icons/layers.svg"
+                                     width: 14; height: 14
+                                     anchors.centerIn: parent
+                                     opacity: addVecMa.containsMouse ? 1.0 : 0.6
+                                     Behavior on opacity { NumberAnimation { duration: 150 } }
+                                     layer.enabled: true
+                                     layer.effect: MultiEffect { 
+                                         colorization: 1.0; 
+                                         colorizationColor: "#007aff"
+                                     }
+                                 }
+                                 MouseArea { id: addVecMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: if(targetCanvas) targetCanvas.addVectorLayer() }
+                                 ToolTip.visible: addVecMa.containsMouse; ToolTip.text: "New Vector Layer" 
+                             }
+
                             // Add Group / Folder
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6

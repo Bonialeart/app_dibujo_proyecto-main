@@ -83,7 +83,7 @@ import "../components"
                         // The Manipulator Item (The selection bounding box)
                         Rectangle {
                             id: manipulator
-                            visible: mainCanvas.isTransforming && mainCanvas.isFreeTransformActive
+                            visible: mainCanvas.isTransforming && mainCanvas.isFreeTransformActive && !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
                             color: "transparent"
                             border.color: colorAccent
                             border.width: 2 / mainCanvas.zoomLevel
@@ -117,8 +117,14 @@ import "../components"
                                 }
                             }
                             
-                            PinchHandler { target: manipulator }
-                            DragHandler { target: manipulator }
+                            PinchHandler { 
+                                target: manipulator 
+                                enabled: !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
+                            }
+                            DragHandler { 
+                                target: manipulator 
+                                enabled: !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
+                            }
                             
                             onXChanged: if (visible && mainCanvas.isTransforming) updateTransform()
                             onYChanged: if (visible && mainCanvas.isTransforming) updateTransform()
@@ -2810,6 +2816,37 @@ import "../components"
                                     cursorShape: Qt.PointingHandCursor
                                     hoverEnabled: true
                                     onClicked: mainCanvas.addLayer()
+                                }
+                                
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
+                            }
+
+                            // Add Vector Layer
+                            Rectangle {
+                                width: 32; height: 32; radius: 8
+                                color: vecMouse.containsMouse ? "#1a2238" : "#2c2c2e"
+                                border.color: vecMouse.containsMouse ? "#007aff" : "#48484a"
+                                border.width: 1
+                                
+                                Image {
+                                    source: iconPath("layers.svg")
+                                    width: 16; height: 16
+                                    anchors.centerIn: parent
+                                    opacity: vecMouse.containsMouse ? 1.0 : 0.7
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        colorization: 1.0
+                                        colorizationColor: "#007aff"
+                                    }
+                                }
+                                
+                                MouseArea {
+                                    id: vecMouse
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    hoverEnabled: true
+                                    onClicked: mainCanvas.addVectorLayer()
                                 }
                                 
                                 Behavior on color { ColorAnimation { duration: 150 } }
