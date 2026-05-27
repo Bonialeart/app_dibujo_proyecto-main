@@ -626,12 +626,12 @@ static std::vector<VPoint2D> rdpSimplify(const std::vector<VPoint2D>& points, fl
     return result;
 }
 
-std::vector<BezierSegment> fitBezierChain(const std::vector<VPoint2D>& points, float tolerance) {
+std::vector<BezierSegment> fitBezierChain(const std::vector<VPoint2D>& points, float tolerance, float epsilon) {
     std::vector<BezierSegment> result;
     if (points.size() < 2) return result;
 
     // Pre-simplify using RDP to clean tremors and flatten straight lines
-    std::vector<VPoint2D> simplified = rdpSimplify(points, 1.25f);
+    std::vector<VPoint2D> simplified = rdpSimplify(points, epsilon);
     if (simplified.size() < 2) {
         simplified = points;
     }

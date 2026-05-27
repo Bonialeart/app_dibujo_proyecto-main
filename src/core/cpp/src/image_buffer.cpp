@@ -331,7 +331,7 @@ void ImageBuffer::blendPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b,
   tile->dirty = true;
 }
 
-void ImageBuffer::drawCircle(int cx, int cy, float radius, uint8_t r, uint8_t g,
+void ImageBuffer::drawCircle(float cx, float cy, float radius, uint8_t r, uint8_t g,
                              uint8_t b, uint8_t a, float hardness, float grain,
                              bool alphaLock, bool isEraser,
                              const ImageBuffer *mask) {
@@ -340,8 +340,8 @@ void ImageBuffer::drawCircle(int cx, int cy, float radius, uint8_t r, uint8_t g,
   int minY = std::max(0, static_cast<int>(cy - radius - 2));
   int maxY = std::min(m_height - 1, static_cast<int>(cy + radius + 2));
 
-  float fcx = static_cast<float>(cx);
-  float fcy = static_cast<float>(cy);
+  float fcx = cx;
+  float fcy = cy;
   float effectiveRadius = std::max(0.5f, radius);
   float radiusSq = effectiveRadius * effectiveRadius;
   float outerSq = (effectiveRadius + 1.0f) * (effectiveRadius + 1.0f);

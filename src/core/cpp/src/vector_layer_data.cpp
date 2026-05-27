@@ -110,7 +110,7 @@ static QImage loadBrushTipImage(const QString &name) {
                 QRgb *scanline = reinterpret_cast<QRgb *>(img.scanLine(y));
                 for (int x = 0; x < img.width(); ++x) {
                     int a = qAlpha(scanline[x]);
-                    scanline[x] = qRgba(a, a, a, a);
+                    scanline[x] = qRgba(255, 255, 255, a);
                 }
             }
         }
@@ -153,6 +153,43 @@ static void paintVectorTipRaster(QPainter *painter, const QPointF &point, float 
     painter->translate(point);
     QRectF rect(-size / 2.0, -size / 2.0, size, size);
     painter->drawImage(rect, tintedImg);
+    painter->restore();
+}
+
+static void paintSoftStampVector(QPainter *painter, const QPointF &point, float size,
+                                 float opacity, const QColor &color, float hardness) {
+    painter->save();
+    painter->setPen(Qt::NoPen);
+    painter->setOpacity(opacity);
+
+    QRadialGradient gradient(point, size / 2.0);
+    QColor c = color;
+
+    if (hardness >= 0.99f) {
+        gradient.setColorAt(0.0, c);
+        gradient.setColorAt(0.95, c);
+        QColor transparentColor = c;
+        transparentColor.setAlpha(0);
+        gradient.setColorAt(1.0, transparentColor);
+    } else {
+        gradient.setColorAt(0.0, c);
+        if (hardness > 0.0f) {
+            gradient.setColorAt(hardness, c);
+        }
+
+        int steps = 10;
+        for (int i = 1; i <= steps; ++i) {
+            float t = static_cast<float>(i) / steps;
+            float stop = std::min(1.0f, hardness + t * (1.0f - hardness));
+            float alphaMult = 0.5f * (1.0f + std::cos(t * 3.14159265f));
+            QColor stepColor = c;
+            stepColor.setAlphaF(c.alphaF() * alphaMult);
+            gradient.setColorAt(stop, stepColor);
+        }
+    }
+
+    painter->setBrush(QBrush(gradient));
+    painter->drawEllipse(point, size / 2.0, size / 2.0);
     painter->restore();
 }
 
@@ -340,133 +377,86 @@ void VectorLayerData::rasterizeStroke(const VectorStroke& stroke, ImageBuffer& o
             s_vectorTipCache[stroke.tipTextureName] = tipImg;
         }
         hasTexture = !tipImg.isNull();
-        if (!hasTexture) {
-            qWarning() << "VectorLayerData::rasterizeStroke: Failed to load brush tip texture:" << stroke.tipTextureName << ". Falling back to high-fidelity procedural stamp.";
-        }
     }
 
-    if (hasTexture) {
-        QImage canvasImg(output.data(), output.width(), output.height(), QImage::Format_RGBA8888_Premultiplied);
-        QPainter painter(&canvasImg);
-        painter.setRenderHint(QPainter::Antialiasing);
-        painter.setRenderHint(QPainter::SmoothPixmapTransform);
-        
-        if (stroke.isEraser) {
-            painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-        } else {
-            painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-        }
-
-        for (const auto& seg : stroke.segments) {
-            auto pts = flattenToPolyline(seg, 1.0f);
-            if (pts.empty()) continue;
-
-            VPoint2D prev = pts[0];
-            float wPrev = prev.pressure * seg.widthStart * stroke.globalWidth * scale;
-            
-            paintVectorTipRaster(&painter, QPointF(prev.x * scale, prev.y * scale), wPrev, stroke.opacity, stroke.color, tipImg);
-
-            for (size_t i = 1; i < pts.size(); ++i) {
-                VPoint2D curr = pts[i];
-                
-                float tSegment = static_cast<float>(i) / (pts.size() - 1);
-                float wStart = seg.widthStart * stroke.globalWidth * scale;
-                float wEnd = seg.widthEnd * stroke.globalWidth * scale;
-                float wCurr = (prev.pressure * (1.0f - tSegment) + curr.pressure * tSegment) * 
-                              (wStart * (1.0f - tSegment) + wEnd * tSegment);
-
-                float dx = curr.x - prev.x;
-                float dy = curr.y - prev.y;
-                float d = std::sqrt(dx * dx + dy * dy);
-                
-                float radius = wCurr * 0.5f;
-                float step = std::max(0.5f, radius * stroke.spacing * 2.0f); 
-                
-                if (d > step) {
-                    int steps = static_cast<int>(std::ceil(d / step));
-                    for (int s = 1; s <= steps; ++s) {
-                        float t = static_cast<float>(s) / steps;
-                        float x = prev.x + t * dx;
-                        float y = prev.y + t * dy;
-                        float w = wPrev + t * (wCurr - wPrev);
-                        paintVectorTipRaster(&painter, QPointF(x * scale, y * scale), w, stroke.opacity, stroke.color, tipImg);
-                    }
-                } else {
-                    paintVectorTipRaster(&painter, QPointF(curr.x * scale, curr.y * scale), wCurr, stroke.opacity, stroke.color, tipImg);
-                }
-                prev = curr;
-                wPrev = wCurr;
-            }
-        }
-        
-        painter.end();
-        output.loadRawData(output.data());
+    QImage canvasImg(output.data(), output.width(), output.height(), QImage::Format_RGBA8888_Premultiplied);
+    QPainter painter(&canvasImg);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    
+    if (stroke.isEraser) {
+        painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
     } else {
-        uint8_t r = stroke.color.red();
-        uint8_t g = stroke.color.green();
-        uint8_t b = stroke.color.blue();
-        uint8_t a = static_cast<uint8_t>(stroke.opacity * 255.0f);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    }
 
-        for (const auto& seg : stroke.segments) {
-            auto pts = flattenToPolyline(seg, 1.0f);
-            if (pts.empty()) continue;
+    for (const auto& seg : stroke.segments) {
+        auto pts = flattenToPolyline(seg, 1.0f);
+        if (pts.empty()) continue;
 
-            VPoint2D prev = pts[0];
-            float wPrev = prev.pressure * seg.widthStart * stroke.globalWidth * scale;
+        float distSinceLastDab = 0.0f;
+        VPoint2D prev = pts[0];
+        float wPrev = prev.pressure * seg.widthStart * stroke.globalWidth * scale;
+        
+        // Draw first dab
+        if (hasTexture) {
+            paintVectorTipRaster(&painter, QPointF(prev.x * scale, prev.y * scale), wPrev, stroke.opacity, stroke.color, tipImg);
+        } else {
+            paintSoftStampVector(&painter, QPointF(prev.x * scale, prev.y * scale), wPrev, stroke.opacity, stroke.color, stroke.hardness);
+        }
+
+        for (size_t i = 1; i < pts.size(); ++i) {
+            VPoint2D curr = pts[i];
             
-            output.drawCircle(
-                static_cast<int>(prev.x * scale), 
-                static_cast<int>(prev.y * scale), 
-                wPrev * 0.5f, 
-                r, g, b, a,
-                stroke.hardness, 0.0f, false, stroke.isEraser
-            );
+            float tSegment = static_cast<float>(i) / (pts.size() - 1);
+            float wStart = seg.widthStart * stroke.globalWidth * scale;
+            float wEnd = seg.widthEnd * stroke.globalWidth * scale;
+            float wCurr = (prev.pressure * (1.0f - tSegment) + curr.pressure * tSegment) * 
+                          (wStart * (1.0f - tSegment) + wEnd * tSegment);
 
-            for (size_t i = 1; i < pts.size(); ++i) {
-                VPoint2D curr = pts[i];
-                
-                float tSegment = static_cast<float>(i) / (pts.size() - 1);
-                float wStart = seg.widthStart * stroke.globalWidth * scale;
-                float wEnd = seg.widthEnd * stroke.globalWidth * scale;
-                float wCurr = (prev.pressure * (1.0f - tSegment) + curr.pressure * tSegment) * 
-                              (wStart * (1.0f - tSegment) + wEnd * tSegment);
-
-                float dx = curr.x - prev.x;
-                float dy = curr.y - prev.y;
-                float d = std::sqrt(dx * dx + dy * dy);
-                
-                float radius = wCurr * 0.5f;
-                float step = std::max(0.5f, radius * stroke.spacing * 2.0f); 
-                
-                if (d > step) {
-                    int steps = static_cast<int>(std::ceil(d / step));
-                    for (int s = 1; s <= steps; ++s) {
-                        float t = static_cast<float>(s) / steps;
-                        float x = prev.x + t * dx;
-                        float y = prev.y + t * dy;
-                        float w = wPrev + t * (wCurr - wPrev);
-                        output.drawCircle(
-                            static_cast<int>(x * scale), 
-                            static_cast<int>(y * scale), 
-                            w * 0.5f, 
-                            r, g, b, a,
-                            stroke.hardness, 0.0f, false, stroke.isEraser
-                        );
-                    }
-                } else {
-                    output.drawCircle(
-                        static_cast<int>(curr.x * scale), 
-                        static_cast<int>(curr.y * scale), 
-                        wCurr * 0.5f, 
-                        r, g, b, a,
-                        stroke.hardness, 0.0f, false, stroke.isEraser
-                    );
-                }
+            float dx = curr.x - prev.x;
+            float dy = curr.y - prev.y;
+            float d = std::sqrt(dx * dx + dy * dy);
+            
+            if (d < 1e-6f) {
                 prev = curr;
                 wPrev = wCurr;
+                continue;
             }
+
+            distSinceLastDab += d;
+            
+            float radius = ((wPrev + wCurr) * 0.5f) * 0.5f;
+            float step = std::max(0.5f, radius * stroke.spacing * 2.0f); 
+
+            while (distSinceLastDab >= step) {
+                float t = (step - (distSinceLastDab - d)) / d;
+                t = std::clamp(t, 0.0f, 1.0f);
+                
+                float x = prev.x + t * dx;
+                float y = prev.y + t * dy;
+                float w = wPrev + t * (wCurr - wPrev);
+                
+                if (hasTexture) {
+                    paintVectorTipRaster(&painter, QPointF(x * scale, y * scale), w, stroke.opacity, stroke.color, tipImg);
+                } else {
+                    paintSoftStampVector(&painter, QPointF(x * scale, y * scale), w, stroke.opacity, stroke.color, stroke.hardness);
+                }
+                
+                distSinceLastDab -= step;
+                
+                // Recalculate step dynamically
+                radius = w * 0.5f;
+                step = std::max(0.5f, radius * stroke.spacing * 2.0f);
+            }
+            
+            prev = curr;
+            wPrev = wCurr;
         }
     }
+    
+    painter.end();
+    output.loadRawData(output.data());
 }
 
 void VectorLayerData::transformAll(const QTransform& matrix) {

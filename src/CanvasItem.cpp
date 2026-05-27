@@ -1641,68 +1641,71 @@ void CanvasItem::paint(QPainter *painter) {
     // --- FALLBACK DRAWING FOR TRANSFORMATION ---
     // Si estamos transformando pero la GPU aún no está lista, dibujamos la selección con QPainter
     if (m_isTransforming && !gpuTransformReady && !m_selectionBuffer.isNull()) {
-      painter->save();
-      painter->translate(m_viewOffset.x() * m_zoomLevel,
-                         m_viewOffset.y() * m_zoomLevel);
-      painter->scale(m_zoomLevel, m_zoomLevel);
+      Layer *activeL = m_layerManager->getActiveLayer();
+      if (activeL && activeL->type != Layer::Type::Vector) {
+        painter->save();
+        painter->translate(m_viewOffset.x() * m_zoomLevel,
+                           m_viewOffset.y() * m_zoomLevel);
+        painter->scale(m_zoomLevel, m_zoomLevel);
 
-      painter->setRenderHint(QPainter::SmoothPixmapTransform);
-      painter->setRenderHint(QPainter::Antialiasing);
+        painter->setRenderHint(QPainter::SmoothPixmapTransform);
+        painter->setRenderHint(QPainter::Antialiasing);
 
-      if (m_isMeshTransform && m_meshPoints.size() == 16) {
-        QImage tempImg(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-        tempImg.fill(Qt::transparent);
+        if (m_isMeshTransform && m_meshPoints.size() == 16) {
+          QImage tempImg(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
+          tempImg.fill(Qt::transparent);
 
-        float sw = m_selectionBuffer.width();
-        float sh = m_selectionBuffer.height();
+          float sw = m_selectionBuffer.width();
+          float sh = m_selectionBuffer.height();
 
-        for (int row = 0; row < 3; ++row) {
-          for (int col = 0; col < 3; ++col) {
-            int idx_TL = row * 4 + col;
-            int idx_TR = row * 4 + col + 1;
-            int idx_BR = (row + 1) * 4 + col + 1;
-            int idx_BL = (row + 1) * 4 + col;
+          for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 3; ++col) {
+              int idx_TL = row * 4 + col;
+              int idx_TR = row * 4 + col + 1;
+              int idx_BR = (row + 1) * 4 + col + 1;
+              int idx_BL = (row + 1) * 4 + col;
 
-            QPointF TL = m_meshPoints[idx_TL];
-            QPointF TR = m_meshPoints[idx_TR];
-            QPointF BR = m_meshPoints[idx_BR];
-            QPointF BL = m_meshPoints[idx_BL];
+              QPointF TL = m_meshPoints[idx_TL];
+              QPointF TR = m_meshPoints[idx_TR];
+              QPointF BR = m_meshPoints[idx_BR];
+              QPointF BL = m_meshPoints[idx_BL];
 
-            QPolygonF dstPolygon;
-            dstPolygon << TL << TR << BR << BL;
+              QPolygonF dstPolygon;
+              dstPolygon << TL << TR << BR << BL;
 
-            QPolygonF srcPolygon;
-            srcPolygon << QPointF(col * sw / 3.0f, row * sh / 3.0f)
-                       << QPointF((col + 1) * sw / 3.0f, row * sh / 3.0f)
-                       << QPointF((col + 1) * sw / 3.0f, (row + 1) * sh / 3.0f)
-                       << QPointF(col * sw / 3.0f, (row + 1) * sh / 3.0f);
+              QPolygonF srcPolygon;
+              srcPolygon << QPointF(col * sw / 3.0f, row * sh / 3.0f)
+                         << QPointF((col + 1) * sw / 3.0f, row * sh / 3.0f)
+                         << QPointF((col + 1) * sw / 3.0f, (row + 1) * sh / 3.0f)
+                         << QPointF(col * sw / 3.0f, (row + 1) * sh / 3.0f);
 
-            warpQuadBilinear(m_selectionBuffer, tempImg, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
+              warpQuadBilinear(m_selectionBuffer, tempImg, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
+            }
           }
+          painter->drawImage(0, 0, tempImg);
+        } else if (m_meshPoints.size() == 4) { // Perspective mode preview
+          QImage tempImg(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
+          tempImg.fill(Qt::transparent);
+
+          float sw = m_selectionBuffer.width();
+          float sh = m_selectionBuffer.height();
+
+          QPolygonF srcPolygon;
+          srcPolygon << QPointF(0, 0) << QPointF(sw, 0) << QPointF(sw, sh) << QPointF(0, sh);
+
+          QPolygonF dstPolygon;
+          for (int i = 0; i < 4; ++i) {
+            dstPolygon << m_meshPoints[i];
+          }
+
+          warpQuadBilinear(m_selectionBuffer, tempImg, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
+          painter->drawImage(0, 0, tempImg);
+        } else { // Free transform (affine)
+          painter->setTransform(m_transformMatrix * painter->transform());
+          painter->drawImage(0, 0, m_selectionBuffer);
         }
-        painter->drawImage(0, 0, tempImg);
-      } else if (m_meshPoints.size() == 4) { // Perspective mode preview
-        QImage tempImg(m_canvasWidth, m_canvasHeight, QImage::Format_RGBA8888_Premultiplied);
-        tempImg.fill(Qt::transparent);
-
-        float sw = m_selectionBuffer.width();
-        float sh = m_selectionBuffer.height();
-
-        QPolygonF srcPolygon;
-        srcPolygon << QPointF(0, 0) << QPointF(sw, 0) << QPointF(sw, sh) << QPointF(0, sh);
-
-        QPolygonF dstPolygon;
-        for (int i = 0; i < 4; ++i) {
-          dstPolygon << m_meshPoints[i];
-        }
-
-        warpQuadBilinear(m_selectionBuffer, tempImg, srcPolygon, dstPolygon, m_canvasWidth, m_canvasHeight);
-        painter->drawImage(0, 0, tempImg);
-      } else { // Free transform (affine)
-        painter->setTransform(m_transformMatrix * painter->transform());
-        painter->drawImage(0, 0, m_selectionBuffer);
+        painter->restore();
       }
-      painter->restore();
     }
   }
 
@@ -1718,8 +1721,9 @@ void CanvasItem::paint(QPainter *painter) {
     Layer *layer = m_layerManager->getActiveLayer();
     if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
       QTransform t;
-      t.translate(-m_transformBox.x(), -m_transformBox.y());
+      t.translate(m_transformBox.x(), m_transformBox.y());
       t = t * m_transformMatrix;
+      t.translate(-m_transformBox.x(), -m_transformBox.y());
 
       painter->setRenderHint(QPainter::Antialiasing);
 
@@ -3325,8 +3329,9 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       Layer *layer = m_layerManager->getActiveLayer();
       if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
         QTransform t;
-        t.translate(-m_transformBox.x(), -m_transformBox.y());
+        t.translate(m_transformBox.x(), m_transformBox.y());
         t = t * m_transformMatrix;
+        t.translate(-m_transformBox.x(), -m_transformBox.y());
         
         float clickRadius = 12.0f / m_zoomLevel;
         bool foundPoint = false;
@@ -3523,8 +3528,9 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
       QPointF canvasPos = screenToCanvas(event->position());
       
       QTransform t;
-      t.translate(-m_transformBox.x(), -m_transformBox.y());
+      t.translate(m_transformBox.x(), m_transformBox.y());
       t = t * m_transformMatrix;
+      t.translate(-m_transformBox.x(), -m_transformBox.y());
       
       QTransform invT = t.inverted();
       QPointF origPos = invT.map(canvasPos);
@@ -5474,19 +5480,21 @@ void CanvasItem::beginTransform() {
     p.end();
 
     // Clear area in original layer
-    QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
-                    QImage::Format_RGBA8888_Premultiplied);
-    QPainter p2(&layerImg);
-    p2.setCompositionMode(QPainter::CompositionMode_Clear);
-    p2.setClipPath(m_selectionPath);
-    p2.fillRect(bbox, Qt::transparent);
-    p2.end();
+    if (layer->type != Layer::Type::Vector) {
+      QImage layerImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                      QImage::Format_RGBA8888_Premultiplied);
+      QPainter p2(&layerImg);
+      p2.setCompositionMode(QPainter::CompositionMode_Clear);
+      p2.setClipPath(m_selectionPath);
+      p2.fillRect(bbox, Qt::transparent);
+      p2.end();
 
-    // Clear real tiles in original layer buffer
-    for (int y = bbox.top(); y <= bbox.bottom(); ++y) {
-      for (int x = bbox.left(); x <= bbox.right(); ++x) {
-        if (m_selectionPath.contains(QPointF(x, y))) {
-          layer->buffer->setPixel(x, y, 0, 0, 0, 0);
+      // Clear real tiles in original layer buffer
+      for (int y = bbox.top(); y <= bbox.bottom(); ++y) {
+        for (int x = bbox.left(); x <= bbox.right(); ++x) {
+          if (m_selectionPath.contains(QPointF(x, y))) {
+            layer->buffer->setPixel(x, y, 0, 0, 0, 0);
+          }
         }
       }
     }
@@ -5513,15 +5521,17 @@ void CanvasItem::beginTransform() {
     m_selectionBuffer = fullImg.copy(bbox);
 
     // Clear area in original layer
-    QPainter p2(&fullImg);
-    p2.setCompositionMode(QPainter::CompositionMode_Clear);
-    p2.fillRect(bbox, Qt::transparent);
-    p2.end();
+    if (layer->type != Layer::Type::Vector) {
+      QPainter p2(&fullImg);
+      p2.setCompositionMode(QPainter::CompositionMode_Clear);
+      p2.fillRect(bbox, Qt::transparent);
+      p2.end();
 
-    // Clear real tiles in original layer buffer
-    for (int y = bbox.top(); y <= bbox.bottom(); ++y) {
-      for (int x = bbox.left(); x <= bbox.right(); ++x) {
-        layer->buffer->setPixel(x, y, 0, 0, 0, 0);
+      // Clear real tiles in original layer buffer
+      for (int y = bbox.top(); y <= bbox.bottom(); ++y) {
+        for (int x = bbox.left(); x <= bbox.right(); ++x) {
+          layer->buffer->setPixel(x, y, 0, 0, 0, 0);
+        }
       }
     }
   }
@@ -5927,8 +5937,9 @@ void CanvasItem::applyTransform() {
     if (layer->type == Layer::Type::Vector) {
       if (layer->vectorData) {
         QTransform t;
-        t.translate(-m_transformBox.x(), -m_transformBox.y());
+        t.translate(m_transformBox.x(), m_transformBox.y());
         t = t * m_transformMatrix;
+        t.translate(-m_transformBox.x(), -m_transformBox.y());
         layer->vectorData->transformAll(t);
         
         layer->buffer->clear();
@@ -6383,7 +6394,7 @@ void CanvasItem::finalizeVectorStroke() {
   if (m_tool == ToolType::VectorEraser || 
       (m_tool == ToolType::Eraser && layer->type == Layer::Type::Vector)) {
     if (m_vectorPointBuffer.size() >= 2) {
-      auto eraserSegments = fitBezierChain(m_vectorPointBuffer, 1.5f);
+      auto eraserSegments = fitBezierChain(m_vectorPointBuffer, 3.0f, 1.5f);
       if (!eraserSegments.empty()) {
         VectorStroke eraserStroke;
         eraserStroke.segments = std::move(eraserSegments);
@@ -6404,7 +6415,7 @@ void CanvasItem::finalizeVectorStroke() {
     }
   } else {
     if (m_vectorPointBuffer.size() >= 2) {
-      auto segments = fitBezierChain(m_vectorPointBuffer, 2.0f);
+      auto segments = fitBezierChain(m_vectorPointBuffer, 6.0f, 3.0f);
       if (!segments.empty()) {
         VectorStroke stroke;
         stroke.segments = std::move(segments);

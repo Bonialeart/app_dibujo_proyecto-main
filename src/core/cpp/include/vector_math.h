@@ -44,6 +44,6 @@ struct StrokeDistanceResult {
 StrokeDistanceResult distanceToStroke(const VPoint2D& point, const VectorStroke& stroke);
 
 // Fit a series of input points into a chain of Bezier segments using Philip Schneider's algorithm
-std::vector<BezierSegment> fitBezierChain(const std::vector<VPoint2D>& points, float tolerance = 2.0f);
+std::vector<BezierSegment> fitBezierChain(const std::vector<VPoint2D>& points, float tolerance = 4.0f, float epsilon = 2.0f);
 
 } // namespace artflow
