@@ -10,7 +10,7 @@
                 "description": "Acuarela clasica — forma de charco, borde oscuro tipo tide-mark"
             },
             "shape": {
-                "tip_texture": "wc_round.png",
+                "tip_texture": "shape_round.png",
                 "follow_stroke": false,
                 "roundness": 0.92,
                 "scatter": 0.0,
@@ -18,7 +18,7 @@
                 "count": 1
             },
             "grain": {
-                "texture": "grain_watercolor_paper.png",
+                "texture": "pincel_redondo.sut.1.layer.png",
                 "scale": 80.0,
                 "intensity": 0.28,
                 "blend_mode": "multiply",
@@ -74,16 +74,23 @@
                 "description": "Efecto aguada — mucha agua, pintura muy clara y transparente con hermosos bordes"
             },
             "shape": {
-                "tip_texture": "wc_wet_bloom.png",
+                "tip_texture": "acuarela_aguada.sut.3.layer.png",
                 "follow_stroke": false,
                 "roundness": 1.0,
                 "scatter": 0.0,
                 "count": 1
             },
+            "dual_brush": {
+                "enabled": true,
+                "tip_texture": "acuarela_aguada_4.png",
+                "scale": 1.25,
+                "rotation": 0.0,
+                "blend_mode": "multiply"
+            },
             "grain": {
-                "texture": "grain_watercolor_paper.png",
-                "scale": 60.0,
-                "intensity": 0.28,
+                "texture": "acuarela_aguada.sut.2.layer.png",
+                "scale": 25.0,
+                "intensity": 0.80,
                 "rolling": true
             },
             "stroke": {
@@ -116,13 +123,13 @@
                 "description": "Lavado suave y transparente — ideal para degradados y fondos fluidos"
             },
             "shape": {
-                "tip_texture": "wc_wet_on_wet.png",
+                "tip_texture": "húmedo_suave.sut.2.layer.png",
                 "follow_stroke": false,
                 "roundness": 1.0,
                 "count": 1
             },
             "grain": {
-                "texture": "grain_watercolor_paper.png",
+                "texture": "húmedo_suave.sut.1.layer.png",
                 "scale": 92.0,
                 "intensity": 0.25,
                 "blend_mode": "multiply"
@@ -176,6 +183,201 @@
                 "default_opacity": 0.80,
                 "default_hardness": 0.30,
                 "default_flow": 0.90
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-seca-clip",
+                "name": "Acuarela Seca Clip",
+                "category": "Watercolor",
+                "description": "Acuarela seca con bordes marcados de Clip Studio"
+            },
+            "shape": {
+                "tip_texture": "shape_textured.png",
+                "follow_stroke": false,
+                "roundness": 0.9,
+                "count": 1
+            },
+            "grain": {
+                "texture": "acuarela_seca.sut.1.layer.png",
+                "scale": 90.0,
+                "intensity": 0.55
+            },
+            "stroke": { "spacing": 0.06, "streamline": 0.40 },
+            "wet_mix": { "wetness": 0.60, "dilution": 0.25, "bleed": 0.55, "absorption_rate": 0.35, "drying_time": 1.5 },
+            "pigment": { "granulation": 0.45 },
+            "bloom": { "enabled": true, "intensity": 0.5 },
+            "edge_darkening": { "enabled": true, "intensity": 0.6 },
+            "customize": {
+                "default_size": 45,
+                "default_opacity": 0.8
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-rotulador-clip",
+                "name": "Rotulador Punta Pincel",
+                "category": "Watercolor",
+                "description": "Rotulador punta pincel flexible y dinamico de Clip Studio"
+            },
+            "shape": {
+                "tip_texture": "rotulador_punta_pincel.sut.2.layer.png",
+                "roundness": 0.85,
+                "count": 1
+            },
+            "grain": {
+                "texture": "rotulador_punta_pincel.sut.1.layer.png",
+                "scale": 90.0,
+                "intensity": 0.3
+            },
+            "stroke": { "spacing": 0.02, "streamline": 0.30 },
+            "customize": {
+                "default_size": 30,
+                "default_opacity": 1.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-aguada-clip",
+                "name": "Tinta Aguada Artistica",
+                "category": "Watercolor",
+                "description": "Tinta tradicional china aguada de Clip Studio"
+            },
+            "shape": {
+                "tip_texture": "tinta_aguada.sut.2.layer.png",
+                "roundness": 0.9,
+                "count": 1
+            },
+            "grain": {
+                "texture": "tinta_aguada.sut.1.layer.png",
+                "scale": 100.0,
+                "intensity": 0.5
+            },
+            "stroke": { "spacing": 0.03, "streamline": 0.5 },
+            "wet_mix": { "dilution": 0.4, "bleed": 0.75 },
+            "pigment": { "granulation": 0.2 },
+            "customize": {
+                "default_size": 35,
+                "default_opacity": 0.9
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-humedo-clip",
+                "name": "Tinta Papel Humedo",
+                "category": "Watercolor",
+                "description": "Efecto de tinta corriendo en papel mojado"
+            },
+            "shape": {
+                "tip_texture": "tinta_sobre_papel_húmedo.sut.2.layer.png",
+                "roundness": 0.9,
+                "count": 1
+            },
+            "grain": {
+                "texture": "tinta_sobre_papel_húmedo.sut.1.layer.png",
+                "scale": 110.0,
+                "intensity": 0.6
+            },
+            "stroke": { "spacing": 0.05, "streamline": 0.4 },
+            "wet_mix": { "dilution": 0.6, "bleed": 0.9, "absorption_rate": 0.1 },
+            "bloom": { "enabled": true },
+            "customize": {
+                "default_size": 50,
+                "default_opacity": 0.8
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-clara-clip",
+                "name": "Agua Clara Wash",
+                "category": "Watercolor",
+                "description": "Lavados muy diluidos de agua cristalina"
+            },
+            "shape": {
+                "tip_texture": "agua_clara.sut.1.layer.png",
+                "roundness": 0.95,
+                "count": 1
+            },
+            "grain": {
+                "texture": "agua_clara.sut.2.layer.png",
+                "scale": 80.0,
+                "intensity": 0.4
+            },
+            "stroke": { "spacing": 0.08, "streamline": 0.6 },
+            "wet_mix": { "dilution": 0.95, "bleed": 0.95 },
+            "customize": {
+                "default_size": 65,
+                "default_opacity": 0.5
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-suave-clip",
+                "name": "Humedo Suave Blend",
+                "category": "Watercolor",
+                "description": "Mezclador humedo sumamente suave (arrastra color)"
+            },
+            "shape": {
+                "tip_texture": "húmedo_suave.sut.2.layer.png",
+                "roundness": 1.0,
+                "count": 1
+            },
+            "grain": {
+                "texture": "húmedo_suave.sut.1.layer.png",
+                "scale": 100.0,
+                "intensity": 0.4
+            },
+            "stroke": { "spacing": 0.04, "streamline": 0.3 },
+            "wet_mix": { "blend_only": true },
+            "customize": {
+                "default_size": 55,
+                "default_opacity": 0.0
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-seca-sut-clip",
+                "name": "Tinta Seca Sut",
+                "category": "Watercolor",
+                "description": "Pluma estilo oriental seco"
+            },
+            "shape": {
+                "tip_texture": "tinta_seca.sut.2.layer.png",
+                "roundness": 0.8,
+                "count": 1
+            },
+            "grain": {
+                "texture": "tinta_seca.sut.1.layer.png",
+                "scale": 120.0,
+                "intensity": 0.7
+            },
+            "stroke": { "spacing": 0.03, "streamline": 0.2 },
+            "customize": {
+                "default_size": 25,
+                "default_opacity": 0.9
+            }
+        },
+        {
+            "meta": {
+                "uuid": "wc-splatter-pro-clip",
+                "name": "Acuarela Salpicaduras Pro",
+                "category": "Watercolor",
+                "description": "Gotas y salpicaduras de acuarela"
+            },
+            "shape": {
+                "tip_texture": "salpicaduras.sut.2.layer.png",
+                "roundness": 0.9,
+                "count": 1
+            },
+            "grain": {
+                "texture": "salpicaduras.sut.1.layer.png",
+                "scale": 100.0,
+                "intensity": 0.4
+            },
+            "stroke": { "spacing": 0.3, "streamline": 0.0 },
+            "customize": {
+                "default_size": 80,
+                "default_opacity": 0.8
             }
         }
     ]

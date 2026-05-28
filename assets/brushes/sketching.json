@@ -15,7 +15,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "pencil_hb.png",
+        "tip_texture": "pincel_texturizado.png",
         "roundness": 0.8,
         "contrast": 1.1,
         "count": 1
@@ -52,7 +52,7 @@
         "scale": 0.5,
         "intensity": 0.72,
         "contrast": 1.1,
-        "texture": "grain_paper_standard.png"
+        "texture": "grain_sketch_paper.png"
       },
       "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {
@@ -79,7 +79,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "pencil_6b_real.png",
+        "tip_texture": "textured.png",
         "roundness": 0.6,
         "contrast": 1.0,
         "count": 1,
@@ -117,7 +117,7 @@
         "scale": 0.85,
         "intensity": 0.92,
         "contrast": 1.15,
-        "texture": "grain_paper_standard.png"
+        "texture": "carboncillo.png"
       },
       "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {
@@ -274,7 +274,7 @@
         "anti_aliasing": true
       },
       "shape": {
-        "tip_texture": "mechanical_0_5.png",
+        "tip_texture": "portaminas.png",
         "roundness": 1.0,
         "contrast": 1.2,
         "count": 1
@@ -307,8 +307,9 @@
       },
       "grain": {
         "scale": 0.6,
-        "intensity": 0.15,
-        "contrast": 1.0
+        "intensity": 0.6,
+        "contrast": 1.0,
+        "texture": "carboncillo.png"
       },
       "wet_mix": { "wet_mix": 0.0, "pigment": 1.0 },
       "randomize": {},

@@ -248,8 +248,8 @@ void main() {
         vec2 globalCoord = vWorldPos / (5.0 * grainScale);
         vec4 grainSample = texture(grainTexture, globalCoord);
 
-        // Extract grain value (handles both grayscale and color textures)
-        float grainVal = max(grainSample.a, dot(grainSample.rgb, vec3(0.299, 0.587, 0.114)));
+        // Extract grain value (handles transparent and opaque paper textures)
+        float grainVal = (grainSample.a < 0.99) ? grainSample.a : dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
 
         // Multiplicative, subtractive, or physical threshold blend
         if (uGrainBlendMode == 0) {

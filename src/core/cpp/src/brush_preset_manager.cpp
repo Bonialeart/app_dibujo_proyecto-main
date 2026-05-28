@@ -392,13 +392,13 @@ void BrushPresetManager::loadDefaults() {
 
   // ==================== SKETCH & INK ====================
   addBrush("Sketch & Ink", "Pencil HB", 8, 0.7f, 0.2f, 0.05f, 0.25f,
-           "grain_paper_standard.png", 200.0f, 0.6f, "pencil_hb.png", 0, 0, true, true,
+           "grain_sketch_paper.png", 200.0f, 0.6f, "pincel_texturizado.png", 0, 0, true, true,
            0, 0.08f);
   addBrush("Sketch & Ink", "Pencil 6B", 20, 0.9f, 0.4f, 0.04f, 0.1f,
-           "grain_paper_standard.png", 200.0f, 0.6f, "pencil_6b_real.png", 0, 0, true, true,
+           "carboncillo.png", 200.0f, 0.6f, "textured.png", 0, 0, true, true,
            0, 0.12f);
   addBrush("Sketch & Ink", "Mechanical", 2.5f, 0.95f, 0.95f, 0.008f, 0.3f,
-           "grain_paper_standard.png", 450.0f, 0.75f, "mechanical_0_5.png", 0, 0, true, true,
+           "carboncillo.png", 450.0f, 0.75f, "portaminas.png", 0, 0, true, true,
            0, 0.01f, 1.0f, 0.4f);
   addBrush("Sketch & Ink", "Ink Pen", 12, 1.0f, 1.0f, 0.015f, 0.75f, "", 0, 0,
            "ink_roller.png", 0, 0, true, false, -0.2f, 0, 1.0f, 0.8f);
@@ -409,9 +409,19 @@ void BrushPresetManager::loadDefaults() {
   addBrush("Sketch & Ink", "Marker", 28, 0.35f, 0.95f, 0.03f, 0.15f, "", 0, 0,
            "paint_flat.png", 0, 0, false, true);
 
+  // --- BRAND NEW CUSTOM SKETCH & INK BRUSHES ---
+  addBrush("Sketch & Ink", "Carboncillo Pro", 24, 0.85f, 0.35f, 0.06f, 0.0f,
+           "carboncillo.png", 180.0f, 0.7f, "carboncillo.png", 0, 0, true, true, 0, 0.15f);
+  addBrush("Sketch & Ink", "Tiza Creyón", 30, 0.9f, 0.45f, 0.05f, 0.0f,
+           "tiza.png", 150.0f, 0.65f, "tiza.png", 0, 0, true, true);
+  addBrush("Sketch & Ink", "Lápiz Triangular", 16, 0.95f, 0.8f, 0.02f, 0.2f,
+           "grain_sketch_paper.png", 220.0f, 0.5f, "triangular.png", 0, 0, true, true);
+  addBrush("Sketch & Ink", "Tinta China Pro", 14, 1.0f, 0.95f, 0.012f, 0.7f,
+           "", 0, 0, "tinta_china.png", 0, 0, true, false);
+
   // ==================== PAINT & BLEND ====================
   addBrush("Paint & Blend", "Watercolor", 50, 0.3f, 0.15f, 0.08f, 0.45f,
-           "grain_watercolor_paper.png", 80.0f, 0.5f, "basic_watercolor.png", 0.78f, 0,
+           "pincel_redondo.sut.1.layer.png", 80.0f, 0.5f, "shape_round.png", 0.78f, 0,
            true, false, 0, 0.06f);
   {
     BrushPreset &wcPreset = m_groups.back().brushes.back();
@@ -431,18 +441,47 @@ void BrushPresetManager::loadDefaults() {
   }
 
   addBrush("Paint & Blend", "Watercolor Wet", 60, 0.25f, 0.05f, 0.1f, 0.5f,
-           "grain_watercolor_paper.png", 60.0f, 0.4f, "watercolor.png", 0.90f, 0,
+           "acuarela_aguada.sut.2.layer.png", 25.0f, 0.8f, "acuarela_aguada.sut.3.layer.png", 0.88f, 0,
            true, false, 0, 0.1f);
   {
     BrushPreset &wcPreset = m_groups.back().brushes.back();
-    wcPreset.wetMix.dilution = 0.88f;
-    wcPreset.wetMix.bleed = 0.80f;
-    wcPreset.wetMix.absorptionRate = 0.15f;
-    wcPreset.wetMix.dryingTime = 3.2f;
-    wcPreset.pigment.granulation = 0.30f;
-    wcPreset.pigment.flow = 0.10f;
-    wcPreset.bloom.enabled = false;
-    wcPreset.edgeDarkening.enabled = false;
+    wcPreset.wetMix.wetness = 0.88f;
+    wcPreset.wetMix.dilution = 0.80f;
+    wcPreset.wetMix.bleed = 0.92f;
+    wcPreset.wetMix.absorptionRate = 0.05f;
+    wcPreset.wetMix.dryingTime = 5.0f;
+    wcPreset.pigment.granulation = 0.20f;
+    wcPreset.pigment.flow = 0.65f;
+    wcPreset.bloom.enabled = true;
+    wcPreset.bloom.intensity = 0.45f;
+    wcPreset.bloom.radius = 24.0f;
+    wcPreset.edgeDarkening.enabled = true;
+    wcPreset.edgeDarkening.intensity = 0.75f;
+    wcPreset.edgeDarkening.width = 0.18f;
+    wcPreset.dualBrush.enabled = true;
+    wcPreset.dualBrush.tipTexture = "acuarela_aguada_4.png";
+    wcPreset.dualBrush.scale = 1.25f;
+    wcPreset.dualBrush.rotation = 0.0f;
+    wcPreset.dualBrush.blendMode = "multiply";
+  }
+
+  addBrush("Paint & Blend", "Watercolor Splatter", 75, 0.4f, 0.1f, 0.25f, 0.1f,
+           "salpicaduras.sut.1.layer.png", 120.0f, 0.6f, "salpicaduras.sut.2.layer.png", 0.65f, 0,
+           true, false, 0, 0.35f);
+  {
+    BrushPreset &wcPreset = m_groups.back().brushes.back();
+    wcPreset.wetMix.dilution = 0.3f;
+    wcPreset.wetMix.bleed = 0.7f;
+    wcPreset.wetMix.absorptionRate = 0.4f;
+    wcPreset.wetMix.dryingTime = 1.8f;
+    wcPreset.pigment.granulation = 0.6f;
+    wcPreset.pigment.flow = 0.80f;
+    wcPreset.bloom.enabled = true;
+    wcPreset.bloom.intensity = 0.75f;
+    wcPreset.bloom.radius = 12.0f;
+    wcPreset.edgeDarkening.enabled = true;
+    wcPreset.edgeDarkening.intensity = 0.70f;
+    wcPreset.edgeDarkening.width = 0.22f;
   }
   addBrush("Paint & Blend", "Oil Paint", 40, 0.95f, 0.75f, 0.015f, 0.35f,
            "grain_canvas_weave.png", 150.0f, 0.7f, "oil_bristle_pro.png", 0, 0.4f, true,
@@ -486,6 +525,67 @@ void BrushPresetManager::loadDefaults() {
     p.wetMix.blendOnly = true;
     p.defaultOpacity = 0.0f;
   }
+
+  // --- BRAND NEW CUSTOM PAINT & BLEND BRUSHES FROM CLIP STUDIO PAINT ---
+  addBrush("Paint & Blend", "Óleo Clip Studio", 40, 0.95f, 0.75f, 0.015f, 0.35f,
+           "grain_canvas_weave.png", 150.0f, 0.7f, "oil.png", 0, 0.4f, true, false);
+
+  addBrush("Paint & Blend", "Acuarela Seca Clip", 45, 0.35f, 0.1f, 0.06f, 0.4f,
+           "acuarela_seca.sut.1.layer.png", 90.0f, 0.55f, "shape_textured.png", 0.6f, 0, true, true);
+  {
+    BrushPreset &wcPreset = m_groups.back().brushes.back();
+    wcPreset.wetMix.dilution = 0.25f;
+    wcPreset.wetMix.bleed = 0.55f;
+    wcPreset.wetMix.absorptionRate = 0.35f;
+    wcPreset.wetMix.dryingTime = 1.5f;
+    wcPreset.pigment.granulation = 0.45f;
+    wcPreset.bloom.enabled = true;
+    wcPreset.edgeDarkening.enabled = true;
+  }
+
+  addBrush("Paint & Blend", "Rotulador Punta Pincel", 30, 0.65f, 0.85f, 0.02f, 0.3f,
+           "rotulador_punta_pincel.sut.1.layer.png", 90.0f, 0.3f, "rotulador_punta_pincel.sut.2.layer.png", 0, 0, true, true);
+
+  addBrush("Paint & Blend", "Tinta Aguada Artística", 35, 0.45f, 0.5f, 0.03f, 0.5f,
+           "tinta_aguada.sut.1.layer.png", 100.0f, 0.5f, "tinta_aguada.sut.2.layer.png", 0.7f, 0, true, true);
+  {
+    BrushPreset &wcPreset = m_groups.back().brushes.back();
+    wcPreset.wetMix.dilution = 0.4f;
+    wcPreset.wetMix.bleed = 0.75f;
+    wcPreset.pigment.granulation = 0.2f;
+  }
+
+  addBrush("Paint & Blend", "Tinta Papel Húmedo", 50, 0.35f, 0.3f, 0.05f, 0.4f,
+           "tinta_sobre_papel_húmedo.sut.1.layer.png", 110.0f, 0.6f, "tinta_sobre_papel_húmedo.sut.2.layer.png", 0.85f, 0, true, true);
+  {
+    BrushPreset &wcPreset = m_groups.back().brushes.back();
+    wcPreset.wetMix.dilution = 0.6f;
+    wcPreset.wetMix.bleed = 0.9f;
+    wcPreset.wetMix.absorptionRate = 0.1f;
+    wcPreset.bloom.enabled = true;
+  }
+
+  addBrush("Paint & Blend", "Agua Clara Wash", 65, 0.2f, 0.1f, 0.08f, 0.6f,
+           "agua_clara.sut.2.layer.png", 80.0f, 0.4f, "agua_clara.sut.1.layer.png", 0.95f, 0, true, false);
+  {
+    BrushPreset &wcPreset = m_groups.back().brushes.back();
+    wcPreset.wetMix.dilution = 0.95f;
+    wcPreset.wetMix.bleed = 0.95f;
+  }
+
+  addBrush("Paint & Blend", "Húmedo Suave Blend", 55, 0.0f, 0.2f, 0.04f, 0.0f,
+           "húmedo_suave.sut.1.layer.png", 100.0f, 0.4f, "húmedo_suave.sut.2.layer.png", 1.0f, 0.95f, true, false);
+  {
+    BrushPreset &p = m_groups.back().brushes.back();
+    p.wetMix.blendOnly = true;
+    p.defaultOpacity = 0.0f;
+  }
+
+  addBrush("Paint & Blend", "Tinta Seca Sut", 25, 0.9f, 0.8f, 0.03f, 0.2f,
+           "tinta_seca.sut.1.layer.png", 120.0f, 0.7f, "tinta_seca.sut.2.layer.png", 0, 0, true, true);
+
+  addBrush("Paint & Blend", "Acuarela Salpicaduras Pro", 80, 0.5f, 0.1f, 0.3f, 0.0f,
+           "salpicaduras.sut.1.layer.png", 100.0f, 0.4f, "salpicaduras.sut.2.layer.png", 0.5f, 0, true, false, 0, 0.5f);
 
   // ==================== AIRBRUSH ====================
   addBrush("Airbrush", "Soft", 100, 0.08f, 0.0f, 0.15f, 0.1f, "", 0, 0,

@@ -678,6 +678,8 @@ CanvasItem::~CanvasItem() {
     delete m_compFBOB;
   if (m_predictionFBO)
     delete m_predictionFBO;
+  if (m_dabFBO)
+    delete m_dabFBO;
   if (m_transformStaticTex)
     delete m_transformStaticTex;
   if (m_selectionTex)
@@ -720,6 +722,10 @@ void CanvasItem::cleanupGlResources() {
   if (m_predictionFBO) {
     delete m_predictionFBO;
     m_predictionFBO = nullptr;
+  }
+  if (m_dabFBO) {
+    delete m_dabFBO;
+    m_dabFBO = nullptr;
   }
 }
 
@@ -2338,6 +2344,10 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       delete m_pongFBO;
       m_pongFBO = nullptr;
     }
+    if (m_dabFBO) {
+      delete m_dabFBO;
+      m_dabFBO = nullptr;
+    }
     m_lastActiveLayerIndex = m_activeLayerIndex;
     m_gradientMapDirty = true;
   }
@@ -2520,6 +2530,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
         delete m_pingFBO;
       if (m_pongFBO)
         delete m_pongFBO;
+      if (m_dabFBO)
+        delete m_dabFBO;
 
       // EXPLICIT FORMAT with Alpha support and 0 samples (Stable)
       QOpenGLFramebufferObjectFormat format;
@@ -2531,6 +2543,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       m_pingFBO =
           new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
       m_pongFBO =
+          new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
+      m_dabFBO =
           new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
 
       // Initialize with current layer content
@@ -2547,11 +2561,29 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       m_pingFBO->release();
     }
 
+    // Failsafe for m_dabFBO
+    if (!m_dabFBO) {
+      QOpenGLFramebufferObjectFormat format;
+      format.setInternalTextureFormat(GL_RGBA16F);
+      format.setSamples(0);
+      format.setAttachment(QOpenGLFramebufferObject::CombinedDepthStencil);
+      m_dabFBO = new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
+    }
+
     // Copiar estado anterior (Ping -> Pong) de forma eficiente (Blit)
     // Esto evita descargar texturas de GPU a CPU
     QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
 
-    m_pongFBO->bind();
+    bool isWc = isWatercolorBrush() && settings.type != BrushSettings::Type::Eraser;
+    if (isWc) {
+      m_dabFBO->bind();
+      QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
+      f->glClearColor(0, 0, 0, 0);
+      f->glClear(GL_COLOR_BUFFER_BIT);
+    } else {
+      m_pongFBO->bind();
+    }
+
     QOpenGLPaintDevice device2(m_canvasWidth, m_canvasHeight);
     QPainter fboPainter2(&device2);
 
@@ -2668,7 +2700,11 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     }
 
     fboPainter2.end();
-    m_pongFBO->release();
+    if (isWc) {
+      m_dabFBO->release();
+    } else {
+      m_pongFBO->release();
+    }
 
     layer->markDirty(canvasRect.toAlignedRect());
     std::swap(m_pingFBO, m_pongFBO);
@@ -2678,7 +2714,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     // Se activa automáticamente si el pincel pertenece a la categoría Watercolor
     // o tiene wetness > 0.3 en su preset.
     // ─────────────────────────────────────────────────────────────────────
-    if (isWatercolorBrush() && settings.type != BrushSettings::Type::Eraser) {
+    if (isWc) {
         // Inicializar el motor bajo demanda (primera vez o si cambió el tamaño)
         if (!m_watercolorEngine) {
             m_watercolorEngine = new WatercolorEngine(this);
@@ -2704,14 +2740,14 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
                                              settings.grainTextureID);
         }
 
-        // El dab ya fue pintado en m_pingFBO por el motor normal.
+        // El dab ya fue pintado en m_dabFBO por el motor normal.
         // Ahora pasamos ese resultado por el pipeline de acuarela:
         // el WatercolorEngine aplica la acumulación, wet-on-wet y
         // deposita agua en el WetMap.
         auto wcParams = buildWatercolorParams();
         m_watercolorEngine->paintDab(
-            m_pingFBO->texture(),     // Dab tex (lo que se acaba de pintar)
-            m_pongFBO->texture(),     // Canvas anterior (antes del dab)
+            m_dabFBO->texture(),      // Dab tex (lo que se acaba de pintar de forma aislada)
+            m_pongFBO->texture(),     // Canvas anterior (antes del dab, ahora en m_pongFBO debido al swap)
             m_pingFBO,                // Salida: canvas con acuarela aplicada
             m_brushColor,
             wcParams,
@@ -4013,6 +4049,10 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
         m_pingFBO = nullptr;
         delete m_pongFBO;
         m_pongFBO = nullptr;
+        if (m_dabFBO) {
+          delete m_dabFBO;
+          m_dabFBO = nullptr;
+        }
       } else {
         // CPU Fallback: Stroke was drawn directly to layer buffer's raw data
         // Sync the raw data into the tile grid before capturing the undo snapshot
@@ -4297,6 +4337,10 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
       m_pingFBO = nullptr;
       delete m_pongFBO;
       m_pongFBO = nullptr;
+      if (m_dabFBO) {
+        delete m_dabFBO;
+        m_dabFBO = nullptr;
+      }
     } else {
       // CPU Fallback: Stroke was drawn directly to layer buffer's raw data
       // Sync the raw data into the tile grid before capturing the undo snapshot
@@ -11451,6 +11495,19 @@ bool CanvasItem::isWatercolorBrush() const {
     const auto *preset = bpm->findByName(m_activeBrushName);
     if (!preset) return false;
 
+    // Verificación por prefijo de UUID (todos los pinceles de acuarela tienen "wc-")
+    if (preset->uuid.startsWith("wc-", Qt::CaseInsensitive)) {
+        return true;
+    }
+
+    // Verificación por nombre
+    QString name = preset->name.toLower();
+    if (name.contains("watercolor") || name.contains("acuarela") ||
+        name.contains("aquarela")   || name.contains("aguada") ||
+        name.contains("wet")        || name.contains("splatter")) {
+        return true;
+    }
+
     // Verificación por categoría
     QString cat = preset->category.toLower();
     if (cat.contains("watercolor") || cat.contains("acuarela") ||
@@ -11458,8 +11515,8 @@ bool CanvasItem::isWatercolorBrush() const {
         return true;
     }
 
-    // Verificación por wetness — umbral 0.30
-    if (preset->wetMix.wetness > 0.30f) {
+    // Verificación por wetness — umbral 0.20
+    if (preset->wetMix.wetness > 0.20f) {
         return true;
     }
 
@@ -11494,6 +11551,7 @@ WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
 
     // Grain intensity
     params.grainIntensity = preset->grain.intensity;
+    params.grainScale     = preset->grain.scale;
 
     return params;
 }

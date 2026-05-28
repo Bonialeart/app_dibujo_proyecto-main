@@ -734,6 +734,7 @@ private:
   QOpenGLFramebufferObject *m_compFBOA = nullptr;
   QOpenGLFramebufferObject *m_compFBOB = nullptr;
   QOpenGLFramebufferObject *m_predictionFBO = nullptr;
+  QOpenGLFramebufferObject *m_dabFBO = nullptr;
   void ensureCompositionFBOs(int w, int h);
   void renderGpuComposition(QOpenGLFramebufferObject *target, int w, int h);
   uint32_t m_currentCanvasTexID = 0;
