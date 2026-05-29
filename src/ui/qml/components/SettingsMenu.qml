@@ -227,11 +227,10 @@ Popup {
                     ContentSeparator {}
                     ActionButton { text: "Transformación libre"; shortcutText: "Ctrl+T"; onClicked: { if(canvasRef) { canvasRef.isFreeTransformActive = true }; root.close() } }
                     ActionButton { text: "Licuar (Liquify)"; onClicked: { if(canvasRef) canvasRef.currentTool = "liquify"; root.close() } }
-                    ContentSeparator {}
-                    ActionButton { text: "Reglas y guías"; onClicked: { root.close() } }
-                    ActionButton { text: "Guías de perspectiva"; onClicked: { root.close() } }
+                    ActionButton { text: "Reglas y guías"; onClicked: { if(canvasRef && canvasRef.perspectiveRuler) { canvasRef.perspectiveRuler.active = !canvasRef.perspectiveRuler.active }; root.close() } }
+                    ActionButton { text: "Guías de perspectiva"; onClicked: { if(canvasRef && canvasRef.perspectiveRuler) { canvasRef.perspectiveRuler.active = !canvasRef.perspectiveRuler.active }; root.close() } }
                     ActionButton { text: "Simetría"; onClicked: { if(canvasRef) { canvasRef.symmetryEnabled = !canvasRef.symmetryEnabled }; root.close() } }
-                    ActionButton { text: "Ajuste (Snapping)"; onClicked: { root.close() } }
+                    ActionButton { text: "Ajuste (Snapping)"; onClicked: { if(canvasRef && canvasRef.perspectiveRuler) { canvasRef.perspectiveRuler.active = !canvasRef.perspectiveRuler.active }; root.close() } }
                     ContentSeparator {}
                     ActionButton { text: "Selección por rango de color"; onClicked: { colorRangeDialog.open(); root.close() } }
                     Item { Layout.fillHeight: true }

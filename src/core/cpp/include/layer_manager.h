@@ -9,6 +9,7 @@
 #include "image_buffer.h"
 #include "vector_layer_data.h"
 #include <QRect>
+#include <QPainterPath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -39,12 +40,18 @@ struct Layer {
   Type type = Type::Drawing;
   int parentId = -1; // -1 means no parent (root level)
   bool expanded = true; // For group layers: is it expanded in UI?
+  QPainterPath panelPath;
+
+  bool screentoneEnabled = false;
+  float screentoneDotSize = 12.0f;
+  float screentoneAngle = 0.785f; // 45 degrees in radians
+  float screentoneContrast = 0.8f;
 
   Layer(const std::string &name, int width, int height,
         Type type = Type::Drawing)
       : stableId(nextId()), name(name), buffer(std::make_unique<ImageBuffer>(width, height)),
-        wetnessMap(std::make_unique<ImageBuffer>(width, height)),
-        pigmentMap(std::make_unique<ImageBuffer>(width, height)),
+        wetnessMap(nullptr),
+        pigmentMap(nullptr),
         dirtyRect(0, 0, width, height), type(type), parentId(-1), expanded(true) {
     if (type == Type::Vector) {
       vectorData = std::make_unique<VectorLayerData>(width, height);

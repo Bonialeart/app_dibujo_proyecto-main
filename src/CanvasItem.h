@@ -9,9 +9,12 @@
 #include "core/cpp/include/stroke_undo_command.h"
 #include "core/cpp/include/undo_manager.h"
 #include "core/cpp/include/watercolor_engine.h"
+#include "core/cpp/include/animation_manager.h"
+#include "core/cpp/include/PerspectiveRuler.h"
 #include "core/cpp/include/edge_detector.h"
 #include "core/cpp/include/color_range_selector.h"
 #include "core/cpp/include/vector_types.h"
+#include "core/cpp/include/SpeechBalloon.h"
 #include "core/cpp/include/vector_math.h"
 #include <QColor>
 #include <QCursor>
@@ -55,6 +58,8 @@ public:
   Q_ENUM(ToolType)
 
   // Properties for QML compatibility
+  Q_PROPERTY(QObject* animationManager READ animationManager NOTIFY animationManagerChanged)
+  Q_PROPERTY(QObject* perspectiveRuler READ perspectiveRuler NOTIFY perspectiveRulerChanged)
   Q_PROPERTY(
       int brushSize READ brushSize WRITE setBrushSize NOTIFY brushSizeChanged)
   Q_PROPERTY(QColor brushColor READ brushColor WRITE setBrushColor NOTIFY
@@ -198,6 +203,9 @@ public:
 
   explicit CanvasItem(QQuickItem *parent = nullptr);
   ~CanvasItem() override;
+
+  QObject* animationManager() const { return m_animationManager; }
+  QObject* perspectiveRuler() const { return m_perspectiveRuler; }
 
   void paint(QPainter *painter) override;
 
@@ -368,6 +376,22 @@ public:
   Q_INVOKABLE void setLayerPrivate(int index, bool isPrivate);
   Q_INVOKABLE void setActiveLayer(int index);
 
+  // Live GPU Screentone Properties
+  Q_INVOKABLE bool isLayerScreentoneEnabled(int index) const;
+  Q_INVOKABLE void setLayerScreentoneEnabled(int index, bool enabled);
+  Q_INVOKABLE float getLayerScreentoneDotSize(int index) const;
+  Q_INVOKABLE void setLayerScreentoneDotSize(int index, float size);
+  Q_INVOKABLE float getLayerScreentoneAngle(int index) const;
+  Q_INVOKABLE void setLayerScreentoneAngle(int index, float angle);
+  Q_INVOKABLE float getLayerScreentoneContrast(int index) const;
+  Q_INVOKABLE void setLayerScreentoneContrast(int index, float contrast);
+
+  // Vector Speech Balloon Operations
+  Q_INVOKABLE void createSpeechBalloon(float x, float y);
+  Q_INVOKABLE void removeSpeechBalloon();
+  Q_INVOKABLE void rasterizeSpeechBalloon();
+  Q_INVOKABLE bool hasActiveSpeechBalloon() const { return m_hasActiveSpeechBalloon; }
+
   // Selection Manipulation
   Q_INVOKABLE void invertSelection();
   Q_INVOKABLE void featherSelection(float radius);
@@ -518,6 +542,8 @@ public:
 
 signals:
   void canvasPreviewChanged();
+  void animationManagerChanged();
+  void perspectiveRulerChanged();
   void brushSizeChanged();
   void brushColorChanged();
   void brushOpacityChanged();
@@ -733,6 +759,7 @@ private:
   QOpenGLFramebufferObject *m_pongFBO = nullptr;
   QOpenGLFramebufferObject *m_compFBOA = nullptr;
   QOpenGLFramebufferObject *m_compFBOB = nullptr;
+  QOpenGLFramebufferObject *m_screentoneFBO = nullptr;
   QOpenGLFramebufferObject *m_predictionFBO = nullptr;
   QOpenGLFramebufferObject *m_dabFBO = nullptr;
   void ensureCompositionFBOs(int w, int h);
@@ -810,6 +837,20 @@ private:
   void executePanelCut(const QPointF &p1, const QPointF &p2);
   artflow::Layer* getActiveBasePanel(int *outIndex = nullptr) const;
   void drawActivePanelOverlay(QPainter *painter);
+  void dirtyPanelOverlay();
+
+  // Speech Balloon State
+  artflow::SpeechBalloon m_activeSpeechBalloon;
+  bool m_hasActiveSpeechBalloon = false;
+  int m_draggingBalloonHandle = 0; // 0=none, 1=center, 2=radii, 3=cp1, 4=cp2, 5=end
+
+  bool m_panelOverlayDirty = true;
+  QImage m_cachedPanelOverlay;
+  QImage m_cachedPanelBorder;
+  artflow::Layer* m_lastActiveBasePanel = nullptr;
+  int m_lastCanvasWidth = 0;
+  int m_lastCanvasHeight = 0;
+
   void drawStylizedBorder(QPainter &painter, const QPointF &p1, const QPointF &p2, const QString &style, float width);
   QRectF getLayerBoundingRect(artflow::Layer *layer);
   bool lineIntersectsRect(const QLineF &line, const QRectF &rect);
@@ -845,6 +886,7 @@ private:
 
   // Composition Shader
   QOpenGLShaderProgram *m_compositionShader = nullptr;
+  QOpenGLShaderProgram *m_screentoneShader = nullptr;
   void blendWithShader(QPainter *painter, artflow::Layer *layer,
                        const QRectF &rect, artflow::Layer *maskLayer = nullptr,
                        uint32_t overrideTextureId = 0);
@@ -932,6 +974,10 @@ private:
   // Auto-save members
   QTimer *m_autoSaveTimer = nullptr;
   bool m_projectDirty = false;
+  artflow::AnimationManager *m_animationManager = nullptr;
+  artflow::PerspectiveRuler *m_perspectiveRuler = nullptr;
+  int m_draggingVp = 0; // 0: None, 1: VP1, 2: VP2, 3: VP3
+  QPointF m_strokeStartPos;
   
   // Vector stroke building state
   std::vector<artflow::VPoint2D> m_vectorPointBuffer;
@@ -942,6 +988,7 @@ private:
   size_t m_draggedSegmentIdx = 0;
   int m_draggedPointType = -1; // 0: p0, 1: cp1, 2: cp2, 3: p3
   void finalizeVectorStroke();
+  void syncPerspectiveLayer();
 
   void handleAutoSave();
   void setupAutoSave();

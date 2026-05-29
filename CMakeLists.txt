@@ -62,6 +62,14 @@ set(CORE_SOURCES
     src/core/cpp/include/vector_types.h
     src/core/cpp/include/vector_math.h
     src/core/cpp/include/vector_layer_data.h
+    # Animation system
+    src/core/cpp/src/animation_manager.cpp
+    src/core/cpp/include/animation_manager.h
+    src/core/cpp/include/animation_frame.h
+    src/core/cpp/include/animation_track.h
+    # Perspective system
+    src/core/cpp/src/PerspectiveRuler.cpp
+    src/core/cpp/include/PerspectiveRuler.h
 )
 
 # 4. Nuevas Fuentes del Motor de UI (C++)

@@ -3992,12 +3992,13 @@ Window {
                             }
                         }
 
-                        // --- CUBE TOOLS DROPDOWN (Procreate-style) ---
+                        // --- CUBE TOOLS DROPDOWN (Settings-style redesigned) ---
                         Popup {
                             id: toolsDropdown
-                            x: leftLayout.x + cubeToolsBtn.x + (cubeToolsBtn.width - width) / 2
+                            x: Math.max(-10 * uiScale, leftLayout.x + cubeToolsBtn.x + (cubeToolsBtn.width - width) / 2)
                             y: leftLayout.y + cubeToolsBtn.y + cubeToolsBtn.height + 10 * uiScale
-                            width: 280 * uiScale
+                            width: 500 * uiScale
+                            height: 350 * uiScale
                             padding: 0
                             closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
                             
@@ -4028,163 +4029,493 @@ Window {
                                     color: "black"; opacity: 0.5
                                 }
                             }
+
+                            property int currentCategoryIndex: 0
                             
-                            contentItem: ColumnLayout {
+                            contentItem: RowLayout {
                                 spacing: 0
                                 anchors.fill: parent
-                                anchors.margins: 12 * uiScale
                                 
-                                // Header title — italic bold like Settings
-                                Text {
-                                    text: "Herramientas"
-                                    color: "#ffffff"
-                                    font.pixelSize: 16 * uiScale
-                                    font.bold: true
-                                    font.italic: true
-                                    Layout.leftMargin: 8 * uiScale
-                                    Layout.topMargin: 6 * uiScale
-                                    Layout.bottomMargin: 10 * uiScale
-                                }
-
-                                // Clean separator after title
-                                Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.06); Layout.bottomMargin: 4 * uiScale }
-                                
-                                // Reusable dropdown item with circular icon container
-                                component DropdownItem : MouseArea {
-                                    id: dropItem
-                                    property string text: ""
-                                    property string iconName: ""
-                                    property string shortcut: ""
-                                    signal clicked()
+                                // --- SIDEBAR ---
+                                Item {
+                                    Layout.preferredWidth: 150 * uiScale
+                                    Layout.fillHeight: true
                                     
-                                    Layout.fillWidth: true
-                                    height: 38 * uiScale
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-
-                                    onClicked: {
-                                        toolsDropdown.close()
-                                        dropItem.clicked()
-                                    }
-                                    
-                                    Rectangle {
+                                    ColumnLayout {
                                         anchors.fill: parent
-                                        radius: 8 * uiScale
-                                        color: dropItem.containsMouse ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
-                                        Behavior on color { ColorAnimation { duration: 100 } }
-                                    }
-                                    
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: 6 * uiScale
-                                        anchors.rightMargin: 10 * uiScale
-                                        spacing: 10 * uiScale
-                                        
-                                        // Circular icon container
-                                        Rectangle {
-                                            width: 28 * uiScale; height: 28 * uiScale
-                                            radius: 14 * uiScale
-                                            color: dropItem.containsMouse ? Qt.rgba(1,1,1,0.10) : Qt.rgba(1,1,1,0.06)
-                                            Layout.alignment: Qt.AlignVCenter
-                                            visible: iconName !== ""
+                                        anchors.topMargin: 16 * uiScale
+                                        anchors.leftMargin: 12 * uiScale
+                                        anchors.rightMargin: 8 * uiScale
+                                        anchors.bottomMargin: 12 * uiScale
+                                        spacing: 0
 
-                                            Behavior on color { ColorAnimation { duration: 100 } }
+                                        Text {
+                                            text: "Herramientas"
+                                            color: "#ffffff"
+                                            font.pixelSize: 15 * uiScale
+                                            font.bold: true
+                                            font.italic: true
+                                            Layout.leftMargin: 8 * uiScale
+                                            Layout.bottomMargin: 12 * uiScale
+                                        }
 
-                                            Image {
-                                                source: iconName !== "" ? iconPath(iconName) : ""
-                                                width: 13 * uiScale; height: 13 * uiScale
-                                                sourceSize.width: 13 * uiScale
-                                                sourceSize.height: 13 * uiScale
-                                                fillMode: Image.PreserveAspectFit
-                                                anchors.centerIn: parent
-                                                opacity: dropItem.containsMouse ? 1.0 : 0.7
-                                                Behavior on opacity { NumberAnimation { duration: 100 } }
+                                        ListView {
+                                            id: toolsCatList
+                                            Layout.fillWidth: true
+                                            Layout.fillHeight: true
+                                            clip: true
+                                            spacing: 2 * uiScale
+                                            
+                                            model: ListModel {
+                                                ListElement { name: "Creación"; icon: "edit-2.svg" }
+                                                ListElement { name: "Perspectiva"; icon: "compass.svg" }
+                                                ListElement { name: "Ayudas"; icon: "magnet.svg" }
+                                                ListElement { name: "Proyecto"; icon: "save.svg" }
+                                            }
+                                            
+                                            delegate: Rectangle {
+                                                id: toolsCatDelegate
+                                                width: toolsCatList.width
+                                                height: 32 * uiScale
+                                                radius: 16 * uiScale
+                                                
+                                                property bool isActive: (index === toolsDropdown.currentCategoryIndex)
+
+                                                gradient: isActive ? activeGrad : null
+                                                color: isActive ? "transparent" : (catHoverMa.containsMouse ? Qt.rgba(1,1,1,0.06) : "transparent")
+
+                                                Gradient {
+                                                    id: activeGrad
+                                                    orientation: Gradient.Horizontal
+                                                    GradientStop { position: 0.0; color: "#3478F6" }
+                                                    GradientStop { position: 1.0; color: "#5A9BF6" }
+                                                }
+
+                                                Behavior on color { ColorAnimation { duration: 120 } }
+                                                
+                                                RowLayout {
+                                                    anchors.fill: parent
+                                                    anchors.leftMargin: 6 * uiScale
+                                                    anchors.rightMargin: 10 * uiScale
+                                                    spacing: 8 * uiScale
+
+                                                    // Circular icon container
+                                                    Rectangle {
+                                                        width: 24 * uiScale; height: 24 * uiScale
+                                                        radius: 12 * uiScale
+                                                        color: toolsCatDelegate.isActive ? Qt.rgba(1,1,1,0.15) : Qt.rgba(1,1,1,0.06)
+                                                        Layout.alignment: Qt.AlignVCenter
+
+                                                        Behavior on color { ColorAnimation { duration: 120 } }
+
+                                                        Image {
+                                                            source: iconPath(model.icon)
+                                                            width: 12 * uiScale; height: 12 * uiScale
+                                                            sourceSize.width: 12 * uiScale; sourceSize.height: 12 * uiScale
+                                                            anchors.centerIn: parent
+                                                            opacity: toolsCatDelegate.isActive ? 1.0 : 0.7
+                                                        }
+                                                    }
+                                                    
+                                                    Text {
+                                                        text: model.name
+                                                        color: toolsCatDelegate.isActive ? "white" : (catHoverMa.containsMouse ? "#e0e0e0" : "#8e8e93")
+                                                        font.pixelSize: 12 * uiScale
+                                                        font.weight: toolsCatDelegate.isActive ? Font.DemiBold : Font.Normal
+                                                        Layout.fillWidth: true
+                                                    }
+                                                }
+                                                
+                                                MouseArea {
+                                                    id: catHoverMa
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: toolsDropdown.currentCategoryIndex = index
+                                                }
                                             }
                                         }
+                                    }
+                                }
+
+                                // Vertical Separator
+                                Rectangle {
+                                    Layout.fillHeight: true
+                                    Layout.topMargin: 16 * uiScale
+                                    Layout.bottomMargin: 16 * uiScale
+                                    width: 1
+                                    color: Qt.rgba(1, 1, 1, 0.06)
+                                }
+                                
+                                // --- CONTENT AREA ---
+                                Item {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    
+                                    // Custom inline components inside content pane
+                                    component ActionButton : MouseArea {
+                                        property string text: ""
+                                        property string shortcutText: ""
+                                        property string iconName: ""
+                                        signal clicked()
+                                        Layout.fillWidth: true
+                                        height: 38 * uiScale
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: clicked()
                                         
-                                        Text {
-                                            text: dropItem.text
-                                            color: dropItem.containsMouse ? "#ffffff" : "#8e8e93"
-                                            font.pixelSize: 14 * uiScale
-                                            Layout.fillWidth: true
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            color: parent.containsMouse ? Qt.rgba(1,1,1,0.05) : "transparent"
+                                            radius: 6 * uiScale
                                             Behavior on color { ColorAnimation { duration: 100 } }
                                         }
                                         
-                                        Text {
-                                            text: shortcut
-                                            color: "#555"
-                                            font.pixelSize: 10 * uiScale
-                                            visible: shortcut !== ""
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8 * uiScale
+                                            anchors.rightMargin: 8 * uiScale
+                                            spacing: 10 * uiScale
+
+                                            Rectangle {
+                                                width: 22 * uiScale; height: 22 * uiScale
+                                                radius: 11 * uiScale
+                                                color: parent.parent.containsMouse ? Qt.rgba(1,1,1,0.12) : Qt.rgba(1,1,1,0.05)
+                                                visible: iconName !== ""
+                                                Image {
+                                                    source: iconName !== "" ? iconPath(iconName) : ""
+                                                    width: 11 * uiScale; height: 11 * uiScale
+                                                    anchors.centerIn: parent
+                                                    opacity: parent.parent.parent.containsMouse ? 1.0 : 0.7
+                                                }
+                                            }
+
+                                            Text {
+                                                text: parent.parent.text
+                                                color: parent.parent.containsMouse ? "#ffffff" : "#d0d0d5"
+                                                font.pixelSize: 13 * uiScale
+                                                Layout.fillWidth: true
+                                                Behavior on color { ColorAnimation { duration: 100 } }
+                                            }
+
+                                            Text {
+                                                text: parent.parent.shortcutText
+                                                color: "#8e8e93"
+                                                font.pixelSize: 10 * uiScale
+                                                visible: parent.parent.shortcutText !== ""
+                                            }
                                         }
                                     }
-                                }
-                                
-                                DropdownItem {
-                                    text: "Transformación Libre"
-                                    iconName: "move.svg"
-                                    shortcut: "Ctrl+T"
-                                    onClicked: {
-                                        mainCanvas.isFreeTransformActive = true
-                                        canvasPage.activeToolIdx = 4
+
+                                    component SwitchOption : RowLayout {
+                                        property string text: ""
+                                        property bool checked: false
+                                        property string iconName: ""
+                                        signal toggled(bool isChecked)
+                                        Layout.fillWidth: true
+                                        height: 38 * uiScale
+                                        spacing: 8 * uiScale
+
+                                        Rectangle {
+                                            width: 22 * uiScale; height: 22 * uiScale
+                                            radius: 11 * uiScale
+                                            color: Qt.rgba(1,1,1,0.05)
+                                            visible: iconName !== ""
+                                            Image {
+                                                source: iconName !== "" ? iconPath(iconName) : ""
+                                                width: 11 * uiScale; height: 11 * uiScale
+                                                anchors.centerIn: parent
+                                                opacity: 0.7
+                                            }
+                                        }
+
+                                        Text {
+                                            text: parent.text
+                                            color: "#d0d0d5"
+                                            font.pixelSize: 13 * uiScale
+                                            Layout.fillWidth: true
+                                        }
+
+                                        // Sleek custom Switch
+                                        Rectangle {
+                                            id: swBackground
+                                            width: 36 * uiScale; height: 20 * uiScale
+                                            radius: 10 * uiScale
+                                            color: parent.checked ? "#3478F6" : Qt.rgba(1, 1, 1, 0.16)
+                                            border.color: parent.checked ? "#3478F6" : Qt.rgba(1, 1, 1, 0.24)
+                                            border.width: 1
+                                            Behavior on color { ColorAnimation { duration: 150 } }
+
+                                            Rectangle {
+                                                width: 16 * uiScale; height: 16 * uiScale
+                                                radius: 8 * uiScale
+                                                color: "white"
+                                                x: parent.parent.checked ? parent.width - width - 2 * uiScale : 2 * uiScale
+                                                y: 1 * uiScale
+                                                Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.InOutQuad } }
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    parent.parent.toggled(!parent.parent.checked)
+                                                }
+                                            }
+                                        }
                                     }
-                                }
-                                
-                                DropdownItem {
-                                    text: "Licuar (Liquify)"
-                                    iconName: "sliders.svg"
-                                    onClicked: mainCanvas.currentTool = "liquify"
-                                }
-                                
-                                Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.06); Layout.topMargin: 4 * uiScale; Layout.bottomMargin: 4 * uiScale }
-                                
-                                DropdownItem {
-                                    text: "Reglas y Guías"
-                                    iconName: "layout.svg"
-                                    onClicked: toastManager.show("Reglas y Guías activadas", "info")
-                                }
-                                
-                                DropdownItem {
-                                    text: "Guías de Perspectiva"
-                                    iconName: "compass.svg"
-                                    onClicked: toastManager.show("Guías de Perspectiva activadas", "info")
-                                }
-                                
-                                DropdownItem {
-                                    text: "Simetría"
-                                    iconName: "swap.svg"
-                                    onClicked: {
-                                        mainCanvas.symmetryEnabled = !mainCanvas.symmetryEnabled
-                                        toastManager.show("Simetría " + (mainCanvas.symmetryEnabled ? "Activada" : "Desactivada"), "info")
+
+                                    component TabButtonOption : RowLayout {
+                                        property string label: ""
+                                        property int selectedValue: 2
+                                        signal valueChanged(int val)
+                                        Layout.fillWidth: true
+                                        height: 40 * uiScale
+                                        spacing: 8 * uiScale
+
+                                        Text {
+                                            text: parent.label
+                                            color: "#d0d0d5"
+                                            font.pixelSize: 13 * uiScale
+                                            Layout.fillWidth: true
+                                        }
+
+                                        Rectangle {
+                                            width: 180 * uiScale; height: 28 * uiScale
+                                            radius: 14 * uiScale
+                                            color: Qt.rgba(1, 1, 1, 0.08)
+
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                spacing: 0
+
+                                                Repeater {
+                                                    model: [
+                                                        { text: "1P", val: 1 },
+                                                        { text: "2P", val: 2 },
+                                                        { text: "3P", val: 3 }
+                                                    ]
+
+                                                    delegate: Rectangle {
+                                                        Layout.fillWidth: true
+                                                        Layout.fillHeight: true
+                                                        radius: 14 * uiScale
+                                                        color: parent.parent.parent.selectedValue === modelData.val ? "#3478F6" : "transparent"
+                                                        Behavior on color { ColorAnimation { duration: 120 } }
+
+                                                        Text {
+                                                            text: modelData.text
+                                                            color: parent.parent.parent.parent.selectedValue === modelData.val ? "white" : "#8e8e93"
+                                                            font.pixelSize: 11 * uiScale
+                                                            font.bold: parent.parent.parent.parent.selectedValue === modelData.val
+                                                            anchors.centerIn: parent
+                                                        }
+
+                                                        MouseArea {
+                                                            anchors.fill: parent
+                                                            cursorShape: Qt.PointingHandCursor
+                                                            onClicked: parent.parent.parent.parent.valueChanged(modelData.val)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
-                                }
-                                
-                                DropdownItem {
-                                    text: "Ajuste (Snapping)"
-                                    iconName: "magnet.svg"
-                                    onClicked: toastManager.show("Snapping activado", "info")
-                                }
-                                
-                                Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.06); Layout.topMargin: 4 * uiScale; Layout.bottomMargin: 4 * uiScale }
-                                
-                                DropdownItem {
-                                    text: "Rango de Color..."
-                                    iconName: "eyedropper.svg"
-                                    onClicked: colorRangeDialog.open()
-                                }
 
-                                Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1, 1, 1, 0.06); Layout.topMargin: 4 * uiScale; Layout.bottomMargin: 4 * uiScale }
+                                    StackLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 16 * uiScale
+                                        currentIndex: toolsDropdown.currentCategoryIndex
 
-                                DropdownItem {
-                                    text: "Guardar Proyecto"
-                                    iconName: "save.svg"
-                                    shortcut: "Ctrl+S"
-                                    onClicked: mainWindow.saveProjectAndRefresh()
-                                }
+                                        // Page 0: Creación
+                                        ColumnLayout {
+                                            spacing: 4 * uiScale
+                                            Text {
+                                                text: "Creación"
+                                                color: "white"
+                                                font.pixelSize: 15 * uiScale
+                                                font.bold: true
+                                            }
+                                            Rectangle {
+                                                Layout.fillWidth: true; height: 1; color: Qt.rgba(1,1,1,0.06)
+                                                Layout.bottomMargin: 8 * uiScale
+                                            }
+                                            ActionButton {
+                                                text: "Transformación Libre"
+                                                shortcutText: "Ctrl+T"
+                                                iconName: "edit-2.svg"
+                                                onClicked: {
+                                                    mainCanvas.isFreeTransformActive = true
+                                                    toolsDropdown.close()
+                                                }
+                                            }
+                                            ActionButton {
+                                                text: "Licuar (Licuar)"
+                                                iconName: "sliders.svg"
+                                                onClicked: {
+                                                    mainCanvas.currentTool = "liquify"
+                                                    toolsDropdown.close()
+                                                }
+                                            }
+                                            Item { Layout.fillHeight: true }
+                                        }
 
-                                DropdownItem {
-                                    text: "Grabar/Exportar Timelapse"
-                                    iconName: "video.svg"
-                                    onClicked: videoConfigDialog.open()
+                                        // Page 1: Perspectiva
+                                        ColumnLayout {
+                                            spacing: 4 * uiScale
+                                            Text {
+                                                text: "Perspectiva 3D"
+                                                color: "white"
+                                                font.pixelSize: 15 * uiScale
+                                                font.bold: true
+                                            }
+                                            Rectangle {
+                                                Layout.fillWidth: true; height: 1; color: Qt.rgba(1,1,1,0.06)
+                                                Layout.bottomMargin: 8 * uiScale
+                                            }
+
+                                            SwitchOption {
+                                                text: "Guías de Perspectiva"
+                                                iconName: "compass.svg"
+                                                checked: mainCanvas.perspectiveRuler ? mainCanvas.perspectiveRuler.active : false
+                                                onToggled: (isChecked) => {
+                                                    if (mainCanvas.perspectiveRuler) {
+                                                        mainCanvas.perspectiveRuler.active = isChecked
+                                                    }
+                                                }
+                                            }
+
+                                            TabButtonOption {
+                                                label: "Puntos de Fuga"
+                                                selectedValue: mainCanvas.perspectiveRuler ? mainCanvas.perspectiveRuler.type : 2
+                                                onValueChanged: (val) => {
+                                                    if (mainCanvas.perspectiveRuler) {
+                                                        mainCanvas.perspectiveRuler.type = val
+                                                    }
+                                                }
+                                            }
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 8 * uiScale
+                                                SwitchOption {
+                                                    text: "VP 1"
+                                                    checked: mainCanvas.perspectiveRuler ? mainCanvas.perspectiveRuler.vp1Active : false
+                                                    onToggled: (isChecked) => {
+                                                        if (mainCanvas.perspectiveRuler) mainCanvas.perspectiveRuler.vp1Active = isChecked
+                                                    }
+                                                }
+                                                SwitchOption {
+                                                    text: "VP 2"
+                                                    checked: mainCanvas.perspectiveRuler ? mainCanvas.perspectiveRuler.vp2Active : false
+                                                    visible: mainCanvas.perspectiveRuler && mainCanvas.perspectiveRuler.type >= 2
+                                                    onToggled: (isChecked) => {
+                                                        if (mainCanvas.perspectiveRuler) mainCanvas.perspectiveRuler.vp2Active = isChecked
+                                                    }
+                                                }
+                                                SwitchOption {
+                                                    text: "VP 3"
+                                                    checked: mainCanvas.perspectiveRuler ? mainCanvas.perspectiveRuler.vp3Active : false
+                                                    visible: mainCanvas.perspectiveRuler && mainCanvas.perspectiveRuler.type >= 3
+                                                    onToggled: (isChecked) => {
+                                                        if (mainCanvas.perspectiveRuler) mainCanvas.perspectiveRuler.vp3Active = isChecked
+                                                    }
+                                                }
+                                            }
+
+                                            ActionButton {
+                                                text: "Restablecer Puntos"
+                                                iconName: "sliders.svg"
+                                                onClicked: {
+                                                    if (mainCanvas.perspectiveRuler) {
+                                                        mainCanvas.perspectiveRuler.vp1 = Qt.point(-1000, 540)
+                                                        mainCanvas.perspectiveRuler.vp2 = Qt.point(2920, 540)
+                                                        mainCanvas.perspectiveRuler.vp3 = Qt.point(960, -2000)
+                                                        mainCanvas.perspectiveRuler.vp1Active = true
+                                                        mainCanvas.perspectiveRuler.vp2Active = true
+                                                        mainCanvas.perspectiveRuler.vp3Active = true
+                                                        toastManager.show("Puntos de perspectiva restablecidos", "success")
+                                                    }
+                                                }
+                                            }
+
+                                            Item { Layout.fillHeight: true }
+                                        }
+
+                                        // Page 2: Ayudas
+                                        ColumnLayout {
+                                            spacing: 4 * uiScale
+                                            Text {
+                                                text: "Ayudas de Dibujo"
+                                                color: "white"
+                                                font.pixelSize: 15 * uiScale
+                                                font.bold: true
+                                            }
+                                            Rectangle {
+                                                Layout.fillWidth: true; height: 1; color: Qt.rgba(1,1,1,0.06)
+                                                Layout.bottomMargin: 8 * uiScale
+                                            }
+
+                                            SwitchOption {
+                                                text: "Simetría activa"
+                                                iconName: "magnet.svg"
+                                                checked: mainCanvas.symmetryEnabled
+                                                onToggled: (isChecked) => {
+                                                    mainCanvas.symmetryEnabled = isChecked
+                                                    toastManager.show("Simetría " + (isChecked ? "Activada" : "Desactivada"), "info")
+                                                }
+                                            }
+
+                                            SwitchOption {
+                                                text: "Ajuste Magnético (Snapping)"
+                                                iconName: "magnet.svg"
+                                                checked: mainCanvas.perspectiveRuler ? mainCanvas.perspectiveRuler.active : false
+                                                onToggled: (isChecked) => {
+                                                    if (mainCanvas.perspectiveRuler) {
+                                                        mainCanvas.perspectiveRuler.active = isChecked
+                                                    }
+                                                }
+                                            }
+
+                                            Item { Layout.fillHeight: true }
+                                        }
+
+                                        // Page 3: Proyecto
+                                        ColumnLayout {
+                                            spacing: 4 * uiScale
+                                            Text {
+                                                text: "Proyecto"
+                                                color: "white"
+                                                font.pixelSize: 15 * uiScale
+                                                font.bold: true
+                                            }
+                                            Rectangle {
+                                                Layout.fillWidth: true; height: 1; color: Qt.rgba(1,1,1,0.06)
+                                                Layout.bottomMargin: 8 * uiScale
+                                            }
+
+                                            ActionButton {
+                                                text: "Guardar Proyecto"
+                                                shortcutText: "Ctrl+S"
+                                                iconName: "save.svg"
+                                                onClicked: {
+                                                    mainWindow.saveProjectAndRefresh()
+                                                    toolsDropdown.close()
+                                                }
+                                            }
+
+                                            ActionButton {
+                                                text: "Grabar/Exportar Timelapse"
+                                                iconName: "video.svg"
+                                                onClicked: {
+                                                    videoConfigDialog.open()
+                                                    toolsDropdown.close()
+                                                }
+                                            }
+
+                                            Item { Layout.fillHeight: true }
+                                        }
+                                    }
                                 }
                             }
                         }

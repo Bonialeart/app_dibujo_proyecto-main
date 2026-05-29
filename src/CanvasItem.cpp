@@ -50,6 +50,84 @@
 
 using namespace artflow;
 
+static QString serializePath(const QPainterPath &path) {
+  QString result;
+  for (int i = 0; i < path.elementCount(); ++i) {
+    QPainterPath::Element el = path.elementAt(i);
+    if (el.isMoveTo()) {
+      result += QString("M %1 %2 ").arg(el.x).arg(el.y);
+    } else if (el.isLineTo()) {
+      result += QString("L %1 %2 ").arg(el.x).arg(el.y);
+    } else if (el.isCurveTo()) {
+      if (i + 2 < path.elementCount()) {
+        QPainterPath::Element cp1 = el;
+        QPainterPath::Element cp2 = path.elementAt(++i);
+        QPainterPath::Element end = path.elementAt(++i);
+        result += QString("C %1 %2, %3 %4, %5 %6 ")
+                      .arg(cp1.x).arg(cp1.y)
+                      .arg(cp2.x).arg(cp2.y)
+                      .arg(end.x).arg(end.y);
+      }
+    }
+  }
+  return result.trimmed();
+}
+
+static QPainterPath deserializePath(const QString &str) {
+  QPainterPath path;
+  QStringList tokens = str.split(' ', Qt::SkipEmptyParts);
+  for (int i = 0; i < tokens.size(); ) {
+    QString cmd = tokens[i++];
+    if (cmd == "M" && i + 1 < tokens.size()) {
+      double x = tokens[i++].toDouble();
+      double y = tokens[i++].toDouble();
+      path.moveTo(x, y);
+    } else if (cmd == "L" && i + 1 < tokens.size()) {
+      double x = tokens[i++].toDouble();
+      double y = tokens[i++].toDouble();
+      path.lineTo(x, y);
+    } else if (cmd == "C" && i + 5 < tokens.size()) {
+      auto clean = [](const QString &s) {
+        QString res = s;
+        res.remove(',');
+        return res.toDouble();
+      };
+      double x1 = clean(tokens[i++]);
+      double y1 = clean(tokens[i++]);
+      double x2 = clean(tokens[i++]);
+      double y2 = clean(tokens[i++]);
+      double x3 = clean(tokens[i++]);
+      double y3 = clean(tokens[i++]);
+      path.cubicTo(x1, y1, x2, y2, x3, y3);
+    }
+  }
+  return path;
+}
+
+static QJsonArray serializeTransform(const QTransform &t) {
+  QJsonArray arr;
+  arr.append(t.m11());
+  arr.append(t.m12());
+  arr.append(t.m13());
+  arr.append(t.m21());
+  arr.append(t.m22());
+  arr.append(t.m23());
+  arr.append(t.m31());
+  arr.append(t.m32());
+  arr.append(t.m33());
+  return arr;
+}
+
+static QTransform deserializeTransform(const QJsonArray &arr) {
+  if (arr.size() < 9)
+    return QTransform();
+  return QTransform(arr[0].toDouble(), arr[1].toDouble(), arr[2].toDouble(),
+                    arr[3].toDouble(), arr[4].toDouble(), arr[5].toDouble(),
+                    arr[6].toDouble(), arr[7].toDouble(), arr[8].toDouble());
+}
+
+
+
 class VectorUndoCommand : public artflow::UndoCommand {
 public:
   VectorUndoCommand(artflow::LayerManager *manager, int layerIndex,
@@ -202,9 +280,12 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_lastPressure(1.0f), m_isDrawing(false),
       m_brushEngine(new BrushEngine()), m_undoManager(new UndoManager()),
       m_lastActiveLayerIndex(-1), m_updateTransformTextures(false),
-      m_transformShader(nullptr), m_transformStaticTex(nullptr),
+      m_transformShader(nullptr), m_screentoneShader(nullptr), m_transformStaticTex(nullptr),
       m_selectionTex(nullptr), m_isDraggingTransformInCpp(false),
-      m_isFreeTransformActive(false) {
+      m_isFreeTransformActive(false), m_panelOverlayDirty(true),
+      m_lastActiveBasePanel(nullptr), m_lastCanvasWidth(0),
+      m_lastCanvasHeight(0), m_hasActiveSpeechBalloon(false),
+      m_draggingBalloonHandle(0) {
   m_customOpenHandCursor = loadCustomSvgCursor("hand-open.svg");
   m_customClosedHandCursor = loadCustomSvgCursor("hand-closed.svg");
 
@@ -364,6 +445,29 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   updateTheme();
   setupAutoSave();
   m_edgeDetector = new EdgeDetector();
+  m_animationManager = new AnimationManager(m_layerManager, this);
+  connect(m_animationManager, &AnimationManager::frameUpdated, this, [this]() {
+    clearRenderCaches();
+    update();
+  });
+  connect(m_animationManager, &AnimationManager::tracksChanged, this, [this]() {
+    clearRenderCaches();
+    update();
+  });
+  connect(m_animationManager, &AnimationManager::notificationRequested, this, &CanvasItem::notificationRequested);
+
+  m_perspectiveRuler = new PerspectiveRuler(this);
+  connect(m_perspectiveRuler, &PerspectiveRuler::activeChanged, this, [this]() {
+    syncPerspectiveLayer();
+    update();
+  });
+  connect(m_perspectiveRuler, &PerspectiveRuler::typeChanged, this, [this]() { update(); });
+  connect(m_perspectiveRuler, &PerspectiveRuler::vp1Changed, this, [this]() { update(); });
+  connect(m_perspectiveRuler, &PerspectiveRuler::vp2Changed, this, [this]() { update(); });
+  connect(m_perspectiveRuler, &PerspectiveRuler::vp3Changed, this, [this]() { update(); });
+  connect(m_perspectiveRuler, &PerspectiveRuler::vp1ActiveChanged, this, [this]() { update(); });
+  connect(m_perspectiveRuler, &PerspectiveRuler::vp2ActiveChanged, this, [this]() { update(); });
+  connect(m_perspectiveRuler, &PerspectiveRuler::vp3ActiveChanged, this, [this]() { update(); });
 }
 
 void CanvasItem::clearRenderCaches() {
@@ -563,6 +667,51 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
       clippingBaseTexID = sourceTexID;
     }
 
+    // Live GPU Screentone Shader Pass (Halftone conversion)
+    if (layer->screentoneEnabled && m_screentoneShader && m_screentoneShader->isLinked()) {
+      if (!m_screentoneFBO || m_screentoneFBO->width() != m_canvasWidth || m_screentoneFBO->height() != m_canvasHeight) {
+        if (m_screentoneFBO) delete m_screentoneFBO;
+        QOpenGLFramebufferObjectFormat format;
+        format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+        format.setInternalTextureFormat(GL_RGBA8);
+        m_screentoneFBO = new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
+      }
+
+      m_screentoneFBO->bind();
+      f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
+      f->glClearColor(0, 0, 0, 0);
+      f->glClear(GL_COLOR_BUFFER_BIT);
+
+      m_screentoneShader->bind();
+      f->glActiveTexture(GL_TEXTURE0);
+      f->glBindTexture(GL_TEXTURE_2D, sourceTexID);
+      m_screentoneShader->setUniformValue("uSource", 0);
+      m_screentoneShader->setUniformValue("u_dotSize", layer->screentoneDotSize);
+      m_screentoneShader->setUniformValue("u_angle", layer->screentoneAngle);
+      m_screentoneShader->setUniformValue("u_contrast", layer->screentoneContrast);
+      m_screentoneShader->setUniformValue("uScreenSize", QVector2D(m_canvasWidth, m_canvasHeight));
+
+      GLfloat screentoneVertices[] = {-1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1,
+                                      -1, 1,  0, 1, 1, -1, 1, 0, 1,  1, 1, 1};
+
+      m_screentoneShader->enableAttributeArray(0);
+      m_screentoneShader->enableAttributeArray(1);
+      m_screentoneShader->setAttributeArray(0, GL_FLOAT, screentoneVertices, 2, 4 * sizeof(GLfloat));
+      m_screentoneShader->setAttributeArray(1, GL_FLOAT, screentoneVertices + 2, 2, 4 * sizeof(GLfloat));
+
+      f->glDrawArrays(GL_TRIANGLES, 0, 6);
+
+      m_screentoneShader->disableAttributeArray(0);
+      m_screentoneShader->disableAttributeArray(1);
+      m_screentoneShader->release();
+      m_screentoneFBO->release();
+
+      sourceTexID = m_screentoneFBO->texture();
+      if (!layer->clipped) {
+        clippingBaseTexID = sourceTexID;
+      }
+    }
+
     // Blend into nextBackdrop
     nextBackdrop->bind();
     f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
@@ -590,7 +739,25 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
       m_compositionShader->setUniformValue("uHasMask", 0);
     }
 
-    m_compositionShader->setUniformValue("uOpacity", layer->opacity);
+    float effectiveOpacity = layer->opacity;
+    if (m_animationManager) {
+      for (const auto& track : m_animationManager->getTracks()) {
+        bool trackControlsLayer = false;
+        for (const auto& pair : track.getKeyframes()) {
+          if (pair.second.getLayerRef() == layer) {
+            trackControlsLayer = true;
+            break;
+          }
+        }
+        if (trackControlsLayer) {
+          AnimationFrame frame = const_cast<AnimationTrack&>(track).getFrame(m_animationManager->currentFrame());
+          effectiveOpacity = frame.getOpacity() * layer->opacity;
+          break;
+        }
+      }
+    }
+
+    m_compositionShader->setUniformValue("uOpacity", effectiveOpacity);
     m_compositionShader->setUniformValue("uMode", (int)layer->blendMode);
     m_compositionShader->setUniformValue("uDrawPanelBorderOnly", 0);
 
@@ -661,6 +828,10 @@ CanvasItem::~CanvasItem() {
     delete m_liquifyEngine;
   if (m_edgeDetector)
     delete m_edgeDetector;
+  if (m_animationManager)
+    delete m_animationManager;
+  if (m_perspectiveRuler)
+    delete m_perspectiveRuler;
 
   // Cleanup layer textures
   for (auto *tex : m_layerTextures.values()) {
@@ -676,6 +847,10 @@ CanvasItem::~CanvasItem() {
     delete m_compFBOA;
   if (m_compFBOB)
     delete m_compFBOB;
+  if (m_screentoneFBO)
+    delete m_screentoneFBO;
+  if (m_screentoneShader)
+    delete m_screentoneShader;
   if (m_predictionFBO)
     delete m_predictionFBO;
   if (m_dabFBO)
@@ -708,6 +883,10 @@ void CanvasItem::cleanupGlResources() {
   if (m_compFBOB) {
     delete m_compFBOB;
     m_compFBOB = nullptr;
+  }
+  if (m_screentoneFBO) {
+    delete m_screentoneFBO;
+    m_screentoneFBO = nullptr;
   }
 
   // Delete stroke FBOs
@@ -1074,6 +1253,34 @@ void CanvasItem::paint(QPainter *painter) {
       m_compositionShader->link();
     } else {
       qWarning() << "Composition shaders not found!";
+    }
+  }
+
+  // 0c. Initialize Screentone Shader
+  if (!m_screentoneShader) {
+    m_screentoneShader = new QOpenGLShaderProgram();
+    QStringList paths;
+    paths << QCoreApplication::applicationDirPath() + "/shaders/";
+    paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
+    paths << "src/core/shaders/";
+    paths << "../src/core/shaders/";
+    QString vertPath, fragPath;
+    for (const QString &path : paths) {
+      if (QFile::exists(path + "composition.vert") &&
+          QFile::exists(path + "screentone.frag")) {
+        vertPath = path + "composition.vert";
+        fragPath = path + "screentone.frag";
+        break;
+      }
+    }
+    if (!vertPath.isEmpty()) {
+      m_screentoneShader->addShaderFromSourceFile(QOpenGLShader::Vertex, vertPath);
+      m_screentoneShader->addShaderFromSourceFile(QOpenGLShader::Fragment, fragPath);
+      if (!m_screentoneShader->link()) {
+        qWarning() << "Screentone shader link failed:" << m_screentoneShader->log();
+      }
+    } else {
+      qWarning() << "Screentone shaders not found!";
     }
   }
 
@@ -1484,18 +1691,58 @@ void CanvasItem::paint(QPainter *painter) {
 
             QImage srcImg(lyr->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
 
+            float effectiveOpacity = lyr->opacity;
+            QTransform animTransform;
+            bool isAnimated = false;
+
+            if (m_animationManager) {
+              for (const auto& track : m_animationManager->getTracks()) {
+                bool trackControlsLayer = false;
+                for (const auto& pair : track.getKeyframes()) {
+                  if (pair.second.getLayerRef() == lyr) {
+                    trackControlsLayer = true;
+                    break;
+                  }
+                }
+                
+                if (trackControlsLayer) {
+                  AnimationFrame frame = const_cast<AnimationTrack&>(track).getFrame(m_animationManager->currentFrame());
+                  effectiveOpacity = frame.getOpacity() * lyr->opacity;
+                  animTransform = frame.getTransform();
+                  isAnimated = true;
+                  break;
+                }
+              }
+            }
+
+            painter.save();
+            if (isAnimated) {
+              painter.setTransform(animTransform, true);
+            }
+
             // Use software blender for all non-Normal modes to ensure mathematically correct W3C alpha compositing
             if (lyr->blendMode != artflow::BlendMode::Normal) {
               painter.end();
-              blendImagesCustom(destImg, srcImg, rect, targetPos, lyr->blendMode, lyr->opacity);
+              if (isAnimated) {
+                QImage tempImg(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+                tempImg.fill(Qt::transparent);
+                QPainter tempPainter(&tempImg);
+                tempPainter.setTransform(animTransform);
+                tempPainter.drawImage(0, 0, srcImg);
+                tempPainter.end();
+                blendImagesCustom(destImg, tempImg, rect, targetPos, lyr->blendMode, effectiveOpacity);
+              } else {
+                blendImagesCustom(destImg, srcImg, rect, targetPos, lyr->blendMode, effectiveOpacity);
+              }
               painter.begin(&destImg);
               painter.setRenderHint(QPainter::Antialiasing, false);
               painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
             } else {
               painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
-              painter.setOpacity(lyr->opacity);
+              painter.setOpacity(effectiveOpacity);
               painter.drawImage(targetPos, srcImg, rect);
             }
+            painter.restore();
           };
 
           // Clear only the dirty region to transparent or background color
@@ -2008,6 +2255,150 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // 📐 REGLAS Y GUÍAS DE PERSPECTIVA (PERSPECTIVE GUIDES)
+  // ══════════════════════════════════════════════════════════════
+  if (m_perspectiveRuler && m_perspectiveRuler->active()) {
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    
+    // Transformar al espacio de la cámara
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+
+    QColor guideColor(m_accentColor.red(), m_accentColor.green(), m_accentColor.blue(), 90);
+    QPen guidePen(guideColor, 1.0f / m_zoomLevel, Qt::SolidLine);
+    QPen horizonPen(QColor("#54a0ff"), 1.5f / m_zoomLevel, Qt::DashLine); // Horizon line
+
+    QPointF vp1 = m_perspectiveRuler->vp1();
+    QPointF vp2 = m_perspectiveRuler->vp2();
+    QPointF vp3 = m_perspectiveRuler->vp3();
+
+    // 1. Draw Horizon Line
+    if (m_perspectiveRuler->vp1Active() && m_perspectiveRuler->vp2Active()) {
+      painter->setPen(horizonPen);
+      painter->drawLine(vp1, vp2);
+    } else if (m_perspectiveRuler->vp1Active()) {
+      painter->setPen(horizonPen);
+      painter->drawLine(QPointF(-10000, vp1.y()), QPointF(10000, vp1.y()));
+    } else if (m_perspectiveRuler->vp2Active()) {
+      painter->setPen(horizonPen);
+      painter->drawLine(QPointF(-10000, vp2.y()), QPointF(10000, vp2.y()));
+    }
+
+    // 2. Draw radiating guidelines for each active vanishing point
+    auto drawRadiatingLines = [&](const QPointF& vp) {
+      painter->setPen(guidePen);
+      for (int angleDeg = 0; angleDeg < 360; angleDeg += 15) {
+        double angleRad = angleDeg * 3.141592653589793 / 180.0;
+        double length = 5000.0;
+        QPointF endPoint = vp + QPointF(std::cos(angleRad) * length, std::sin(angleRad) * length);
+        painter->drawLine(vp, endPoint);
+      }
+    };
+
+    if (m_perspectiveRuler->vp1Active() && m_perspectiveRuler->type() >= 1) {
+      drawRadiatingLines(vp1);
+    }
+    if (m_perspectiveRuler->vp2Active() && m_perspectiveRuler->type() >= 2) {
+      drawRadiatingLines(vp2);
+    }
+    if (m_perspectiveRuler->vp3Active() && m_perspectiveRuler->type() >= 3) {
+      drawRadiatingLines(vp3);
+    }
+
+    // 3. Draw Vanishing Point circular handles
+    auto drawVpHandle = [&](const QPointF& vp, const QString& label) {
+      painter->setPen(Qt::NoPen);
+      painter->setBrush(QColor(m_accentColor.red(), m_accentColor.green(), m_accentColor.blue(), 40));
+      painter->drawEllipse(vp, 14.0f / m_zoomLevel, 14.0f / m_zoomLevel);
+
+      painter->setBrush(m_accentColor);
+      painter->drawEllipse(vp, 6.0f / m_zoomLevel, 6.0f / m_zoomLevel);
+
+      painter->setPen(QPen(Qt::white, 1.0f / m_zoomLevel));
+      QFont font = painter->font();
+      font.setPointSizeF(10.0f / m_zoomLevel);
+      painter->setFont(font);
+      painter->drawText(vp + QPointF(10.0f / m_zoomLevel, -10.0f / m_zoomLevel), label);
+    };
+
+    bool showHandles = false;
+    if (m_layerManager) {
+      artflow::Layer *activeL = m_layerManager->getActiveLayer();
+      if (activeL && activeL->name == "Capa no destructiva") {
+        showHandles = true;
+      }
+    }
+
+    if (showHandles) {
+      if (m_perspectiveRuler->vp1Active() && m_perspectiveRuler->type() >= 1) {
+        drawVpHandle(vp1, "VP 1");
+      }
+      if (m_perspectiveRuler->vp2Active() && m_perspectiveRuler->type() >= 2) {
+        drawVpHandle(vp2, "VP 2");
+      }
+      if (m_perspectiveRuler->vp3Active() && m_perspectiveRuler->type() >= 3) {
+        drawVpHandle(vp3, "VP 3");
+      }
+    }
+
+    painter->restore();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // 💬 INTELIGENTE GLOBO DE DIÁLOGO VECTORIAL (SPEECH BALLOON)
+  // ══════════════════════════════════════════════════════════════
+  if (m_hasActiveSpeechBalloon) {
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+
+    // Transform to camera/canvas coordinates
+    painter->translate(m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+
+    QPainterPath path = m_activeSpeechBalloon.generateVectorPath();
+
+    // 1. Draw solid white background with slight translucent opacity for layout preview
+    painter->fillPath(path, QColor(255, 255, 255, 215));
+
+    // 2. Draw outline preview
+    QPen pen(QColor(0, 122, 255), 2.0f / m_zoomLevel);
+    painter->setPen(pen);
+    painter->drawPath(path);
+
+    // 3. Draw Bezier control lines for tail
+    painter->setPen(QPen(QColor(0, 122, 255, 120), 1.0f / m_zoomLevel, Qt::DashLine));
+    painter->drawLine(m_activeSpeechBalloon.tailStart1, m_activeSpeechBalloon.tailControl1);
+    painter->drawLine(m_activeSpeechBalloon.tailEnd, m_activeSpeechBalloon.tailControl2);
+
+    // 4. Draw interactive handles
+    float handleSize = 6.0f / m_zoomLevel;
+
+    // Center handle (Pink/Red)
+    painter->setBrush(QColor(255, 99, 71));
+    painter->setPen(QPen(Qt::white, 1.2f / m_zoomLevel));
+    painter->drawEllipse(QPointF(m_activeSpeechBalloon.cx, m_activeSpeechBalloon.cy), handleSize, handleSize);
+
+    // Radii width handle (Orange)
+    painter->setBrush(QColor(255, 159, 67));
+    painter->drawEllipse(QPointF(m_activeSpeechBalloon.cx + m_activeSpeechBalloon.rx, m_activeSpeechBalloon.cy), handleSize, handleSize);
+
+    // Control point 1 handle (Blue)
+    painter->setBrush(QColor(84, 160, 255));
+    painter->drawEllipse(m_activeSpeechBalloon.tailControl1, handleSize, handleSize);
+
+    // Control point 2 handle (Blue)
+    painter->drawEllipse(m_activeSpeechBalloon.tailControl2, handleSize, handleSize);
+
+    // End handle (Green)
+    painter->setBrush(QColor(29, 209, 161));
+    painter->drawEllipse(m_activeSpeechBalloon.tailEnd, handleSize, handleSize);
+
+    painter->restore();
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // ✨ PREMIUM QUICKSHAPE SNAP ANIMATION
   // ══════════════════════════════════════════════════════════════
   if (m_quickShapeSnapAnimActive && m_quickShapeType != QuickShapeType::None) {
@@ -2357,6 +2748,10 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   // Convertir posición de pantalla a canvas (rotation-aware)
   QPointF canvasPos = screenToCanvas(targetPos);
 
+  if (m_perspectiveRuler && m_perspectiveRuler->active() && m_isDrawing) {
+    canvasPos = m_perspectiveRuler->snapPoint(canvasPos, m_strokeStartPos);
+  }
+
   if (m_isVectorDrawing && layer && layer->type == Layer::Type::Vector) {
     VPoint2D vp;
     vp.x = canvasPos.x();
@@ -2597,6 +2992,17 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       fboPainter2.setClipPath(m_selectionPath);
     }
 
+    // ✅ Comic Panel Clipping
+    int basePanelIdx = -1;
+    artflow::Layer *basePanel = getActiveBasePanel(&basePanelIdx);
+    if (basePanel && !basePanel->panelPath.isEmpty()) {
+      if (basePanel->panelPath.elementCount() <= 5) {
+        fboPainter2.setClipRect(basePanel->panelPath.boundingRect(), Qt::IntersectClip);
+      } else {
+        fboPainter2.setClipPath(basePanel->panelPath, Qt::IntersectClip);
+      }
+    }
+
     // Configurar blend mode a nivel de QPainter para que fluya
     // correctamente en la GPU
     if (settings.type == BrushSettings::Type::Eraser) {
@@ -2825,6 +3231,17 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
       if (!m_selectionPath.isEmpty())
         predPainter.setClipPath(m_selectionPath);
 
+      // ✅ Comic Panel Clipping
+      int basePanelIdx = -1;
+      artflow::Layer *basePanel = getActiveBasePanel(&basePanelIdx);
+      if (basePanel && !basePanel->panelPath.isEmpty()) {
+        if (basePanel->panelPath.elementCount() <= 5) {
+          predPainter.setClipRect(basePanel->panelPath.boundingRect(), Qt::IntersectClip);
+        } else {
+          predPainter.setClipPath(basePanel->panelPath, Qt::IntersectClip);
+        }
+      }
+
       if (settings.type == BrushSettings::Type::Eraser) {
         predPainter.setCompositionMode(
             QPainter::CompositionMode_DestinationOut);
@@ -2866,6 +3283,17 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     // ✅ Selection Clipping (Premium Selection Support)
     if (!m_selectionPath.isEmpty()) {
       painter.setClipPath(m_selectionPath);
+    }
+
+    // ✅ Comic Panel Clipping
+    int basePanelIdx = -1;
+    artflow::Layer *basePanel = getActiveBasePanel(&basePanelIdx);
+    if (basePanel && !basePanel->panelPath.isEmpty()) {
+      if (basePanel->panelPath.elementCount() <= 5) {
+        painter.setClipRect(basePanel->panelPath.boundingRect(), Qt::IntersectClip);
+      } else {
+        painter.setClipPath(basePanel->panelPath, Qt::IntersectClip);
+      }
     }
 
     if (settings.type == BrushSettings::Type::Eraser) {
@@ -3146,6 +3574,19 @@ void CanvasItem::drawLine(const QPointF &p1, const QPointF &p2) {
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
+  if (!m_selectionPath.isEmpty()) {
+    painter.setClipPath(m_selectionPath);
+  }
+  int basePanelIdx = -1;
+  artflow::Layer *basePanel = getActiveBasePanel(&basePanelIdx);
+  if (basePanel && !basePanel->panelPath.isEmpty()) {
+    if (basePanel->panelPath.elementCount() <= 5) {
+      painter.setClipRect(basePanel->panelPath.boundingRect(), Qt::IntersectClip);
+    } else {
+      painter.setClipPath(basePanel->panelPath, Qt::IntersectClip);
+    }
+  }
+
   BrushSettings settings = m_brushEngine->getBrush();
   settings.color = m_brushColor;
   settings.size = m_brushSize;
@@ -3188,6 +3629,19 @@ void CanvasItem::drawCircle(const QPointF &center, float radius) {
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
+  if (!m_selectionPath.isEmpty()) {
+    painter.setClipPath(m_selectionPath);
+  }
+  int basePanelIdx = -1;
+  artflow::Layer *basePanel = getActiveBasePanel(&basePanelIdx);
+  if (basePanel && !basePanel->panelPath.isEmpty()) {
+    if (basePanel->panelPath.elementCount() <= 5) {
+      painter.setClipRect(basePanel->panelPath.boundingRect(), Qt::IntersectClip);
+    } else {
+      painter.setClipPath(basePanel->panelPath, Qt::IntersectClip);
+    }
+  }
+
   BrushSettings settings = m_brushEngine->getBrush();
   settings.color = m_brushColor;
   settings.size = m_brushSize;
@@ -3221,6 +3675,85 @@ void CanvasItem::drawCircle(const QPointF &center, float radius) {
 void CanvasItem::mousePressEvent(QMouseEvent *event) {
   forceActiveFocus();
   m_lastMousePos = event->position();
+
+  // ── Dragging Vanishing Points in Perspective Ruler ──
+  if (m_perspectiveRuler && m_perspectiveRuler->active()) {
+    bool canDrag = false;
+    if (m_layerManager) {
+      artflow::Layer *activeLayer = m_layerManager->getActiveLayer();
+      if (activeLayer && activeLayer->name == "Capa no destructiva") {
+        canDrag = true;
+      }
+    }
+
+    if (canDrag) {
+      QPointF canvasPos = screenToCanvas(event->position());
+      double hitRadius = 24.0 / m_zoomLevel;
+      
+      auto dist = [](const QPointF& p1, const QPointF& p2) {
+        double dx = p1.x() - p2.x();
+        double dy = p1.y() - p2.y();
+        return std::sqrt(dx * dx + dy * dy);
+      };
+
+      if (m_perspectiveRuler->vp1Active() && m_perspectiveRuler->type() >= 1 && dist(canvasPos, m_perspectiveRuler->vp1()) < hitRadius) {
+        m_draggingVp = 1;
+        event->accept();
+        return;
+      }
+      if (m_perspectiveRuler->vp2Active() && m_perspectiveRuler->type() >= 2 && dist(canvasPos, m_perspectiveRuler->vp2()) < hitRadius) {
+        m_draggingVp = 2;
+        event->accept();
+        return;
+      }
+      if (m_perspectiveRuler->vp3Active() && m_perspectiveRuler->type() >= 3 && dist(canvasPos, m_perspectiveRuler->vp3()) < hitRadius) {
+        m_draggingVp = 3;
+        event->accept();
+        return;
+      }
+    }
+  }
+
+  // ── Dragging Speech Balloon Handles ──
+  if (m_hasActiveSpeechBalloon) {
+    QPointF canvasPos = screenToCanvas(event->position());
+    double hitRadius = 24.0 / m_zoomLevel;
+
+    auto dist = [](const QPointF& p1, const QPointF& p2) {
+      double dx = p1.x() - p2.x();
+      double dy = p1.y() - p2.y();
+      return std::sqrt(dx * dx + dy * dy);
+    };
+
+    QPointF center(m_activeSpeechBalloon.cx, m_activeSpeechBalloon.cy);
+    QPointF radiiPoint(m_activeSpeechBalloon.cx + m_activeSpeechBalloon.rx, m_activeSpeechBalloon.cy);
+
+    if (dist(canvasPos, center) < hitRadius) {
+      m_draggingBalloonHandle = 1;
+      event->accept();
+      return;
+    }
+    if (dist(canvasPos, radiiPoint) < hitRadius) {
+      m_draggingBalloonHandle = 2;
+      event->accept();
+      return;
+    }
+    if (dist(canvasPos, m_activeSpeechBalloon.tailControl1) < hitRadius) {
+      m_draggingBalloonHandle = 3;
+      event->accept();
+      return;
+    }
+    if (dist(canvasPos, m_activeSpeechBalloon.tailControl2) < hitRadius) {
+      m_draggingBalloonHandle = 4;
+      event->accept();
+      return;
+    }
+    if (dist(canvasPos, m_activeSpeechBalloon.tailEnd) < hitRadius) {
+      m_draggingBalloonHandle = 5;
+      event->accept();
+      return;
+    }
+  }
 
   // ═══ Canvas Rotation Gesture: 'R' + Drag ═══
   if (m_rPressed) {
@@ -3512,6 +4045,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
     m_isDrawing = true;
     m_lastPos = canvasPos;
+    m_strokeStartPos = canvasPos;
     
     Layer *layer = m_layerManager->getActiveLayer();
     m_isVectorDrawing = (layer && layer->type == Layer::Type::Vector);
@@ -3582,6 +4116,52 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   event->accept(); // Evita que el evento suba a QML
+
+  // ── Dragging Vanishing Points in Perspective Ruler ──
+  if (m_perspectiveRuler && m_perspectiveRuler->active() && m_draggingVp != 0) {
+    QPointF canvasPos = screenToCanvas(event->position());
+    if (m_draggingVp == 1) {
+      m_perspectiveRuler->setVp1(canvasPos);
+    } else if (m_draggingVp == 2) {
+      m_perspectiveRuler->setVp2(canvasPos);
+    } else if (m_draggingVp == 3) {
+      m_perspectiveRuler->setVp3(canvasPos);
+    }
+    update(); // Repaint canvas guidelines and handles
+    event->accept();
+    return;
+  }
+
+  // ── Dragging Speech Balloon Handles ──
+  if (m_hasActiveSpeechBalloon && m_draggingBalloonHandle != 0) {
+    QPointF canvasPos = screenToCanvas(event->position());
+    if (m_draggingBalloonHandle == 1) { // Center
+      float dx = canvasPos.x() - m_activeSpeechBalloon.cx;
+      float dy = canvasPos.y() - m_activeSpeechBalloon.cy;
+      m_activeSpeechBalloon.cx = canvasPos.x();
+      m_activeSpeechBalloon.cy = canvasPos.y();
+      m_activeSpeechBalloon.tailStart1 += QPointF(dx, dy);
+      m_activeSpeechBalloon.tailStart2 += QPointF(dx, dy);
+      m_activeSpeechBalloon.tailControl1 += QPointF(dx, dy);
+      m_activeSpeechBalloon.tailControl2 += QPointF(dx, dy);
+      m_activeSpeechBalloon.tailEnd += QPointF(dx, dy);
+    } else if (m_draggingBalloonHandle == 2) { // Radii
+      m_activeSpeechBalloon.rx = std::max(10.0f, (float)std::abs(canvasPos.x() - m_activeSpeechBalloon.cx));
+      m_activeSpeechBalloon.ry = std::max(10.0f, m_activeSpeechBalloon.rx * 0.6f);
+      // Re-anchor tail attachments dynamically
+      m_activeSpeechBalloon.tailStart1 = QPointF(m_activeSpeechBalloon.cx - m_activeSpeechBalloon.rx * 0.3f, m_activeSpeechBalloon.cy + m_activeSpeechBalloon.ry * 0.95f);
+      m_activeSpeechBalloon.tailStart2 = QPointF(m_activeSpeechBalloon.cx + m_activeSpeechBalloon.rx * 0.3f, m_activeSpeechBalloon.cy + m_activeSpeechBalloon.ry * 0.95f);
+    } else if (m_draggingBalloonHandle == 3) { // tailControl1
+      m_activeSpeechBalloon.tailControl1 = canvasPos;
+    } else if (m_draggingBalloonHandle == 4) { // tailControl2
+      m_activeSpeechBalloon.tailControl2 = canvasPos;
+    } else if (m_draggingBalloonHandle == 5) { // tailEnd
+      m_activeSpeechBalloon.tailEnd = canvasPos;
+    }
+    update();
+    event->accept();
+    return;
+  }
 
   // Handle C++ vector point dragging
   if (m_isTransforming && m_isDraggingVectorPoint) {
@@ -3901,6 +4481,20 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
+  if (m_draggingVp != 0) {
+    m_draggingVp = 0;
+    event->accept();
+    update();
+    return;
+  }
+
+  if (m_draggingBalloonHandle != 0) {
+    m_draggingBalloonHandle = 0;
+    event->accept();
+    update();
+    return;
+  }
+
   // End rotation gesture on mouse release
   if (m_isRotatingCanvas) {
     m_isRotatingCanvas = false;
@@ -4136,6 +4730,67 @@ void CanvasItem::onWintabEvent(float x, float y, float pressure, float tiltX, fl
 }
 
 void CanvasItem::tabletEvent(QTabletEvent *event) {
+  // ── Dragging Vanishing Points in Perspective Ruler (Tablet) ──
+  if (m_perspectiveRuler && m_perspectiveRuler->active()) {
+    bool canDrag = false;
+    if (m_layerManager) {
+      artflow::Layer *activeLayer = m_layerManager->getActiveLayer();
+      if (activeLayer && activeLayer->name == "Capa no destructiva") {
+        canDrag = true;
+      }
+    }
+    
+    if (canDrag) {
+      if (event->type() == QEvent::TabletPress) {
+        QPointF canvasPos = screenToCanvas(event->position());
+        double hitRadius = 24.0 / m_zoomLevel;
+        auto dist = [](const QPointF& p1, const QPointF& p2) {
+          double dx = p1.x() - p2.x();
+          double dy = p1.y() - p2.y();
+          return std::sqrt(dx * dx + dy * dy);
+        };
+
+        if (m_perspectiveRuler->vp1Active() && m_perspectiveRuler->type() >= 1 && dist(canvasPos, m_perspectiveRuler->vp1()) < hitRadius) {
+          m_draggingVp = 1;
+          event->accept();
+          return;
+        }
+        if (m_perspectiveRuler->vp2Active() && m_perspectiveRuler->type() >= 2 && dist(canvasPos, m_perspectiveRuler->vp2()) < hitRadius) {
+          m_draggingVp = 2;
+          event->accept();
+          return;
+        }
+        if (m_perspectiveRuler->vp3Active() && m_perspectiveRuler->type() >= 3 && dist(canvasPos, m_perspectiveRuler->vp3()) < hitRadius) {
+          m_draggingVp = 3;
+          event->accept();
+          return;
+        }
+      } else if (event->type() == QEvent::TabletMove && m_draggingVp != 0) {
+        QPointF canvasPos = screenToCanvas(event->position());
+        if (m_draggingVp == 1) {
+          m_perspectiveRuler->setVp1(canvasPos);
+        } else if (m_draggingVp == 2) {
+          m_perspectiveRuler->setVp2(canvasPos);
+        } else if (m_draggingVp == 3) {
+          m_perspectiveRuler->setVp3(canvasPos);
+        }
+        update();
+        event->accept();
+        return;
+      } else if (event->type() == QEvent::TabletRelease && m_draggingVp != 0) {
+        m_draggingVp = 0;
+        update();
+        event->accept();
+        return;
+      }
+    } else {
+      if (m_draggingVp != 0 && (event->type() == QEvent::TabletRelease || event->type() == QEvent::TabletMove)) {
+        m_draggingVp = 0;
+        update();
+      }
+    }
+  }
+
   float pressure = event->pressure();
   // Normalizar presión
   if (pressure > 1.0f)
@@ -4182,6 +4837,7 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     QPointF p = event->position();
     QPointF canvasPos = screenToCanvas(p);
     m_lastPos = canvasPos;
+    m_strokeStartPos = canvasPos;
 
     Layer *layer = m_layerManager->getActiveLayer();
     m_isVectorDrawing = (layer && layer->type == Layer::Type::Vector);
@@ -4609,7 +5265,7 @@ void CanvasItem::setPanelGutterSize(float size) {
   if (m_panelGutterSize == size) return;
   m_panelGutterSize = size;
   emit panelGutterSizeChanged();
-  update();
+  dirtyPanelOverlay();
 }
 
 void CanvasItem::setPanelBorderStyle(const QString &style) {
@@ -5038,9 +5694,14 @@ void CanvasItem::apply_color_drop(int x, int y, const QColor &color) {
   if (!layer || !layer->buffer || layer->locked)
     return;
 
-  // 3. Handle Selection Mask
+  // 3. Handle Selection Mask / Panel Mask
   std::unique_ptr<artflow::ImageBuffer> selectionMask;
-  if (m_hasSelection && !m_selectionPath.isEmpty()) {
+  int basePanelIdx = -1;
+  artflow::Layer *basePanel = getActiveBasePanel(&basePanelIdx);
+  bool hasSelection = m_hasSelection && !m_selectionPath.isEmpty();
+  bool hasPanelPath = basePanel && !basePanel->panelPath.isEmpty();
+
+  if (hasSelection || hasPanelPath) {
     selectionMask =
         std::make_unique<artflow::ImageBuffer>(m_canvasWidth, m_canvasHeight);
     QImage maskImg(selectionMask->data(), m_canvasWidth, m_canvasHeight,
@@ -5049,7 +5710,14 @@ void CanvasItem::apply_color_drop(int x, int y, const QColor &color) {
 
     QPainter p(&maskImg);
     p.setRenderHint(QPainter::Antialiasing);
-    p.fillPath(m_selectionPath, Qt::white);
+    if (hasSelection && hasPanelPath) {
+      QPainterPath intersected = m_selectionPath.intersected(basePanel->panelPath);
+      p.fillPath(intersected, Qt::white);
+    } else if (hasSelection) {
+      p.fillPath(m_selectionPath, Qt::white);
+    } else if (hasPanelPath) {
+      p.fillPath(basePanel->panelPath, Qt::white);
+    }
     p.end();
   }
 
@@ -5759,6 +6427,11 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
   QImage copyA = baseImg.copy();
   QImage copyB = baseImg.copy();
 
+  QPainterPath parentPath = basePanelLayer->panelPath;
+  if (parentPath.isEmpty()) {
+    parentPath.addRect(50, 50, m_canvasWidth - 100, m_canvasHeight - 100);
+  }
+
   // Generar Panel A
   QPainter pa(&copyA);
   pa.setRenderHint(QPainter::Antialiasing);
@@ -5769,6 +6442,8 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
   pa.setCompositionMode(QPainter::CompositionMode_SourceOver);
   drawStylizedBorder(pa, lineA.p1(), lineA.p2(), m_panelBorderStyle, m_panelBorderWidth);
   pa.end();
+
+  QPainterPath newPathA = parentPath.subtracted(pPathB);
 
   // Recortar Panel A estrictamente dentro de los límites del panel original baseImg
   QPainter paMask(&copyA);
@@ -5786,6 +6461,8 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
   pb.setCompositionMode(QPainter::CompositionMode_SourceOver);
   drawStylizedBorder(pb, lineB.p1(), lineB.p2(), m_panelBorderStyle, m_panelBorderWidth);
   pb.end();
+
+  QPainterPath newPathB = parentPath.subtracted(pPathA);
 
   // Recortar Panel B estrictamente dentro de los límites del panel original baseImg
   QPainter pbMask(&copyB);
@@ -5819,6 +6496,7 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
   basePanelLayer->buffer->loadRawData(copyA.constBits());
   basePanelLayer->name = panel1Name.toStdString();
   basePanelLayer->dirty = true;
+  basePanelLayer->panelPath = newPathA;
 
   // Actualizar el nombre de la capa de dibujo activa si estaba seleccionada una de arte
   if (activeIdx != basePanelIdx) {
@@ -5851,6 +6529,7 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
     Layer *panel2 = m_layerManager->getLayer(basePanelIdx + 2);
     panel2->buffer->loadRawData(copyB.constBits());
     panel2->dirty = true;
+    panel2->panelPath = newPathB;
 
     m_layerManager->addLayer(art2Name.toStdString());
     int art2Idx = m_layerManager->getLayerCount() - 1;
@@ -5868,6 +6547,7 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
     Layer *panel2 = m_layerManager->getLayer(lastClippedIdx + 1);
     panel2->buffer->loadRawData(copyB.constBits());
     panel2->dirty = true;
+    panel2->panelPath = newPathB;
 
     m_layerManager->addLayer(art2Name.toStdString());
     int art2Idx = m_layerManager->getLayerCount() - 1;
@@ -5885,7 +6565,7 @@ void CanvasItem::executePanelCut(const QPointF &p1, const QPointF &p2) {
   }
 
   updateLayersList();
-  update();
+  dirtyPanelOverlay();
 }
 
 void CanvasItem::updateTransformCorners(const QVariantList &corners) {
@@ -6676,54 +7356,77 @@ artflow::Layer* CanvasItem::getActiveBasePanel(int *outIndex) const {
   return nullptr;
 }
 
+void CanvasItem::dirtyPanelOverlay() {
+  m_panelOverlayDirty = true;
+  update();
+}
+
 void CanvasItem::drawActivePanelOverlay(QPainter *painter) {
   if (!m_layerManager)
     return;
 
   int panelIdx = -1;
   artflow::Layer *basePanelLayer = getActiveBasePanel(&panelIdx);
-  if (!basePanelLayer || !basePanelLayer->buffer)
+  if (!basePanelLayer || !basePanelLayer->buffer) {
+    m_cachedPanelOverlay = QImage();
+    m_cachedPanelBorder = QImage();
+    m_lastActiveBasePanel = nullptr;
     return;
+  }
 
   int cw = m_canvasWidth;
   int ch = m_canvasHeight;
 
-  // 1. Create the periwinkle mask overlay (outside the active panel)
-  QImage overlayImg(cw, ch, QImage::Format_RGBA8888_Premultiplied);
-  overlayImg.fill(QColor(115, 120, 230, 70));
+  bool needRebuild = m_panelOverlayDirty ||
+                     m_cachedPanelOverlay.isNull() ||
+                     m_cachedPanelBorder.isNull() ||
+                     m_cachedPanelOverlay.width() != cw ||
+                     m_cachedPanelOverlay.height() != ch ||
+                     basePanelLayer != m_lastActiveBasePanel;
 
-  QImage maskImg(basePanelLayer->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
+  if (needRebuild) {
+    m_panelOverlayDirty = false;
+    m_lastActiveBasePanel = basePanelLayer;
+    m_lastCanvasWidth = cw;
+    m_lastCanvasHeight = ch;
 
-  QPainter op(&overlayImg);
-  op.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-  op.drawImage(0, 0, maskImg);
-  op.end();
+    // 1. Create the periwinkle mask overlay (outside the active panel)
+    m_cachedPanelOverlay = QImage(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+    m_cachedPanelOverlay.fill(QColor(115, 120, 230, 70));
 
-  // 2. Create the 2px dilated indigo border outline
-  QImage coloredMask(cw, ch, QImage::Format_RGBA8888_Premultiplied);
-  coloredMask.fill(QColor(90, 95, 245, 230));
-  {
-    QPainter cp(&coloredMask);
-    cp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-    cp.drawImage(0, 0, maskImg);
-  }
+    QImage maskImg(basePanelLayer->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
 
-  QImage borderImg(cw, ch, QImage::Format_RGBA8888_Premultiplied);
-  borderImg.fill(Qt::transparent);
-  {
-    QPainter bp(&borderImg);
-    bp.drawImage(-2, 0, coloredMask);
-    bp.drawImage(2, 0, coloredMask);
-    bp.drawImage(0, -2, coloredMask);
-    bp.drawImage(0, 2, coloredMask);
-    bp.drawImage(-1, -1, coloredMask);
-    bp.drawImage(1, -1, coloredMask);
-    bp.drawImage(-1, 1, coloredMask);
-    bp.drawImage(1, 1, coloredMask);
-    bp.drawImage(0, 0, coloredMask);
+    QPainter op(&m_cachedPanelOverlay);
+    op.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+    op.drawImage(0, 0, maskImg);
+    op.end();
 
-    bp.setCompositionMode(QPainter::CompositionMode_DestinationOut);
-    bp.drawImage(0, 0, maskImg);
+    // 2. Create the 2px dilated indigo border outline
+    QImage coloredMask(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+    coloredMask.fill(QColor(90, 95, 245, 230));
+    {
+      QPainter cp(&coloredMask);
+      cp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+      cp.drawImage(0, 0, maskImg);
+    }
+
+    m_cachedPanelBorder = QImage(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+    m_cachedPanelBorder.fill(Qt::transparent);
+    {
+      QPainter bp(&m_cachedPanelBorder);
+      bp.drawImage(-2, 0, coloredMask);
+      bp.drawImage(2, 0, coloredMask);
+      bp.drawImage(0, -2, coloredMask);
+      bp.drawImage(0, 2, coloredMask);
+      bp.drawImage(-1, -1, coloredMask);
+      bp.drawImage(1, -1, coloredMask);
+      bp.drawImage(-1, 1, coloredMask);
+      bp.drawImage(1, 1, coloredMask);
+      bp.drawImage(0, 0, coloredMask);
+
+      bp.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+      bp.drawImage(0, 0, maskImg);
+    }
   }
 
   // 3. Draw the overlay and the border onto the canvas coordinate system!
@@ -6731,8 +7434,8 @@ void CanvasItem::drawActivePanelOverlay(QPainter *painter) {
   painter->translate(m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel);
   painter->scale(m_zoomLevel, m_zoomLevel);
 
-  painter->drawImage(0, 0, overlayImg);
-  painter->drawImage(0, 0, borderImg);
+  painter->drawImage(0, 0, m_cachedPanelOverlay);
+  painter->drawImage(0, 0, m_cachedPanelBorder);
 
   painter->restore();
 }
@@ -7288,6 +7991,9 @@ bool CanvasItem::loadProject(const QString &path) {
         newLayer->reference = layerObj["reference"].toBool(false);
         newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
         newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
+        if (layerObj.contains("panelPath")) {
+          newLayer->panelPath = deserializePath(layerObj["panelPath"].toString());
+        }
 
         // Load Embedded Image Data (Base64)
         QString b64Data = layerObj["data"].toString();
@@ -7307,6 +8013,75 @@ bool CanvasItem::loadProject(const QString &path) {
             }
           }
         }
+      }
+    }
+  }
+
+  // Deserialize Animation
+  if (m_animationManager) {
+    m_animationManager->clear();
+    if (obj.contains("animation")) {
+      QJsonObject animObj = obj["animation"].toObject();
+      m_animationManager->setFps(animObj["fps"].toInt(24));
+      
+      QJsonArray tracksArr = animObj["tracks"].toArray();
+      for (const QJsonValue& trackVal : tracksArr) {
+        QJsonObject trackObj = trackVal.toObject();
+        QString trackName = trackObj["name"].toString("Track");
+        
+        m_animationManager->addTrack(trackName);
+        int trackIdx = m_animationManager->getTrackCount() - 1;
+        
+        QJsonArray keysArr = trackObj["keyframes"].toArray();
+        for (const QJsonValue& keyVal : keysArr) {
+          QJsonObject keyObj = keyVal.toObject();
+          int frame = keyObj["frame"].toInt(0);
+          int duration = keyObj["duration"].toInt(1);
+          float opacity = (float)keyObj["opacity"].toDouble(1.0);
+          QTransform transform = deserializeTransform(keyObj["transform"].toArray());
+          uint32_t layerId = (uint32_t)keyObj["layerId"].toInt(-1);
+          
+          Layer* layer = m_layerManager->getLayerByStableId(layerId);
+          if (layer) {
+            AnimationFrame frameData(layer, duration, opacity, transform);
+            m_animationManager->getTracks()[trackIdx].addKeyframe(frame, frameData);
+          }
+        }
+      }
+      m_animationManager->setCurrentFrame(animObj["currentFrame"].toInt(0));
+    }
+  }
+
+  // Deserialize PerspectiveRuler
+  if (m_perspectiveRuler) {
+    m_perspectiveRuler->setActive(false);
+    m_perspectiveRuler->setType(2);
+    m_perspectiveRuler->setVp1(QPointF(-1000.0, 540.0));
+    m_perspectiveRuler->setVp2(QPointF(2920.0, 540.0));
+    m_perspectiveRuler->setVp3(QPointF(960.0, -2000.0));
+    m_perspectiveRuler->setVp1Active(true);
+    m_perspectiveRuler->setVp2Active(true);
+    m_perspectiveRuler->setVp3Active(true);
+
+    if (obj.contains("perspectiveRuler")) {
+      QJsonObject rulerObj = obj["perspectiveRuler"].toObject();
+      m_perspectiveRuler->setActive(rulerObj["active"].toBool(false));
+      m_perspectiveRuler->setType(rulerObj["type"].toInt(2));
+      
+      if (rulerObj.contains("vp1")) {
+        QJsonObject vp = rulerObj["vp1"].toObject();
+        m_perspectiveRuler->setVp1(QPointF(vp["x"].toDouble(-1000.0), vp["y"].toDouble(540.0)));
+        m_perspectiveRuler->setVp1Active(vp["active"].toBool(true));
+      }
+      if (rulerObj.contains("vp2")) {
+        QJsonObject vp = rulerObj["vp2"].toObject();
+        m_perspectiveRuler->setVp2(QPointF(vp["x"].toDouble(2920.0), vp["y"].toDouble(540.0)));
+        m_perspectiveRuler->setVp2Active(vp["active"].toBool(true));
+      }
+      if (rulerObj.contains("vp3")) {
+        QJsonObject vp = rulerObj["vp3"].toObject();
+        m_perspectiveRuler->setVp3(QPointF(vp["x"].toDouble(960.0), vp["y"].toDouble(-2000.0)));
+        m_perspectiveRuler->setVp3Active(vp["active"].toBool(true));
       }
     }
   }
@@ -7389,6 +8164,9 @@ bool CanvasItem::saveProject(const QString &pathText) {
       if (img.save(&buffer, "PNG")) {
         QString b64 = QString::fromLatin1(buffer.data().toBase64());
         layerObj["data"] = b64;
+        if (!layer->panelPath.isEmpty()) {
+          layerObj["panelPath"] = serializePath(layer->panelPath);
+        }
         layersArray.append(layerObj);
       } else {
         qWarning() << "Failed to encode layer image";
@@ -7396,6 +8174,67 @@ bool CanvasItem::saveProject(const QString &pathText) {
     }
   }
   obj["layers"] = layersArray;
+
+  // Serialize Animation
+  if (m_animationManager) {
+    QJsonObject animObj;
+    animObj["fps"] = m_animationManager->fps();
+    animObj["currentFrame"] = m_animationManager->currentFrame();
+
+    QJsonArray tracksArr;
+    for (const auto& track : m_animationManager->getTracks()) {
+      QJsonObject trackObj;
+      trackObj["name"] = QString::fromStdString(track.getName());
+
+      QJsonArray keysArr;
+      for (const auto& pair : track.getKeyframes()) {
+        QJsonObject keyObj;
+        keyObj["frame"] = pair.first;
+        keyObj["duration"] = pair.second.getDuration();
+        keyObj["opacity"] = pair.second.getOpacity();
+        keyObj["transform"] = serializeTransform(pair.second.getTransform());
+        
+        Layer* layerRef = pair.second.getLayerRef();
+        if (layerRef) {
+          keyObj["layerId"] = (int)layerRef->stableId;
+        } else {
+          keyObj["layerId"] = -1;
+        }
+        keysArr.append(keyObj);
+      }
+      trackObj["keyframes"] = keysArr;
+      tracksArr.append(trackObj);
+    }
+    animObj["tracks"] = tracksArr;
+    obj["animation"] = animObj;
+  }
+
+  // Serialize PerspectiveRuler
+  if (m_perspectiveRuler) {
+    QJsonObject rulerObj;
+    rulerObj["active"] = m_perspectiveRuler->active();
+    rulerObj["type"] = m_perspectiveRuler->type();
+    
+    QJsonObject vp1Obj;
+    vp1Obj["x"] = m_perspectiveRuler->vp1().x();
+    vp1Obj["y"] = m_perspectiveRuler->vp1().y();
+    vp1Obj["active"] = m_perspectiveRuler->vp1Active();
+    rulerObj["vp1"] = vp1Obj;
+
+    QJsonObject vp2Obj;
+    vp2Obj["x"] = m_perspectiveRuler->vp2().x();
+    vp2Obj["y"] = m_perspectiveRuler->vp2().y();
+    vp2Obj["active"] = m_perspectiveRuler->vp2Active();
+    rulerObj["vp2"] = vp2Obj;
+
+    QJsonObject vp3Obj;
+    vp3Obj["x"] = m_perspectiveRuler->vp3().x();
+    vp3Obj["y"] = m_perspectiveRuler->vp3().y();
+    vp3Obj["active"] = m_perspectiveRuler->vp3Active();
+    rulerObj["vp3"] = vp3Obj;
+
+    obj["perspectiveRuler"] = rulerObj;
+  }
 
   // 3. Write Single .stxf File
   QFile file(targetPath);
@@ -8444,6 +9283,10 @@ void CanvasItem::updateLayersList() {
     layer["active"] = (i == m_activeLayerIndex);
     layer["stableId"] = (int)l->stableId;
     layer["parentId"] = l->parentId;
+    layer["screentoneEnabled"] = l->screentoneEnabled;
+    layer["screentoneDotSize"] = l->screentoneDotSize;
+    layer["screentoneAngle"] = l->screentoneAngle;
+    layer["screentoneContrast"] = l->screentoneContrast;
 
     // Correctly map the Layer::Type enum
     if (l->type == Layer::Type::Group) {
@@ -8805,6 +9648,8 @@ void CanvasItem::drawPanelLayout(const QString &layoutType, int gutterPx,
     QString pName = QString("Panel %1").arg(i + 1);
     int pLayerIdx = m_layerManager->addLayer(pName.toStdString());
     Layer *pLayer = m_layerManager->getLayer(pLayerIdx);
+    pLayer->panelPath = QPainterPath();
+    pLayer->panelPath.addRect(rect);
 
     // Draw white fill and black border
     QImage pImg(w, h, QImage::Format_RGBA8888_Premultiplied);
@@ -8888,6 +9733,7 @@ void CanvasItem::flattenComicPanels(const QVariantList &panelsList) {
     QString pName = QString("Panel %1").arg(i + 1);
     int pLayerIdx = m_layerManager->addLayer(pName.toStdString());
     Layer *pLayer = m_layerManager->getLayer(pLayerIdx);
+    pLayer->panelPath = path;
 
     QImage pImg(w, h, QImage::Format_RGBA8888_Premultiplied);
     pImg.fill(Qt::transparent);
@@ -8922,7 +9768,7 @@ void CanvasItem::flattenComicPanels(const QVariantList &panelsList) {
   m_layerManager->setActiveLayer(m_activeLayerIndex);
 
   updateLayersList();
-  update();
+  dirtyPanelOverlay();
   emit notificationRequested("Panels flattened to layers with clipping masks",
                              "success");
 }
@@ -8995,6 +9841,13 @@ void CanvasItem::toggleVisibility(int index) {
     l->visible = afterVal;
     l->markDirty();
 
+    // Sync with perspective ruler!
+    if (l->name == "Capa no destructiva" && m_perspectiveRuler) {
+      if (m_perspectiveRuler->active() != afterVal) {
+        m_perspectiveRuler->setActive(afterVal);
+      }
+    }
+
     // If it's a group, toggle all children recursively
     if (l->type == Layer::Type::Group) {
       uint32_t groupStableId = l->stableId;
@@ -9020,6 +9873,14 @@ void CanvasItem::setLayerVisibility(int index, bool visible) {
     }
     l->visible = visible;
     l->markDirty();
+
+    // Sync with perspective ruler!
+    if (l->name == "Capa no destructiva" && m_perspectiveRuler) {
+      if (m_perspectiveRuler->active() != visible) {
+        m_perspectiveRuler->setActive(visible);
+      }
+    }
+
     updateLayersList();
     update();
   }
@@ -9195,6 +10056,120 @@ void CanvasItem::setLayerPrivate(int index, bool isPrivate) {
   if (l) {
     l->isPrivate = isPrivate;
     updateLayersList();
+  }
+}
+
+bool CanvasItem::isLayerScreentoneEnabled(int index) const {
+  if (!m_layerManager) return false;
+  Layer *l = m_layerManager->getLayer(index);
+  return l ? l->screentoneEnabled : false;
+}
+
+void CanvasItem::setLayerScreentoneEnabled(int index, bool enabled) {
+  if (!m_layerManager) return;
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->screentoneEnabled != enabled) {
+    l->screentoneEnabled = enabled;
+    l->markDirty();
+    updateLayersList();
+    update();
+  }
+}
+
+float CanvasItem::getLayerScreentoneDotSize(int index) const {
+  if (!m_layerManager) return 12.0f;
+  Layer *l = m_layerManager->getLayer(index);
+  return l ? l->screentoneDotSize : 12.0f;
+}
+
+void CanvasItem::setLayerScreentoneDotSize(int index, float size) {
+  if (!m_layerManager) return;
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->screentoneDotSize != size) {
+    l->screentoneDotSize = size;
+    l->markDirty();
+    updateLayersList();
+    update();
+  }
+}
+
+float CanvasItem::getLayerScreentoneAngle(int index) const {
+  if (!m_layerManager) return 0.785f;
+  Layer *l = m_layerManager->getLayer(index);
+  return l ? l->screentoneAngle : 0.785f;
+}
+
+void CanvasItem::setLayerScreentoneAngle(int index, float angle) {
+  if (!m_layerManager) return;
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->screentoneAngle != angle) {
+    l->screentoneAngle = angle;
+    l->markDirty();
+    updateLayersList();
+    update();
+  }
+}
+
+float CanvasItem::getLayerScreentoneContrast(int index) const {
+  if (!m_layerManager) return 0.8f;
+  Layer *l = m_layerManager->getLayer(index);
+  return l ? l->screentoneContrast : 0.8f;
+}
+
+void CanvasItem::setLayerScreentoneContrast(int index, float contrast) {
+  if (!m_layerManager) return;
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->screentoneContrast != contrast) {
+    l->screentoneContrast = contrast;
+    l->markDirty();
+    updateLayersList();
+    update();
+  }
+}
+
+void CanvasItem::createSpeechBalloon(float x, float y) {
+  m_activeSpeechBalloon = artflow::SpeechBalloon(
+      x, y, 100.0f, 60.0f,
+      QPointF(x - 30.0f, y + 50.0f), // tailStart1
+      QPointF(x + 30.0f, y + 50.0f), // tailStart2
+      QPointF(x - 20.0f, y + 100.0f), // tailControl1
+      QPointF(x + 20.0f, y + 100.0f), // tailControl2
+      QPointF(x, y + 120.0f) // tailEnd
+  );
+  m_hasActiveSpeechBalloon = true;
+  update();
+}
+
+void CanvasItem::removeSpeechBalloon() {
+  m_hasActiveSpeechBalloon = false;
+  update();
+}
+
+void CanvasItem::rasterizeSpeechBalloon() {
+  if (!m_hasActiveSpeechBalloon || !m_layerManager) return;
+  Layer *l = m_layerManager->getActiveLayer();
+  if (l && l->buffer) {
+    int w = m_canvasWidth;
+    int h = m_canvasHeight;
+    QImage img(l->buffer->data(), w, h, QImage::Format_RGBA8888_Premultiplied);
+    QPainter p(&img);
+    p.setRenderHint(QPainter::Antialiasing);
+    
+    QPainterPath path = m_activeSpeechBalloon.generateVectorPath();
+    
+    // Fill with solid white
+    p.fillPath(path, Qt::white);
+    
+    // Stroke with current brush color and brush size
+    QPen pen(m_brushColor, m_brushSize);
+    pen.setJoinStyle(Qt::MiterJoin);
+    p.setPen(pen);
+    p.drawPath(path);
+    
+    p.end();
+    l->markDirty();
+    m_hasActiveSpeechBalloon = false;
+    update();
   }
 }
 
@@ -10517,7 +11492,7 @@ void CanvasItem::undo() {
     m_lastActiveLayerIndex = m_activeLayerIndex;
     updateLayersList();
     emit activeLayerChanged();
-    update();
+    dirtyPanelOverlay();
   }
 }
 
@@ -10532,7 +11507,7 @@ void CanvasItem::redo() {
     m_lastActiveLayerIndex = m_activeLayerIndex;
     updateLayersList();
     emit activeLayerChanged();
-    update();
+    dirtyPanelOverlay();
   }
 }
 
@@ -11772,11 +12747,75 @@ void CanvasItem::handleAutoSave() {
       if (img.save(&buffer, "PNG")) {
         QString b64 = QString::fromLatin1(buffer.data().toBase64());
         layerObj["data"] = b64;
+        if (!layer->panelPath.isEmpty()) {
+          layerObj["panelPath"] = serializePath(layer->panelPath);
+        }
         layersArray.append(layerObj);
       }
     }
   }
   obj["layers"] = layersArray;
+
+  // Serialize Animation
+  if (m_animationManager) {
+    QJsonObject animObj;
+    animObj["fps"] = m_animationManager->fps();
+    animObj["currentFrame"] = m_animationManager->currentFrame();
+
+    QJsonArray tracksArr;
+    for (const auto& track : m_animationManager->getTracks()) {
+      QJsonObject trackObj;
+      trackObj["name"] = QString::fromStdString(track.getName());
+
+      QJsonArray keysArr;
+      for (const auto& pair : track.getKeyframes()) {
+        QJsonObject keyObj;
+        keyObj["frame"] = pair.first;
+        keyObj["duration"] = pair.second.getDuration();
+        keyObj["opacity"] = pair.second.getOpacity();
+        keyObj["transform"] = serializeTransform(pair.second.getTransform());
+        
+        Layer* layerRef = pair.second.getLayerRef();
+        if (layerRef) {
+          keyObj["layerId"] = (int)layerRef->stableId;
+        } else {
+          keyObj["layerId"] = -1;
+        }
+        keysArr.append(keyObj);
+      }
+      trackObj["keyframes"] = keysArr;
+      tracksArr.append(trackObj);
+    }
+    animObj["tracks"] = tracksArr;
+    obj["animation"] = animObj;
+  }
+
+  // Serialize PerspectiveRuler
+  if (m_perspectiveRuler) {
+    QJsonObject rulerObj;
+    rulerObj["active"] = m_perspectiveRuler->active();
+    rulerObj["type"] = m_perspectiveRuler->type();
+    
+    QJsonObject vp1Obj;
+    vp1Obj["x"] = m_perspectiveRuler->vp1().x();
+    vp1Obj["y"] = m_perspectiveRuler->vp1().y();
+    vp1Obj["active"] = m_perspectiveRuler->vp1Active();
+    rulerObj["vp1"] = vp1Obj;
+
+    QJsonObject vp2Obj;
+    vp2Obj["x"] = m_perspectiveRuler->vp2().x();
+    vp2Obj["y"] = m_perspectiveRuler->vp2().y();
+    vp2Obj["active"] = m_perspectiveRuler->vp2Active();
+    rulerObj["vp2"] = vp2Obj;
+
+    QJsonObject vp3Obj;
+    vp3Obj["x"] = m_perspectiveRuler->vp3().x();
+    vp3Obj["y"] = m_perspectiveRuler->vp3().y();
+    vp3Obj["active"] = m_perspectiveRuler->vp3Active();
+    rulerObj["vp3"] = vp3Obj;
+
+    obj["perspectiveRuler"] = rulerObj;
+  }
 
   // Generate composite thumbnail
   ImageBuffer composite(m_canvasWidth, m_canvasHeight);
@@ -11889,6 +12928,9 @@ bool CanvasItem::recoverAutosave(const QString &autosavePath) {
         newLayer->reference = layerObj["reference"].toBool(false);
         newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
         newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
+        if (layerObj.contains("panelPath")) {
+          newLayer->panelPath = deserializePath(layerObj["panelPath"].toString());
+        }
 
         QString b64Data = layerObj["data"].toString();
         if (!b64Data.isEmpty()) {
@@ -11905,6 +12947,75 @@ bool CanvasItem::recoverAutosave(const QString &autosavePath) {
             }
           }
         }
+      }
+    }
+  }
+
+  // Deserialize Animation
+  if (m_animationManager) {
+    m_animationManager->clear();
+    if (obj.contains("animation")) {
+      QJsonObject animObj = obj["animation"].toObject();
+      m_animationManager->setFps(animObj["fps"].toInt(24));
+      
+      QJsonArray tracksArr = animObj["tracks"].toArray();
+      for (const QJsonValue& trackVal : tracksArr) {
+        QJsonObject trackObj = trackVal.toObject();
+        QString trackName = trackObj["name"].toString("Track");
+        
+        m_animationManager->addTrack(trackName);
+        int trackIdx = m_animationManager->getTrackCount() - 1;
+        
+        QJsonArray keysArr = trackObj["keyframes"].toArray();
+        for (const QJsonValue& keyVal : keysArr) {
+          QJsonObject keyObj = keyVal.toObject();
+          int frame = keyObj["frame"].toInt(0);
+          int duration = keyObj["duration"].toInt(1);
+          float opacity = (float)keyObj["opacity"].toDouble(1.0);
+          QTransform transform = deserializeTransform(keyObj["transform"].toArray());
+          uint32_t layerId = (uint32_t)keyObj["layerId"].toInt(-1);
+          
+          Layer* layer = m_layerManager->getLayerByStableId(layerId);
+          if (layer) {
+            AnimationFrame frameData(layer, duration, opacity, transform);
+            m_animationManager->getTracks()[trackIdx].addKeyframe(frame, frameData);
+          }
+        }
+      }
+      m_animationManager->setCurrentFrame(animObj["currentFrame"].toInt(0));
+    }
+  }
+
+  // Deserialize PerspectiveRuler
+  if (m_perspectiveRuler) {
+    m_perspectiveRuler->setActive(false);
+    m_perspectiveRuler->setType(2);
+    m_perspectiveRuler->setVp1(QPointF(-1000.0, 540.0));
+    m_perspectiveRuler->setVp2(QPointF(2920.0, 540.0));
+    m_perspectiveRuler->setVp3(QPointF(960.0, -2000.0));
+    m_perspectiveRuler->setVp1Active(true);
+    m_perspectiveRuler->setVp2Active(true);
+    m_perspectiveRuler->setVp3Active(true);
+
+    if (obj.contains("perspectiveRuler")) {
+      QJsonObject rulerObj = obj["perspectiveRuler"].toObject();
+      m_perspectiveRuler->setActive(rulerObj["active"].toBool(false));
+      m_perspectiveRuler->setType(rulerObj["type"].toInt(2));
+      
+      if (rulerObj.contains("vp1")) {
+        QJsonObject vp = rulerObj["vp1"].toObject();
+        m_perspectiveRuler->setVp1(QPointF(vp["x"].toDouble(-1000.0), vp["y"].toDouble(540.0)));
+        m_perspectiveRuler->setVp1Active(vp["active"].toBool(true));
+      }
+      if (rulerObj.contains("vp2")) {
+        QJsonObject vp = rulerObj["vp2"].toObject();
+        m_perspectiveRuler->setVp2(QPointF(vp["x"].toDouble(2920.0), vp["y"].toDouble(540.0)));
+        m_perspectiveRuler->setVp2Active(vp["active"].toBool(true));
+      }
+      if (rulerObj.contains("vp3")) {
+        QJsonObject vp = rulerObj["vp3"].toObject();
+        m_perspectiveRuler->setVp3(QPointF(vp["x"].toDouble(960.0), vp["y"].toDouble(-2000.0)));
+        m_perspectiveRuler->setVp3Active(vp["active"].toBool(true));
       }
     }
   }
@@ -12262,4 +13373,46 @@ QString CanvasItem::getColorRangePreview(const QColor &color, float tolerance, i
   buffer.open(QIODevice::WriteOnly);
   preview.save(&buffer, "PNG");
   return QString("data:image/png;base64,") + ba.toBase64();
+}
+
+void CanvasItem::syncPerspectiveLayer() {
+  if (!m_layerManager || !m_perspectiveRuler) return;
+
+  // 1. Search for an existing layer named "Capa no destructiva"
+  artflow::Layer *perspLayer = nullptr;
+  int perspLayerIdx = -1;
+  for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+    artflow::Layer *l = m_layerManager->getLayer(i);
+    if (l && l->name == "Capa no destructiva") {
+      perspLayer = l;
+      perspLayerIdx = i;
+      break;
+    }
+  }
+
+  bool active = m_perspectiveRuler->active();
+
+  if (active) {
+    // If perspective guides are active, ensure the "Capa no destructiva" layer exists and is visible!
+    if (!perspLayer) {
+      // Add layer at the top of the stack
+      perspLayerIdx = m_layerManager->addLayer("Capa no destructiva");
+      perspLayer = m_layerManager->getLayer(perspLayerIdx);
+      if (perspLayer) {
+        perspLayer->visible = true;
+      }
+      updateLayersList();
+    } else {
+      if (!perspLayer->visible) {
+        perspLayer->visible = true;
+        updateLayersList();
+      }
+    }
+  } else {
+    // If perspective guides are inactive, and "Capa no destructiva" exists, hide it!
+    if (perspLayer && perspLayer->visible) {
+      perspLayer->visible = false;
+      updateLayersList();
+    }
+  }
 }

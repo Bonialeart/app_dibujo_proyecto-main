@@ -66,8 +66,12 @@ void LayerManager::duplicateLayer(int index) {
   auto newLayer =
       std::make_unique<Layer>(src->name + " Copy", m_width, m_height, src->type);
   newLayer->buffer->copyFrom(*src->buffer);
-  newLayer->wetnessMap->copyFrom(*src->wetnessMap);
-  newLayer->pigmentMap->copyFrom(*src->pigmentMap);
+  if (newLayer->wetnessMap && src->wetnessMap) {
+    newLayer->wetnessMap->copyFrom(*src->wetnessMap);
+  }
+  if (newLayer->pigmentMap && src->pigmentMap) {
+    newLayer->pigmentMap->copyFrom(*src->pigmentMap);
+  }
   newLayer->opacity = src->opacity;
   newLayer->blendMode = src->blendMode;
   newLayer->visible = src->visible;
@@ -76,6 +80,10 @@ void LayerManager::duplicateLayer(int index) {
   newLayer->clipped = src->clipped;
   newLayer->isPrivate = src->isPrivate;
   newLayer->parentId = src->parentId;
+  newLayer->screentoneEnabled = src->screentoneEnabled;
+  newLayer->screentoneDotSize = src->screentoneDotSize;
+  newLayer->screentoneAngle = src->screentoneAngle;
+  newLayer->screentoneContrast = src->screentoneContrast;
   
   if (src->type == Layer::Type::Vector && src->vectorData) {
     newLayer->vectorData = std::make_unique<VectorLayerData>(*src->vectorData);
