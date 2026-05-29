@@ -27,6 +27,9 @@ uniform sampler2D grainTexture;
 uniform int uHasGrain;         // 1 = grain active
 uniform float grainScale;
 uniform float grainIntensity;
+uniform float uGrainBrightness;
+uniform float uGrainContrast;
+uniform int uInvertGrain;
 
 // === Dual Brush Tip (Secondary Shape) — Local UV Mapping ===
 uniform sampler2D dualTipTexture;
@@ -250,6 +253,17 @@ void main() {
 
         // Extract grain value (handles transparent and opaque paper textures)
         float grainVal = (grainSample.a < 0.99) ? grainSample.a : dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
+
+        // Invert grain density if configured
+        if (uInvertGrain == 1) {
+            grainVal = 1.0 - grainVal;
+        }
+
+        // Apply brightness and contrast (brightness/100.0 offset, and (1.0 + contrast/100.0) scale around 0.5)
+        float bright = uGrainBrightness / 100.0;
+        float contrast = uGrainContrast / 100.0;
+        float factor = (1.0 + contrast);
+        grainVal = clamp((grainVal - 0.5) * factor + 0.5 + bright, 0.0, 1.0);
 
         // Multiplicative, subtractive, or physical threshold blend
         if (uGrainBlendMode == 0) {

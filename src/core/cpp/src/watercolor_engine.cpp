@@ -196,6 +196,9 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
     m_shader->setUniformValue("uEdgeDarkening",params.edgeDarkening);
     m_shader->setUniformValue("uGrainIntensity", params.grainIntensity);
     m_shader->setUniformValue("uGrainScale",     params.grainScale);
+    m_shader->setUniformValue("uGrainBrightness",params.grainBrightness);
+    m_shader->setUniformValue("uGrainContrast",  params.grainContrast);
+    m_shader->setUniformValue("uInvertGrain",    params.invertGrain ? 1 : 0);
     m_shader->setUniformValue("uFlow",         flow);
     m_shader->setUniformValue("uPressure",     pressure);
     m_shader->setUniformValue("uCanvasSize",   QVector2D(m_width, m_height));
@@ -329,6 +332,9 @@ void WatercolorEngine::performSpread() {
     m_shader->setUniformValue("uEdgeDarkening",  m_lastParams.edgeDarkening);
     m_shader->setUniformValue("uGrainIntensity", m_lastParams.grainIntensity);
     m_shader->setUniformValue("uGrainScale",     m_lastParams.grainScale);
+    m_shader->setUniformValue("uGrainBrightness",m_lastParams.grainBrightness);
+    m_shader->setUniformValue("uGrainContrast",  m_lastParams.grainContrast);
+    m_shader->setUniformValue("uInvertGrain",    m_lastParams.invertGrain ? 1 : 0);
     m_shader->setUniformValue("uCanvasSize",     QVector2D(m_width, m_height));
     m_shader->setUniformValue("uMode",           1);  // Spread Wet
     m_shader->setUniformValue("uBlendOnly",      m_lastParams.blendOnly ? 1 : 0);
@@ -365,6 +371,9 @@ void WatercolorEngine::performSpread() {
     m_shader->setUniformValue("uAbsorption",     m_lastParams.absorption);
     m_shader->setUniformValue("uGrainIntensity", m_lastParams.grainIntensity);
     m_shader->setUniformValue("uGrainScale",     m_lastParams.grainScale);
+    m_shader->setUniformValue("uGrainBrightness",m_lastParams.grainBrightness);
+    m_shader->setUniformValue("uGrainContrast",  m_lastParams.grainContrast);
+    m_shader->setUniformValue("uInvertGrain",    m_lastParams.invertGrain ? 1 : 0);
     m_shader->setUniformValue("uCanvasSize",     QVector2D(m_width, m_height));
     m_shader->setUniformValue("uMode",           2);  // Dry Step (Difusión + Evaporación de Agua)
     m_shader->setUniformValue("uBlendOnly",      m_lastParams.blendOnly ? 1 : 0);

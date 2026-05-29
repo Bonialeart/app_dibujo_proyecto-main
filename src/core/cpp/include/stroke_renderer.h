@@ -45,7 +45,7 @@ public:
       const QColor &color, int type, int width, int height,
       // Grain texture
       uint32_t grainTexId, bool hasGrain, float grainScale,
-      float grainIntensity,
+      float grainIntensity, float grainBright, float grainCon, bool invertGrain,
       // Tip texture
       uint32_t tipTexId, bool hasTip, float tipRotation,
       // Dynamics
@@ -68,17 +68,17 @@ public:
       bool blendOnly = false, bool scrapeThrough = false,
       // Impasto
       bool impastoEnabled = false, float impastoDepth = 0.0f,
-      float impastoShine = 0.0f, float impastoTextureStrength = 0.0f,
+      float impastoShine = 0.0f, float impastoTextureStrength = 1.0f,
       float impastoEdgeBuildup = 0.0f, bool impastoDirectionalRidges = false,
-      float impastoSmoothing = 0.0f, bool impastoPreserveExisting = false,
+      float impastoSmoothing = 0.5f, bool impastoPreserveExisting = true,
       // Bristles
-      bool bristlesEnabled = false, int bristleCount = 1,
+      bool bristlesEnabled = false, int bristleCount = 30,
       float bristleStiffness = 0.5f, float bristleClumping = 0.0f,
       float bristleFanSpread = 0.0f, float bristleIndividualVariation = 0.0f,
-      bool bristleDryBrushEffect = false, float bristleSoftness = 0.0f,
+      bool bristleDryBrushEffect = false, float bristleSoftness = 0.5f,
       float bristlePointTaper = 0.0f,
       // Smudge (Advanced)
-      float smudgeStrength = 0.0f, float smudgePressureInfluence = 0.0f,
+      float smudgeStrength = 0.5f, float smudgePressureInfluence = 0.0f,
       float smudgeLength = 0.0f, float smudgeGaussianBlur = 0.0f,
       bool smudgeSmear = false,
       // Canvas Interaction
@@ -104,7 +104,7 @@ public:
       int type, int width, int height,
       // Grain texture
       uint32_t grainTexId, bool hasGrain, float grainScale,
-      float grainIntensity,
+      float grainIntensity, float grainBright, float grainCon, bool invertGrain,
       // Tip texture
       uint32_t tipTexId, bool hasTip,
       // Dynamics

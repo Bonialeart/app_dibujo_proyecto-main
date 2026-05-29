@@ -580,6 +580,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               m_renderer->viewportHeight(), grainTexID,
               (grainTexID != 0 && settings.useTexture),
               settings.textureScale * scaleFactor, settings.textureIntensity,
+              settings.grainBright, settings.grainCon, settings.invertGrain,
               tipTexID, (tipTexID != 0), dab.rotation, tilt, velocity, settings.flow,
               pingFBO->texture(), // Read from pingFBO
               wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
@@ -621,6 +622,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             m_renderer->viewportHeight(), grainTexID,
             (grainTexID != 0 && settings.useTexture),
             settings.textureScale * scaleFactor, settings.textureIntensity,
+            settings.grainBright, settings.grainCon, settings.invertGrain,
             tipTexID, (tipTexID != 0), tilt, velocity, settings.flow, canvasTexId,
             wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
             settings.dryingTime, settings.wetOnWetMultiplier,
@@ -859,8 +861,29 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
     tipTexId = loadTexture(m_currentSettings.tipTextureName);
   }
 
+  uint32_t dualTipTexId = m_currentSettings.dualTipTextureID;
+  if (m_currentSettings.dualTipEnabled && dualTipTexId == 0 &&
+      !m_currentSettings.dualTipTextureName.isEmpty()) {
+    dualTipTexId = loadTexture(m_currentSettings.dualTipTextureName);
+  }
+
   bool hasGrain = (grainTexId != 0 && m_currentSettings.useTexture);
   bool hasTip = (tipTexId != 0);
+  bool hasDualTip = (dualTipTexId != 0 && m_currentSettings.dualTipEnabled);
+
+  int uDualTipBlendMode = 0; // multiply
+  if (m_currentSettings.dualTipBlendMode == "mask" || m_currentSettings.dualTipBlendMode == "subtract") {
+    uDualTipBlendMode = 1;
+  } else if (m_currentSettings.dualTipBlendMode == "add") {
+    uDualTipBlendMode = 2;
+  }
+
+  int uGrainBlendMode = 0; // multiply
+  if (m_currentSettings.grainBlendMode == "subtract") {
+    uGrainBlendMode = 1;
+  } else if (m_currentSettings.grainBlendMode == "threshold" || m_currentSettings.grainBlendMode == "reveal") {
+    uGrainBlendMode = 2;
+  }
 
   int w = m_renderer ? m_renderer->viewportWidth() : 2000;
   int h = m_renderer ? m_renderer->viewportHeight() : 2000;
@@ -1020,6 +1043,8 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         m_currentSettings.canvasCatchPeaks,
         // Color Dynamics Oil
         m_currentSettings.temperatureShift, m_currentSettings.brokenColor,
+        // Dual brush and grain modes
+        dualTipTexId, hasDualTip, m_currentSettings.dualTipScale, m_currentSettings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
         // Mode
         isEraser);
   }

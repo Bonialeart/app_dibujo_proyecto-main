@@ -25,6 +25,7 @@ Rectangle {
 
     // Current attribute tab (0-9)
     property int activeTab: 0
+    property int brushPropertySeed: 0
 
     signal closed()
     signal applied()
@@ -59,6 +60,7 @@ Rectangle {
 
     // Helper to get active tip texture path
     function getActiveTipTexturePath() {
+        var dummy = studio.brushPropertySeed
         if (!targetCanvas) return ""
         var currentTip = targetCanvas.getBrushProperty("shape", "tip_texture") || ""
         var list = targetCanvas.getAvailableTipTextures()
@@ -72,6 +74,7 @@ Rectangle {
 
     // Helper to get active grain texture path
     function getActiveGrainTexturePath() {
+        var dummy = studio.brushPropertySeed
         if (!targetCanvas) return ""
         var currentGrain = targetCanvas.getBrushProperty("grain", "texture") || ""
         var list = targetCanvas.getAvailableTipTextures() // Grain uses tip textures list too
@@ -85,6 +88,7 @@ Rectangle {
 
     // Helper to get active dual tip texture path
     function getActiveDualTipTexturePath() {
+        var dummy = studio.brushPropertySeed
         if (!targetCanvas) return ""
         var currentTip = targetCanvas.getBrushProperty("dualbrush", "tip_texture") || ""
         var list = targetCanvas.getAvailableTipTextures()
@@ -383,8 +387,14 @@ Rectangle {
 
                 Connections {
                     target: targetCanvas
-                    function onEditingPresetChanged() { previewThrottle.restart() }
-                    function onBrushPropertyChanged(category, key) { previewThrottle.restart() }
+                    function onEditingPresetChanged() {
+                        studio.brushPropertySeed++
+                        previewThrottle.restart()
+                    }
+                    function onBrushPropertyChanged(category, key) {
+                        studio.brushPropertySeed++
+                        previewThrottle.restart()
+                    }
                 }
 
                 // ═══════ Reusable Studio Components ═══════
@@ -740,7 +750,7 @@ Rectangle {
                             // Invertir Toggle directly below card
                             StudioToggle {
                                 label: "Invertir"
-                                checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "invert") || false : false
+                                checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("shape", "invert") || false : false)
                                 onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "invert", checked)
                             }
 
@@ -779,9 +789,9 @@ Rectangle {
                                             width: (parent.width - 3 * 8) / 4
                                             height: width
                                             radius: 8
-                                            color: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("shape", "tip_texture") : "") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface
-                                            border.color: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("shape", "tip_texture") : "") ? colorAccent : borderDim
-                                            border.width: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("shape", "tip_texture") : "") ? 2 : 1
+                                            color: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("shape", "tip_texture") : "") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface)
+                                            border.color: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("shape", "tip_texture") : "") ? colorAccent : borderDim)
+                                            border.width: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("shape", "tip_texture") : "") ? 2 : 1)
 
                                             Image {
                                                 anchors.centerIn: parent
@@ -966,7 +976,7 @@ Rectangle {
                             // Invert Grain Toggle directly below card
                             StudioToggle {
                                 label: "Invertir Grano"
-                                checked: targetCanvas ? targetCanvas.getBrushProperty("grain", "invert") || false : false
+                                checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("grain", "invert") || false : false)
                                 onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "invert", checked)
                             }
 
@@ -1004,9 +1014,9 @@ Rectangle {
                                         width: (parent.width - 3 * 8) / 4
                                         height: width
                                         radius: 8
-                                        color: (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") === "" ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface
-                                        border.color: (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") === "" ? colorAccent : borderDim
-                                        border.width: (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") === "" ? 2 : 1
+                                        color: (studio.brushPropertySeed, (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") === "" ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface)
+                                        border.color: (studio.brushPropertySeed, (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") === "" ? colorAccent : borderDim)
+                                        border.width: (studio.brushPropertySeed, (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") === "" ? 2 : 1)
 
                                         Text {
                                             text: "Ninguno"; color: textMuted; font.pixelSize: 10
@@ -1026,9 +1036,9 @@ Rectangle {
                                             width: (parent.width - 3 * 8) / 4
                                             height: width
                                             radius: 8
-                                            color: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface
-                                            border.color: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") ? colorAccent : borderDim
-                                            border.width: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") ? 2 : 1
+                                            color: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface)
+                                            border.color: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") ? colorAccent : borderDim)
+                                            border.width: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("grain", "texture") : "") ? 2 : 1)
 
                                             Image {
                                                 anchors.centerIn: parent
@@ -1651,7 +1661,7 @@ Rectangle {
                             // Enable Toggle
                             StudioToggle {
                                 label: "Habilitar Pincel Dual"
-                                checked: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false
+                                checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false)
                                 onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "enabled", checked)
                             }
 
@@ -1659,7 +1669,7 @@ Rectangle {
                             Column {
                                 width: parent.width
                                 spacing: 20
-                                visible: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false
+                                visible: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false)
 
                                 // Dual Tip Texture Card
                                 Rectangle {
@@ -1748,9 +1758,9 @@ Rectangle {
                                                 width: (parent.width - 3 * 8) / 4
                                                 height: width
                                                 radius: 8
-                                                color: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface
-                                                border.color: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? colorAccent : borderDim
-                                                border.width: modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? 2 : 1
+                                                color: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface)
+                                                border.color: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? colorAccent : borderDim)
+                                                border.width: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "tip_texture") : "") ? 2 : 1)
 
                                                 Image {
                                                     anchors.centerIn: parent

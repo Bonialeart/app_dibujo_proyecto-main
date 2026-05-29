@@ -17,6 +17,7 @@
 #include <iostream>
 #include <QWindow>
 #include <QQuickWindow>
+#include <QQuickStyle>
 #include <windows.h>
 #include "WintabManager.h"
 
@@ -29,6 +30,11 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
 
 int main(int argc, char *argv[]) {
   qInstallMessageHandler(myMessageOutput);
+
+  // Forza al motor de estilos de Qt Quick Controls 2 a usar el estilo "Basic",
+  // lo cual permite la personalización de propiedades como "background" e "indicator"
+  // en sliders y switches que de otro modo estarían congelados bajo el estilo nativo de Windows.
+  QQuickStyle::setStyle("Basic");
 
   // Forza a Qt Quick/QRhi a usar el backend de OpenGL bajo Qt 6,
   // asegurando consistencia absoluta con los contextos compartidos y FBOs en C++.

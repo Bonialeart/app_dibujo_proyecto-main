@@ -47,11 +47,11 @@ void StrokeRenderer::drawDab(float x, float y, float size, float rotation,
   bool isEraser = (brushType == 7);
   renderStroke(x, y, size, pressure, hardness, color, brushType,
                m_viewportWidth, m_viewportHeight, 0, false, 1.0f,
-               0.0f,                       // No grain
+               0.0f, 0.0f, 1.0f, false,    // No grain, brightness=0, contrast=1, invert=false
                brushTex, hasTip, rotation, // Tip
                0.0f, 0.0f, 1.0f,           // No dynamics, flow=1
                0, wetness, 0.0f, 0.0f,     // Wet mix
-               isEraser);
+               0.0f);                      // bleed (defaults)
 }
 
 void StrokeRenderer::drawDabPingPong(float x, float y, float size,
@@ -69,11 +69,11 @@ void StrokeRenderer::drawDabPingPong(float x, float y, float size,
   bool isEraser = (brushType == 7);
   renderStroke(x, y, size, pressure, hardness, color, brushType,
                m_viewportWidth, m_viewportHeight, 0, false, 1.0f,
-               0.0f,                           // No grain
+               0.0f, 0.0f, 1.0f, false,    // No grain, brightness=0, contrast=1, invert=false
                brushTex, hasTip, 0.0f,         // Tip
                0.0f, 0.0f, 1.0f,               // No dynamics, flow=1
                canvasTex, wetness, 0.0f, 0.0f, // Wet mix
-               isEraser);
+               0.0f);                          // bleed (defaults)
 }
 
 void StrokeRenderer::setBrushTip(const unsigned char *data, int width,
@@ -238,6 +238,7 @@ void StrokeRenderer::renderStroke(
     const QColor &color, int type, int width, int height,
     // Grain texture
     uint32_t grainTexId, bool hasGrain, float grainScale, float grainIntensity,
+    float grainBright, float grainCon, bool invertGrain,
     // Tip texture
     uint32_t tipTexId, bool hasTip, float tipRotation,
     // Dynamics
@@ -336,10 +337,16 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("uHasGrain", 1);
     m_program->setUniformValue("grainScale", grainScale);
     m_program->setUniformValue("grainIntensity", grainIntensity);
+    m_program->setUniformValue("uGrainBrightness", grainBright);
+    m_program->setUniformValue("uGrainContrast", grainCon);
+    m_program->setUniformValue("uInvertGrain", invertGrain ? 1 : 0);
   } else {
     m_program->setUniformValue("uHasGrain", 0);
     m_program->setUniformValue("grainScale", 1.0f);
     m_program->setUniformValue("grainIntensity", 0.0f);
+    m_program->setUniformValue("uGrainBrightness", 0.0f);
+    m_program->setUniformValue("uGrainContrast", 1.0f);
+    m_program->setUniformValue("uInvertGrain", 0);
   }
 
   // --- DUAL TIP TEXTURE ---
@@ -483,6 +490,7 @@ void StrokeRenderer::renderStrokeInstanced(
     int type, int width, int height,
     // Grain texture
     uint32_t grainTexId, bool hasGrain, float grainScale, float grainIntensity,
+    float grainBright, float grainCon, bool invertGrain,
     // Tip texture
     uint32_t tipTexId, bool hasTip,
     // Dynamics
@@ -565,10 +573,16 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("uHasGrain", 1);
     m_program->setUniformValue("grainScale", grainScale);
     m_program->setUniformValue("grainIntensity", grainIntensity);
+    m_program->setUniformValue("uGrainBrightness", grainBright);
+    m_program->setUniformValue("uGrainContrast", grainCon);
+    m_program->setUniformValue("uInvertGrain", invertGrain ? 1 : 0);
   } else {
     m_program->setUniformValue("uHasGrain", 0);
     m_program->setUniformValue("grainScale", 1.0f);
     m_program->setUniformValue("grainIntensity", 0.0f);
+    m_program->setUniformValue("uGrainBrightness", 0.0f);
+    m_program->setUniformValue("uGrainContrast", 1.0f);
+    m_program->setUniformValue("uInvertGrain", 0);
   }
 
   // --- DUAL TIP TEXTURE ---

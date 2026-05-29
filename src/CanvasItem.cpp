@@ -2409,7 +2409,12 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
   // === PER-PRESET DYNAMICS EVALUATION ===
   auto *bpm = artflow::BrushPresetManager::instance();
-  const artflow::BrushPreset *activePreset = bpm->findByName(m_activeBrushName);
+  const artflow::BrushPreset *activePreset = nullptr;
+  if (m_isEditingBrush) {
+    activePreset = &m_editingPreset;
+  } else {
+    activePreset = bpm->findByName(m_activeBrushName);
+  }
 
   if (!activePreset) {
     static int logCount = 0;
@@ -2670,7 +2675,31 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
         settings.color = QColor::fromRgbF(
             m_smudgeColor.x(), m_smudgeColor.y(), m_smudgeColor.z());
     }
-    // ─── FIN WATER BLENDER ───────────────────────────────────────
+    // ─── LAZY TEXTURE LOADING ────────────────────────────────────
+    // Preload and cache GPU texture IDs before paintStroke so both
+    // the brush shader and the watercolor engine can use them.
+    if (settings.tipTextureID == 0 && !settings.tipTextureName.isEmpty()) {
+      settings.tipTextureID = artflow::BrushEngine::loadTexture(settings.tipTextureName);
+    }
+    if (settings.dualTipEnabled && settings.dualTipTextureID == 0 &&
+        !settings.dualTipTextureName.isEmpty()) {
+      settings.dualTipTextureID = artflow::BrushEngine::loadTexture(settings.dualTipTextureName);
+    }
+    if (settings.useTexture && settings.grainTextureID == 0 &&
+        !settings.textureName.isEmpty()) {
+      settings.grainTextureID = artflow::BrushEngine::loadTexture(settings.textureName);
+    }
+    // Persist the loaded IDs back to the engine so they're cached
+    // for subsequent frames and the watercolor engine.
+    if (settings.tipTextureID != 0 || settings.dualTipTextureID != 0 ||
+        settings.grainTextureID != 0) {
+      BrushSettings engineCopy = m_brushEngine->getBrush();
+      engineCopy.tipTextureID = settings.tipTextureID;
+      engineCopy.dualTipTextureID = settings.dualTipTextureID;
+      engineCopy.grainTextureID = settings.grainTextureID;
+      m_brushEngine->setBrush(engineCopy);
+    }
+    // ─── FIN LAZY TEXTURE LOADING ────────────────────────────────
 
     m_brushEngine->paintStroke(
         &fboPainter2, m_lastPos, canvasPos, effectivePressure, settings, tilt,
@@ -2723,13 +2752,10 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
                     this, [this]() { requestUpdate(); });
         }
 
-        // FIX: Cargar dinámicamente la textura de grano en la GPU si m_brushEngine no la ha cargado de forma permanente
-        if (settings.useTexture && settings.grainTextureID == 0 && !settings.textureName.isEmpty()) {
-            settings.grainTextureID = artflow::BrushEngine::loadTexture(settings.textureName);
-            // Actualizar la caché del BrushEngine para persistirla
-            BrushSettings engineSettings = m_brushEngine->getBrush();
-            engineSettings.grainTextureID = settings.grainTextureID;
-            m_brushEngine->setBrush(engineSettings);
+        // Sync the watercolor engine's grain texture ID in case the user
+        // changed the grain texture mid-session via the Brush Studio.
+        if (settings.grainTextureID != 0) {
+            m_watercolorEngine->setGrainTextureId(settings.grainTextureID);
         }
 
         QOpenGLFunctions *gl = QOpenGLContext::currentContext()->functions();
@@ -9279,6 +9305,12 @@ void CanvasItem::beginBrushEdit(const QString &brushName) {
   m_resetPoint = *preset;    // Save reset point
   m_isEditingBrush = true;
 
+  qDebug() << "beginBrushEdit: Cloned preset:" << brushName
+           << "dualBrush.enabled =" << m_editingPreset.dualBrush.enabled
+           << "dualBrush.tipTexture =" << m_editingPreset.dualBrush.tipTexture
+           << "grain.texture =" << m_editingPreset.grain.texture
+           << "grain.invert =" << m_editingPreset.grain.invert;
+
   // Initialize the preview pad
   m_previewPadImage = QImage(m_previewPadWidth, m_previewPadHeight, QImage::Format_ARGB32);
   m_previewPadImage.fill(QColor(10, 10, 12));
@@ -9453,6 +9485,8 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.shape.blur;
     if (key == "tip_texture")
       return m_editingPreset.shape.tipTexture;
+    if (key == "invert")
+      return m_editingPreset.shape.invert;
   }
 
   // ── grain ──
@@ -9473,6 +9507,8 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.grain.rolling;
     if (key == "blend_mode")
       return m_editingPreset.grain.blendMode;
+    if (key == "invert")
+      return m_editingPreset.grain.invert;
   }
 
   // ── dualbrush ──
@@ -9670,6 +9706,9 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
     } else if (key == "tip_texture") {
       m_editingPreset.shape.tipTexture = value.toString();
       changed = true;
+    } else if (key == "invert") {
+      m_editingPreset.shape.invert = value.toBool();
+      changed = true;
     }
   }
 
@@ -9698,6 +9737,9 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
       changed = true;
     } else if (key == "blend_mode") {
       m_editingPreset.grain.blendMode = value.toString();
+      changed = true;
+    } else if (key == "invert") {
+      m_editingPreset.grain.invert = value.toBool();
       changed = true;
     }
   }
@@ -9925,6 +9967,7 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
       // << m_editingPreset.shape.tipTexture;
     }
     map["tip_texture"] = m_editingPreset.shape.tipTexture;
+    map["invert"] = m_editingPreset.shape.invert;
   } else if (category == "grain") {
     map["texture"] = m_editingPreset.grain.texture;
     map["scale"] = m_editingPreset.grain.scale;
@@ -9934,6 +9977,7 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
     map["contrast"] = m_editingPreset.grain.contrast;
     map["rolling"] = m_editingPreset.grain.rolling;
     map["blend_mode"] = m_editingPreset.grain.blendMode;
+    map["invert"] = m_editingPreset.grain.invert;
   } else if (category == "dualbrush") {
     map["enabled"] = m_editingPreset.dualBrush.enabled;
     map["tip_texture"] = m_editingPreset.dualBrush.tipTexture;
@@ -11265,7 +11309,8 @@ QVariantList CanvasItem::getAvailableTipTextures() const {
       QVariantMap entry;
       entry["name"] = QFileInfo(file).baseName();
       entry["filename"] = file;
-      entry["path"] = dir.absoluteFilePath(file);
+      // Convert to file:/// URL string so QML Image can load it without protocol errors
+      entry["path"] = QUrl::fromLocalFile(dir.absoluteFilePath(file)).toString();
       result.append(entry);
     }
     if (!result.isEmpty())
@@ -11278,7 +11323,13 @@ void CanvasItem::setTipTextureForBrush(const QString &brushName,
                                        const QString &texturePath) {
   auto *bpm = artflow::BrushPresetManager::instance();
   const artflow::BrushPreset *p = bpm->findByName(brushName);
-  QString filename = QFileInfo(texturePath).fileName();
+  
+  // Convert local file URL string to standard native path if necessary
+  QString localPath = texturePath;
+  if (localPath.startsWith("file:///")) {
+    localPath = QUrl(texturePath).toLocalFile();
+  }
+  QString filename = QFileInfo(localPath).fileName();
 
   if (p) {
     artflow::BrushPreset updated = *p;
@@ -11297,7 +11348,13 @@ void CanvasItem::setGrainTextureForBrush(const QString &brushName,
                                          const QString &texturePath) {
   auto *bpm = artflow::BrushPresetManager::instance();
   const artflow::BrushPreset *p = bpm->findByName(brushName);
-  QString filename = QFileInfo(texturePath).fileName();
+  
+  // Convert local file URL string to standard native path if necessary
+  QString localPath = texturePath;
+  if (localPath.startsWith("file:///")) {
+    localPath = QUrl(texturePath).toLocalFile();
+  }
+  QString filename = QFileInfo(localPath).fileName();
 
   if (p) {
     artflow::BrushPreset updated = *p;
@@ -11491,8 +11548,13 @@ void CanvasItem::renderLiquifyPreview(QPainter *painter,
 // =============================================================================
 
 bool CanvasItem::isWatercolorBrush() const {
-    auto *bpm = artflow::BrushPresetManager::instance();
-    const auto *preset = bpm->findByName(m_activeBrushName);
+    const artflow::BrushPreset *preset = nullptr;
+    if (m_isEditingBrush) {
+        preset = &m_editingPreset;
+    } else {
+        auto *bpm = artflow::BrushPresetManager::instance();
+        preset = bpm->findByName(m_activeBrushName);
+    }
     if (!preset) return false;
 
     // Verificación por prefijo de UUID (todos los pinceles de acuarela tienen "wc-")
@@ -11526,8 +11588,13 @@ bool CanvasItem::isWatercolorBrush() const {
 WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
     WatercolorEngine::WatercolorParams params;
 
-    auto *bpm = artflow::BrushPresetManager::instance();
-    const auto *preset = bpm->findByName(m_activeBrushName);
+    const artflow::BrushPreset *preset = nullptr;
+    if (m_isEditingBrush) {
+        preset = &m_editingPreset;
+    } else {
+        auto *bpm = artflow::BrushPresetManager::instance();
+        preset = bpm->findByName(m_activeBrushName);
+    }
     if (!preset) return params;
 
     // WetMixSettings
@@ -11552,6 +11619,9 @@ WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
     // Grain intensity
     params.grainIntensity = preset->grain.intensity;
     params.grainScale     = preset->grain.scale;
+    params.grainBrightness = preset->grain.brightness;
+    params.grainContrast   = preset->grain.contrast;
+    params.invertGrain     = preset->grain.invert;
 
     return params;
 }

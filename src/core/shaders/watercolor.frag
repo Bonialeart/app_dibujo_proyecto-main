@@ -33,6 +33,9 @@ uniform float uFlow;               // Flujo del pincel
 uniform float uPressure;           // Presión actual (0..1)
 uniform float uGrainIntensity;     // Intensidad del grano de papel
 uniform float uGrainScale;         // Escala del grano de papel
+uniform float uGrainBrightness;    // Brillo del grano (-100..100)
+uniform float uGrainContrast;      // Contraste del grano (-100..100)
+uniform int uInvertGrain;          // Invertir grano (0 o 1)
 
 // ── Parámetros del canvas ──
 uniform vec2  uCanvasSize;         // Tamaño del canvas en píxeles
@@ -97,6 +100,25 @@ vec2 getGlobalCoord(vec2 uv) {
     return (uv * uCanvasSize) / (5.0 * uGrainScale);
 }
 
+// Obtener el valor del grano con brillo y contraste aplicados
+float getGrainValue(vec2 coord) {
+    vec4 grainSample = texture(uGrainTexture, coord);
+    float grainVal = dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
+    
+    // Aplicar inversión si es necesario
+    if (uInvertGrain == 1) {
+        grainVal = 1.0 - grainVal;
+    }
+    
+    // Aplicar contraste y brillo (escala y bias)
+    float bright = uGrainBrightness / 100.0;
+    float contrast = uGrainContrast / 100.0;
+    float factor = (1.0 + contrast);
+    
+    grainVal = clamp((grainVal - 0.5) * factor + 0.5 + bright, 0.0, 1.0);
+    return grainVal;
+}
+
 // ============================================================================
 // MODO 0: PAINT DAB — Combinar el dab actual con el canvas existente
 // ============================================================================
@@ -118,8 +140,7 @@ vec4 paintDab() {
     float grain = 1.0;
     if (uGrainIntensity > 0.001) {
         vec2 globalCoord = getGlobalCoord(vTexCoord);
-        vec4 grainSamp = texture(uGrainTexture, globalCoord);
-        float gv = dot(grainSamp.rgb, vec3(0.299, 0.587, 0.114));
+        float gv = getGrainValue(globalCoord);
         grain = mix(1.0, gv, uGrainIntensity);
     }
     dabAlpha *= grain;
@@ -154,8 +175,7 @@ vec4 paintDab() {
     // ── GRANULACIÓN: los pigmentos se aglomeran según la textura del papel ──
     if (uGranulation > 0.01 && uGrainIntensity > 0.001) {
         vec2 globalCoord = getGlobalCoord(vTexCoord);
-        vec4 grainSamp = texture(uGrainTexture, globalCoord);
-        float gv = dot(grainSamp.rgb, vec3(0.299, 0.587, 0.114));
+        float gv = getGrainValue(globalCoord);
         // En valles del papel (gv bajo) se concentra más el pigmento
         float granFactor = 1.0 + uGranulation * (0.5 - gv) * 2.0;
         dabAlpha = clamp(dabAlpha * granFactor, 0.0, 1.0);
@@ -283,8 +303,7 @@ vec4 paintDab() {
     // ── GRANO DE PAPEL (textura de grano del papel) ──
     float paperGrain = 0.5; // Valor neutro
     if (uGrainIntensity > 0.001) {
-        vec4 grainSamp = texture(uGrainTexture, getGlobalCoord(vTexCoord));
-        paperGrain = dot(grainSamp.rgb, vec3(0.299, 0.587, 0.114));
+        paperGrain = getGrainValue(getGlobalCoord(vTexCoord));
     }
 
     // 1. Simulación de difusión de pigmento (Paso 2 del algoritmo)
@@ -305,15 +324,15 @@ vec4 paintDab() {
         float neighborGrains[8];
         // Muestrear el grano en cada vecino usando coordenadas globales alineadas
         vec2 ts = texelSize;
-        neighborGrains[0] = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord + vec2(0.0, ts.y))).rgb, vec3(0.299, 0.587, 0.114));
-        neighborGrains[1] = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord - vec2(0.0, ts.y))).rgb, vec3(0.299, 0.587, 0.114));
-        neighborGrains[2] = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord - vec2(ts.x, 0.0))).rgb, vec3(0.299, 0.587, 0.114));
-        neighborGrains[3] = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord + vec2(ts.x, 0.0))).rgb, vec3(0.299, 0.587, 0.114));
+        neighborGrains[0] = getGrainValue(getGlobalCoord(vTexCoord + vec2(0.0, ts.y)));
+        neighborGrains[1] = getGrainValue(getGlobalCoord(vTexCoord - vec2(0.0, ts.y)));
+        neighborGrains[2] = getGrainValue(getGlobalCoord(vTexCoord - vec2(ts.x, 0.0)));
+        neighborGrains[3] = getGrainValue(getGlobalCoord(vTexCoord + vec2(ts.x, 0.0)));
         
-        neighborGrains[4] = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord + vec2(-ts.x,  ts.y) * 0.707)).rgb, vec3(0.299, 0.587, 0.114));
-        neighborGrains[5] = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord + vec2( ts.x,  ts.y) * 0.707)).rgb, vec3(0.299, 0.587, 0.114));
-        neighborGrains[6] = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord + vec2(-ts.x, -ts.y) * 0.707)).rgb, vec3(0.299, 0.587, 0.114));
-        neighborGrains[7] = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord + vec2( ts.x, -ts.y) * 0.707)).rgb, vec3(0.299, 0.587, 0.114));
+        neighborGrains[4] = getGrainValue(getGlobalCoord(vTexCoord + vec2(-ts.x,  ts.y) * 0.707));
+        neighborGrains[5] = getGrainValue(getGlobalCoord(vTexCoord + vec2( ts.x,  ts.y) * 0.707));
+        neighborGrains[6] = getGrainValue(getGlobalCoord(vTexCoord + vec2(-ts.x, -ts.y) * 0.707));
+        neighborGrains[7] = getGrainValue(getGlobalCoord(vTexCoord + vec2( ts.x, -ts.y) * 0.707));
 
         for (int i = 0; i < 8; i++) {
             // Conductividad basada en similitud capilar (diferencia de grano absoluta)
@@ -403,8 +422,7 @@ vec4 dryStep() {
     // ── GRANO DE PAPEL ──
     float paperGrain = 0.5; // Valor neutro
     if (uGrainIntensity > 0.001) {
-        vec4 grainSamp = texture(uGrainTexture, getGlobalCoord(vTexCoord));
-        paperGrain = dot(grainSamp.rgb, vec3(0.299, 0.587, 0.114));
+        paperGrain = getGrainValue(getGlobalCoord(vTexCoord));
     }
 
     // 1. Simulación de flujo de agua (Paso 1 del algoritmo: Promedio de humedad vecina)
@@ -413,10 +431,10 @@ vec4 dryStep() {
     // CAPILARIDAD ANISÓTROPA DIRECCIONAL (FIBRAS DEL PAPEL 3D):
     // El agua fluye preferentemente a lo largo de canales con grano de papel similar.
     if (uGrainIntensity > 0.01) {
-        float upGrain    = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord + vec2(0.0, texelSize.y))).rgb, vec3(0.299, 0.587, 0.114));
-        float downGrain  = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord - vec2(0.0, texelSize.y))).rgb, vec3(0.299, 0.587, 0.114));
-        float leftGrain  = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord - vec2(texelSize.x, 0.0))).rgb, vec3(0.299, 0.587, 0.114));
-        float rightGrain = dot(texture(uGrainTexture, getGlobalCoord(vTexCoord + vec2(texelSize.x, 0.0))).rgb, vec3(0.299, 0.587, 0.114));
+        float upGrain    = getGrainValue(getGlobalCoord(vTexCoord + vec2(0.0, texelSize.y)));
+        float downGrain  = getGrainValue(getGlobalCoord(vTexCoord - vec2(0.0, texelSize.y)));
+        float leftGrain  = getGrainValue(getGlobalCoord(vTexCoord - vec2(texelSize.x, 0.0)));
+        float rightGrain = getGrainValue(getGlobalCoord(vTexCoord + vec2(texelSize.x, 0.0)));
 
         float wUp    = exp(-abs(paperGrain - upGrain) * 7.5);
         float wDown  = exp(-abs(paperGrain - downGrain) * 7.5);

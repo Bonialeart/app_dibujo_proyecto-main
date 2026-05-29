@@ -45,6 +45,9 @@ public:
         float edgeDarkening  = 0.60f; // Intensidad del tide-mark
         float grainIntensity = 0.50f; // Grano de papel
         float grainScale     = 25.0f; // Escala del grano de papel
+        float grainBrightness = 0.0f;  // Brillo del grano
+        float grainContrast   = 0.0f;  // Contraste del grano
+        bool  invertGrain     = false; // Invertir grano
         bool  blendOnly      = false; // Si es true, solo mezcla/difumina (agua pura)
     };
 
@@ -83,6 +86,7 @@ public:
     void setSpreadInterval(int ms)  { m_spreadTimer->setInterval(ms); }
     void setDryInterval(int ms)     { m_dryTimer->setInterval(ms);    }
     void setDryingRate(float rate)  { m_globalDryingRate = rate;       }
+    void setGrainTextureId(GLuint id) { m_grainTexId = id; }
 
     // Retornar el FBO del WetMap para uso externo (composición visual opcional)
     GLuint wetMapTextureId() const;
