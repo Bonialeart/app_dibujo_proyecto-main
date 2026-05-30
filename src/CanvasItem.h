@@ -965,6 +965,10 @@ private:
   bool m_touchIsEyedropper = false;
   int m_touchPointCount = 0;
   float m_lastPinchScale = 1.0f;
+  float m_lastPinchAngle = 0.0f;          // Angle between two touch points (radians)
+  bool m_isTwoFingerGesture = false;       // True while a 2-finger gesture is active
+  bool m_strokeCancelledByGesture = false; // True if a stroke was cancelled by a multi-touch gesture
+  QPointF m_lastTouchCenter;               // Center of two touch points (for smooth pan)
 
   // ── Liquify Engine ──
   artflow::LiquifyEngine *m_liquifyEngine = nullptr;

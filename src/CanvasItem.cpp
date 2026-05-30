@@ -3695,6 +3695,11 @@ void CanvasItem::detectAndDrawQuickShape() {
     solved = true;
   } else {
     // Circle detection
+    // First check: the stroke must be "closed" — start and end points
+    // must be near each other, otherwise it's just a curved line, not
+    // an attempt to draw a circle.
+    float closeDist = QLineF(m_strokePoints.front(), m_strokePoints.back()).length();
+
     QPointF centroid(0, 0);
     for (const auto &p : m_strokePoints)
       centroid += p;
@@ -3714,9 +3719,15 @@ void CanvasItem::detectAndDrawQuickShape() {
       variance += (r - avgDist) * (r - avgDist);
     variance = std::sqrt(variance / radii.size());
 
-    // Lenient circularity check (45% variance allowed for hand-drawn
-    // circles)
-    if (variance < avgDist * 0.45f) {
+    // Circle requirements:
+    // 1. The stroke must be closed: start-end gap < 25% of avg radius
+    // 2. Stricter circularity: variance < 30% of avg radius
+    // 3. Minimum stroke length to avoid tiny accidental circles
+    bool isClosed = closeDist < avgDist * 0.25f;
+    bool isCircular = variance < avgDist * 0.30f;
+    bool hasEnoughLength = totalLength > avgDist * 4.0f; // At least ~2/3 of circumference
+
+    if (isClosed && isCircular && hasEnoughLength) {
       if (layer && layer->buffer && m_strokeBeforeBuffer) {
         layer->buffer->copyFrom(*m_strokeBeforeBuffer);
       }
@@ -4297,6 +4308,12 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     if (m_isDrawing)
       return; // Already drawing (tablet?)
 
+    // Block drawing during two-finger gestures (zoom/pan/rotate)
+    if (m_isTwoFingerGesture || m_touchPointCount >= 2) {
+      event->accept();
+      return;
+    }
+
     // Evitar que herramientas de NO DIBUJO pinten accidentalmente
     if (m_tool != ToolType::Pen && m_tool != ToolType::Eraser &&
         m_tool != ToolType::Fill && m_tool != ToolType::Shape &&
@@ -4761,7 +4778,9 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
         if (m_tool == ToolType::Pen || m_tool == ToolType::Eraser)
           m_quickShapeTimer->start(500);
       }
-      handleDraw(event->position(), pressure, tiltFactor);
+      // Block drawing during two-finger gestures
+      if (!m_isTwoFingerGesture && m_touchPointCount < 2)
+        handleDraw(event->position(), pressure, tiltFactor);
     }
   }
 
@@ -5179,6 +5198,12 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
       return;
     }
 
+    // Block drawing during two-finger gestures (zoom/pan/rotate)
+    if (m_isTwoFingerGesture || m_touchPointCount >= 2) {
+      event->accept();
+      return;
+    }
+
     // Evitar que herramientas de NO DIBUJO pinten accidentalmente
     if (m_tool != ToolType::Pen && m_tool != ToolType::Eraser &&
         m_tool != ToolType::Fill && m_tool != ToolType::Shape) {
@@ -5316,7 +5341,9 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     // Only draw if there's actual pressure or we are using a tool that
     // doesn't strictly require it, otherwise we leave "stamp" markers at
     // the end
-    if (!m_isHoldingForShape &&
+    // Block drawing during two-finger gestures
+    if (!m_isTwoFingerGesture && m_touchPointCount < 2 &&
+        !m_isHoldingForShape &&
         (pressure > 0.001f || m_tool == ToolType::Eraser)) {
       handleDraw(event->position(), pressure, tiltFactor);
     }
@@ -5442,13 +5469,17 @@ bool CanvasItem::event(QEvent *event) {
 
 void CanvasItem::touchEventOverride(QTouchEvent *event) {
   int points = event->points().count();
+  int prevPointCount = m_touchPointCount;
   m_touchPointCount = points;
 
   if (event->type() == QEvent::TouchBegin) {
+    // ── Single-finger: eyedropper long-press ──
     if (points == 1 &&
         PreferencesManager::instance()->touchEyedropperEnabled()) {
       m_touchStartPos = event->points().first().position();
       m_touchIsEyedropper = false;
+      m_isTwoFingerGesture = false;
+      m_strokeCancelledByGesture = false;
       if (!m_touchTimer) {
         m_touchTimer = new QTimer(this);
         m_touchTimer->setSingleShot(true);
@@ -5468,57 +5499,182 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
         m_touchTimer->stop();
     }
 
-    // Store initial pinch data
+    // ── Two-finger gesture initialization ──
     if (points == 2 && PreferencesManager::instance()->touchGesturesEnabled()) {
       QPointF p1 = event->points()[0].position();
       QPointF p2 = event->points()[1].position();
-      m_touchStartPos = (p1 + p2) / 2.0;
+      QPointF center = (p1 + p2) / 2.0;
+      m_touchStartPos = center;
+      m_lastTouchCenter = center;
       m_lastPinchScale = QLineF(p1, p2).length();
+      m_lastPinchAngle = std::atan2(p2.y() - p1.y(), p2.x() - p1.x());
+      m_isTwoFingerGesture = true;
+
+      // ── Cancel active stroke if user was drawing ──
+      if (m_isDrawing) {
+        // Revert the stroke buffer to the pre-stroke state
+        Layer *layer = m_layerManager->getActiveLayer();
+        if (layer && layer->buffer && m_strokeBeforeBuffer) {
+          layer->buffer->copyFrom(*m_strokeBeforeBuffer);
+          layer->dirty = true;
+          layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+          if (layer->buffer)
+            layer->buffer->clearDirtyFlags();
+          m_cachedCanvasImage = QImage(); // Force recomposite
+
+          // Sync GPU FBOs with reverted CPU buffer
+          if (m_pingFBO && layer->buffer) {
+            QImage fboImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                          QImage::Format_RGBA8888_Premultiplied);
+            m_pingFBO->bind();
+            QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+            QPainter fboPainter(&device);
+            fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+            fboPainter.drawImage(0, 0, fboImg);
+            fboPainter.end();
+            m_pingFBO->release();
+            QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+          }
+        }
+        m_isDrawing = false;
+        m_isHoldingForShape = false;
+        m_quickShapeType = QuickShapeType::None;
+        m_quickShapeTimer->stop();
+        m_hasPrediction = false;
+        m_smudgeColorValid = false;
+        m_strokeCancelledByGesture = true;
+        m_strokeBeforeBuffer.reset();
+        update();
+      }
     }
     event->accept();
+
   } else if (event->type() == QEvent::TouchUpdate) {
+    // ── Single-finger: cancel eyedropper if moved too far ──
     if (points == 1 && m_touchTimer && m_touchTimer->isActive()) {
-      // Cancel long press if moved too much
       float dist = QPointF(event->points().first().position() - m_touchStartPos)
                        .manhattanLength();
       if (dist > 15.0f) {
         m_touchTimer->stop();
       }
-    } else if (points == 2 &&
-               PreferencesManager::instance()->touchGesturesEnabled()) {
+    }
+
+    // ── Transition from 1→2 fingers during drawing ──
+    if (points == 2 && prevPointCount < 2 && !m_isTwoFingerGesture &&
+        PreferencesManager::instance()->touchGesturesEnabled()) {
+      QPointF p1 = event->points()[0].position();
+      QPointF p2 = event->points()[1].position();
+      QPointF center = (p1 + p2) / 2.0;
+      m_touchStartPos = center;
+      m_lastTouchCenter = center;
+      m_lastPinchScale = QLineF(p1, p2).length();
+      m_lastPinchAngle = std::atan2(p2.y() - p1.y(), p2.x() - p1.x());
+      m_isTwoFingerGesture = true;
+
+      if (m_touchTimer)
+        m_touchTimer->stop();
+
+      // Cancel active stroke on 1→2 transition
+      if (m_isDrawing) {
+        Layer *layer = m_layerManager->getActiveLayer();
+        if (layer && layer->buffer && m_strokeBeforeBuffer) {
+          layer->buffer->copyFrom(*m_strokeBeforeBuffer);
+          layer->dirty = true;
+          layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+          if (layer->buffer)
+            layer->buffer->clearDirtyFlags();
+          m_cachedCanvasImage = QImage();
+
+          if (m_pingFBO && layer->buffer) {
+            QImage fboImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                          QImage::Format_RGBA8888_Premultiplied);
+            m_pingFBO->bind();
+            QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+            QPainter fboPainter(&device);
+            fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+            fboPainter.drawImage(0, 0, fboImg);
+            fboPainter.end();
+            m_pingFBO->release();
+            QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+          }
+        }
+        m_isDrawing = false;
+        m_isHoldingForShape = false;
+        m_quickShapeType = QuickShapeType::None;
+        m_quickShapeTimer->stop();
+        m_hasPrediction = false;
+        m_smudgeColorValid = false;
+        m_strokeCancelledByGesture = true;
+        m_strokeBeforeBuffer.reset();
+        update();
+      }
+    }
+
+    // ── Two-finger gesture: Pan + Zoom + Rotation ──
+    if (points == 2 && m_isTwoFingerGesture &&
+        PreferencesManager::instance()->touchGesturesEnabled()) {
       QPointF p1 = event->points()[0].position();
       QPointF p2 = event->points()[1].position();
       QPointF center = (p1 + p2) / 2.0;
 
-      // Calculate Pan
-      QPointF panDelta = center - m_touchStartPos;
+      // ── Pan ──
+      QPointF panDelta = center - m_lastTouchCenter;
       setViewOffset(m_viewOffset - (panDelta / m_zoomLevel));
-      m_touchStartPos = center;
+      m_lastTouchCenter = center;
 
-      // Calculate Zoom
+      // ── Zoom ──
       float currentDist = QLineF(p1, p2).length();
-      if (m_lastPinchScale > 0) {
+      if (m_lastPinchScale > 1.0f) { // Minimum distance to avoid jitter
         float scaleFactor = currentDist / m_lastPinchScale;
         setZoomLevel(
             std::clamp((float)(m_zoomLevel * scaleFactor), 0.1f, 30.0f));
       }
       m_lastPinchScale = currentDist;
+
+      // ── Rotation ──
+      float currentAngle = std::atan2(p2.y() - p1.y(), p2.x() - p1.x());
+      float angleDelta = currentAngle - m_lastPinchAngle;
+
+      // Normalize angle delta to avoid jumps at ±π boundary
+      if (angleDelta > M_PI) angleDelta -= 2.0f * M_PI;
+      if (angleDelta < -M_PI) angleDelta += 2.0f * M_PI;
+
+      // Apply rotation (convert radians to degrees)
+      float angleDeltaDeg = qRadiansToDegrees(angleDelta);
+      // Dead-zone filter: ignore tiny rotations to prevent jitter during
+      // pure zoom/pan
+      if (std::abs(angleDeltaDeg) > 0.3f) {
+        setCanvasRotation(m_canvasRotation + angleDeltaDeg);
+      }
+      m_lastPinchAngle = currentAngle;
+
       event->accept();
       return;
     }
+
   } else if (event->type() == QEvent::TouchEnd ||
              event->type() == QEvent::TouchCancel) {
     if (m_touchTimer)
       m_touchTimer->stop();
     m_touchIsEyedropper = false;
 
+    // ── Multi-touch Undo/Redo ──
     if (PreferencesManager::instance()->multitouchUndoRedoEnabled()) {
-      if (points == 2 && !m_isDrawing) {
-        undo();
-      } else if (points == 3 && !m_isDrawing) {
-        redo();
+      // Only trigger undo/redo if we weren't in a pan/zoom/rotate gesture
+      // and the stroke wasn't just cancelled
+      if (!m_strokeCancelledByGesture && !m_isDrawing) {
+        if (points == 2) {
+          undo();
+        } else if (points == 3) {
+          redo();
+        }
       }
     }
+
+    // Reset gesture state
+    m_isTwoFingerGesture = false;
+    m_strokeCancelledByGesture = false;
+    m_touchPointCount = 0;
   }
 }
 
@@ -5528,11 +5684,12 @@ void CanvasItem::nativeGestureEvent(QNativeGestureEvent *event) {
     setZoomLevel(
         std::clamp(m_zoomLevel + (scaleDelta * m_zoomLevel), 0.1f, 30.0f));
   } else if (event->gestureType() == Qt::RotateNativeGesture) {
-    // float rotDelta = event->value();
-    // m_viewRotation += rotDelta; if we supported canvas rotation
-    // setCanvasRotation(m_viewRotation);
+    // Native trackpad rotation (macOS / Windows Precision Touchpad)
+    float rotDelta = event->value();
+    setCanvasRotation(m_canvasRotation + rotDelta);
   }
 }
+
 
 // ... Setters and other methods ...
 
