@@ -46,6 +46,7 @@ struct Layer {
   float screentoneDotSize = 12.0f;
   float screentoneAngle = 0.785f; // 45 degrees in radians
   float screentoneContrast = 0.8f;
+  int screentoneType = 0; // 0 = Circle, 1 = Line, 2 = Noise
 
   Layer(const std::string &name, int width, int height,
         Type type = Type::Drawing)

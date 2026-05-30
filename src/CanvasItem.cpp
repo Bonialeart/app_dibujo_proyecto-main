@@ -667,6 +667,22 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
       clippingBaseTexID = sourceTexID;
     }
 
+    static int s_renderLogCount = 0;
+    if (s_renderLogCount < 50) {
+      s_renderLogCount++;
+      QFile rDebug("render_debug.txt");
+      if (rDebug.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        QTextStream out(&rDebug);
+        out << "Layer " << i << " (" << QString::fromStdString(layer->name) << ") render pass:\n";
+        out << " - screentoneEnabled: " << layer->screentoneEnabled << "\n";
+        out << " - screentoneDotSize: " << layer->screentoneDotSize << "\n";
+        out << " - screentoneAngle: " << layer->screentoneAngle << "\n";
+        out << " - screentoneContrast: " << layer->screentoneContrast << "\n";
+        out << " - screentoneType: " << layer->screentoneType << "\n";
+        out << " - m_screentoneShader linked: " << (m_screentoneShader && m_screentoneShader->isLinked()) << "\n";
+      }
+    }
+
     // Live GPU Screentone Shader Pass (Halftone conversion)
     if (layer->screentoneEnabled && m_screentoneShader && m_screentoneShader->isLinked()) {
       if (!m_screentoneFBO || m_screentoneFBO->width() != m_canvasWidth || m_screentoneFBO->height() != m_canvasHeight) {
@@ -689,6 +705,7 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
       m_screentoneShader->setUniformValue("u_dotSize", layer->screentoneDotSize);
       m_screentoneShader->setUniformValue("u_angle", layer->screentoneAngle);
       m_screentoneShader->setUniformValue("u_contrast", layer->screentoneContrast);
+      m_screentoneShader->setUniformValue("u_patternType", layer->screentoneType);
       m_screentoneShader->setUniformValue("uScreenSize", QVector2D(m_canvasWidth, m_canvasHeight));
 
       GLfloat screentoneVertices[] = {-1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1,
@@ -1279,8 +1296,27 @@ void CanvasItem::paint(QPainter *painter) {
       if (!m_screentoneShader->link()) {
         qWarning() << "Screentone shader link failed:" << m_screentoneShader->log();
       }
+      QFile debugFile("shader_debug.txt");
+      if (debugFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&debugFile);
+        out << "Screentone Shader Object Created: " << (m_screentoneShader != nullptr) << "\n";
+        out << "Vert Path: " << vertPath << " (exists: " << QFile::exists(vertPath) << ")\n";
+        out << "Frag Path: " << fragPath << " (exists: " << QFile::exists(fragPath) << ")\n";
+        if (m_screentoneShader) {
+          out << "Linked: " << m_screentoneShader->isLinked() << "\n";
+          out << "Log: " << m_screentoneShader->log() << "\n";
+        }
+      }
     } else {
       qWarning() << "Screentone shaders not found!";
+      QFile debugFile("shader_debug.txt");
+      if (debugFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream out(&debugFile);
+        out << "Screentone shaders not found! Paths checked:\n";
+        for (const QString &path : paths) {
+          out << " - " << path << " (exists: " << QDir(path).exists() << ")\n";
+        }
+      }
     }
   }
 
@@ -1690,6 +1726,96 @@ void CanvasItem::paint(QPainter *painter) {
               return;
 
             QImage srcImg(lyr->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
+            QImage finalSrcImg = srcImg;
+
+            if (lyr->screentoneEnabled) {
+              finalSrcImg = srcImg.copy();
+              int x0 = std::max(0, rect.left());
+              int y0 = std::max(0, rect.top());
+              int x1 = std::min(cw - 1, rect.right());
+              int y1 = std::min(ch - 1, rect.bottom());
+              
+              float rad = lyr->screentoneAngle;
+              float c = std::cos(rad);
+              float s = std::sin(rad);
+              float dotSize = lyr->screentoneDotSize;
+              if (dotSize < 1.0f) dotSize = 1.0f;
+              
+              for (int y = y0; y <= y1; ++y) {
+                for (int x = x0; x <= x1; ++x) {
+                  QRgb pixel = srcImg.pixel(x, y);
+                  int alpha = qAlpha(pixel);
+                  if (alpha < 2) {
+                    finalSrcImg.setPixel(x, y, qRgba(0, 0, 0, 0));
+                    continue;
+                  }
+                  
+                  // Un-premultiply alpha to get standard RGB values for clean luma computation
+                  float r = qRed(pixel) / (float)alpha;
+                  float g = qGreen(pixel) / (float)alpha;
+                  float b = qBlue(pixel) / (float)alpha;
+                  float luma = 0.299f * r + 0.587f * g + 0.114f * b;
+                  if (luma > 1.0f) luma = 1.0f;
+                  if (luma < 0.0f) luma = 0.0f;
+                  
+                  // Rotate coordinates
+                  float rx = x * c - y * s;
+                  float ry = x * s + y * c;
+                  float dotAlpha = 0.0f;
+                  
+                  if (lyr->screentoneType == 0) {
+                    // Círculos (Circles)
+                    float fx = (rx / dotSize) - std::floor(rx / dotSize) - 0.5f;
+                    float fy = (ry / dotSize) - std::floor(ry / dotSize) - 0.5f;
+                    float distToCenter = std::sqrt(fx * fx + fy * fy);
+                    float targetRadius = 0.5f * (1.0f - luma);
+                    float transitionWidth = 0.05f + 0.45f * (1.0f - lyr->screentoneContrast);
+                    
+                    float edge0 = targetRadius - transitionWidth;
+                    float edge1 = targetRadius + transitionWidth;
+                    if (distToCenter <= edge0) {
+                      dotAlpha = 1.0f;
+                    } else if (distToCenter >= edge1) {
+                      dotAlpha = 0.0f;
+                    } else {
+                      float t = (distToCenter - edge0) / (edge1 - edge0);
+                      dotAlpha = 1.0f - (t * t * (3.0f - 2.0f * t));
+                    }
+                  } else if (lyr->screentoneType == 1) {
+                    // Líneas (Lines)
+                    float fx = (rx / dotSize) - std::floor(rx / dotSize) - 0.5f;
+                    float distToLine = std::abs(fx);
+                    float targetWidth = 0.5f * (1.0f - luma);
+                    float transitionWidth = 0.05f + 0.45f * (1.0f - lyr->screentoneContrast);
+                    
+                    float edge0 = targetWidth - transitionWidth;
+                    float edge1 = targetWidth + transitionWidth;
+                    if (distToLine <= edge0) {
+                      dotAlpha = 1.0f;
+                    } else if (distToLine >= edge1) {
+                      dotAlpha = 0.0f;
+                    } else {
+                      float t = (distToLine - edge0) / (edge1 - edge0);
+                      dotAlpha = 1.0f - (t * t * (3.0f - 2.0f * t));
+                    }
+                  } else {
+                    // Ruido / Dither (Noise)
+                    float grainSize = dotSize * 0.25f;
+                    if (grainSize < 1.0f) grainSize = 1.0f;
+                    int gx = (int)(x / grainSize);
+                    int gy = (int)(y / grainSize);
+                    
+                    float randVal = std::sin(gx * 12.9898f + gy * 78.233f) * 43758.5453f;
+                    randVal = randVal - std::floor(randVal);
+                    dotAlpha = (randVal > luma) ? 1.0f : 0.0f;
+                  }
+                  
+                  // Retain original transparency and premultiply color (all black dots)
+                  int outAlpha = (int)(dotAlpha * alpha);
+                  finalSrcImg.setPixel(x, y, qRgba(0, 0, 0, outAlpha));
+                }
+              }
+            }
 
             float effectiveOpacity = lyr->opacity;
             QTransform animTransform;
@@ -1728,11 +1854,11 @@ void CanvasItem::paint(QPainter *painter) {
                 tempImg.fill(Qt::transparent);
                 QPainter tempPainter(&tempImg);
                 tempPainter.setTransform(animTransform);
-                tempPainter.drawImage(0, 0, srcImg);
+                tempPainter.drawImage(0, 0, finalSrcImg);
                 tempPainter.end();
                 blendImagesCustom(destImg, tempImg, rect, targetPos, lyr->blendMode, effectiveOpacity);
               } else {
-                blendImagesCustom(destImg, srcImg, rect, targetPos, lyr->blendMode, effectiveOpacity);
+                blendImagesCustom(destImg, finalSrcImg, rect, targetPos, lyr->blendMode, effectiveOpacity);
               }
               painter.begin(&destImg);
               painter.setRenderHint(QPainter::Antialiasing, false);
@@ -1740,7 +1866,7 @@ void CanvasItem::paint(QPainter *painter) {
             } else {
               painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
               painter.setOpacity(effectiveOpacity);
-              painter.drawImage(targetPos, srcImg, rect);
+              painter.drawImage(targetPos, finalSrcImg, rect);
             }
             painter.restore();
           };
@@ -9287,6 +9413,7 @@ void CanvasItem::updateLayersList() {
     layer["screentoneDotSize"] = l->screentoneDotSize;
     layer["screentoneAngle"] = l->screentoneAngle;
     layer["screentoneContrast"] = l->screentoneContrast;
+    layer["screentoneType"] = l->screentoneType;
 
     // Correctly map the Layer::Type enum
     if (l->type == Layer::Type::Group) {
@@ -10121,6 +10248,23 @@ void CanvasItem::setLayerScreentoneContrast(int index, float contrast) {
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->screentoneContrast != contrast) {
     l->screentoneContrast = contrast;
+    l->markDirty();
+    updateLayersList();
+    update();
+  }
+}
+
+int CanvasItem::getLayerScreentoneType(int index) const {
+  if (!m_layerManager) return 0;
+  Layer *l = m_layerManager->getLayer(index);
+  return l ? l->screentoneType : 0;
+}
+
+void CanvasItem::setLayerScreentoneType(int index, int type) {
+  if (!m_layerManager) return;
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->screentoneType != type) {
+    l->screentoneType = type;
     l->markDirty();
     updateLayersList();
     update();

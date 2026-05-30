@@ -385,6 +385,8 @@ public:
   Q_INVOKABLE void setLayerScreentoneAngle(int index, float angle);
   Q_INVOKABLE float getLayerScreentoneContrast(int index) const;
   Q_INVOKABLE void setLayerScreentoneContrast(int index, float contrast);
+  Q_INVOKABLE int getLayerScreentoneType(int index) const;
+  Q_INVOKABLE void setLayerScreentoneType(int index, int type);
 
   // Vector Speech Balloon Operations
   Q_INVOKABLE void createSpeechBalloon(float x, float y);

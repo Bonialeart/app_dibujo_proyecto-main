@@ -84,6 +84,7 @@ void LayerManager::duplicateLayer(int index) {
   newLayer->screentoneDotSize = src->screentoneDotSize;
   newLayer->screentoneAngle = src->screentoneAngle;
   newLayer->screentoneContrast = src->screentoneContrast;
+  newLayer->screentoneType = src->screentoneType;
   
   if (src->type == Layer::Type::Vector && src->vectorData) {
     newLayer->vectorData = std::make_unique<VectorLayerData>(*src->vectorData);

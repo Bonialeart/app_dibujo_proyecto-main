@@ -20,6 +20,7 @@ import "../components"
     property var mainCanvas
     property bool transformBilinear: true
     property bool transformAdvancedMesh: false
+    property bool showScreentonePanel: mainWindow ? mainWindow.showScreentonePanel : false
                 Rectangle { anchors.fill: parent; color: "#121214" }
 
                 // DRAWING CANVAS
@@ -1616,7 +1617,7 @@ import "../components"
                 // MASCARA LOCAL (Solo cubre el canvas y herramientas inferiores)
                 MouseArea {
                     anchors.fill: parent
-                    enabled: showLayers || showColor || showBrush || showBrushSettings
+                    enabled: showLayers || showColor || showBrush || showBrushSettings || showScreentonePanel
                     z: 90 // Debajo de los paneles (z=100) pero encima de canvas/herramientas
                     onClicked: {
                         if (showLayers && (layersList.swipedIndex !== -1 || layersList.optionsIndex !== -1 || layerContextMenu.visible)) {
@@ -1630,6 +1631,7 @@ import "../components"
                             showColor = false
                             showBrush = false
                             showBrushSettings = false
+                            showScreentonePanel = false
                         }
                     }
                 }

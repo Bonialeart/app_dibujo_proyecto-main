@@ -148,6 +148,7 @@ Window {
     property bool showColor: false
     property bool showBrush: false
     property bool showBrushSettings: false
+    property bool showScreentonePanel: false
     property bool showShapes: false
     property bool showStoryPanel: false
     property bool isStoryProject: false
@@ -3978,7 +3979,8 @@ Window {
                             TopBarButton {
                                 iconSource: iconPath("star.svg")
                                 tooltip: "Efectos y Ajustes"
-                                onClicked: toastManager.show("Efectos y Ajustes", "info")
+                                active: showScreentonePanel
+                                onClicked: { showScreentonePanel = !showScreentonePanel; showLayers = false; showColor = false; showBrush = false; showBrushSettings = false }
                             }
 
                             // 7. Studio Mode Button
@@ -4614,7 +4616,7 @@ Window {
                                 iconSource: iconPath("layers.svg")
                                 tooltip: "Capas"
                                 active: showLayers
-                                onClicked: { showLayers = !showLayers; showColor = false; showBrush = false; showBrushSettings = false }
+                                onClicked: { showLayers = !showLayers; showColor = false; showBrush = false; showBrushSettings = false; showScreentonePanel = false }
                             }
 
                             // Story Manager Toggle
@@ -4741,7 +4743,7 @@ Window {
                 // MASCARA LOCAL (Solo cubre el canvas y herramientas inferiores)
                 MouseArea {
                     anchors.fill: parent
-                    enabled: showLayers || showColor || showBrush || showBrushSettings
+                    enabled: showLayers || showColor || showBrush || showBrushSettings || showScreentonePanel
                     z: 90 // Debajo de los paneles (z=100) pero encima de canvas/herramientas
                     onClicked: {
                         if (showLayers && (layersList.swipedIndex !== -1 || layersList.optionsIndex !== -1 || layerContextMenu.visible)) {
@@ -4755,6 +4757,7 @@ Window {
                             showColor = false
                             showBrush = false
                             showBrushSettings = false
+                            showScreentonePanel = false
                         }
                     }
                 }
@@ -6231,6 +6234,34 @@ Window {
 
 
 
+
+                // 2.5. PANEL DE EFECTOS Y AJUSTES - Draggable/Resizable Premium Panel
+                PremiumPanel {
+                    id: screentonePanel
+                    panelVisible: showScreentonePanel && !isStudioMode
+                    panelTitle: "Efectos y Ajustes"
+                    panelIcon: "star.svg"
+                    accentColor: colorAccent
+                    initialX: canvasPage.width - 310
+                    initialY: 100
+                    defaultWidth: 290
+                    defaultHeight: 450
+                    minWidth: 220
+                    maxWidth: 450
+                    minHeight: 200
+                    maxHeight: 600
+                    z: 2000
+                    
+                    onCloseRequested: showScreentonePanel = false
+                    onPanelClicked: z = 2100
+                    
+                    ScreentonePanel {
+                        id: screentonePanelInternal
+                        anchors.fill: parent
+                        targetCanvas: mainCanvas
+                        accentColor: colorAccent
+                    }
+                }
 
                 // 3. PANEL DE COLOR - Multi-Modo (Wheel, Square, Sliders, Palettes)
                 // 3. PANEL DE COLOR - PRO REDESIGN

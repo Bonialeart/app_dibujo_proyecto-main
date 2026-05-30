@@ -40,6 +40,7 @@
     <file>qml/components/DockContainer.qml</file>
     <file>qml/components/ColorPanel.qml</file>
     <file>qml/components/LayerPanel.qml</file>
+    <file>qml/components/ScreentonePanel.qml</file>
     <file>qml/components/NavigatorPanel.qml</file>
     <file>qml/components/BrushLibraryPanel.qml</file>
     <file>qml/components/StudioSlider.qml</file>
