@@ -48,6 +48,9 @@ struct Layer {
   float screentoneContrast = 0.8f;
   int screentoneType = 0; // 0 = Circle, 1 = Line, 2 = Noise
 
+  bool gradientMapEnabled = false;
+  std::string gradientMapPreset = "sunset"; // "sunset", "ocean", "forest", "retro", "manga"
+
   Layer(const std::string &name, int width, int height,
         Type type = Type::Drawing)
       : stableId(nextId()), name(name), buffer(std::make_unique<ImageBuffer>(width, height)),

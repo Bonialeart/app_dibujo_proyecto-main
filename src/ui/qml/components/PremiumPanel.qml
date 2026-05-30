@@ -57,6 +57,13 @@ Item {
     width: defaultWidth
     height: defaultHeight
 
+    onPanelVisibleChanged: {
+        if (panelVisible) {
+            x = initialX
+            y = initialY
+        }
+    }
+
     Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
     Behavior on scale { NumberAnimation { duration: 280; easing.type: Easing.OutBack } }
 

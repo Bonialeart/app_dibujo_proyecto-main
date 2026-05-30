@@ -145,11 +145,16 @@ Rectangle {
         clip: true
         
         onLoaded: {
-            if (item && item.hasOwnProperty("targetCanvas")) {
-                item.targetCanvas = Qt.binding(function() { return root.targetCanvas })
-            }
-            if (item && item.hasOwnProperty("colorAccent")) {
-                item.colorAccent = root.accentColor
+            if (item) {
+                if (item.targetCanvas !== undefined) {
+                    item.targetCanvas = Qt.binding(function() { return root.targetCanvas })
+                }
+                if (item.colorAccent !== undefined) {
+                    item.colorAccent = root.accentColor
+                }
+                if (item.accentColor !== undefined) {
+                    item.accentColor = root.accentColor
+                }
             }
         }
     }

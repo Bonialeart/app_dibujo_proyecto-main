@@ -7,6 +7,11 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QVariantList>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonValue>
+#include <QDebug>
 
 class PreferencesManager : public QObject {
   Q_OBJECT
@@ -414,6 +419,75 @@ public slots:
     QVariantMap map = shortcuts();
     map[name] = seq;
     setShortcuts(map);
+  }
+
+  Q_INVOKABLE QString serializeLayout(const QString &activeWorkspace, const QVariantList &docks) {
+    QJsonObject root;
+    root["activeWorkspace"] = activeWorkspace;
+
+    QJsonArray docksArray;
+    for (const auto &val : docks) {
+        QVariantMap map = val.toMap();
+        QJsonObject dockObj;
+        dockObj["panelId"] = map.value("panelId").toString();
+        dockObj["dockArea"] = map.value("dockArea").toString();
+        dockObj["positionIndex"] = map.value("positionIndex").toInt();
+        dockObj["floating"] = map.value("floating").toBool();
+        dockObj["collapsed"] = map.value("collapsed").toBool();
+        if (map.contains("width")) {
+            dockObj["width"] = map.value("width").toInt();
+        }
+        if (map.contains("height")) {
+            dockObj["height"] = map.value("height").toInt();
+        }
+        docksArray.append(dockObj);
+    }
+    root["docks"] = docksArray;
+
+    QJsonDocument doc(root);
+    return QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
+  }
+
+  Q_INVOKABLE QVariantMap deserializeLayout(const QString &jsonStr) {
+    QVariantMap result;
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonStr.toUtf8(), &error);
+    if (doc.isNull() || !doc.isObject()) {
+        qWarning() << "Failed to parse layout JSON:" << error.errorString();
+        return result;
+    }
+
+    QJsonObject root = doc.object();
+    result["activeWorkspace"] = root.value("activeWorkspace").toString();
+
+    QVariantList docksList;
+    QJsonArray docksArray = root.value("docks").toArray();
+    for (const auto &val : docksArray) {
+        QJsonObject dockObj = val.toObject();
+        QVariantMap dockMap;
+        dockMap["panelId"] = dockObj.value("panelId").toString();
+        dockMap["dockArea"] = dockObj.value("dockArea").toString();
+        dockMap["positionIndex"] = dockObj.value("positionIndex").toInt();
+        dockMap["floating"] = dockObj.value("floating").toBool();
+        dockMap["collapsed"] = dockObj.value("collapsed").toBool();
+        if (dockObj.contains("width")) {
+            dockMap["width"] = dockObj.value("width").toInt();
+        }
+        if (dockObj.contains("height")) {
+            dockMap["height"] = dockObj.value("height").toInt();
+        }
+        docksList.append(dockMap);
+    }
+    result["docks"] = docksList;
+    return result;
+  }
+
+  Q_INVOKABLE void saveLayoutJson(const QString &workspaceName, const QString &jsonStr) {
+    m_settings->setValue("Layouts/" + workspaceName, jsonStr);
+  }
+
+  Q_INVOKABLE QString getLayoutJson(const QString &workspaceName) const {
+    return m_settings->value("Layouts/" + workspaceName, QString()).toString();
   }
 
   void resetDefaults() {

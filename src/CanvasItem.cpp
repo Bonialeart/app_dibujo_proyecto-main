@@ -285,9 +285,20 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_isFreeTransformActive(false), m_panelOverlayDirty(true),
       m_lastActiveBasePanel(nullptr), m_lastCanvasWidth(0),
       m_lastCanvasHeight(0), m_hasActiveSpeechBalloon(false),
-      m_draggingBalloonHandle(0) {
+      m_draggingBalloonHandle(0),
+      m_gradientShape("linear") {
   m_customOpenHandCursor = loadCustomSvgCursor("hand-open.svg");
   m_customClosedHandCursor = loadCustomSvgCursor("hand-closed.svg");
+
+  // Initialize default gradient stops (Sunset)
+  QVariantMap stop1, stop2, stop3;
+  stop1["position"] = 0.0;
+  stop1["color"] = "#764ba2";
+  stop2["position"] = 0.5;
+  stop2["color"] = "#ff7e5f";
+  stop3["position"] = 1.0;
+  stop3["color"] = "#feb47b";
+  m_gradientStops << stop1 << stop2 << stop3;
 
 
 
@@ -474,6 +485,7 @@ void CanvasItem::clearRenderCaches() {
   m_layerRenderCache.clear();
   m_clippedRenderCache.clear();
   m_cachedCanvasImage = QImage(); // Invalidate CPU composite cache
+  m_canvasPreviewBase64 = QString(); // Invalidate base64 cache
 
   // GL resources must NOT be deleted from QML thread.
   // Set a flag and let paint() clean them up in the render thread.
@@ -683,6 +695,57 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
       }
     }
 
+    // Live GPU Gradient Map Shader Pass (Color mapping preset)
+    if (layer->gradientMapEnabled && m_gradientMapShader && m_gradientMapShader->isLinked()) {
+      if (!m_gradientMapFBO || m_gradientMapFBO->width() != m_canvasWidth || m_gradientMapFBO->height() != m_canvasHeight) {
+        if (m_gradientMapFBO) delete m_gradientMapFBO;
+        QOpenGLFramebufferObjectFormat format;
+        format.setAttachment(QOpenGLFramebufferObject::NoAttachment);
+        format.setInternalTextureFormat(GL_RGBA8);
+        m_gradientMapFBO = new QOpenGLFramebufferObject(m_canvasWidth, m_canvasHeight, format);
+      }
+
+      m_gradientMapFBO->bind();
+      f->glViewport(0, 0, m_canvasWidth, m_canvasHeight);
+      f->glClearColor(0, 0, 0, 0);
+      f->glClear(GL_COLOR_BUFFER_BIT);
+
+      m_gradientMapShader->bind();
+      f->glActiveTexture(GL_TEXTURE0);
+      f->glBindTexture(GL_TEXTURE_2D, sourceTexID);
+      m_gradientMapShader->setUniformValue("uSource", 0);
+
+      int presetId = 4; // Default to Manga Grayscale
+      QString presetName = QString::fromStdString(layer->gradientMapPreset).toLower();
+      if (presetName == "sunset") presetId = 0;
+      else if (presetName == "ocean") presetId = 1;
+      else if (presetName == "forest") presetId = 2;
+      else if (presetName == "retro") presetId = 3;
+      else if (presetName == "manga") presetId = 4;
+
+      m_gradientMapShader->setUniformValue("uPreset", presetId);
+
+      GLfloat vertices[] = {-1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1,
+                            -1, 1,  0, 1, 1, -1, 1, 0, 1,  1, 1, 1};
+
+      m_gradientMapShader->enableAttributeArray(0);
+      m_gradientMapShader->enableAttributeArray(1);
+      m_gradientMapShader->setAttributeArray(0, GL_FLOAT, vertices, 2, 4 * sizeof(GLfloat));
+      m_gradientMapShader->setAttributeArray(1, GL_FLOAT, vertices + 2, 2, 4 * sizeof(GLfloat));
+
+      f->glDrawArrays(GL_TRIANGLES, 0, 6);
+
+      m_gradientMapShader->disableAttributeArray(0);
+      m_gradientMapShader->disableAttributeArray(1);
+      m_gradientMapShader->release();
+      m_gradientMapFBO->release();
+
+      sourceTexID = m_gradientMapFBO->texture();
+      if (!layer->clipped) {
+        clippingBaseTexID = sourceTexID;
+      }
+    }
+
     // Live GPU Screentone Shader Pass (Halftone conversion)
     if (layer->screentoneEnabled && m_screentoneShader && m_screentoneShader->isLinked()) {
       if (!m_screentoneFBO || m_screentoneFBO->width() != m_canvasWidth || m_screentoneFBO->height() != m_canvasHeight) {
@@ -868,6 +931,10 @@ CanvasItem::~CanvasItem() {
     delete m_screentoneFBO;
   if (m_screentoneShader)
     delete m_screentoneShader;
+  if (m_gradientMapFBO)
+    delete m_gradientMapFBO;
+  if (m_gradientMapShader)
+    delete m_gradientMapShader;
   if (m_predictionFBO)
     delete m_predictionFBO;
   if (m_dabFBO)
@@ -904,6 +971,10 @@ void CanvasItem::cleanupGlResources() {
   if (m_screentoneFBO) {
     delete m_screentoneFBO;
     m_screentoneFBO = nullptr;
+  }
+  if (m_gradientMapFBO) {
+    delete m_gradientMapFBO;
+    m_gradientMapFBO = nullptr;
   }
 
   // Delete stroke FBOs
@@ -1320,6 +1391,34 @@ void CanvasItem::paint(QPainter *painter) {
     }
   }
 
+  // 0d. Initialize Gradient Map Shader
+  if (!m_gradientMapShader) {
+    m_gradientMapShader = new QOpenGLShaderProgram();
+    QStringList paths;
+    paths << QCoreApplication::applicationDirPath() + "/shaders/";
+    paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
+    paths << "src/core/shaders/";
+    paths << "../src/core/shaders/";
+    QString vertPath, fragPath;
+    for (const QString &path : paths) {
+      if (QFile::exists(path + "composition.vert") &&
+          QFile::exists(path + "gradientmap.frag")) {
+        vertPath = path + "composition.vert";
+        fragPath = path + "gradientmap.frag";
+        break;
+      }
+    }
+    if (!vertPath.isEmpty()) {
+      m_gradientMapShader->addShaderFromSourceFile(QOpenGLShader::Vertex, vertPath);
+      m_gradientMapShader->addShaderFromSourceFile(QOpenGLShader::Fragment, fragPath);
+      if (!m_gradientMapShader->link()) {
+        qWarning() << "Gradient Map shader link failed:" << m_gradientMapShader->log();
+      }
+    } else {
+      qWarning() << "Gradient Map shaders not found!";
+    }
+  }
+
   // 0b. Initialize Blit Shader (used for drawing composition result to screen)
   if (!m_transformShader) {
     m_transformShader = new QOpenGLShaderProgram();
@@ -1714,6 +1813,7 @@ void CanvasItem::paint(QPainter *painter) {
           dirtyUnion = QRect(0, 0, cw, ch);
 
         if (!dirtyUnion.isNull()) {
+          m_canvasPreviewBase64 = QString(); // Invalidate base64 cache
           // Clip to canvas bounds
           dirtyUnion = dirtyUnion.intersected(QRect(0, 0, cw, ch));
 
@@ -2211,6 +2311,47 @@ void CanvasItem::paint(QPainter *painter) {
       painter->drawText(textRect, Qt::AlignCenter, text);
     }
     painter->restore();
+
+    painter->restore();
+  }
+
+  // 4.1. Gradient Tool Drag Preview
+  if (m_tool == ToolType::Gradient && m_isGradientDragging) {
+    painter->save();
+    painter->translate(m_viewOffset.x() * m_zoomLevel,
+                       m_viewOffset.y() * m_zoomLevel);
+    painter->scale(m_zoomLevel, m_zoomLevel);
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    // Draw shadow line
+    QPen shadowPen(QColor(0, 0, 0, 150), 3.0f / m_zoomLevel, Qt::SolidLine);
+    painter->setPen(shadowPen);
+    painter->drawLine(m_gradientStartPos, m_gradientEndPos);
+
+    // Draw white line
+    QPen linePen(Qt::white, 1.5f / m_zoomLevel, Qt::SolidLine);
+    painter->setPen(linePen);
+    painter->drawLine(m_gradientStartPos, m_gradientEndPos);
+
+    // Draw handles
+    float handleSize = 6.0f / m_zoomLevel;
+
+    // Shadows
+    painter->setBrush(QColor(0, 0, 0, 150));
+    painter->setPen(Qt::NoPen);
+    painter->drawEllipse(m_gradientStartPos, handleSize + 1.0f / m_zoomLevel, handleSize + 1.0f / m_zoomLevel);
+    painter->drawEllipse(m_gradientEndPos, handleSize + 1.0f / m_zoomLevel, handleSize + 1.0f / m_zoomLevel);
+
+    // White ellipses with accent color border
+    painter->setBrush(Qt::white);
+    painter->setPen(QPen(m_accentColor, 1.5f / m_zoomLevel));
+    painter->drawEllipse(m_gradientStartPos, handleSize, handleSize);
+    painter->drawEllipse(m_gradientEndPos, handleSize, handleSize);
+
+    // Center dot for start anchor
+    painter->setBrush(m_accentColor);
+    painter->setPen(Qt::NoPen);
+    painter->drawEllipse(m_gradientStartPos, handleSize * 0.4f, handleSize * 0.4f);
 
     painter->restore();
   }
@@ -4158,7 +4299,8 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
     // Evitar que herramientas de NO DIBUJO pinten accidentalmente
     if (m_tool != ToolType::Pen && m_tool != ToolType::Eraser &&
-        m_tool != ToolType::Fill && m_tool != ToolType::Shape) {
+        m_tool != ToolType::Fill && m_tool != ToolType::Shape &&
+        m_tool != ToolType::Gradient) {
       return;
     }
 
@@ -4166,6 +4308,20 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     if (m_tool == ToolType::Fill) {
       apply_color_drop(static_cast<int>(event->position().x()),
                        static_cast<int>(event->position().y()), m_brushColor);
+      return;
+    }
+
+    if (m_tool == ToolType::Gradient) {
+      m_gradientStartPos = canvasPos;
+      m_gradientEndPos = canvasPos;
+      m_isGradientDragging = true;
+      if (m_layerManager) {
+        Layer *layer = m_layerManager->getActiveLayer();
+        if (layer && layer->buffer) {
+          m_strokeBeforeBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+        }
+      }
+      update();
       return;
     }
 
@@ -4242,6 +4398,14 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   event->accept(); // Evita que el evento suba a QML
+
+  if (m_tool == ToolType::Gradient && m_isGradientDragging) {
+    QPointF canvasPos = screenToCanvas(event->position());
+    m_gradientEndPos = canvasPos;
+    update();
+    event->accept();
+    return;
+  }
 
   // ── Dragging Vanishing Points in Perspective Ruler ──
   if (m_perspectiveRuler && m_perspectiveRuler->active() && m_draggingVp != 0) {
@@ -4607,6 +4771,71 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
+  if (m_tool == ToolType::Gradient && m_isGradientDragging) {
+    m_isGradientDragging = false;
+    QPointF canvasPos = screenToCanvas(event->position());
+    m_gradientEndPos = canvasPos;
+
+    if (m_layerManager) {
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->buffer && m_strokeBeforeBuffer) {
+        // Paint the gradient to the layer's buffer
+        QImage img(layer->buffer->data(), layer->buffer->width(), layer->buffer->height(), QImage::Format_RGBA8888_Premultiplied);
+        QPainter painter(&img);
+        painter.setRenderHint(QPainter::Antialiasing);
+
+        // Clip to selection if active
+        if (!m_selectionPath.isEmpty()) {
+          painter.setClipPath(m_selectionPath);
+        }
+
+        // Choose linear or radial gradient
+        QGradient grad;
+        if (m_gradientShape == "radial") {
+          double radius = QLineF(m_gradientStartPos, m_gradientEndPos).length();
+          if (radius < 1.0) radius = 1.0;
+          grad = QRadialGradient(m_gradientStartPos, radius);
+        } else {
+          grad = QLinearGradient(m_gradientStartPos, m_gradientEndPos);
+        }
+
+        // Load and sort stops
+        std::vector<std::pair<double, QColor>> sortedStops;
+        for (const QVariant &val : m_gradientStops) {
+          QVariantMap stopObj = val.toMap();
+          double pos = stopObj["position"].toDouble();
+          QColor col(stopObj["color"].toString());
+          sortedStops.push_back({pos, col});
+        }
+        std::sort(sortedStops.begin(), sortedStops.end(), [](const auto &a, const auto &b) {
+          return a.first < b.first;
+        });
+
+        for (const auto &stop : sortedStops) {
+          grad.setColorAt(stop.first, stop.second);
+        }
+
+        painter.setBrush(grad);
+        painter.setPen(Qt::NoPen);
+        painter.drawRect(0, 0, layer->buffer->width(), layer->buffer->height());
+        painter.end();
+
+        layer->dirty = true;
+        layer->markDirty();
+
+        // Push Undo
+        auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+        m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
+            m_layerManager, m_activeLayerIndex, std::move(m_strokeBeforeBuffer), std::move(after)));
+
+        updateLayersList();
+      }
+    }
+    update();
+    event->accept();
+    return;
+  }
+
   if (m_draggingVp != 0) {
     m_draggingVp = 0;
     event->accept();
@@ -6268,6 +6497,9 @@ void CanvasItem::setCurrentTool(const QString &tool) {
   } else if (tool == "fill" || tool == "BUCKET") {
     m_tool = ToolType::Fill;
     setCursor(QCursor(Qt::BlankCursor));
+  } else if (tool == "GRAD") {
+    m_tool = ToolType::Gradient;
+    setCursor(QCursor(Qt::CrossCursor));
   } else if (tool == "panel_cut") {
     m_tool = ToolType::PanelCut;
     setCursor(QCursor(Qt::BlankCursor));
@@ -8117,6 +8349,18 @@ bool CanvasItem::loadProject(const QString &path) {
         newLayer->reference = layerObj["reference"].toBool(false);
         newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
         newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
+
+        // Deserializar Screentone
+        newLayer->screentoneEnabled = layerObj["screentoneEnabled"].toBool(false);
+        newLayer->screentoneDotSize = (float)layerObj["screentoneDotSize"].toDouble(12.0);
+        newLayer->screentoneAngle = (float)layerObj["screentoneAngle"].toDouble(0.785);
+        newLayer->screentoneContrast = (float)layerObj["screentoneContrast"].toDouble(0.8);
+        newLayer->screentoneType = layerObj["screentoneType"].toInt(0);
+
+        // Deserializar Gradient Map
+        newLayer->gradientMapEnabled = layerObj["gradientMapEnabled"].toBool(false);
+        newLayer->gradientMapPreset = layerObj["gradientMapPreset"].toString("sunset").toStdString();
+
         if (layerObj.contains("panelPath")) {
           newLayer->panelPath = deserializePath(layerObj["panelPath"].toString());
         }
@@ -8280,6 +8524,17 @@ bool CanvasItem::saveProject(const QString &pathText) {
       layerObj["reference"] = layer->reference;
       layerObj["blendMode"] = (int)layer->blendMode;
       layerObj["type"] = (int)layer->type;
+
+      // Serializar Screentone
+      layerObj["screentoneEnabled"] = layer->screentoneEnabled;
+      layerObj["screentoneDotSize"] = layer->screentoneDotSize;
+      layerObj["screentoneAngle"] = layer->screentoneAngle;
+      layerObj["screentoneContrast"] = layer->screentoneContrast;
+      layerObj["screentoneType"] = layer->screentoneType;
+
+      // Serializar Gradient Map
+      layerObj["gradientMapEnabled"] = layer->gradientMapEnabled;
+      layerObj["gradientMapPreset"] = QString::fromStdString(layer->gradientMapPreset);
 
       // Embed Image Data as Base64 String
       // Create deep copy for saving
@@ -9414,6 +9669,8 @@ void CanvasItem::updateLayersList() {
     layer["screentoneAngle"] = l->screentoneAngle;
     layer["screentoneContrast"] = l->screentoneContrast;
     layer["screentoneType"] = l->screentoneType;
+    layer["gradientMapEnabled"] = l->gradientMapEnabled;
+    layer["gradientMapPreset"] = QString::fromStdString(l->gradientMapPreset);
 
     // Correctly map the Layer::Type enum
     if (l->type == Layer::Type::Group) {
@@ -10268,6 +10525,55 @@ void CanvasItem::setLayerScreentoneType(int index, int type) {
     l->markDirty();
     updateLayersList();
     update();
+  }
+}
+
+bool CanvasItem::isLayerGradientMapEnabled(int index) const {
+  if (!m_layerManager) return false;
+  Layer *l = m_layerManager->getLayer(index);
+  return l ? l->gradientMapEnabled : false;
+}
+
+void CanvasItem::setLayerGradientMapEnabled(int index, bool enabled) {
+  if (!m_layerManager) return;
+  Layer *l = m_layerManager->getLayer(index);
+  if (l && l->gradientMapEnabled != enabled) {
+    l->gradientMapEnabled = enabled;
+    l->markDirty();
+    updateLayersList();
+    update();
+  }
+}
+
+QString CanvasItem::getLayerGradientMapPreset(int index) const {
+  if (!m_layerManager) return QStringLiteral("sunset");
+  Layer *l = m_layerManager->getLayer(index);
+  return l ? QString::fromStdString(l->gradientMapPreset) : QStringLiteral("sunset");
+}
+
+void CanvasItem::setLayerGradientMapPreset(int index, const QString &preset) {
+  if (!m_layerManager) return;
+  Layer *l = m_layerManager->getLayer(index);
+  std::string stdPreset = preset.toStdString();
+  if (l && l->gradientMapPreset != stdPreset) {
+    l->gradientMapPreset = stdPreset;
+    l->markDirty();
+    updateLayersList();
+    update();
+  }
+}
+
+void CanvasItem::setGradientStops(const QVariantList &stops) {
+  if (m_gradientStops != stops) {
+    m_gradientStops = stops;
+    emit gradientStopsChanged();
+  }
+}
+
+void CanvasItem::setGradientShape(const QString &shape) {
+  if (m_gradientShape != shape) {
+    m_gradientShape = shape;
+    emit gradientShapeChanged();
   }
 }
 
@@ -11313,23 +11619,105 @@ QString CanvasItem::getPreviewPadImage() {
 }
 // ─── Canvas Preview (Live Preview for Navigator) ────────────────────────
 QString CanvasItem::getCanvasPreview() {
-  if (m_cachedCanvasImage.isNull())
-    return "";
+  if (!m_cachedCanvasImage.isNull() && !m_canvasPreviewBase64.isEmpty()) {
+    return m_canvasPreviewBase64;
+  }
 
-  // Make a very cheap, downscaled version for the navigator
+  if (m_cachedCanvasImage.isNull()) {
+    if (m_layerManager && m_layerManager->getLayerCount() > 0) {
+      int cw = m_canvasWidth;
+      int ch = m_canvasHeight;
+      if (cw > 0 && ch > 0) {
+        m_cachedCanvasImage = QImage(cw, ch, QImage::Format_RGBA8888_Premultiplied);
+        bool isBgVisible = true;
+        for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+          artflow::Layer *l = m_layerManager->getLayer(i);
+          if (l && l->type == artflow::Layer::Type::Background) {
+            isBgVisible = l->visible;
+            break;
+          }
+        }
+        if (isBgVisible && m_backgroundColor.alpha() > 0) {
+          m_cachedCanvasImage.fill(m_backgroundColor);
+        } else {
+          m_cachedCanvasImage.fill(Qt::transparent);
+        }
+
+        QPainter painter(&m_cachedCanvasImage);
+        for (int i = 0; i < m_layerManager->getLayerCount(); ++i) {
+          artflow::Layer *l = m_layerManager->getLayer(i);
+          if (l && l->visible && l->buffer && l->buffer->data()) {
+            QImage layerImg(l->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
+            painter.setOpacity(l->opacity);
+            if (l->type == artflow::Layer::Type::Background) {
+              painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+            } else {
+              switch (l->blendMode) {
+                case BlendMode::Multiply:
+                  painter.setCompositionMode(QPainter::CompositionMode_Multiply);
+                  break;
+                case BlendMode::Screen:
+                  painter.setCompositionMode(QPainter::CompositionMode_Screen);
+                  break;
+                case BlendMode::Overlay:
+                  painter.setCompositionMode(QPainter::CompositionMode_Overlay);
+                  break;
+                case BlendMode::Darken:
+                  painter.setCompositionMode(QPainter::CompositionMode_Darken);
+                  break;
+                case BlendMode::Lighten:
+                  painter.setCompositionMode(QPainter::CompositionMode_Lighten);
+                  break;
+                case BlendMode::ColorDodge:
+                  painter.setCompositionMode(QPainter::CompositionMode_ColorDodge);
+                  break;
+                case BlendMode::ColorBurn:
+                  painter.setCompositionMode(QPainter::CompositionMode_ColorBurn);
+                  break;
+                case BlendMode::Difference:
+                  painter.setCompositionMode(QPainter::CompositionMode_Difference);
+                  break;
+                case BlendMode::Exclusion:
+                  painter.setCompositionMode(QPainter::CompositionMode_Exclusion);
+                  break;
+                case BlendMode::SoftLight:
+                  painter.setCompositionMode(QPainter::CompositionMode_SoftLight);
+                  break;
+                case BlendMode::HardLight:
+                  painter.setCompositionMode(QPainter::CompositionMode_HardLight);
+                  break;
+                default:
+                  painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+                  break;
+              }
+            }
+            painter.drawImage(0, 0, layerImg);
+          }
+        }
+        painter.end();
+      }
+    }
+  }
+
+  if (m_cachedCanvasImage.isNull()) {
+    m_canvasPreviewBase64 = "";
+    return "";
+  }
+
+  // Make a very high quality, smoothly downscaled version for the navigator (400x400 is super crisp)
   QImage preview = m_cachedCanvasImage;
-  if (preview.width() > 350 || preview.height() > 350) {
-    // Keep it fast, no smooth transform
-    preview =
-        preview.scaled(350, 350, Qt::KeepAspectRatio, Qt::FastTransformation);
+  if (preview.width() > 400 || preview.height() > 400) {
+    preview = preview.scaled(400, 400, Qt::KeepAspectRatio, Qt::SmoothTransformation);
   }
 
   QByteArray ba;
   QBuffer buffer(&ba);
   buffer.open(QIODevice::WriteOnly);
-  preview.save(&buffer, "PNG");
+  // Compress as JPG at 80% quality (much faster and lighter than PNG)
+  preview.save(&buffer, "JPG", 80);
 
-  return "data:image/png;base64," + QString(ba.toBase64());
+  m_canvasPreviewBase64 = "data:image/jpeg;base64," + QString(ba.toBase64());
+  return m_canvasPreviewBase64;
 }
 
 QString CanvasItem::loadReference(const QString &path) {
@@ -12884,6 +13272,17 @@ void CanvasItem::handleAutoSave() {
       layerObj["blendMode"] = (int)layer->blendMode;
       layerObj["type"] = (int)layer->type;
 
+      // Serializar Screentone
+      layerObj["screentoneEnabled"] = layer->screentoneEnabled;
+      layerObj["screentoneDotSize"] = layer->screentoneDotSize;
+      layerObj["screentoneAngle"] = layer->screentoneAngle;
+      layerObj["screentoneContrast"] = layer->screentoneContrast;
+      layerObj["screentoneType"] = layer->screentoneType;
+
+      // Serializar Gradient Map
+      layerObj["gradientMapEnabled"] = layer->gradientMapEnabled;
+      layerObj["gradientMapPreset"] = QString::fromStdString(layer->gradientMapPreset);
+
       QImage img(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
                  QImage::Format_RGBA8888_Premultiplied);
       QBuffer buffer;
@@ -13072,6 +13471,18 @@ bool CanvasItem::recoverAutosave(const QString &autosavePath) {
         newLayer->reference = layerObj["reference"].toBool(false);
         newLayer->blendMode = (BlendMode)layerObj["blendMode"].toInt(0);
         newLayer->type = (Layer::Type)layerObj["type"].toInt(0);
+
+        // Deserializar Screentone
+        newLayer->screentoneEnabled = layerObj["screentoneEnabled"].toBool(false);
+        newLayer->screentoneDotSize = (float)layerObj["screentoneDotSize"].toDouble(12.0);
+        newLayer->screentoneAngle = (float)layerObj["screentoneAngle"].toDouble(0.785);
+        newLayer->screentoneContrast = (float)layerObj["screentoneContrast"].toDouble(0.8);
+        newLayer->screentoneType = layerObj["screentoneType"].toInt(0);
+
+        // Deserializar Gradient Map
+        newLayer->gradientMapEnabled = layerObj["gradientMapEnabled"].toBool(false);
+        newLayer->gradientMapPreset = layerObj["gradientMapPreset"].toString("sunset").toStdString();
+
         if (layerObj.contains("panelPath")) {
           newLayer->panelPath = deserializePath(layerObj["panelPath"].toString());
         }

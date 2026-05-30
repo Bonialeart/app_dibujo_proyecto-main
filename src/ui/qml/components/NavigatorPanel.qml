@@ -45,12 +45,11 @@ Item {
 
             Timer {
                 id: _navPanelRefreshTimer
-                interval: 500
+                interval: 40
                 repeat: true
-                running: root.visible && targetCanvas !== null
+                running: targetCanvas !== null
                 onTriggered: {
                     if (targetCanvas && targetCanvas.getCanvasPreview) {
-                        _previewContainer.parent._previewSrc = ""
                         _previewContainer.parent._previewSrc = targetCanvas.getCanvasPreview()
                     }
                 }
@@ -70,8 +69,7 @@ Item {
                     source: _previewContainer.parent._previewSrc
                     asynchronous: false
                     cache: false
-                    opacity: status === Image.Ready ? 1.0 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 200 } }
+                    opacity: 1.0
 
                     // Drop shadow for the preview
                     Rectangle {
@@ -435,7 +433,7 @@ Item {
                 spacing: 4
 
                 // Flip Horizontal
-                _NavToolBtn {
+                NavToolBtn {
                     iconSrc: "flip_horizontal.svg"
                     tip: "Voltear horizontal"
                     isActive: root.isFlippedH
@@ -444,7 +442,7 @@ Item {
                 }
 
                 // Flip Vertical
-                _NavToolBtn {
+                NavToolBtn {
                     iconSrc: "flip_horizontal.svg"  // reuse icon, rotate 90°
                     tip: "Voltear vertical"
                     isActive: root.isFlippedV
@@ -454,7 +452,7 @@ Item {
                 }
 
                 // Fit to View
-                _NavToolBtn {
+                NavToolBtn {
                     iconSrc: "maximize.svg"
                     tip: "Ajustar a pantalla (Ctrl+0)"
                     onClicked: if(targetCanvas) targetCanvas.fitToView()
@@ -498,7 +496,7 @@ Item {
     }
 
     // ── REUSABLE TOOL BUTTON COMPONENT ──────────────────
-    component _NavToolBtn : Rectangle {
+    component NavToolBtn : Rectangle {
         id: _ntb
         property string iconSrc: ""
         property string tip: ""

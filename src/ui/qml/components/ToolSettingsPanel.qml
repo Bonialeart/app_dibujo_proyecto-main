@@ -7,7 +7,16 @@ Item {
     property var targetCanvas: null
     property color accentColor: "#6366f1"
     
-    readonly property string currentTool: targetCanvas ? (targetCanvas.currentToolName || "Brush") : "Brush"
+    readonly property string currentToolStr: targetCanvas ? targetCanvas.currentTool : "brush"
+    readonly property string currentTool: {
+        var t = root.currentToolStr.toLowerCase();
+        if (t === "brush" || t === "watercolor" || t === "oil" || t === "acry") return "Brush";
+        if (t === "eraser" || t === "e_soft" || t === "e_hard") return "Eraser";
+        if (t === "fill" || t === "bucket") return "Fill";
+        if (t === "grad") return "Gradient";
+        if (t === "panel_cut") return "Panel Cut";
+        return "Brush";
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -159,12 +168,21 @@ Item {
                     }
                 }
                 
+                // Gradient Settings Panel
+                GradientSettingsPanel {
+                    Layout.fillWidth: true
+                    targetCanvas: root.targetCanvas
+                    accentColor: root.accentColor
+                    visible: root.currentTool === "Gradient"
+                }
+
                 // Placeholder for other settings
                 Text {
                     text: "Más ajustes próximamente..."
                     color: "#333"
                     font.pixelSize: 10
                     Layout.alignment: Qt.AlignHCenter
+                    visible: root.currentTool !== "Gradient" && root.currentTool !== "Brush" && root.currentTool !== "Eraser"
                 }
             }
         }
@@ -175,6 +193,7 @@ Item {
             case "Brush": return "🖌️";
             case "Eraser": return "🧹";
             case "Fill": return "🪣";
+            case "Gradient": return "🌈";
             case "Selection": return "✂️";
             default: return "🛠️";
         }

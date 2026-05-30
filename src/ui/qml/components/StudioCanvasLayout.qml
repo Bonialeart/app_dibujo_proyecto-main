@@ -15,6 +15,52 @@ Item {
     property color accentColor: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
     property bool isProjectActive: false
     property bool isZenMode: false
+
+    // Dynamic sidebar / dock properties assigned on completed
+    property var leftDock: null
+    property var leftDock2: null
+    property var rightDock: null
+    property var rightDock2: null
+    
+    property var leftIconBar: null
+    property var leftIconBar2: null
+    property var rightIconBar: null
+    property var rightIconBar2: null
+
+    readonly property real leftDocksWidth: (leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0)
+    readonly property real rightDocksWidth: (rightIconBar ? rightIconBar.width : 0) + (rightDock ? rightDock.width : 0) + ((rightIconBar2 && rightIconBar2.visible) ? rightIconBar2.width : 0) + (rightDock2 ? rightDock2.width : 0)
+
+    states: [
+        State {
+            name: "minimalist"
+            when: isZenMode
+            
+            PropertyChanges { target: infoBarTranslate; y: -studioInfoBar.height }
+            PropertyChanges { target: studioInfoBar; opacity: 0.0 }
+            
+            PropertyChanges { target: leftTranslate; x: -leftDocksWidth }
+            PropertyChanges { target: leftDocksContainer; opacity: 0.0 }
+            
+            PropertyChanges { target: rightTranslate; x: rightDocksWidth }
+            PropertyChanges { target: rightDocksContainer; opacity: 0.0 }
+            
+            PropertyChanges { target: toolsTranslate; x: -100 }
+            PropertyChanges { target: toolsToolbar; opacity: 0.0 }
+            
+            PropertyChanges { target: bottomTranslate; y: bottomDock.height + 20 }
+            PropertyChanges { target: bottomDock; opacity: 0.0 }
+        }
+    ]
+    
+    transitions: [
+        Transition {
+            NumberAnimation {
+                properties: "x,y,opacity"
+                duration: 350
+                easing.type: Easing.InOutCubic
+            }
+        }
+    ]
     
     readonly property bool showTopProjectInfo: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showTopProjectInfo : true
     readonly property bool showTopBrushControls: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showTopBrushControls : true
@@ -38,7 +84,7 @@ Item {
     
     function loadWorkspace(name) { panelManager.loadWorkspace(name) }
 
-    visible: isProjectActive && !isZenMode
+    visible: isProjectActive
     
     // Catch icon drags from SideIconBar that are dropped outside
     DropArea {
@@ -76,18 +122,20 @@ Item {
         // --- C++ does the heavy math ---
         var zone = dragCalculator.computeDragZone(
             gx, studioLayout.width,
-            leftIconBar.width, leftDock.width,
-            leftIconBar2.visible, leftIconBar2.visible ? leftIconBar2.width : 0, leftDock2.width,
-            rightIconBar.width, rightDock.width,
-            rightIconBar2.visible, rightIconBar2.visible ? rightIconBar2.width : 0, rightDock2.width,
+            leftIconBar ? leftIconBar.width : 0, leftDock ? leftDock.width : 0,
+            leftIconBar2 ? leftIconBar2.visible : false, (leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0, leftDock2 ? leftDock2.width : 0,
+            rightIconBar ? rightIconBar.width : 0, rightDock ? rightDock.width : 0,
+            rightIconBar2 ? rightIconBar2.visible : false, (rightIconBar2 && rightIconBar2.visible) ? rightIconBar2.width : 0, rightDock2 ? rightDock2.width : 0,
             panelManager.leftCollapsed, panelManager.leftCollapsed2,
             panelManager.rightCollapsed, panelManager.rightCollapsed2,
-            leftDock.expandedWidth, leftDock2.expandedWidth,
-            rightDock.expandedWidth, rightDock2.expandedWidth
+            leftDock ? leftDock.expandedWidth : 0, leftDock2 ? leftDock2.expandedWidth : 0,
+            rightDock ? rightDock.expandedWidth : 0, rightDock2 ? rightDock2.expandedWidth : 0
         )
 
-        leftDock.isDragHover = false; leftDock2.isDragHover = false;
-        rightDock.isDragHover = false; rightDock2.isDragHover = false;
+        if (leftDock) leftDock.isDragHover = false;
+        if (leftDock2) leftDock2.isDragHover = false;
+        if (rightDock) rightDock.isDragHover = false;
+        if (rightDock2) rightDock2.isDragHover = false;
 
         if (!zone.dock || zone.dock === "") return null;
 
@@ -255,6 +303,12 @@ Item {
         width: parent.width; height: 42
         color: "#0a0a0d"
         z: 950
+        
+        transform: Translate {
+            id: infoBarTranslate
+            y: 0
+        }
+        opacity: 1.0
         
         Rectangle { width: parent.width; height: 1; anchors.bottom: parent.bottom; color: "#1a1a1e" }
         
@@ -843,61 +897,70 @@ Item {
             Layout.fillHeight: true
             spacing: 0
         
-        // --- LEFT DOCK ---
-        SideIconBar {
-            id: leftIconBar
+        // --- DYNAMIC LEFT DOCKS ---
+        RowLayout {
+            id: leftDocksContainer
             Layout.fillHeight: true
-            panelModel: panelManager.leftDockModel
-            isCollapsed: panelManager.leftCollapsed
-            accentColor: studioLayout.accentColor
-            dockSide: "left"
-            onToggleDock: (panelId) => panelManager.togglePanel(panelId)
-            onReorder: (src, tgt, mode) => panelManager.reorderPanel("left", src, tgt, mode)
-        }
-        
-        DockContainer {
-            id: leftDock
-            Layout.fillHeight: true
-            dockSide: "left"
-            manager: panelManager
-            dockModel: panelManager.leftDockModel
-            isCollapsed: panelManager.leftCollapsed
-            mainCanvas: studioLayout.mainCanvas
-            accentColor: studioLayout.accentColor
+            spacing: 0
             
-            onToggleCollapse: (panelId) => panelManager.togglePanel(panelId)
-            onPanelDragStarted: (pid, name, icon, gx, gy) => dragGhost.startDrag(pid, name, icon, gx, gy)
-            onPanelDragUpdated: (gx, gy) => dragGhost.updateDrag(gx, gy)
-            onPanelDragEnded: (gx, gy) => dragGhost.endDrag(gx, gy)
-        }
-        
-        // --- LEFT DOCK 2 ---
-        SideIconBar {
-            id: leftIconBar2
-            visible: panelManager.leftDockModel2.count > 0 || leftDock2.isDragHover
-            Layout.fillHeight: true
-            panelModel: panelManager.leftDockModel2
-            isCollapsed: panelManager.leftCollapsed2
-            accentColor: studioLayout.accentColor
-            dockSide: "left2"
-            onToggleDock: (panelId) => panelManager.togglePanel(panelId)
-            onReorder: (src, tgt, mode) => panelManager.reorderPanel("left2", src, tgt, mode)
-        }
-        
-        DockContainer {
-            id: leftDock2
-            Layout.fillHeight: true
-            dockSide: "left2"
-            manager: panelManager
-            dockModel: panelManager.leftDockModel2
-            isCollapsed: panelManager.leftCollapsed2
-            mainCanvas: studioLayout.mainCanvas
-            accentColor: studioLayout.accentColor
+            transform: Translate {
+                id: leftTranslate
+                x: 0
+            }
+            opacity: 1.0
             
-            onToggleCollapse: (panelId) => panelManager.togglePanel(panelId)
-            onPanelDragStarted: (pid, name, icon, gx, gy) => dragGhost.startDrag(pid, name, icon, gx, gy)
-            onPanelDragUpdated: (gx, gy) => dragGhost.updateDrag(gx, gy)
-            onPanelDragEnded: (gx, gy) => dragGhost.endDrag(gx, gy)
+            Repeater {
+                model: [
+                    { side: "left", isSecond: false },
+                    { side: "left2", isSecond: true }
+                ]
+                delegate: RowLayout {
+                    spacing: 0
+                    Layout.fillHeight: true
+                    visible: !modelData.isSecond || (panelManager.leftDockModel2.count > 0 || (studioLayout.leftDock2 && studioLayout.leftDock2.isDragHover))
+                    
+                    SideIconBar {
+                        Layout.fillHeight: true
+                        panelModel: modelData.isSecond ? panelManager.leftDockModel2 : panelManager.leftDockModel
+                        isCollapsed: modelData.isSecond ? panelManager.leftCollapsed2 : panelManager.leftCollapsed
+                        accentColor: studioLayout.accentColor
+                        dockSide: modelData.side
+                        onToggleDock: (panelId) => panelManager.togglePanel(panelId)
+                        onReorder: (src, tgt, mode) => panelManager.reorderPanel(modelData.side, src, tgt, mode)
+                        
+                        Component.onCompleted: {
+                            if (modelData.isSecond) {
+                                studioLayout.leftIconBar2 = this
+                            } else {
+                                studioLayout.leftIconBar = this
+                            }
+                        }
+                    }
+                    
+                    DockContainer {
+                        Layout.fillHeight: true
+                        dockSide: modelData.side
+                        manager: panelManager
+                        dockModel: modelData.isSecond ? panelManager.leftDockModel2 : panelManager.leftDockModel
+                        isCollapsed: modelData.isSecond ? panelManager.leftCollapsed2 : panelManager.leftCollapsed
+                        mainCanvas: studioLayout.mainCanvas
+                        accentColor: studioLayout.accentColor
+                        
+                        onToggleCollapse: (panelId) => panelManager.togglePanel(panelId)
+                        onPanelDragStarted: (pid, name, icon, gx, gy) => dragGhost.startDrag(pid, name, icon, gx, gy)
+                        onPanelDragUpdated: (gx, gy) => dragGhost.updateDrag(gx, gy)
+                        onPanelDragEnded: (gx, gy) => dragGhost.endDrag(gx, gy)
+                        
+                        Component.onCompleted: {
+                            if (modelData.isSecond) {
+                                studioLayout.leftDock2 = this
+                            } else {
+                                studioLayout.leftDock = this
+                            }
+                        }
+                    }
+                }
+            }
         }
         
     // --- TOOLBAR (Canvas Tools) Movable ---
@@ -913,8 +976,14 @@ Item {
         
         property bool isToolbarFloating: false
         
+        transform: Translate {
+            id: toolsTranslate
+            x: 0
+        }
+        opacity: 1.0
+        
         // Initial / Docked positioning
-        x: isToolbarFloating ? x : (leftIconBar.width + leftDock.width + (leftIconBar2.visible ? leftIconBar2.width : 0) + leftDock2.width)
+        x: isToolbarFloating ? x : ((leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0))
         y: isToolbarFloating ? y : studioInfoBar.height
         
         // Shadow when floating
@@ -947,10 +1016,10 @@ Item {
                 onPressed: toolsToolbar.isToolbarFloating = true
                 onReleased: {
                     // Smart snap back to dock if dragged to the left edge
-                    var lSnap = leftIconBar.width + leftDock.width + (leftIconBar2.visible ? leftIconBar2.width : 0) + leftDock2.width
+                    var lSnap = (leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0)
                     if (toolsToolbar.x < lSnap + 20) {
                         toolsToolbar.isToolbarFloating = false
-                        toolsToolbar.x = Qt.binding(function() { return leftIconBar.width + leftDock.width + (leftIconBar2.visible ? leftIconBar2.width : 0) + leftDock2.width })
+                        toolsToolbar.x = Qt.binding(function() { return (leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0) })
                         toolsToolbar.y = Qt.binding(function() { return studioInfoBar.height })
                     }
                 }
@@ -1042,61 +1111,70 @@ Item {
             }
         }
         
-        // --- RIGHT DOCK 2 ---
-        DockContainer {
-            id: rightDock2
+        // --- DYNAMIC RIGHT DOCKS ---
+        RowLayout {
+            id: rightDocksContainer
             Layout.fillHeight: true
-            dockSide: "right2"
-            manager: panelManager
-            dockModel: panelManager.rightDockModel2
-            isCollapsed: panelManager.rightCollapsed2
-            mainCanvas: studioLayout.mainCanvas
-            accentColor: studioLayout.accentColor
+            spacing: 0
             
-            onToggleCollapse: (panelId) => panelManager.togglePanel(panelId)
-            onPanelDragStarted: (pid, name, icon, gx, gy) => dragGhost.startDrag(pid, name, icon, gx, gy)
-            onPanelDragUpdated: (gx, gy) => dragGhost.updateDrag(gx, gy)
-            onPanelDragEnded: (gx, gy) => dragGhost.endDrag(gx, gy)
-        }
-        
-        SideIconBar {
-            id: rightIconBar2
-            visible: panelManager.rightDockModel2.count > 0 || rightDock2.isDragHover
-            Layout.fillHeight: true
-            panelModel: panelManager.rightDockModel2
-            isCollapsed: panelManager.rightCollapsed2
-            accentColor: studioLayout.accentColor
-            dockSide: "right2"
-            onToggleDock: (panelId) => panelManager.togglePanel(panelId)
-            onReorder: (src, tgt, mode) => panelManager.reorderPanel("right2", src, tgt, mode)
-        }
-        
-        // --- RIGHT DOCK 1 ---
-        DockContainer {
-            id: rightDock
-            Layout.fillHeight: true
-            dockSide: "right"
-            manager: panelManager
-            dockModel: panelManager.rightDockModel
-            isCollapsed: panelManager.rightCollapsed
-            mainCanvas: studioLayout.mainCanvas
-            accentColor: studioLayout.accentColor
+            transform: Translate {
+                id: rightTranslate
+                x: 0
+            }
+            opacity: 1.0
             
-            onToggleCollapse: (panelId) => panelManager.togglePanel(panelId)
-            onPanelDragStarted: (pid, name, icon, gx, gy) => dragGhost.startDrag(pid, name, icon, gx, gy)
-            onPanelDragUpdated: (gx, gy) => dragGhost.updateDrag(gx, gy)
-            onPanelDragEnded: (gx, gy) => dragGhost.endDrag(gx, gy)
-        }
-        
-        SideIconBar {
-            id: rightIconBar
-            Layout.fillHeight: true
-            panelModel: panelManager.rightDockModel
-            isCollapsed: panelManager.rightCollapsed
-            accentColor: studioLayout.accentColor
-            dockSide: "right"
-            onToggleDock: (panelId) => panelManager.togglePanel(panelId)
-            onReorder: (src, tgt, mode) => panelManager.reorderPanel("right", src, tgt, mode)
+            Repeater {
+                model: [
+                    { side: "right2", isSecond: true },
+                    { side: "right", isSecond: false }
+                ]
+                delegate: RowLayout {
+                    spacing: 0
+                    Layout.fillHeight: true
+                    visible: !modelData.isSecond || (panelManager.rightDockModel2.count > 0 || (studioLayout.rightDock2 && studioLayout.rightDock2.isDragHover))
+                    
+                    DockContainer {
+                        Layout.fillHeight: true
+                        dockSide: modelData.side
+                        manager: panelManager
+                        dockModel: modelData.isSecond ? panelManager.rightDockModel2 : panelManager.rightDockModel
+                        isCollapsed: modelData.isSecond ? panelManager.rightCollapsed2 : panelManager.rightCollapsed
+                        mainCanvas: studioLayout.mainCanvas
+                        accentColor: studioLayout.accentColor
+                        
+                        onToggleCollapse: (panelId) => panelManager.togglePanel(panelId)
+                        onPanelDragStarted: (pid, name, icon, gx, gy) => dragGhost.startDrag(pid, name, icon, gx, gy)
+                        onPanelDragUpdated: (gx, gy) => dragGhost.updateDrag(gx, gy)
+                        onPanelDragEnded: (gx, gy) => dragGhost.endDrag(gx, gy)
+                        
+                        Component.onCompleted: {
+                            if (modelData.isSecond) {
+                                studioLayout.rightDock2 = this
+                            } else {
+                                studioLayout.rightDock = this
+                            }
+                        }
+                    }
+                    
+                    SideIconBar {
+                        Layout.fillHeight: true
+                        panelModel: modelData.isSecond ? panelManager.rightDockModel2 : panelManager.rightDockModel
+                        isCollapsed: modelData.isSecond ? panelManager.rightCollapsed2 : panelManager.rightCollapsed
+                        accentColor: studioLayout.accentColor
+                        dockSide: modelData.side
+                        onToggleDock: (panelId) => panelManager.togglePanel(panelId)
+                        onReorder: (src, tgt, mode) => panelManager.reorderPanel(modelData.side, src, tgt, mode)
+                        
+                        Component.onCompleted: {
+                            if (modelData.isSecond) {
+                                studioLayout.rightIconBar2 = this
+                            } else {
+                                studioLayout.rightIconBar = this
+                            }
+                        }
+                    }
+                }
+            }
         }
         }
         
@@ -1108,6 +1186,12 @@ Item {
             isCollapsed: panelManager.bottomCollapsed
             mainCanvas: studioLayout.mainCanvas
             accentColor: studioLayout.accentColor
+            
+            transform: Translate {
+                id: bottomTranslate
+                y: 0
+            }
+            opacity: 1.0
             
             onToggleCollapse: (panelId) => panelManager.togglePanel(panelId)
             onPanelDragStarted: (pid, name, icon, gx, gy) => dragGhost.startDrag(pid, name, icon, gx, gy)

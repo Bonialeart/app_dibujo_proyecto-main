@@ -53,7 +53,8 @@ public:
     Shape,
     PanelCut,
     Liquify,
-    VectorEraser
+    VectorEraser,
+    Gradient
   };
   Q_ENUM(ToolType)
 
@@ -100,6 +101,8 @@ public:
   Q_PROPERTY(QVariantList layerModel READ layerModel NOTIFY layersChanged)
   Q_PROPERTY(QString currentTool READ currentTool WRITE setCurrentTool NOTIFY
                  currentToolChanged)
+  Q_PROPERTY(QVariantList gradientStops READ gradientStops WRITE setGradientStops NOTIFY gradientStopsChanged)
+  Q_PROPERTY(QString gradientShape READ gradientShape WRITE setGradientShape NOTIFY gradientShapeChanged)
   Q_PROPERTY(int canvasWidth READ canvasWidth NOTIFY canvasWidthChanged)
   Q_PROPERTY(int canvasHeight READ canvasHeight NOTIFY canvasHeightChanged)
   Q_PROPERTY(QPointF viewOffset READ viewOffset NOTIFY viewOffsetChanged)
@@ -388,6 +391,18 @@ public:
   Q_INVOKABLE int getLayerScreentoneType(int index) const;
   Q_INVOKABLE void setLayerScreentoneType(int index, int type);
 
+  // Live GPU Gradient Map Properties
+  Q_INVOKABLE bool isLayerGradientMapEnabled(int index) const;
+  Q_INVOKABLE void setLayerGradientMapEnabled(int index, bool enabled);
+  Q_INVOKABLE QString getLayerGradientMapPreset(int index) const;
+  Q_INVOKABLE void setLayerGradientMapPreset(int index, const QString &preset);
+
+  // Interactive Canvas Gradient Tool Properties
+  QVariantList gradientStops() const { return m_gradientStops; }
+  void setGradientStops(const QVariantList &stops);
+  QString gradientShape() const { return m_gradientShape; }
+  void setGradientShape(const QString &shape);
+
   // Vector Speech Balloon Operations
   Q_INVOKABLE void createSpeechBalloon(float x, float y);
   Q_INVOKABLE void removeSpeechBalloon();
@@ -564,6 +579,8 @@ signals:
 
   void zoomLevelChanged();
   void currentToolChanged();
+  void gradientStopsChanged();
+  void gradientShapeChanged();
   void canvasWidthChanged();
   void canvasHeightChanged();
   void viewOffsetChanged();
@@ -762,6 +779,7 @@ private:
   QOpenGLFramebufferObject *m_compFBOA = nullptr;
   QOpenGLFramebufferObject *m_compFBOB = nullptr;
   QOpenGLFramebufferObject *m_screentoneFBO = nullptr;
+  QOpenGLFramebufferObject *m_gradientMapFBO = nullptr;
   QOpenGLFramebufferObject *m_predictionFBO = nullptr;
   QOpenGLFramebufferObject *m_dabFBO = nullptr;
   void ensureCompositionFBOs(int w, int h);
@@ -846,6 +864,13 @@ private:
   bool m_hasActiveSpeechBalloon = false;
   int m_draggingBalloonHandle = 0; // 0=none, 1=center, 2=radii, 3=cp1, 4=cp2, 5=end
 
+  // Interactive Gradient Tool State
+  QVariantList m_gradientStops;
+  QString m_gradientShape;
+  bool m_isGradientDragging = false;
+  QPointF m_gradientStartPos;
+  QPointF m_gradientEndPos;
+
   bool m_panelOverlayDirty = true;
   QImage m_cachedPanelOverlay;
   QImage m_cachedPanelBorder;
@@ -889,6 +914,7 @@ private:
   // Composition Shader
   QOpenGLShaderProgram *m_compositionShader = nullptr;
   QOpenGLShaderProgram *m_screentoneShader = nullptr;
+  QOpenGLShaderProgram *m_gradientMapShader = nullptr;
   void blendWithShader(QPainter *painter, artflow::Layer *layer,
                        const QRectF &rect, artflow::Layer *maskLayer = nullptr,
                        uint32_t overrideTextureId = 0);
@@ -927,6 +953,7 @@ private:
 
   // CPU compositing cache (rebuilt when any layer is dirty)
   QImage m_cachedCanvasImage;
+  QString m_canvasPreviewBase64;
 
   // Deferred GL cleanup flag (GL resources must be deleted from render thread)
   bool m_glResourcesDirty = false;

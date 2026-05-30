@@ -2782,6 +2782,8 @@ Window {
                                 }
                             }
                         }
+
+
                     }
                 }
 
@@ -2971,7 +2973,7 @@ Window {
                     isProjectActive: mainWindow.isProjectActive
                     isZenMode: mainWindow.isZenMode
                     
-                    visible: isStudioMode && isProjectActive && !isZenMode
+                    visible: isStudioMode && isProjectActive
                     z: 900
 
                     onSwitchToEssential: {
@@ -3977,6 +3979,7 @@ Window {
 
                             // 6. Sparkle/Effects Button
                             TopBarButton {
+                                id: effectsBtn
                                 iconSource: iconPath("star.svg")
                                 tooltip: "Efectos y Ajustes"
                                 active: showScreentonePanel
@@ -4356,6 +4359,15 @@ Window {
                                                 iconName: "sliders.svg"
                                                 onClicked: {
                                                     mainCanvas.currentTool = "liquify"
+                                                    toolsDropdown.close()
+                                                }
+                                            }
+                                            SwitchOption {
+                                                text: "Navegador y Referencias"
+                                                iconName: "compass.svg"
+                                                checked: refWindow.active
+                                                onToggled: (isChecked) => {
+                                                    refWindow.active = isChecked
                                                     toolsDropdown.close()
                                                 }
                                             }
@@ -4855,12 +4867,10 @@ Window {
                         // Refresh timer — updates preview every 500ms while visible
                         Timer {
                             id: _navRefreshTimer
-                            interval: 500
+                            interval: 40
                             repeat: true
                             running: refWindow.active && refWindow.mode === "canvas"
                             onTriggered: {
-                                // Force re-read of the property
-                                _navContent._previewSrc = ""
                                 _navContent._previewSrc = mainCanvas.canvas_preview
                             }
                         }
@@ -6242,8 +6252,8 @@ Window {
                     panelTitle: "Efectos y Ajustes"
                     panelIcon: "star.svg"
                     accentColor: colorAccent
-                    initialX: canvasPage.width - 310
-                    initialY: 100
+                    initialX: effectsBtn ? Math.max(10, Math.min(screentonePanel.parent.width - defaultWidth - 10, effectsBtn.mapToItem(screentonePanel.parent, 0, 0).x - (defaultWidth - effectsBtn.width) / 2)) : (canvasPage.width - 310)
+                    initialY: effectsBtn ? effectsBtn.mapToItem(screentonePanel.parent, 0, 0).y + effectsBtn.height + 10 * uiScale : 100
                     defaultWidth: 290
                     defaultHeight: 450
                     minWidth: 220

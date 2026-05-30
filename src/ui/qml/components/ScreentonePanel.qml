@@ -20,25 +20,41 @@ Item {
     
     readonly property int activeLayerId: activeLayer ? activeLayer.layerId : -1
     
+    // Panel States
+    property int activeTab: 0 // 0 = Ajustes de Color, 1 = Filtros Creativos
+    property string activeSectionColor: "hsl" // "hsl", "gradient", "curves"
+    property string activeSectionFilter: "screentone" // "screentone", "blur", "glow", "outline"
+    
     Flickable {
-        anchors.fill: parent; anchors.margins: 12
-        contentHeight: contentCol.implicitHeight
+        anchors.fill: parent
+        anchors.margins: 12
+        contentHeight: contentCol.height + 24
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         
-        ColumnLayout {
+        ScrollBar.vertical: ScrollBar {
+            policy: ScrollBar.AsNeeded
+            active: true
+        }
+        
+        Column {
             id: contentCol
-            width: parent.width
-            spacing: 16
+            width: parent.width - 4
+            spacing: 14
             
-            // Header Info
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
+            // ================= LAYER INFO HEADER =================
+            Item {
+                width: parent.width
+                height: 18
                 
                 Rectangle {
-                    width: 3; height: 14; radius: 1.5
+                    id: indicator
+                    width: 3
+                    height: 14
+                    radius: 1.5
                     color: root.accentColor
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
                 }
                 
                 Text {
@@ -46,123 +62,475 @@ Item {
                     color: "#a0a0a5"
                     font.pixelSize: 11
                     font.weight: Font.DemiBold
-                    Layout.fillWidth: true
+                    anchors.left: indicator.right
+                    anchors.leftMargin: 8
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
                     elide: Text.ElideRight
                 }
             }
             
-            Rectangle { Layout.fillWidth: true; height: 1; color: "#25252a" }
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: "#202025"
+            }
             
-            // Toggle row
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
+            // ================= PREMIUM TAB BAR (Segmented Control) =================
+            Rectangle {
+                width: parent.width
+                height: 38
+                radius: 19
+                color: "#121215"
+                border.color: Qt.rgba(1, 1, 1, 0.06)
+                border.width: 1
                 
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-                    Text {
-                        text: "Activar Trama"
-                        color: "white"
-                        font.pixelSize: 13
-                        font.weight: Font.Bold
+                Row {
+                    id: tabRow
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    spacing: 0
+                    
+                    // Tab 0: Ajustes
+                    Rectangle {
+                        width: tabRow.width / 2
+                        height: tabRow.height
+                        radius: 16
+                        color: root.activeTab === 0 ? root.accentColor : "transparent"
+                        
+                        Text {
+                            text: "Ajustes de Color"
+                            anchors.centerIn: parent
+                            color: root.activeTab === 0 ? "white" : "#8e8e93"
+                            font.pixelSize: 11
+                            font.weight: Font.Bold
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.activeTab = 0
+                        }
                     }
-                    Text {
-                        text: "Convierte escala de grises a semitonos"
-                        color: "#6b7280"
-                        font.pixelSize: 10
-                    }
-                }
-                
-                Switch {
-                    id: toneSwitch
-                    checked: activeLayer ? activeLayer.screentoneEnabled : false
-                    enabled: activeLayer !== null
-                    onCheckedChanged: {
-                        if (targetCanvas && activeLayerId !== -1) {
-                            targetCanvas.setLayerScreentoneEnabled(activeLayerId, checked)
+                    
+                    // Tab 1: Filtros
+                    Rectangle {
+                        width: tabRow.width / 2
+                        height: tabRow.height
+                        radius: 16
+                        color: root.activeTab === 1 ? root.accentColor : "transparent"
+                        
+                        Text {
+                            text: "Filtros Creativos"
+                            anchors.centerIn: parent
+                            color: root.activeTab === 1 ? "white" : "#8e8e93"
+                            font.pixelSize: 11
+                            font.weight: Font.Bold
+                        }
+                        
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.activeTab = 1
                         }
                     }
                 }
             }
             
-            Rectangle { 
-                Layout.fillWidth: true; height: 1; color: "#25252a"
-                visible: toneSwitch.checked
-            }
+            Item { width: 1; height: 4 } // Small Spacer
             
-            // Pattern Type Selector (Capsule / Segmented Switch)
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                visible: toneSwitch.checked
+            // ================= VIEW SWITCHER =================
+            
+            // ───────────────────────────────────────────────
+            // VIEW A: AJUSTES DE COLOR
+            // ───────────────────────────────────────────────
+            Column {
+                width: parent.width
+                spacing: 12
+                visible: root.activeTab === 0
                 
-                Text {
-                    text: "Tipo de Trama"
-                    color: "#a0a0a5"
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
+                // --- SECTION 1: HSL ---
+                CollapsibleCard {
+                    title: "Tono, Saturación y Luminosidad (HSL)"
+                    iconChar: "✦"
+                    isExpanded: root.activeSectionColor === "hsl"
+                    onHeaderClicked: root.activeSectionColor = (root.activeSectionColor === "hsl" ? "" : "hsl")
+                    
+                    StudioSlider {
+                        id: hslHue
+                        width: parent.width
+                        label: "Tono (Hue)"
+                        unit: "°"
+                        value: 0.5
+                        displayValue: Math.round(value * 360)
+                        accent: root.accentColor
+                    }
+                    
+                    StudioSlider {
+                        id: hslSat
+                        width: parent.width
+                        label: "Saturación"
+                        unit: "%"
+                        value: 0.5
+                        displayValue: Math.round((value - 0.5) * 200)
+                        accent: root.accentColor
+                    }
+                    
+                    StudioSlider {
+                        id: hslLight
+                        width: parent.width
+                        label: "Luminosidad"
+                        unit: "%"
+                        value: 0.5
+                        displayValue: Math.round((value - 0.5) * 200)
+                        accent: root.accentColor
+                    }
+                    
+                    Row {
+                        width: parent.width
+                        spacing: 8
+                        
+                        AppButtonCompact {
+                            width: (parent.width - 8) / 2
+                            text: "Restaurar"
+                            isSecondary: true
+                            onClicked: {
+                                hslHue.value = 0.5
+                                hslSat.value = 0.5
+                                hslLight.value = 0.5
+                            }
+                        }
+                        
+                        AppButtonCompact {
+                            width: (parent.width - 8) / 2
+                            text: "Aplicar HSL"
+                            onClicked: {
+                                if (targetCanvas && activeLayerId !== -1) {
+                                    var hDeg = Math.round(hslHue.value * 360);
+                                    var sVal = (hslSat.value - 0.5) * 2.0; // -1.0 to 1.0
+                                    var lVal = (hslLight.value - 0.5) * 2.0; // -1.0 to 1.0
+                                    targetCanvas.applyEffect(activeLayerId, "hsl", {
+                                        "hue": hDeg,
+                                        "saturation": sVal + 1.0,
+                                        "lightness": lVal + 1.0
+                                    });
+                                }
+                            }
+                        }
+                    }
                 }
                 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
+                // --- SECTION 2: GRADIENT MAP ---
+                CollapsibleCard {
+                    id: gradientCard
+                    title: "Mapa de Degradado"
+                    iconChar: "▰"
+                    isExpanded: root.activeSectionColor === "gradient"
+                    onHeaderClicked: root.activeSectionColor = (root.activeSectionColor === "gradient" ? "" : "gradient")
                     
-                    Rectangle {
-                        Layout.fillWidth: true
-                        height: 34
-                        radius: 17
-                        color: "#16161a"
-                        border.color: Qt.rgba(1, 1, 1, 0.08)
-                        border.width: 1
+                    readonly property string activePreset: activeLayer ? activeLayer.gradientMapPreset : "sunset"
+                    
+                    Row {
+                        width: parent.width
                         
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 3
-                            spacing: 2
+                        Column {
+                            width: parent.width - 50
+                            spacing: 1
+                            Text { text: "Activar Degradado"; color: "white"; font.pixelSize: 12; font.weight: Font.Bold }
+                            Text { text: "Mapa cromático por GPU no destructivo"; color: "#6b7280"; font.pixelSize: 9 }
+                        }
+                        
+                        Switch {
+                            id: gradientSwitch
+                            width: 50
+                            checked: activeLayer ? activeLayer.gradientMapEnabled : false
+                            enabled: activeLayer !== null
+                            anchors.verticalCenter: parent.verticalCenter
+                            onCheckedChanged: {
+                                if (targetCanvas && activeLayerId !== -1) {
+                                    targetCanvas.setLayerGradientMapEnabled(activeLayerId, checked)
+                                }
+                            }
+                        }
+                    }
+                    
+                    Column {
+                        width: parent.width
+                        spacing: 12
+                        visible: gradientSwitch.checked
+                        
+                        Rectangle { width: parent.width; height: 1; color: "#202025" }
+                        
+                        Text {
+                            text: "Seleccione un estilo cromático:"
+                            color: "#8e8e93"
+                            font.pixelSize: 10
+                        }
+                        
+                        Grid {
+                            width: parent.width
+                            columns: 2
+                            spacing: 8
                             
+                            Repeater {
+                                model: [
+                                    { id: "sunset", name: "Puesta de Sol", colors: ["#764ba2", "#ff7e5f", "#feb47b"] },
+                                    { id: "ocean", name: "Océano", colors: ["#0b1a3c", "#02aab0", "#a0f5be"] },
+                                    { id: "forest", name: "Bosque Místico", colors: ["#0a2830", "#56ab2f", "#a8ff78"] },
+                                    { id: "retro", name: "Cobre Cálido", colors: ["#0a0505", "#f12711", "#f5af19"] },
+                                    { id: "manga", name: "Manga Grayscale", colors: ["#0f0f14", "#828287", "#fafafa"] }
+                                ]
+                                
+                                delegate: Rectangle {
+                                    width: (parent.width - 8) / 2
+                                    height: 38
+                                    radius: 6
+                                    color: "#16161a"
+                                    border.width: gradientCard.activePreset === modelData.id ? 1.5 : 1
+                                    border.color: gradientCard.activePreset === modelData.id ? root.accentColor : Qt.rgba(1,1,1,0.06)
+                                    
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.margins: 6
+                                        spacing: 8
+                                        
+                                        Rectangle {
+                                            width: 32
+                                            height: 16
+                                            radius: 3
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            gradient: Gradient {
+                                                GradientStop { position: 0.0; color: modelData.colors[0] }
+                                                GradientStop { position: 0.5; color: modelData.colors[1] }
+                                                GradientStop { position: 1.0; color: modelData.colors[2] }
+                                            }
+                                        }
+                                        
+                                        Text {
+                                            text: modelData.name
+                                            color: gradientCard.activePreset === modelData.id ? "white" : "#a0a0a5"
+                                            font.pixelSize: 10
+                                            font.weight: Font.Bold
+                                            width: parent.width - 48
+                                            elide: Text.ElideRight
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+                                    
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (targetCanvas && activeLayerId !== -1) {
+                                                if (!activeLayer.gradientMapEnabled) {
+                                                    targetCanvas.setLayerGradientMapEnabled(activeLayerId, true);
+                                                }
+                                                targetCanvas.setLayerGradientMapPreset(activeLayerId, modelData.id);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // --- SECTION 3: CURVES ---
+                CollapsibleCard {
+                    title: "Curvas Tonales"
+                    iconChar: "📈"
+                    isExpanded: root.activeSectionColor === "curves"
+                    onHeaderClicked: root.activeSectionColor = (root.activeSectionColor === "curves" ? "" : "curves")
+                    
+                    // Interactive Tone Curve Canvas
+                    Rectangle {
+                        width: 140
+                        height: 140
+                        radius: 8
+                        color: "#0a0a0c"
+                        border.color: "#202025"
+                        border.width: 1
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        
+                        Canvas {
+                            id: curveCanvas
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            
+                            property real ctrlX: width / 2
+                            property real ctrlY: height / 2
+                            
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                ctx.clearRect(0, 0, width, height);
+                                
+                                // Draw grid
+                                ctx.strokeStyle = "#1a1a1f";
+                                ctx.lineWidth = 1;
+                                for (var i = 1; i < 4; i++) {
+                                    var gx = (width / 4) * i;
+                                    var gy = (height / 4) * i;
+                                    ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, height); ctx.stroke();
+                                    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(width, gy); ctx.stroke();
+                                }
+                                
+                                // Baseline (Diagonal)
+                                ctx.strokeStyle = "#3a3a40";
+                                ctx.lineWidth = 1;
+                                ctx.setLineDash([3, 3]);
+                                ctx.beginPath(); ctx.moveTo(0, height); ctx.lineTo(width, 0); ctx.stroke();
+                                ctx.setLineDash([]);
+                                
+                                // Curved spline
+                                ctx.strokeStyle = root.accentColor;
+                                ctx.lineWidth = 2;
+                                ctx.beginPath();
+                                ctx.moveTo(0, height);
+                                ctx.quadraticCurveTo(ctrlX, ctrlY, width, 0);
+                                ctx.stroke();
+                                
+                                // Anchor Handle
+                                ctx.fillStyle = root.accentColor;
+                                ctx.beginPath(); ctx.arc(ctrlX, ctrlY, 5, 0, 2*Math.PI); ctx.fill();
+                                ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.stroke();
+                            }
+                            
+                            MouseArea {
+                                anchors.fill: parent
+                                preventStealing: true
+                                
+                                function updatePos(mouse) {
+                                    var px = Math.max(0, Math.min(parent.width, mouse.x));
+                                    var py = Math.max(0, Math.min(parent.height, mouse.y));
+                                    parent.ctrlX = px;
+                                    parent.ctrlY = py;
+                                    parent.requestPaint();
+                                }
+                                
+                                onPressed: updatePos(mouse)
+                                onPositionChanged: updatePos(mouse)
+                            }
+                        }
+                    }
+                    
+                    Text {
+                        width: parent.width
+                        text: "Arrastra el punto para doblar la curva de brillo/contraste."
+                        color: "#6b7280"
+                        font.pixelSize: 9
+                        horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.Wrap
+                    }
+                    
+                    Row {
+                        width: parent.width
+                        spacing: 8
+                        
+                        AppButtonCompact {
+                            width: (parent.width - 8) / 2
+                            text: "Reset"
+                            isSecondary: true
+                            onClicked: {
+                                curveCanvas.ctrlX = curveCanvas.width / 2
+                                curveCanvas.ctrlY = curveCanvas.height / 2
+                                curveCanvas.requestPaint()
+                            }
+                        }
+                        
+                        AppButtonCompact {
+                            width: (parent.width - 8) / 2
+                            text: "Aplicar Curva"
+                            onClicked: {
+                                if (targetCanvas && activeLayerId !== -1) {
+                                    var bNorm = (curveCanvas.ctrlX / curveCanvas.width) - 0.5; // -0.5 to 0.5
+                                    var cNorm = (1.0 - (curveCanvas.ctrlY / curveCanvas.height)) - 0.5; // -0.5 to 0.5
+                                    targetCanvas.applyEffect(activeLayerId, "curves", {
+                                        "brightness": bNorm,
+                                        "contrast": cNorm
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // ───────────────────────────────────────────────
+            // VIEW B: FILTROS CREATIVOS
+            // ───────────────────────────────────────────────
+            Column {
+                width: parent.width
+                spacing: 12
+                visible: root.activeTab === 1
+                
+                // --- SECTION 1: SCREENTONE (TRAMA) ---
+                CollapsibleCard {
+                    id: screentoneCard
+                    title: "Trama de Semitonos (Manga)"
+                    iconChar: "░"
+                    isExpanded: root.activeSectionFilter === "screentone"
+                    onHeaderClicked: root.activeSectionFilter = (root.activeSectionFilter === "screentone" ? "" : "screentone")
+                    
+                    Row {
+                        width: parent.width
+                        
+                        Column {
+                            width: parent.width - 50
+                            spacing: 1
+                            Text { text: "Activar Trama"; color: "white"; font.pixelSize: 12; font.weight: Font.Bold }
+                            Text { text: "Rápido y procesado por GPU"; color: "#6b7280"; font.pixelSize: 9 }
+                        }
+                        
+                        Switch {
+                            id: toneSwitch
+                            width: 50
+                            checked: activeLayer ? activeLayer.screentoneEnabled : false
+                            enabled: activeLayer !== null
+                            anchors.verticalCenter: parent.verticalCenter
+                            onCheckedChanged: {
+                                if (targetCanvas && activeLayerId !== -1) {
+                                    targetCanvas.setLayerScreentoneEnabled(activeLayerId, checked)
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Container inside screentone card when switch is active
+                    Column {
+                        width: parent.width
+                        spacing: 14
+                        visible: toneSwitch.checked
+                        
+                        Rectangle { width: parent.width; height: 1; color: "#202025" }
+                        
+                        // Type row (Circles, Lines, Noise)
+                        Row {
+                            width: parent.width
+                            spacing: 6
                             Repeater {
                                 model: [
                                     { name: "Círculos", typeId: 0, icon: "●" },
                                     { name: "Líneas", typeId: 1, icon: "▤" },
                                     { name: "Ruido", typeId: 2, icon: "░" }
                                 ]
-                                
                                 delegate: Rectangle {
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    radius: 14
-                                    color: (activeLayer && activeLayer.screentoneType === modelData.typeId) ? root.accentColor : "transparent"
+                                    width: (parent.width - 12) / 3
+                                    height: 26
+                                    radius: 13
+                                    color: (activeLayer && activeLayer.screentoneType === modelData.typeId) ? root.accentColor : "#121215"
+                                    border.color: (activeLayer && activeLayer.screentoneType === modelData.typeId) ? "transparent" : Qt.rgba(1,1,1,0.06)
                                     
-                                    Rectangle {
-                                        anchors.fill: parent; radius: 14
-                                        color: "white"
-                                        opacity: btnMouse.containsMouse && !(activeLayer && activeLayer.screentoneType === modelData.typeId) ? 0.05 : 0.0
-                                        Behavior on opacity { NumberAnimation { duration: 150 } }
-                                    }
-                                    
-                                    RowLayout {
+                                    Text {
+                                        text: modelData.icon + " " + modelData.name
                                         anchors.centerIn: parent
-                                        spacing: 4
-                                        
-                                        Text {
-                                            text: modelData.icon
-                                            color: (activeLayer && activeLayer.screentoneType === modelData.typeId) ? "white" : "#a0a0a5"
-                                            font.pixelSize: 12
-                                            font.weight: Font.Bold
-                                        }
-                                        Text {
-                                            text: modelData.name
-                                            color: (activeLayer && activeLayer.screentoneType === modelData.typeId) ? "white" : "#a0a0a5"
-                                            font.pixelSize: 11
-                                            font.weight: Font.Bold
-                                        }
+                                        color: (activeLayer && activeLayer.screentoneType === modelData.typeId) ? "white" : "#a0a0a5"
+                                        font.pixelSize: 10
+                                        font.weight: Font.Bold
                                     }
                                     
                                     MouseArea {
-                                        id: btnMouse
                                         anchors.fill: parent
-                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             if (targetCanvas && activeLayerId !== -1) {
                                                 targetCanvas.setLayerScreentoneType(activeLayerId, modelData.typeId);
@@ -172,257 +540,400 @@ Item {
                                 }
                             }
                         }
-                    }
-                }
-            }
-            
-            Rectangle { 
-                Layout.fillWidth: true; height: 1; color: "#25252a"
-                visible: toneSwitch.checked
-            }
-            
-            // Advanced Sliders (Smart/Context-aware visibility)
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 14
-                visible: toneSwitch.checked
-                
-                // Dot Size (Frequency)
-                // Min size: 4.0, Max size: 50.0. Range = 46.0
-                StudioSlider {
-                    id: sizeSlider
-                    Layout.fillWidth: true
-                    label: activeLayer && activeLayer.screentoneType === 2 ? "Tamaño del Grano (Ruido)" : "Frecuencia (Tamaño)"
-                    unit: "px"
-                    value: activeLayer ? (activeLayer.screentoneDotSize - 4.0) / 46.0 : (12.0 - 4.0) / 46.0
-                    displayValue: activeLayer ? activeLayer.screentoneDotSize : 12.0
-                    decimals: 0
-                    accent: root.accentColor
-                    onMoved: (val) => {
-                        if(targetCanvas && activeLayerId !== -1) {
-                            var actualSize = 4.0 + (val * 46.0)
-                            targetCanvas.setLayerScreentoneDotSize(activeLayerId, actualSize)
-                        }
-                    }
-                }
-                
-                // Angle (Rotación) - Omit for Noise
-                // Min angle: 0.0, Max angle: 90.0. Range = 90.0
-                StudioSlider {
-                    id: angleSlider
-                    Layout.fillWidth: true
-                    visible: activeLayer && activeLayer.screentoneType !== 2
-                    label: "Ángulo"
-                    unit: "°"
-                    value: activeLayer ? (activeLayer.screentoneAngle * 180.0 / 3.14159) / 90.0 : 45.0 / 90.0
-                    displayValue: activeLayer ? (activeLayer.screentoneAngle * 180.0 / 3.14159) : 45.0
-                    decimals: 0
-                    accent: root.accentColor
-                    onMoved: (val) => {
-                        if(targetCanvas && activeLayerId !== -1) {
-                            var actualAngleDeg = val * 90.0
-                            targetCanvas.setLayerScreentoneAngle(activeLayerId, actualAngleDeg * 3.14159 / 180.0)
-                        }
-                    }
-                }
-                
-                // Hardness (Contrast) - Omit for Noise
-                // Min: 0.0, Max: 1.0. Range = 1.0
-                StudioSlider {
-                    id: contrastSlider
-                    Layout.fillWidth: true
-                    visible: activeLayer && activeLayer.screentoneType !== 2
-                    label: "Dureza (Contraste)"
-                    unit: "%"
-                    value: activeLayer ? activeLayer.screentoneContrast : 0.8
-                    displayValue: activeLayer ? (activeLayer.screentoneContrast * 100) : 80
-                    decimals: 0
-                    accent: root.accentColor
-                    onMoved: (val) => {
-                        if(targetCanvas && activeLayerId !== -1) {
-                            targetCanvas.setLayerScreentoneContrast(activeLayerId, val)
-                        }
-                    }
-                }
-            }
-            
-            Rectangle { 
-                Layout.fillWidth: true; height: 1; color: "#25252a"
-                visible: toneSwitch.checked
-            }
-            
-            // Pre-established Manga Presets Section
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 12
-                visible: toneSwitch.checked
-                
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    Text {
-                        text: "Prediseñados (Manga Presets)"
-                        color: "white"
-                        font.pixelSize: 12
-                        font.weight: Font.Bold
-                    }
-                    Rectangle {
-                        Layout.fillWidth: true; height: 1; color: "#25252a"
-                    }
-                }
-                
-                GridLayout {
-                    Layout.fillWidth: true
-                    columns: 2
-                    columnSpacing: 10
-                    rowSpacing: 10
-                    
-                    Repeater {
-                        model: [
-                            { title: "Trama 10% (Fina)", desc: "Puntos finos ideales para piel", type: 0, size: 8, angle: 45, contrast: 0.85, accent: "#818cf8" },
-                            { title: "Trama 30% (Media)", desc: "Estándar de manga clásico", type: 0, size: 12, angle: 45, contrast: 0.85, accent: "#6366f1" },
-                            { title: "Trama 50% (Gruesa)", desc: "Puntos anchos de alto contraste", type: 0, size: 18, angle: 45, contrast: 0.85, accent: "#4f46e5" },
-                            { title: "Líneas Manga 45°", desc: "Trama lineal diagonal", type: 1, size: 10, angle: 45, contrast: 0.9, accent: "#10b981" },
-                            { title: "Líneas Horizontales", desc: "Líneas rectas para texturas", type: 1, size: 12, angle: 0, contrast: 0.9, accent: "#059669" },
-                            { title: "Sombras Arena (Fino)", desc: "Dither tipo arena para sombras", type: 2, size: 8, angle: 0, contrast: 1.0, accent: "#fbbf24" },
-                            { title: "Grano Dither (Grueso)", desc: "Textura artística retro áspera", type: 2, size: 24, angle: 0, contrast: 1.0, accent: "#f59e0b" }
-                        ]
                         
-                        delegate: Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 52
-                            radius: 10
-                            color: "#16161a"
-                            border.width: 1
-                            
-                            // Exact settings checking to mark the active preset card
-                            property bool isPresetMatched: activeLayer && activeLayer.screentoneEnabled && 
-                                activeLayer.screentoneType === modelData.type && 
-                                Math.abs(activeLayer.screentoneDotSize - modelData.size) < 0.5 && 
-                                (modelData.type === 2 || Math.abs((activeLayer.screentoneAngle * 180.0 / 3.14159) - modelData.angle) < 1.0)
-                            
-                            border.color: isPresetMatched ? modelData.accent : Qt.rgba(1, 1, 1, 0.08)
-                            
-                            Behavior on border.color { ColorAnimation { duration: 150 } }
-                            Behavior on scale { NumberAnimation { duration: 100 } }
-                            
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.margins: 8
-                                spacing: 10
-                                
-                                // Procedural pattern thumbnail drawing inside QML
-                                Rectangle {
-                                    width: 36; height: 36; radius: 6
-                                    color: "#0a0a0c"
-                                    clip: true
-                                    
-                                    // Circle Pattern preview (type 0)
-                                    Grid {
-                                        anchors.fill: parent
-                                        anchors.margins: 4
-                                        rows: 3; columns: 3
-                                        spacing: 4
-                                        visible: modelData.type === 0
-                                        Repeater {
-                                            model: 9
-                                            delegate: Rectangle {
-                                                width: 4; height: 4; radius: 2
-                                                color: isPresetMatched ? modelData.accent : "#71717a"
-                                            }
-                                        }
-                                    }
-                                    
-                                    // Line Pattern preview (type 1)
-                                    Column {
-                                        anchors.fill: parent
-                                        anchors.margins: 6
-                                        spacing: 4
-                                        visible: modelData.type === 1
-                                        Repeater {
-                                            model: 3
-                                            delegate: Rectangle {
-                                                width: parent.width; height: 2; radius: 1
-                                                color: isPresetMatched ? modelData.accent : "#71717a"
-                                                rotation: modelData.angle
-                                            }
-                                        }
-                                    }
-                                    
-                                    // Noise Pattern preview (type 2)
-                                    Grid {
-                                        anchors.fill: parent
-                                        anchors.margins: 4
-                                        rows: 4; columns: 4
-                                        spacing: 2
-                                        visible: modelData.type === 2
-                                        Repeater {
-                                            model: 16
-                                            delegate: Rectangle {
-                                                width: 3; height: 3
-                                                color: (index % 3 == 0 || index % 5 == 1) ? (isPresetMatched ? modelData.accent : "#71717a") : "transparent"
-                                            }
-                                        }
-                                    }
+                        // Sliders
+                        StudioSlider {
+                            id: sizeSlider
+                            width: parent.width
+                            label: activeLayer && activeLayer.screentoneType === 2 ? "Tamaño del Grano" : "Frecuencia (Tamaño)"
+                            unit: "px"
+                            value: activeLayer ? (activeLayer.screentoneDotSize - 4.0) / 46.0 : (12.0 - 4.0) / 46.0
+                            displayValue: activeLayer ? activeLayer.screentoneDotSize : 12.0
+                            decimals: 0
+                            accent: root.accentColor
+                            onMoved: (val) => {
+                                if(targetCanvas && activeLayerId !== -1) {
+                                    var actualSize = 4.0 + (val * 46.0)
+                                    targetCanvas.setLayerScreentoneDotSize(activeLayerId, actualSize)
                                 }
-                                
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 1
+                            }
+                        }
+                        
+                        StudioSlider {
+                            id: angleSlider
+                            width: parent.width
+                            visible: activeLayer && activeLayer.screentoneType !== 2
+                            label: "Ángulo"
+                            unit: "°"
+                            value: activeLayer ? (activeLayer.screentoneAngle * 180.0 / 3.14159) / 90.0 : 45.0 / 90.0
+                            displayValue: activeLayer ? Math.round(activeLayer.screentoneAngle * 180.0 / 3.14159) : 45
+                            decimals: 0
+                            accent: root.accentColor
+                            onMoved: (val) => {
+                                if(targetCanvas && activeLayerId !== -1) {
+                                    var actualAngleDeg = val * 90.0
+                                    targetCanvas.setLayerScreentoneAngle(activeLayerId, actualAngleDeg * 3.14159 / 180.0)
+                                }
+                            }
+                        }
+                        
+                        StudioSlider {
+                            id: contrastSlider
+                            width: parent.width
+                            visible: activeLayer && activeLayer.screentoneType !== 2
+                            label: "Contraste (Dureza)"
+                            unit: "%"
+                            value: activeLayer ? activeLayer.screentoneContrast : 0.8
+                            displayValue: activeLayer ? Math.round(activeLayer.screentoneContrast * 100) : 80
+                            decimals: 0
+                            accent: root.accentColor
+                            onMoved: (val) => {
+                                if(targetCanvas && activeLayerId !== -1) {
+                                    targetCanvas.setLayerScreentoneContrast(activeLayerId, val)
+                                }
+                            }
+                        }
+                        
+                        Rectangle { width: parent.width; height: 1; color: "#202025" }
+                        
+                        Text { text: "Prediseñados rápidos:"; color: "#8e8e93"; font.pixelSize: 10 }
+                        
+                        Grid {
+                            width: parent.width
+                            columns: 2
+                            spacing: 8
+                            
+                            Repeater {
+                                model: [
+                                    { title: "Manga 10%", type: 0, size: 8, angle: 45, contrast: 0.85 },
+                                    { title: "Manga 30%", type: 0, size: 12, angle: 45, contrast: 0.85 },
+                                    { title: "Manga 50%", type: 0, size: 18, angle: 45, contrast: 0.85 },
+                                    { title: "Líneas 45°", type: 1, size: 10, angle: 45, contrast: 0.9 },
+                                    { title: "Ruido Arena", type: 2, size: 8, angle: 0, contrast: 1.0 }
+                                ]
+                                delegate: Rectangle {
+                                    width: (parent.width - 8) / 2
+                                    height: 28
+                                    radius: 5
+                                    color: "#121215"
+                                    border.width: 1
+                                    border.color: Qt.rgba(1,1,1,0.06)
                                     
                                     Text {
                                         text: modelData.title
-                                        color: isPresetMatched ? "white" : "#e4e4e7"
-                                        font.pixelSize: 11
+                                        anchors.centerIn: parent
+                                        color: "#e4e4e7"
+                                        font.pixelSize: 9
                                         font.weight: Font.Bold
-                                        elide: Text.ElideRight
                                     }
                                     
-                                    Text {
-                                        text: modelData.desc
-                                        color: "#71717a"
-                                        font.pixelSize: 9
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-                            
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                onEntered: parent.scale = 1.02
-                                onExited: parent.scale = 1.0
-                                onPressed: parent.scale = 0.97
-                                onReleased: parent.scale = hoverEnabled ? 1.02 : 1.0
-                                
-                                onClicked: {
-                                    if (targetCanvas && activeLayerId !== -1) {
-                                        if (!activeLayer.screentoneEnabled) {
-                                            targetCanvas.setLayerScreentoneEnabled(activeLayerId, true);
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (targetCanvas && activeLayerId !== -1) {
+                                                if (!activeLayer.screentoneEnabled) {
+                                                    targetCanvas.setLayerScreentoneEnabled(activeLayerId, true);
+                                                }
+                                                targetCanvas.setLayerScreentoneType(activeLayerId, modelData.type);
+                                                targetCanvas.setLayerScreentoneDotSize(activeLayerId, modelData.size);
+                                                targetCanvas.setLayerScreentoneAngle(activeLayerId, modelData.angle * 3.14159 / 180.0);
+                                                targetCanvas.setLayerScreentoneContrast(activeLayerId, modelData.contrast);
+                                            }
                                         }
-                                        targetCanvas.setLayerScreentoneType(activeLayerId, modelData.type);
-                                        targetCanvas.setLayerScreentoneDotSize(activeLayerId, modelData.size);
-                                        var radAngle = modelData.angle * 3.14159 / 180.0;
-                                        targetCanvas.setLayerScreentoneAngle(activeLayerId, radAngle);
-                                        targetCanvas.setLayerScreentoneContrast(activeLayerId, modelData.contrast);
                                     }
                                 }
                             }
                         }
                     }
                 }
+                
+                // --- SECTION 2: GAUSSIAN BLUR ---
+                CollapsibleCard {
+                    title: "Desenfoque Gaussiano"
+                    iconChar: "💧"
+                    isExpanded: root.activeSectionFilter === "blur"
+                    onHeaderClicked: root.activeSectionFilter = (root.activeSectionFilter === "blur" ? "" : "blur")
+                    
+                    StudioSlider {
+                        id: blurSigma
+                        width: parent.width
+                        label: "Intensidad de Desenfoque"
+                        unit: "px"
+                        value: 0.3
+                        displayValue: Math.round(value * 50)
+                        accent: root.accentColor
+                    }
+                    
+                    AppButtonCompact {
+                        width: parent.width
+                        text: "Aplicar Desenfoque"
+                        onClicked: {
+                            if (targetCanvas && activeLayerId !== -1) {
+                                var sigmaVal = Math.max(1, Math.round(blurSigma.value * 50));
+                                targetCanvas.applyEffect(activeLayerId, "gaussian_blur", {
+                                    "sigma": sigmaVal
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // --- SECTION 3: GLOW / BLOOM ---
+                CollapsibleCard {
+                    title: "Brillo / Glow Inteligente"
+                    iconChar: "🔆"
+                    isExpanded: root.activeSectionFilter === "glow"
+                    onHeaderClicked: root.activeSectionFilter = (root.activeSectionFilter === "glow" ? "" : "glow")
+                    
+                    StudioSlider {
+                        id: glowIntensity
+                        width: parent.width
+                        label: "Intensidad de Brillo"
+                        unit: "%"
+                        value: 0.5
+                        displayValue: Math.round(value * 100)
+                        accent: root.accentColor
+                    }
+                    
+                    StudioSlider {
+                        id: glowRadius
+                        width: parent.width
+                        label: "Radio de Difusión"
+                        unit: "px"
+                        value: 0.4
+                        displayValue: Math.round(value * 40)
+                        accent: root.accentColor
+                    }
+                    
+                    AppButtonCompact {
+                        width: parent.width
+                        text: "Aplicar Brillo"
+                        onClicked: {
+                            if (targetCanvas && activeLayerId !== -1) {
+                                targetCanvas.applyEffect(activeLayerId, "glow", {
+                                    "intensity": glowIntensity.value,
+                                    "radius": Math.round(glowRadius.value * 40)
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // --- SECTION 4: LAYER OUTLINE (BORDE DE CAPA) ---
+                CollapsibleCard {
+                    id: outlineCard
+                    title: "Borde de Capa Automático"
+                    iconChar: "⎔"
+                    isExpanded: root.activeSectionFilter === "outline"
+                    onHeaderClicked: root.activeSectionFilter = (root.activeSectionFilter === "outline" ? "" : "outline")
+                    
+                    property string selectedColor: "#ffffff"
+                    
+                    StudioSlider {
+                        id: outlineWidth
+                        width: parent.width
+                        label: "Grosor del Borde"
+                        unit: "px"
+                        value: 0.25
+                        displayValue: Math.round(value * 20)
+                        accent: root.accentColor
+                    }
+                    
+                    Text {
+                        text: "Color del contorno:"
+                        color: "#8e8e93"
+                        font.pixelSize: 10
+                    }
+                    
+                    Row {
+                        spacing: 8
+                        
+                        Repeater {
+                            model: ["#ffffff", "#000000", "#ff4a4a", "#4aff4a", "#4a4aff", "#ffd84a"]
+                            delegate: Rectangle {
+                                width: 22
+                                height: 22
+                                radius: 11
+                                color: modelData
+                                border.width: outlineCard.selectedColor === modelData ? 2 : 1
+                                border.color: outlineCard.selectedColor === modelData ? root.accentColor : Qt.rgba(1,1,1,0.2)
+                                
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.margins: 3
+                                    radius: 8
+                                    color: "transparent"
+                                    border.color: "white"
+                                    border.width: 1
+                                    visible: outlineCard.selectedColor === modelData && modelData === "#000000"
+                                }
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: outlineCard.selectedColor = modelData
+                                }
+                            }
+                        }
+                    }
+                    
+                    AppButtonCompact {
+                        width: parent.width
+                        text: "Aplicar Contorno"
+                        onClicked: {
+                            if (targetCanvas && activeLayerId !== -1) {
+                                var wVal = Math.max(1, Math.round(outlineWidth.value * 20));
+                                targetCanvas.applyEffect(activeLayerId, "outline", {
+                                    "width": wVal,
+                                    "color": outlineCard.selectedColor
+                                });
+                            }
+                        }
+                    }
+                }
             }
             
-            // If layer is null, show a helpful message
+            // Helpful selection reminder if no layer active
             Text {
-                text: "Por favor cree o seleccione una capa para aplicar tramas."
+                width: parent.width
+                text: "Por favor cree o seleccione una capa para aplicar tramas o filtros."
                 color: "#6b7280"
                 font.pixelSize: 11
                 visible: activeLayer === null
                 horizontalAlignment: Text.AlignHCenter
-                Layout.fillWidth: true
                 wrapMode: Text.Wrap
             }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // COMPONENTES AUXILIARES INLINE PARA MANTENER EL CODIGO LIMPIO
+    // ─────────────────────────────────────────────────────────────
+
+    // 1. Tarjeta Colapsable (Accordion Card)
+    component CollapsibleCard : Rectangle {
+        id: card
+        property string title: ""
+        property string iconChar: ""
+        property bool isExpanded: false
+        default property alias content: cardContent.data
+        
+        signal headerClicked()
+        
+        width: parent.width
+        height: isExpanded ? (headerRow.height + cardContent.height + 24) : headerRow.height
+        
+        color: "#16161a" // Premium dark card background
+        border.color: isExpanded ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.3) : "#202025"
+        border.width: 1
+        radius: 10
+        clip: true
+        
+        Behavior on height {
+            NumberAnimation { duration: 250; easing.type: Easing.InOutQuad }
+        }
+        
+        Item {
+            id: headerRow
+            width: parent.width
+            height: 42
+            anchors.top: parent.top
+            
+            Text {
+                id: headerIcon
+                text: iconChar
+                color: isExpanded ? root.accentColor : "#8e8e93"
+                font.pixelSize: 14
+                anchors.left: parent.left
+                anchors.leftMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            Text {
+                id: headerTitle
+                text: title
+                color: isExpanded ? "white" : "#e4e4e7"
+                font.pixelSize: 12
+                font.weight: Font.Bold
+                anchors.left: headerIcon.right
+                anchors.leftMargin: 10
+                anchors.right: headerArrow.left
+                anchors.rightMargin: 10
+                elide: Text.ElideRight
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            Text {
+                id: headerArrow
+                text: isExpanded ? "▲" : "▼"
+                color: "#6b7280"
+                font.pixelSize: 9
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: headerClicked()
+            }
+        }
+        
+        // Content Container
+        Column {
+            id: cardContent
+            anchors.top: headerRow.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 12
+            anchors.topMargin: 4
+            visible: isExpanded
+            opacity: isExpanded ? 1.0 : 0.0
+            spacing: 14
+            height: childrenRect.height
+            
+            Behavior on opacity {
+                NumberAnimation { duration: 180 }
+            }
+        }
+    }
+
+    // 2. Botón Compacto Premium
+    component AppButtonCompact : Rectangle {
+        property string text: ""
+        property bool isSecondary: false
+        
+        signal clicked()
+        
+        height: 28
+        radius: 6
+        color: isSecondary ? "transparent" : root.accentColor
+        border.color: isSecondary ? Qt.rgba(1, 1, 1, 0.1) : "transparent"
+        border.width: isSecondary ? 1 : 0
+        
+        Text {
+            text: parent.text
+            anchors.centerIn: parent
+            color: "white"
+            font.pixelSize: 10
+            font.weight: Font.Bold
+        }
+        
+        Rectangle {
+            anchors.fill: parent; radius: 6
+            color: "white"
+            opacity: btnMa.containsMouse ? 0.08 : 0.0
+            Behavior on opacity { NumberAnimation { duration: 100 } }
+        }
+        
+        MouseArea {
+            id: btnMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: parent.clicked()
         }
     }
 }

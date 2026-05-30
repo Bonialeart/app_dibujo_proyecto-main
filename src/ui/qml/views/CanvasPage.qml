@@ -3610,6 +3610,109 @@ import "../components"
                     }
                 }
 
+                // ── PREMIUM FLOATING DOCK FOR SIMPLE MODE GRADIENT TOOL ──
+                Rectangle {
+                    id: simpleGradientBar
+                    
+                    // Show in Simple Mode when active tool is Gradient (GRAD)
+                    visible: isProjectActive && !isZenMode && !mainWindow.isStudioMode && mainCanvas && mainCanvas.currentTool === "GRAD"
+                    
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 24 * (canvasPage.uiScale || 1.0)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    
+                    width: Math.min(480 * (canvasPage.uiScale || 1.0), parent.width - 32)
+                    height: 190 * (canvasPage.uiScale || 1.0)
+                    radius: 16 * (canvasPage.uiScale || 1.0)
+                    z: 5002
+                    
+                    // Premium Glassmorphism
+                    color: "#f51c1c22"
+                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                    border.width: 1
+                    
+                    // Soft Shadow
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        z: -1
+                        radius: parent.radius + 4
+                        color: "black"
+                        opacity: 0.35
+                    }
+                    
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 8
+                        
+                        // Header: title, shape selectors and close button
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            
+                            Text {
+                                text: "Herramienta de Degradado"
+                                color: "white"
+                                font.pixelSize: 11
+                                font.weight: Font.Bold
+                                Layout.fillWidth: true
+                            }
+                            
+                            // Shape Buttons
+                            Row {
+                                spacing: 4
+                                
+                                // Linear
+                                Rectangle {
+                                    width: 54; height: 22; radius: 3
+                                    color: (mainCanvas && mainCanvas.gradientShape === "linear") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2) : "#2a2a2d"
+                                    border.color: (mainCanvas && mainCanvas.gradientShape === "linear") ? colorAccent : "transparent"
+                                    
+                                    Text { text: "Lineal"; color: "white"; font.pixelSize: 9; font.weight: Font.DemiBold; anchors.centerIn: parent }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (mainCanvas) mainCanvas.gradientShape = "linear" }
+                                }
+                                
+                                // Radial
+                                Rectangle {
+                                    width: 54; height: 22; radius: 3
+                                    color: (mainCanvas && mainCanvas.gradientShape === "radial") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.2) : "#2a2a2d"
+                                    border.color: (mainCanvas && mainCanvas.gradientShape === "radial") ? colorAccent : "transparent"
+                                    
+                                    Text { text: "Radial"; color: "white"; font.pixelSize: 9; font.weight: Font.DemiBold; anchors.centerIn: parent }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if (mainCanvas) mainCanvas.gradientShape = "radial" }
+                                }
+                            }
+                            
+                            // Done button
+                            Rectangle {
+                                width: 44; height: 22; radius: 3
+                                color: colorAccent
+                                Text { text: "Listo"; color: "white"; font.pixelSize: 9; font.bold: true; anchors.centerIn: parent }
+                                MouseArea {
+                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        // Close or switch back to last tool (e.g. Brush)
+                                        canvasPage.activeToolIdx = canvasPage.lastToolIdx >= 0 ? canvasPage.lastToolIdx : 5
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Inline separator
+                        Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(1,1,1,0.06) }
+                        
+                        // Embed our settings panel
+                        GradientSettingsPanel {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            targetCanvas: mainCanvas
+                            accentColor: colorAccent
+                            isCompact: true
+                        }
+                    }
+                }
+
                 RadialMenu {
                     id: radialMenu
                     anchors.fill: parent

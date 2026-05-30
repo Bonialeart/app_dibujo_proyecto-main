@@ -115,7 +115,7 @@ Item {
             }
 
             RowLayout {
-                anchors.fill: parent; anchors.leftMargin: 8; anchors.rightMargin: 8; spacing: 6
+                anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12; spacing: 8
 
                 // Title
                 Text {
@@ -134,11 +134,13 @@ Item {
                     border.color: root.goteroActive ? root.accentColor : "transparent"
                     border.width: 1
                     
-                    Text {
-                        text: "🧪"
-                        color: root.goteroActive ? "white" : "#777"
-                        font.pixelSize: 12
+                    Image {
+                        source: "image://icons/ref_pipette.svg"
+                        width: 14; height: 14
                         anchors.centerIn: parent
+                        opacity: root.goteroActive ? 1.0 : (_pipMa.containsMouse ? 0.95 : 0.6)
+                        smooth: true; mipmap: true
+                        Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
                     MouseArea {
                         id: _pipMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -149,39 +151,46 @@ Item {
                 }
 
                 // Reset pan button
-                _RefBtn {
-                    iconTxt: "◫"; tipText: "Centrar vista"
+                RefBtn {
+                    iconSrc: "ref_center.svg"; tipText: "Centrar vista"
                     onBtnClicked: { root.panX = 0; root.panY = 0 }
                 }
 
                 // Reset zoom button
-                _RefBtn {
-                    iconTxt: "⊡"; tipText: "Restablecer zoom (100%)"
+                RefBtn {
+                    iconTxt: "1:1"; tipText: "Restablecer zoom (100%)"
                     onBtnClicked: root.refZoom = 1.0
                 }
 
                 // Zoom in
-                _RefBtn {
+                RefBtn {
                     iconTxt: "+"; tipText: "Acercar"
                     onBtnClicked: root.refZoom = Math.min(10.0, root.refZoom * 1.25)
                 }
 
                 // Zoom out
-                _RefBtn {
+                RefBtn {
                     iconTxt: "−"; tipText: "Alejar"
                     onBtnClicked: root.refZoom = Math.max(0.05, root.refZoom * 0.8)
                 }
 
                 // Open file button
                 Rectangle {
-                    height: 26; width: openMa.implicitWidth + 20; radius: 6
+                    id: openFileBtn
+                    height: 26; width: openRowLayout.implicitWidth + 18; radius: 6
                     color: openMa.containsMouse ? root.accentColor : "#1a1a22"
                     border.color: openMa.containsMouse ? Qt.lighter(root.accentColor, 1.2) : "#333"; border.width: 1
                     Behavior on color { ColorAnimation { duration: 150 } }
 
                     RowLayout {
-                        anchors.centerIn: parent; spacing: 5
-                        Text { text: "📂"; font.pixelSize: 11 }
+                        id: openRowLayout
+                        anchors.centerIn: parent; spacing: 6
+                        Image {
+                            source: "image://icons/ref_folder.svg"
+                            width: 13; height: 13
+                            opacity: openMa.containsMouse ? 1.0 : 0.7
+                            smooth: true; mipmap: true
+                        }
                         Text {
                             text: "Abrir"
                             color: "white"; font.pixelSize: 10; font.weight: Font.DemiBold
@@ -488,9 +497,10 @@ Item {
     }
 
     // ── Reusable mini button ────────────────────────────────
-    component _RefBtn: Rectangle {
+    component RefBtn: Rectangle {
         id: _rb
         property string iconTxt: ""
+        property string iconSrc: ""
         property string tipText: ""
         signal btnClicked()
 
@@ -499,11 +509,23 @@ Item {
         Behavior on color { ColorAnimation { duration: 120 } }
 
         Text {
+            visible: _rb.iconSrc === ""
             text: _rb.iconTxt
             color: _rbMa.containsMouse ? "#ddd" : "#777"
-            font.pixelSize: 13; anchors.centerIn: parent
-            font.weight: Font.Bold
+            font.pixelSize: 11; font.weight: Font.Bold
+            anchors.centerIn: parent
         }
+
+        Image {
+            visible: _rb.iconSrc !== ""
+            source: _rb.iconSrc !== "" ? ("image://icons/" + _rb.iconSrc) : ""
+            width: 14; height: 14
+            anchors.centerIn: parent
+            opacity: _rbMa.containsMouse ? 0.95 : 0.6
+            smooth: true; mipmap: true
+            Behavior on opacity { NumberAnimation { duration: 100 } }
+        }
+
         MouseArea {
             id: _rbMa; anchors.fill: parent
             hoverEnabled: true; cursorShape: Qt.PointingHandCursor

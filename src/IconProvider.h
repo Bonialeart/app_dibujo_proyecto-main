@@ -10,6 +10,7 @@
 #include <QQuickImageProvider>
 #include <QStringList>
 #include <QSvgRenderer>
+#include "PreferencesManager.h"
 
 class IconProvider : public QQuickImageProvider {
 public:
@@ -57,9 +58,41 @@ public:
 
     if (QFile::exists(path)) {
       if (path.endsWith(".svg")) {
-        QSvgRenderer renderer(path);
-        QPainter painter(&pixmap);
-        renderer.render(&painter);
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly)) {
+          QByteArray svgData = file.readAll();
+          file.close();
+
+          bool isLightMode = false;
+          if (PreferencesManager::instance()) {
+            isLightMode = (PreferencesManager::instance()->themeMode().toLower() == "light");
+          }
+
+          QString targetColor = isLightMode ? "#1c1c1f" : "#ffffff";
+
+          // Convert to string to perform replacements easily
+          QString svgContent = QString::fromUtf8(svgData);
+
+          // Replace currentColor
+          svgContent.replace("currentColor", targetColor);
+
+          // Replace white variations
+          svgContent.replace("#ffffff", targetColor, Qt::CaseInsensitive);
+          svgContent.replace("#fff", targetColor, Qt::CaseInsensitive);
+          svgContent.replace("\"white\"", "\"" + targetColor + "\"", Qt::CaseInsensitive);
+          svgContent.replace("'white'", "'" + targetColor + "'", Qt::CaseInsensitive);
+
+          // Render from memory buffer
+          QByteArray modifiedData = svgContent.toUtf8();
+          QSvgRenderer renderer(modifiedData);
+          QPainter painter(&pixmap);
+          renderer.render(&painter);
+        } else {
+          // Fallback if file read fails
+          QSvgRenderer renderer(path);
+          QPainter painter(&pixmap);
+          renderer.render(&painter);
+        }
       } else {
         pixmap.load(path);
       }

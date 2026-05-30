@@ -501,8 +501,17 @@ Rectangle {
                                 source: modelData.source || ""
                                 active: true // Keep it alive so state isn't lost on tab switch
                                 onLoaded: {
-                                    if (item && item.hasOwnProperty("targetCanvas")) item.targetCanvas = Qt.binding(function() { return root.mainCanvas })
-                                    if (item && item.hasOwnProperty("colorAccent")) item.colorAccent = root.accentColor
+                                    if (item) {
+                                        if (item.targetCanvas !== undefined) {
+                                            item.targetCanvas = Qt.binding(function() { return root.mainCanvas })
+                                        }
+                                        if (item.colorAccent !== undefined) {
+                                            item.colorAccent = root.accentColor
+                                        }
+                                        if (item.accentColor !== undefined) {
+                                            item.accentColor = root.accentColor
+                                        }
+                                    }
                                 }
                             }
                         }
