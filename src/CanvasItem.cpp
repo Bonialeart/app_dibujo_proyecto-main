@@ -715,15 +715,55 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
       f->glBindTexture(GL_TEXTURE_2D, sourceTexID);
       m_gradientMapShader->setUniformValue("uSource", 0);
 
-      int presetId = 4; // Default to Manga Grayscale
-      QString presetName = QString::fromStdString(layer->gradientMapPreset).toLower();
-      if (presetName == "sunset") presetId = 0;
-      else if (presetName == "ocean") presetId = 1;
-      else if (presetName == "forest") presetId = 2;
-      else if (presetName == "retro") presetId = 3;
-      else if (presetName == "manga") presetId = 4;
+      // Dynamic Stops Setup
+      QVariantList stops = layer->gradientMapStops;
+      if (stops.isEmpty()) {
+        stops = m_gradientStops;
+      }
 
-      m_gradientMapShader->setUniformValue("uPreset", presetId);
+      int count = qMin(stops.size(), 16);
+      m_gradientMapShader->setUniformValue("uStopCount", count);
+
+      if (count > 0) {
+        std::vector<std::pair<float, QColor>> sortedStops;
+        for (int i = 0; i < stops.size(); ++i) {
+          QVariantMap stopObj = stops[i].toMap();
+          float pos = stopObj["position"].toFloat();
+          QColor col(stopObj["color"].toString());
+          sortedStops.push_back({pos, col});
+        }
+        std::sort(sortedStops.begin(), sortedStops.end(), [](const auto &a, const auto &b) {
+          return a.first < b.first;
+        });
+
+        GLfloat positions[16];
+        GLfloat colors[16 * 3];
+
+        for (int i = 0; i < count; ++i) {
+          positions[i] = sortedStops[i].first;
+          QColor col = sortedStops[i].second;
+          colors[i * 3 + 0] = col.redF();
+          colors[i * 3 + 1] = col.greenF();
+          colors[i * 3 + 2] = col.blueF();
+        }
+
+        m_gradientMapShader->setUniformValueArray("uStopPositions", positions, count, 1);
+        m_gradientMapShader->setUniformValueArray("uStopColors", colors, count, 3);
+      }
+
+      // Drag Coordinates Setup
+      int useCoords = 0;
+      if (layer->gradientMapUseCoords) {
+        if (m_gradientShape == "radial") {
+          useCoords = 2;
+        } else {
+          useCoords = 1;
+        }
+      }
+      m_gradientMapShader->setUniformValue("uUseCoords", useCoords);
+      m_gradientMapShader->setUniformValue("uStart", QVector2D(layer->gradientMapStart.x(), layer->gradientMapStart.y()));
+      m_gradientMapShader->setUniformValue("uEnd", QVector2D(layer->gradientMapEnd.x(), layer->gradientMapEnd.y()));
+      m_gradientMapShader->setUniformValue("uCanvasSize", QVector2D(m_canvasWidth, m_canvasHeight));
 
       GLfloat vertices[] = {-1, -1, 0, 0, 1, -1, 1, 0, -1, 1, 0, 1,
                             -1, 1,  0, 1, 1, -1, 1, 0, 1,  1, 1, 1};
@@ -1821,36 +1861,146 @@ void CanvasItem::paint(QPainter *painter) {
           cpuPainter.setRenderHint(QPainter::Antialiasing, false);
           cpuPainter.setRenderHint(QPainter::SmoothPixmapTransform, false);
 
-          auto drawLayerWithBlend = [&](QPainter &painter, QImage &destImg, Layer *lyr, const QPoint &targetPos, const QRect &rect) {
-            if (!lyr || !lyr->visible || !lyr->buffer || !lyr->buffer->data())
-              return;
+          auto getProcessedLayerImage = [&](Layer *lyr, const QImage &srcImg, const QRect &rect) -> QImage {
+            if (!lyr) return srcImg;
+            if (!lyr->gradientMapEnabled && !lyr->screentoneEnabled) {
+              return srcImg;
+            }
 
-            QImage srcImg(lyr->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
-            QImage finalSrcImg = srcImg;
+            QImage processedImg = srcImg.copy();
+            
+            if (lyr->gradientMapEnabled) {
+              qInfo() << "[GradientMap Debug] Processing layer:" << QString::fromStdString(lyr->name)
+                      << "Stops:" << lyr->gradientMapStops.size()
+                      << "UseCoords:" << lyr->gradientMapUseCoords
+                      << "Start:" << lyr->gradientMapStart
+                      << "End:" << lyr->gradientMapEnd
+                      << "Shape:" << m_gradientShape
+                      << "Rect:" << rect;
 
-            if (lyr->screentoneEnabled) {
-              finalSrcImg = srcImg.copy();
               int x0 = std::max(0, rect.left());
               int y0 = std::max(0, rect.top());
               int x1 = std::min(cw - 1, rect.right());
               int y1 = std::min(ch - 1, rect.bottom());
-              
+
+              QVariantList stops = lyr->gradientMapStops;
+              if (stops.isEmpty()) {
+                stops = m_gradientStops;
+              }
+
+              struct Stop {
+                float position;
+                QColor color;
+              };
+              std::vector<Stop> sortedStops;
+              for (const QVariant &val : stops) {
+                QVariantMap stopObj = val.toMap();
+                float pos = stopObj["position"].toFloat();
+                QColor col(stopObj["color"].toString());
+                sortedStops.push_back({pos, col});
+              }
+              std::sort(sortedStops.begin(), sortedStops.end(), [](const auto &a, const auto &b) {
+                return a.position < b.position;
+              });
+
+              auto getGradientColor = [&](float t) -> QColor {
+                if (sortedStops.empty()) return QColor::fromRgbF(t, t, t);
+                if (sortedStops.size() == 1) return sortedStops[0].color;
+                
+                float clampT = qBound(sortedStops.front().position, t, sortedStops.back().position);
+                if (clampT <= sortedStops.front().position) return sortedStops.front().color;
+                
+                for (size_t idx = 0; idx < sortedStops.size() - 1; ++idx) {
+                  if (clampT >= sortedStops[idx].position && clampT <= sortedStops[idx+1].position) {
+                    float dist = sortedStops[idx+1].position - sortedStops[idx].position;
+                    float factor = (dist > 0.0f) ? (clampT - sortedStops[idx].position) / dist : 0.0f;
+                    
+                    QColor c0 = sortedStops[idx].color;
+                    QColor c1 = sortedStops[idx+1].color;
+                    return QColor::fromRgbF(
+                      c0.redF() + (c1.redF() - c0.redF()) * factor,
+                      c0.greenF() + (c1.greenF() - c0.greenF()) * factor,
+                      c0.blueF() + (c1.blueF() - c0.blueF()) * factor
+                    );
+                  }
+                }
+                return sortedStops.back().color;
+              };
+
+              bool useCoords = lyr->gradientMapUseCoords;
+              QPointF uStart = lyr->gradientMapStart;
+              QPointF uEnd = lyr->gradientMapEnd;
+              bool isRadial = (m_gradientShape == "radial");
+
+              for (int y = y0; y <= y1; ++y) {
+                for (int x = x0; x <= x1; ++x) {
+                  QRgb pixel = processedImg.pixel(x, y);
+                  int alpha = qAlpha(pixel);
+                  if (alpha < 2) {
+                    processedImg.setPixel(x, y, qRgba(0, 0, 0, 0));
+                    continue;
+                  }
+                  
+                  float r = qRed(pixel) / (float)alpha;
+                  float g = qGreen(pixel) / (float)alpha;
+                  float b = qBlue(pixel) / (float)alpha;
+                  float luma = 0.299f * r + 0.587f * g + 0.114f * b;
+                  luma = qBound(0.0f, luma, 1.0f);
+                  
+                  float blendFactor = 1.0f;
+                  if (useCoords) {
+                    QPointF pixelPos(x, y);
+                    if (isRadial) {
+                      float radius = QLineF(uStart, uEnd).length();
+                      float dist = QLineF(uStart, pixelPos).length();
+                      float t = (radius > 0.0f) ? dist / radius : 0.0f;
+                      blendFactor = 1.0f - qBound(0.0f, t, 1.0f);
+                    } else { // linear
+                      QPointF dir = uEnd - uStart;
+                      float lenSq = dir.x() * dir.x() + dir.y() * dir.y();
+                      float t = 0.0f;
+                      if (lenSq > 0.0f) {
+                        QPointF diff = pixelPos - uStart;
+                        t = (diff.x() * dir.x() + diff.y() * dir.y()) / lenSq;
+                      }
+                      blendFactor = 1.0f - qBound(0.0f, t, 1.0f);
+                    }
+                  }
+                  
+                  QColor mappedColor = getGradientColor(luma);
+                  float finalR = r + (mappedColor.redF() - r) * blendFactor;
+                  float finalG = g + (mappedColor.greenF() - g) * blendFactor;
+                  float finalB = b + (mappedColor.blueF() - b) * blendFactor;
+                  
+                  int outR = qBound(0, qRound(finalR * alpha), 255);
+                  int outG = qBound(0, qRound(finalG * alpha), 255);
+                  int outB = qBound(0, qRound(finalB * alpha), 255);
+                  processedImg.setPixel(x, y, qRgba(outR, outG, outB, alpha));
+                }
+              }
+            }
+
+            if (lyr->screentoneEnabled) {
+              int x0 = std::max(0, rect.left());
+              int y0 = std::max(0, rect.top());
+              int x1 = std::min(cw - 1, rect.right());
+              int y1 = std::min(ch - 1, rect.bottom());
+
               float rad = lyr->screentoneAngle;
               float c = std::cos(rad);
               float s = std::sin(rad);
               float dotSize = lyr->screentoneDotSize;
               if (dotSize < 1.0f) dotSize = 1.0f;
-              
+
               for (int y = y0; y <= y1; ++y) {
                 for (int x = x0; x <= x1; ++x) {
-                  QRgb pixel = srcImg.pixel(x, y);
+                  QRgb pixel = processedImg.pixel(x, y);
                   int alpha = qAlpha(pixel);
                   if (alpha < 2) {
-                    finalSrcImg.setPixel(x, y, qRgba(0, 0, 0, 0));
+                    processedImg.setPixel(x, y, qRgba(0, 0, 0, 0));
                     continue;
                   }
                   
-                  // Un-premultiply alpha to get standard RGB values for clean luma computation
                   float r = qRed(pixel) / (float)alpha;
                   float g = qGreen(pixel) / (float)alpha;
                   float b = qBlue(pixel) / (float)alpha;
@@ -1858,13 +2008,11 @@ void CanvasItem::paint(QPainter *painter) {
                   if (luma > 1.0f) luma = 1.0f;
                   if (luma < 0.0f) luma = 0.0f;
                   
-                  // Rotate coordinates
                   float rx = x * c - y * s;
                   float ry = x * s + y * c;
                   float dotAlpha = 0.0f;
                   
                   if (lyr->screentoneType == 0) {
-                    // Círculos (Circles)
                     float fx = (rx / dotSize) - std::floor(rx / dotSize) - 0.5f;
                     float fy = (ry / dotSize) - std::floor(ry / dotSize) - 0.5f;
                     float distToCenter = std::sqrt(fx * fx + fy * fy);
@@ -1882,7 +2030,6 @@ void CanvasItem::paint(QPainter *painter) {
                       dotAlpha = 1.0f - (t * t * (3.0f - 2.0f * t));
                     }
                   } else if (lyr->screentoneType == 1) {
-                    // Líneas (Lines)
                     float fx = (rx / dotSize) - std::floor(rx / dotSize) - 0.5f;
                     float distToLine = std::abs(fx);
                     float targetWidth = 0.5f * (1.0f - luma);
@@ -1899,7 +2046,6 @@ void CanvasItem::paint(QPainter *painter) {
                       dotAlpha = 1.0f - (t * t * (3.0f - 2.0f * t));
                     }
                   } else {
-                    // Ruido / Dither (Noise)
                     float grainSize = dotSize * 0.25f;
                     if (grainSize < 1.0f) grainSize = 1.0f;
                     int gx = (int)(x / grainSize);
@@ -1910,12 +2056,21 @@ void CanvasItem::paint(QPainter *painter) {
                     dotAlpha = (randVal > luma) ? 1.0f : 0.0f;
                   }
                   
-                  // Retain original transparency and premultiply color (all black dots)
                   int outAlpha = (int)(dotAlpha * alpha);
-                  finalSrcImg.setPixel(x, y, qRgba(0, 0, 0, outAlpha));
+                  processedImg.setPixel(x, y, qRgba(0, 0, 0, outAlpha));
                 }
               }
             }
+
+            return processedImg;
+          };
+
+          auto drawLayerWithBlend = [&](QPainter &painter, QImage &destImg, Layer *lyr, const QPoint &targetPos, const QRect &rect) {
+            if (!lyr || !lyr->visible || !lyr->buffer || !lyr->buffer->data())
+              return;
+
+            QImage srcImg(lyr->buffer->data(), cw, ch, QImage::Format_RGBA8888_Premultiplied);
+            QImage finalSrcImg = getProcessedLayerImage(lyr, srcImg, rect);
 
             float effectiveOpacity = lyr->opacity;
             QTransform animTransform;
@@ -2029,8 +2184,9 @@ void CanvasItem::paint(QPainter *painter) {
             if (hasClippingGroup) {
               if (baseLayer->visible && baseLayer->buffer &&
                   baseLayer->buffer->data()) {
-                QImage baseImg(baseLayer->buffer->data(), cw, ch,
+                QImage rawBaseImg(baseLayer->buffer->data(), cw, ch,
                                QImage::Format_RGBA8888_Premultiplied);
+                QImage baseImg = getProcessedLayerImage(baseLayer, rawBaseImg, dirtyUnion);
 
                 // Copy the base layer's content corresponding to the dirty union first!
                 QImage groupImg = baseImg.copy(dirtyUnion);
@@ -4334,8 +4490,15 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       m_isGradientDragging = true;
       if (m_layerManager) {
         Layer *layer = m_layerManager->getActiveLayer();
-        if (layer && layer->buffer) {
-          m_strokeBeforeBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+        if (layer) {
+          if (layer->gradientMapEnabled) {
+            layer->gradientMapStart = canvasPos;
+            layer->gradientMapEnd = canvasPos;
+            layer->gradientMapUseCoords = true;
+            layer->markDirty();
+          } else if (layer->buffer) {
+            m_strokeBeforeBuffer = std::make_unique<ImageBuffer>(*layer->buffer);
+          }
         }
       }
       update();
@@ -4419,6 +4582,13 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   if (m_tool == ToolType::Gradient && m_isGradientDragging) {
     QPointF canvasPos = screenToCanvas(event->position());
     m_gradientEndPos = canvasPos;
+    if (m_layerManager) {
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->gradientMapEnabled) {
+        layer->gradientMapEnd = canvasPos;
+        layer->markDirty();
+      }
+    }
     update();
     event->accept();
     return;
@@ -4797,57 +4967,63 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
 
     if (m_layerManager) {
       Layer *layer = m_layerManager->getActiveLayer();
-      if (layer && layer->buffer && m_strokeBeforeBuffer) {
-        // Paint the gradient to the layer's buffer
-        QImage img(layer->buffer->data(), layer->buffer->width(), layer->buffer->height(), QImage::Format_RGBA8888_Premultiplied);
-        QPainter painter(&img);
-        painter.setRenderHint(QPainter::Antialiasing);
+      if (layer) {
+        if (layer->gradientMapEnabled) {
+          layer->gradientMapEnd = canvasPos;
+          layer->gradientMapUseCoords = true;
+          layer->markDirty();
+        } else if (layer->buffer && m_strokeBeforeBuffer) {
+          // Paint the gradient to the layer's buffer
+          QImage img(layer->buffer->data(), layer->buffer->width(), layer->buffer->height(), QImage::Format_RGBA8888_Premultiplied);
+          QPainter painter(&img);
+          painter.setRenderHint(QPainter::Antialiasing);
 
-        // Clip to selection if active
-        if (!m_selectionPath.isEmpty()) {
-          painter.setClipPath(m_selectionPath);
+          // Clip to selection if active
+          if (!m_selectionPath.isEmpty()) {
+            painter.setClipPath(m_selectionPath);
+          }
+
+          // Choose linear or radial gradient
+          QGradient grad;
+          if (m_gradientShape == "radial") {
+            double radius = QLineF(m_gradientStartPos, m_gradientEndPos).length();
+            if (radius < 1.0) radius = 1.0;
+            grad = QRadialGradient(m_gradientStartPos, radius);
+          } else {
+            grad = QLinearGradient(m_gradientStartPos, m_gradientEndPos);
+          }
+
+          // Load and sort stops
+          std::vector<std::pair<double, QColor>> sortedStops;
+          for (const QVariant &val : m_gradientStops) {
+            QVariantMap stopObj = val.toMap();
+            double pos = stopObj["position"].toDouble();
+            QColor col(stopObj["color"].toString());
+            sortedStops.push_back({pos, col});
+          }
+          std::sort(sortedStops.begin(), sortedStops.end(), [](const auto &a, const auto &b) {
+            return a.first < b.first;
+          });
+
+          for (const auto &stop : sortedStops) {
+            grad.setColorAt(stop.first, stop.second);
+          }
+
+          painter.setBrush(grad);
+          painter.setPen(Qt::NoPen);
+          painter.drawRect(0, 0, layer->buffer->width(), layer->buffer->height());
+          painter.end();
+
+          layer->dirty = true;
+          layer->markDirty();
+
+          // Push Undo
+          auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+          m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
+              m_layerManager, m_activeLayerIndex, std::move(m_strokeBeforeBuffer), std::move(after)));
+
+          updateLayersList();
         }
-
-        // Choose linear or radial gradient
-        QGradient grad;
-        if (m_gradientShape == "radial") {
-          double radius = QLineF(m_gradientStartPos, m_gradientEndPos).length();
-          if (radius < 1.0) radius = 1.0;
-          grad = QRadialGradient(m_gradientStartPos, radius);
-        } else {
-          grad = QLinearGradient(m_gradientStartPos, m_gradientEndPos);
-        }
-
-        // Load and sort stops
-        std::vector<std::pair<double, QColor>> sortedStops;
-        for (const QVariant &val : m_gradientStops) {
-          QVariantMap stopObj = val.toMap();
-          double pos = stopObj["position"].toDouble();
-          QColor col(stopObj["color"].toString());
-          sortedStops.push_back({pos, col});
-        }
-        std::sort(sortedStops.begin(), sortedStops.end(), [](const auto &a, const auto &b) {
-          return a.first < b.first;
-        });
-
-        for (const auto &stop : sortedStops) {
-          grad.setColorAt(stop.first, stop.second);
-        }
-
-        painter.setBrush(grad);
-        painter.setPen(Qt::NoPen);
-        painter.drawRect(0, 0, layer->buffer->width(), layer->buffer->height());
-        painter.end();
-
-        layer->dirty = true;
-        layer->markDirty();
-
-        // Push Undo
-        auto after = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
-        m_undoManager->pushCommand(std::make_unique<artflow::StrokeUndoCommand>(
-            m_layerManager, m_activeLayerIndex, std::move(m_strokeBeforeBuffer), std::move(after)));
-
-        updateLayersList();
       }
     }
     update();
@@ -10574,6 +10750,11 @@ void CanvasItem::setActiveLayer(int index) {
 
     m_activeLayerIndex = index;
     m_layerManager->setActiveLayer(index);
+    Layer *l = m_layerManager->getLayer(index);
+    if (l && !l->gradientMapStops.isEmpty()) {
+      m_gradientStops = l->gradientMapStops;
+      emit gradientStopsChanged();
+    }
     m_gradientMapDirty = true;
     emit activeLayerChanged();
     updateLayersList();
@@ -10696,6 +10877,9 @@ void CanvasItem::setLayerGradientMapEnabled(int index, bool enabled) {
   Layer *l = m_layerManager->getLayer(index);
   if (l && l->gradientMapEnabled != enabled) {
     l->gradientMapEnabled = enabled;
+    if (enabled && l->gradientMapStops.isEmpty()) {
+      l->gradientMapStops = m_gradientStops;
+    }
     l->markDirty();
     updateLayersList();
     update();
@@ -10724,6 +10908,14 @@ void CanvasItem::setGradientStops(const QVariantList &stops) {
   if (m_gradientStops != stops) {
     m_gradientStops = stops;
     emit gradientStopsChanged();
+    if (m_layerManager) {
+      Layer *l = m_layerManager->getActiveLayer();
+      if (l) {
+        l->gradientMapStops = stops;
+        l->markDirty();
+        update();
+      }
+    }
   }
 }
 

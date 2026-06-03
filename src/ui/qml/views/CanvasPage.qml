@@ -3614,8 +3614,8 @@ import "../components"
                 Rectangle {
                     id: simpleGradientBar
                     
-                    // Show in Simple Mode when active tool is Gradient (GRAD)
-                    visible: isProjectActive && !isZenMode && !mainWindow.isStudioMode && mainCanvas && mainCanvas.currentTool === "GRAD"
+                    // Show in Simple Mode when active tool is Gradient (GRAD) OR when Gradient Map UI is active
+                    visible: isProjectActive && !isZenMode && !mainWindow.isStudioMode && mainCanvas && (mainCanvas.currentTool === "GRAD" || (mainWindow && mainWindow.showGradientMapUI))
                     
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 24 * (canvasPage.uiScale || 1.0)
@@ -3692,6 +3692,9 @@ import "../components"
                                 MouseArea {
                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
+                                        if (mainWindow) {
+                                            mainWindow.showGradientMapUI = false;
+                                        }
                                         // Close or switch back to last tool (e.g. Brush)
                                         canvasPage.activeToolIdx = canvasPage.lastToolIdx >= 0 ? canvasPage.lastToolIdx : 5
                                     }

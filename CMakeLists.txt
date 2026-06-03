@@ -22,6 +22,16 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core/brushes
 )
 
+# 2.5 Integración de Rust usando Corrosion
+include(FetchContent)
+FetchContent_Declare(
+    Corrosion
+    GIT_REPOSITORY https://github.com/corrosion-rs/corrosion.git
+    GIT_TAG v0.5.0
+)
+FetchContent_MakeAvailable(Corrosion)
+corrosion_import_crate(MANIFEST_PATH src/core/rust_core/Cargo.toml)
+
 # 3. Fuentes del Core (Ya existentes)
 set(CORE_SOURCES
     src/core/cpp/src/brush_engine.cpp
@@ -109,6 +119,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::QuickEffects
     Qt6::ShaderTools
     opengl32
+    rust_core
 )
 
 # Copiar assets al directorio de build

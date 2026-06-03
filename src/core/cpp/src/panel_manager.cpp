@@ -71,6 +71,7 @@ QMap<QString, PanelInfo> PanelManager::createCatalog() const {
   catalog["toolsettings"] = makePanel("toolsettings", "Tool Settings", "tool.svg", "ToolSettingsPanel.qml");
   catalog["reference"] = makePanel("reference", "Reference", "image.svg", "ReferencePanel.qml");
   catalog["timeline"] = makePanel("timeline", "Timeline", "video.svg", "TimelinePanel.qml");
+  catalog["gradient"] = makePanel("gradient", "Editor de Degradados", "palette.svg", "GradientSettingsPanel.qml");
   return catalog;
 }
 
@@ -110,6 +111,7 @@ void PanelManager::loadWorkspace(const QString &name) {
   auto pToolSettings = catalog["toolsettings"];
   auto pReference = catalog["reference"];
   auto pTimeline = catalog["timeline"];
+  auto pGradient = catalog["gradient"];
 
   if (name == QStringLiteral("Manga/Comic")) {
     // Manga workspace
@@ -122,6 +124,7 @@ void PanelManager::loadWorkspace(const QString &name) {
     m_rightDock->appendPanel(pLayers);
     m_rightDock->appendPanel(pNavigator);
     m_rightDock->appendPanel(pHistory);
+    m_rightDock->appendPanel(pGradient);
 
     pColor.visible = true;
     pColor.x = 200;
@@ -146,6 +149,7 @@ void PanelManager::loadWorkspace(const QString &name) {
     m_rightDock->appendPanel(pNavigator);
     m_rightDock->appendPanel(pReference);
     m_rightDock->appendPanel(pHistory);
+    m_rightDock->appendPanel(pGradient);
     m_rightDock->appendPanel(pInfo);
 
     pTimeline.visible = true;
@@ -165,6 +169,7 @@ void PanelManager::loadWorkspace(const QString &name) {
     m_rightDock->appendPanel(pNavigator);
     m_rightDock->appendPanel(pHistory);
     m_rightDock->appendPanel(pReference);
+    m_rightDock->appendPanel(pGradient);
 
     m_rightDock->appendPanel(pInfo);
     m_bottomDock->appendPanel(pTimeline);

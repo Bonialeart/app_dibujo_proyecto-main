@@ -220,120 +220,88 @@ Item {
                     }
                 }
                 
-                // --- SECTION 2: GRADIENT MAP ---
-                CollapsibleCard {
-                    id: gradientCard
-                    title: "Mapa de Degradado"
-                    iconChar: "▰"
-                    isExpanded: root.activeSectionColor === "gradient"
-                    onHeaderClicked: root.activeSectionColor = (root.activeSectionColor === "gradient" ? "" : "gradient")
+                // --- SECTION 2: GRADIENT MAP (Simple Button) ---
+                Rectangle {
+                    width: parent.width
+                    height: 48
+                    radius: 10
+                    color: (activeLayer && activeLayer.gradientMapEnabled) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.15) : "#16161a"
+                    border.width: (activeLayer && activeLayer.gradientMapEnabled) ? 1.5 : 1
+                    border.color: (activeLayer && activeLayer.gradientMapEnabled) ? root.accentColor : Qt.rgba(1,1,1,0.06)
                     
-                    readonly property string activePreset: activeLayer ? activeLayer.gradientMapPreset : "sunset"
+                    Behavior on color { ColorAnimation { duration: 200 } }
+                    Behavior on border.color { ColorAnimation { duration: 200 } }
                     
                     Row {
-                        width: parent.width
+                        anchors.fill: parent
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
+                        spacing: 10
                         
-                        Column {
-                            width: parent.width - 50
-                            spacing: 1
-                            Text { text: "Activar Degradado"; color: "white"; font.pixelSize: 12; font.weight: Font.Bold }
-                            Text { text: "Mapa cromático por GPU no destructivo"; color: "#6b7280"; font.pixelSize: 9 }
-                        }
-                        
-                        Switch {
-                            id: gradientSwitch
-                            width: 50
-                            checked: activeLayer ? activeLayer.gradientMapEnabled : false
-                            enabled: activeLayer !== null
+                        // Gradient icon swatch
+                        Rectangle {
+                            width: 28
+                            height: 16
+                            radius: 4
                             anchors.verticalCenter: parent.verticalCenter
-                            onCheckedChanged: {
-                                if (targetCanvas && activeLayerId !== -1) {
-                                    targetCanvas.setLayerGradientMapEnabled(activeLayerId, checked)
-                                }
+                            gradient: Gradient {
+                                orientation: Gradient.Horizontal
+                                GradientStop { position: 0.0; color: "#764ba2" }
+                                GradientStop { position: 0.5; color: "#ff7e5f" }
+                                GradientStop { position: 1.0; color: "#feb47b" }
                             }
                         }
-                    }
-                    
-                    Column {
-                        width: parent.width
-                        spacing: 12
-                        visible: gradientSwitch.checked
                         
-                        Rectangle { width: parent.width; height: 1; color: "#202025" }
-                        
-                        Text {
-                            text: "Seleccione un estilo cromático:"
-                            color: "#8e8e93"
-                            font.pixelSize: 10
+                        Column {
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 1
+                            Text {
+                                text: "Mapa de Degradado"
+                                color: (activeLayer && activeLayer.gradientMapEnabled) ? "white" : "#c8c8cd"
+                                font.pixelSize: 12
+                                font.weight: Font.Bold
+                            }
+                            Text {
+                                text: (activeLayer && activeLayer.gradientMapEnabled) ? "Activo · Toca para editar" : "Toca para activar"
+                                color: (activeLayer && activeLayer.gradientMapEnabled) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.8) : "#6b7280"
+                                font.pixelSize: 9
+                            }
                         }
                         
-                        Grid {
-                            width: parent.width
-                            columns: 2
-                            spacing: 8
-                            
-                            Repeater {
-                                model: [
-                                    { id: "sunset", name: "Puesta de Sol", colors: ["#764ba2", "#ff7e5f", "#feb47b"] },
-                                    { id: "ocean", name: "Océano", colors: ["#0b1a3c", "#02aab0", "#a0f5be"] },
-                                    { id: "forest", name: "Bosque Místico", colors: ["#0a2830", "#56ab2f", "#a8ff78"] },
-                                    { id: "retro", name: "Cobre Cálido", colors: ["#0a0505", "#f12711", "#f5af19"] },
-                                    { id: "manga", name: "Manga Grayscale", colors: ["#0f0f14", "#828287", "#fafafa"] }
-                                ]
-                                
-                                delegate: Rectangle {
-                                    width: (parent.width - 8) / 2
-                                    height: 38
-                                    radius: 6
-                                    color: "#16161a"
-                                    border.width: gradientCard.activePreset === modelData.id ? 1.5 : 1
-                                    border.color: gradientCard.activePreset === modelData.id ? root.accentColor : Qt.rgba(1,1,1,0.06)
-                                    
-                                    Row {
-                                        anchors.fill: parent
-                                        anchors.margins: 6
-                                        spacing: 8
-                                        
-                                        Rectangle {
-                                            width: 32
-                                            height: 16
-                                            radius: 3
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            gradient: Gradient {
-                                                GradientStop { position: 0.0; color: modelData.colors[0] }
-                                                GradientStop { position: 0.5; color: modelData.colors[1] }
-                                                GradientStop { position: 1.0; color: modelData.colors[2] }
-                                            }
-                                        }
-                                        
-                                        Text {
-                                            text: modelData.name
-                                            color: gradientCard.activePreset === modelData.id ? "white" : "#a0a0a5"
-                                            font.pixelSize: 10
-                                            font.weight: Font.Bold
-                                            width: parent.width - 48
-                                            elide: Text.ElideRight
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-                                    }
-                                    
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: {
-                                            if (targetCanvas && activeLayerId !== -1) {
-                                                if (!activeLayer.gradientMapEnabled) {
-                                                    targetCanvas.setLayerGradientMapEnabled(activeLayerId, true);
-                                                }
-                                                targetCanvas.setLayerGradientMapPreset(activeLayerId, modelData.id);
-                                            }
-                                        }
-                                    }
+                        Item { Layout.fillWidth: true; width: 1 }
+                    }
+                    
+                    // Chevron arrow on the right
+                    Text {
+                        text: "›"
+                        color: "#6b7280"
+                        font.pixelSize: 18
+                        font.weight: Font.Bold
+                        anchors.right: parent.right
+                        anchors.rightMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (targetCanvas && root.activeLayerId !== -1) {
+                                // Enable gradient map if not already
+                                if (activeLayer && !activeLayer.gradientMapEnabled) {
+                                    targetCanvas.setLayerGradientMapEnabled(root.activeLayerId, true)
                                 }
+                                // Signal main window to show the bottom gradient bar
+                                if (typeof mainWindow !== "undefined") {
+                                    mainWindow.showGradientMapUI = true
+                                }
+                                // Set tool to GRAD so they can draw coords
+                                targetCanvas.currentTool = "GRAD"
                             }
                         }
                     }
                 }
+                
                 
                 // --- SECTION 3: CURVES ---
                 CollapsibleCard {

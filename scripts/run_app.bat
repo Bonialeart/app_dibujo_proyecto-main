@@ -7,6 +7,7 @@ set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin
 
 set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
+cd /d "%~dp0.."
 cd build_mingw
 if exist KromoStudio.exe (
     start "" KromoStudio.exe

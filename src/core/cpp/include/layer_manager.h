@@ -10,6 +10,8 @@
 #include "vector_layer_data.h"
 #include <QRect>
 #include <QPainterPath>
+#include <QVariantList>
+#include <QPointF>
 #include <memory>
 #include <string>
 #include <vector>
@@ -50,6 +52,10 @@ struct Layer {
 
   bool gradientMapEnabled = false;
   std::string gradientMapPreset = "sunset"; // "sunset", "ocean", "forest", "retro", "manga"
+  QVariantList gradientMapStops;
+  QPointF gradientMapStart = QPointF(0.0f, 0.0f);
+  QPointF gradientMapEnd = QPointF(1000.0f, 1000.0f);
+  bool gradientMapUseCoords = false;
 
   Layer(const std::string &name, int width, int height,
         Type type = Type::Drawing)

@@ -87,6 +87,10 @@ void LayerManager::duplicateLayer(int index) {
   newLayer->screentoneType = src->screentoneType;
   newLayer->gradientMapEnabled = src->gradientMapEnabled;
   newLayer->gradientMapPreset = src->gradientMapPreset;
+  newLayer->gradientMapStops = src->gradientMapStops;
+  newLayer->gradientMapStart = src->gradientMapStart;
+  newLayer->gradientMapEnd = src->gradientMapEnd;
+  newLayer->gradientMapUseCoords = src->gradientMapUseCoords;
   
   if (src->type == Layer::Type::Vector && src->vectorData) {
     newLayer->vectorData = std::make_unique<VectorLayerData>(*src->vectorData);

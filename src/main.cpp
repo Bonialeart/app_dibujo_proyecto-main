@@ -28,8 +28,16 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
   os << localMsg.constData() << std::endl;
 }
 
+extern "C" {
+    int32_t test_rust_integration(int32_t a, int32_t b);
+}
+
 int main(int argc, char *argv[]) {
   qInstallMessageHandler(myMessageOutput);
+
+  // Probar la integración de Rust
+  int32_t rust_sum = test_rust_integration(10, 32);
+  std::cout << "[Rust Integration] Sum of 10 and 32 is: " << rust_sum << std::endl;
 
   // Forza al motor de estilos de Qt Quick Controls 2 a usar el estilo "Basic",
   // lo cual permite la personalización de propiedades como "background" e "indicator"

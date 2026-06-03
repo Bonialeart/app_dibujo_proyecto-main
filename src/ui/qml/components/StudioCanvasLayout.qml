@@ -1382,7 +1382,8 @@ Item {
                     { id: "history", name: "Historial" },
                     { id: "reference", name: "Referencia" },
                     { id: "info", name: "Info" },
-                    { id: "timeline", name: "Línea de tiempo" }
+                    { id: "timeline", name: "Línea de tiempo" },
+                    { id: "gradient", name: "Editor de Degradados" }
                 ]
                 
                 delegate: Rectangle {

@@ -38,7 +38,8 @@ Rectangle {
         { id: "navigator", name: "Navegador" },
         { id: "history", name: "Historial" },
         { id: "reference", name: "Referencia" },
-        { id: "timeline", name: "Línea de Tiempo" }
+        { id: "timeline", name: "Línea de Tiempo" },
+        { id: "gradient", name: "Editor de Degradados" }
     ]
     
     function isPanelActiveAnywhere(pId) {

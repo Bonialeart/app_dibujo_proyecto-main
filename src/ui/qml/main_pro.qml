@@ -149,6 +149,7 @@ Window {
     property bool showBrush: false
     property bool showBrushSettings: false
     property bool showScreentonePanel: false
+    property bool showGradientMapUI: false
     property bool showShapes: false
     property bool showStoryPanel: false
     property bool isStoryProject: false
@@ -3030,6 +3031,44 @@ Window {
                     }
                 }
                 
+                // ── PREMIUM FLOATING DOCK FOR SIMPLE MODE GRADIENT TOOL ──
+                Rectangle {
+                    id: simpleGradientBar
+                    
+                    // Show in Simple Mode when active tool is Gradient (GRAD) OR when Gradient Map UI is active
+                    visible: isProjectActive && !isZenMode && !mainWindow.isStudioMode && mainCanvas && (mainCanvas.currentTool === "GRAD" || (mainWindow && mainWindow.showGradientMapUI))
+                    
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 24 * (canvasPage.uiScale || 1.0)
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    
+                    width: Math.min(480 * (canvasPage.uiScale || 1.0), parent.width - 32)
+                    height: 135 * (canvasPage.uiScale || 1.0)
+                    radius: 16 * (canvasPage.uiScale || 1.0)
+                    z: 5002
+                    
+                    // Premium Glassmorphism
+                    color: "#f51c1c22"
+                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                    border.width: 1
+                    
+                    // Soft Shadow
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        z: -1
+                        radius: parent.radius + 4
+                        color: "black"
+                        opacity: 0.35
+                    }
+                    
+                    GradientSettingsPanel {
+                        anchors.fill: parent
+                        targetCanvas: mainCanvas
+                        accentColor: colorAccent
+                        isCompact: true
+                    }
+                }
 
                 // EMPTY STATE OVERLAY — Premium Design
                 Rectangle {

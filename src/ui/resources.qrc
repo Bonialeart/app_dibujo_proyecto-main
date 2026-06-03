@@ -46,6 +46,7 @@
     <file>qml/components/StudioSlider.qml</file>
     <file>qml/components/FloatingPanel.qml</file>
     <file>qml/components/BrushSettingsPanel.qml</file>
+    <file>qml/components/GradientSettingsPanel.qml</file>
     <file>qml/components/PremiumPanel.qml</file>
     <file>qml/components/SettingsMenu.qml</file>
     <file>qml/components/StoryPanel.qml</file>

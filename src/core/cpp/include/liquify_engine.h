@@ -115,26 +115,6 @@ public:
   bool isActive() const { return m_active; }
 
 private:
-  // Falloff curve:  1 at center → 0 at radius edge.
-  // Morpher controls how steep the curve is.
-  float falloff(float dist) const;
-
-  // Mode-specific displacement generators
-  void applyPush(int px, int py, float fx, float fy, float dirX, float dirY);
-  void applyTwirl(int px, int py, float fx, float fy, float cx, float cy,
-                  bool clockwise);
-  void applyPinch(int px, int py, float fx, float fy, float cx, float cy);
-  void applyExpand(int px, int py, float fx, float fy, float cx, float cy);
-  void applyCrystalize(int px, int py, float fx, float fy);
-  void applyReconstruct(int px, int py, float fx, float fy);
-  void applySmooth(int px, int py, float fx, float fy);
-  void applyEdge(int px, int py, float fx, float fy, float cx, float cy,
-                 float prevCx, float prevCy);
-
-  // Bilinear sample from the original snapshot
-  void sampleOriginal(float sx, float sy, uint8_t &r, uint8_t &g, uint8_t &b,
-                      uint8_t &a) const;
-
   // ── State ──
   bool m_active = false;
   LiquifyMode m_mode = LiquifyMode::Push;
@@ -145,15 +125,11 @@ private:
   int m_width = 0;
   int m_height = 0;
 
-  // Original pixel snapshot (RGBA, row-major, tightly packed)
-  std::vector<uint8_t> m_original;
+  // Accumulated displacement field (cache para compatibilidad C++)
+  mutable DisplacementMap m_dispMap;
 
-  // Accumulated displacement field
-  DisplacementMap m_dispMap;
-
-  // RNG state for Crystalize
-  uint32_t m_rngState = 12345;
-  float randFloat(); // [0,1)
+  // Puntero al motor implementado en Rust
+  void* m_rustEngine = nullptr;
 };
 
 } // namespace artflow
