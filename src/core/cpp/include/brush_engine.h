@@ -91,6 +91,17 @@ struct BrushSettings {
   float dualTipRotation = 0.0f;
   QString dualTipBlendMode = "multiply";
 
+  // Dual Grain Settings
+  bool useDualTexture = false;
+  QString dualTextureName = "";
+  uint32_t dualGrainTextureID = 0;
+  float dualTextureScale = 100.0f;
+  float dualTextureIntensity = 0.5f;
+  bool invertDualGrain = false;
+  int dualGrainBlendMode = 0;
+  float dualGrainBright = 0.0f;
+  float dualGrainCon = 1.0f;
+
   // === NEW BRUSH STUDIO FIELDS ===
   // Shape
   float roundness = 1.0f;
@@ -246,7 +257,7 @@ class StrokeRenderer; // Forward declaration
 
 class BrushEngine {
 public:
-  static uint32_t loadTexture(const QString &name);
+  static uint32_t loadTexture(const QString &name, bool isTip = true);
   BrushEngine();
   ~BrushEngine(); // Needed for unique_ptr cleanup if used, or raw pointer
                   // delete

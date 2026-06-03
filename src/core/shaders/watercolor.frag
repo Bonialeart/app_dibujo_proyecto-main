@@ -103,7 +103,7 @@ vec2 getGlobalCoord(vec2 uv) {
 // Obtener el valor del grano con brillo y contraste aplicados
 float getGrainValue(vec2 coord) {
     vec4 grainSample = texture(uGrainTexture, coord);
-    float grainVal = dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
+    float grainVal = (grainSample.a < 0.99) ? grainSample.a : dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
     
     // Aplicar inversión si es necesario
     if (uInvertGrain == 1) {

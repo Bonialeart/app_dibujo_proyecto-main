@@ -275,6 +275,7 @@ void StrokeRenderer::renderStroke(
     float temperatureShift, float brokenColor,
     // Dual brush and grain modes
     uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, int grainBlendMode,
+    uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode,
     // Mode
     bool isEraser) {
 
@@ -363,6 +364,28 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("dualTipScale", 1.0f);
     m_program->setUniformValue("dualTipRotation", 0.0f);
     m_program->setUniformValue("uDualTipBlendMode", 0);
+  }
+
+  // --- DUAL GRAIN TEXTURE ---
+  if (hasDualGrain && dualGrainTexId != 0) {
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, dualGrainTexId);
+    m_program->setUniformValue("dualGrainTexture", 4);
+    m_program->setUniformValue("uHasDualGrain", 1);
+    m_program->setUniformValue("dualGrainScale", dualGrainScale);
+    m_program->setUniformValue("dualGrainIntensity", dualGrainIntensity);
+    m_program->setUniformValue("uDualGrainBrightness", dualGrainBright);
+    m_program->setUniformValue("uDualGrainContrast", dualGrainCon);
+    m_program->setUniformValue("uInvertDualGrain", invertDualGrain ? 1 : 0);
+    m_program->setUniformValue("uDualGrainBlendMode", dualGrainBlendMode);
+  } else {
+    m_program->setUniformValue("uHasDualGrain", 0);
+    m_program->setUniformValue("dualGrainScale", 1.0f);
+    m_program->setUniformValue("dualGrainIntensity", 0.0f);
+    m_program->setUniformValue("uDualGrainBrightness", 0.0f);
+    m_program->setUniformValue("uDualGrainContrast", 1.0f);
+    m_program->setUniformValue("uInvertDualGrain", 0);
+    m_program->setUniformValue("uDualGrainBlendMode", 0);
   }
 
   // --- GRAIN BLEND MODE ---
@@ -527,6 +550,7 @@ void StrokeRenderer::renderStrokeInstanced(
     float temperatureShift, float brokenColor,
     // Dual brush and grain modes
     uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, int grainBlendMode,
+    uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode,
     // Mode
     bool isEraser) {
 
@@ -599,6 +623,28 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("dualTipScale", 1.0f);
     m_program->setUniformValue("dualTipRotation", 0.0f);
     m_program->setUniformValue("uDualTipBlendMode", 0);
+  }
+
+  // --- DUAL GRAIN TEXTURE ---
+  if (hasDualGrain && dualGrainTexId != 0) {
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, dualGrainTexId);
+    m_program->setUniformValue("dualGrainTexture", 4);
+    m_program->setUniformValue("uHasDualGrain", 1);
+    m_program->setUniformValue("dualGrainScale", dualGrainScale);
+    m_program->setUniformValue("dualGrainIntensity", dualGrainIntensity);
+    m_program->setUniformValue("uDualGrainBrightness", dualGrainBright);
+    m_program->setUniformValue("uDualGrainContrast", dualGrainCon);
+    m_program->setUniformValue("uInvertDualGrain", invertDualGrain ? 1 : 0);
+    m_program->setUniformValue("uDualGrainBlendMode", dualGrainBlendMode);
+  } else {
+    m_program->setUniformValue("uHasDualGrain", 0);
+    m_program->setUniformValue("dualGrainScale", 1.0f);
+    m_program->setUniformValue("dualGrainIntensity", 0.0f);
+    m_program->setUniformValue("uDualGrainBrightness", 0.0f);
+    m_program->setUniformValue("uDualGrainContrast", 1.0f);
+    m_program->setUniformValue("uInvertDualGrain", 0);
+    m_program->setUniformValue("uDualGrainBlendMode", 0);
   }
 
   // --- GRAIN BLEND MODE ---

@@ -31,6 +31,16 @@ uniform float uGrainBrightness;
 uniform float uGrainContrast;
 uniform int uInvertGrain;
 
+// === Dual Grain (Secondary Paper Texture) — Global Canvas Mapping ===
+uniform sampler2D dualGrainTexture;
+uniform int uHasDualGrain;
+uniform float dualGrainScale;
+uniform float dualGrainIntensity;
+uniform float uDualGrainBrightness;
+uniform float uDualGrainContrast;
+uniform int uInvertDualGrain;
+uniform int uDualGrainBlendMode;
+
 // === Dual Brush Tip (Secondary Shape) — Local UV Mapping ===
 uniform sampler2D dualTipTexture;
 uniform int uHasDualTip;
@@ -113,6 +123,29 @@ uniform float uDabSize;          // Current brush diameter in pixels
 
 // === Rotation ===
 uniform float tipRotation;       // Brush tip rotation in radians
+
+float evaluateGrain(sampler2D grainTex, vec2 worldPos, float scale, float intensity, float brightness, float contrast, int invert, int blendMode, float press) {
+    vec2 globalCoord = worldPos / (5.0 * scale);
+    vec4 grainSample = texture(grainTex, globalCoord);
+    float grainVal = (grainSample.a < 0.99) ? grainSample.a : dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
+    if (invert == 1) {
+        grainVal = 1.0 - grainVal;
+    }
+    float bright = brightness / 100.0;
+    float con = contrast / 100.0;
+    float factor = (1.0 + con);
+    grainVal = clamp((grainVal - 0.5) * factor + 0.5 + bright, 0.0, 1.0);
+
+    if (blendMode == 0) {
+        return mix(1.0, grainVal, intensity);
+    } else if (blendMode == 1) {
+        return clamp(1.0 - (1.0 - grainVal) * intensity, 0.0, 1.0);
+    } else if (blendMode == 2) {
+        float threshold = (1.0 - press) * intensity;
+        return smoothstep(threshold - 0.05, threshold + 0.05, grainVal);
+    }
+    return 1.0;
+}
 
 // --- Kubelka-Munk Pigment Mixing ---
 // Simplified K-M model for GPU: 
@@ -203,6 +236,12 @@ void main() {
     }
 
     // === DUAL BRUSH TIP COMBINATION ===
+    bool dualGrainApplied = false;
+    float mainGrainFactor = 1.0;
+    if (uHasGrain == 1 && grainIntensity > 0.001) {
+        mainGrainFactor = evaluateGrain(grainTexture, vWorldPos, grainScale, grainIntensity, uGrainBrightness, uGrainContrast, uInvertGrain, uGrainBlendMode, pressure);
+    }
+
     if (uHasDualTip == 1) {
         vec2 dualUV = TexCoords - vec2(0.5);
         if (dualTipRotation != 0.0) {
@@ -216,7 +255,14 @@ void main() {
         float dualAlpha = 0.0;
         if (dualUV.x >= 0.0 && dualUV.x <= 1.0 && dualUV.y >= 0.0 && dualUV.y <= 1.0) {
             vec4 dualSample = texture(dualTipTexture, dualUV);
-            dualAlpha = dot(dualSample.rgb, vec3(0.299, 0.587, 0.114)) * dualSample.a;
+            dualAlpha = (dualSample.a < 0.99) ? dualSample.a : dot(dualSample.rgb, vec3(0.299, 0.587, 0.114));
+        }
+
+        if (uHasDualGrain == 1 && dualGrainIntensity > 0.001) {
+            float dualGrainFactor = evaluateGrain(dualGrainTexture, vWorldPos, dualGrainScale, dualGrainIntensity, uDualGrainBrightness, uDualGrainContrast, uInvertDualGrain, uDualGrainBlendMode, pressure);
+            dualAlpha *= dualGrainFactor;
+            shapeAlpha *= mainGrainFactor;
+            dualGrainApplied = true;
         }
 
         if (uDualTipBlendMode == 0) {
@@ -245,35 +291,8 @@ void main() {
 
     // === 2. GRAIN MODULATION (Paper Texture) ===
     float grainFactor = 1.0;
-
-    if (uHasGrain == 1 && grainIntensity > 0.001) {
-        // GLOBAL CANVAS MAPPING — grain stays fixed to the paper position
-        vec2 globalCoord = vWorldPos / (5.0 * grainScale);
-        vec4 grainSample = texture(grainTexture, globalCoord);
-
-        // Extract grain value (handles transparent and opaque paper textures)
-        float grainVal = (grainSample.a < 0.99) ? grainSample.a : dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
-
-        // Invert grain density if configured
-        if (uInvertGrain == 1) {
-            grainVal = 1.0 - grainVal;
-        }
-
-        // Apply brightness and contrast (brightness/100.0 offset, and (1.0 + contrast/100.0) scale around 0.5)
-        float bright = uGrainBrightness / 100.0;
-        float contrast = uGrainContrast / 100.0;
-        float factor = (1.0 + contrast);
-        grainVal = clamp((grainVal - 0.5) * factor + 0.5 + bright, 0.0, 1.0);
-
-        // Multiplicative, subtractive, or physical threshold blend
-        if (uGrainBlendMode == 0) {
-            grainFactor = mix(1.0, grainVal, grainIntensity);
-        } else if (uGrainBlendMode == 1) {
-            grainFactor = clamp(1.0 - (1.0 - grainVal) * grainIntensity, 0.0, 1.0);
-        } else if (uGrainBlendMode == 2) {
-            float threshold = (1.0 - pressure) * grainIntensity;
-            grainFactor = smoothstep(threshold - 0.05, threshold + 0.05, grainVal);
-        }
+    if (!dualGrainApplied) {
+        grainFactor = mainGrainFactor;
     }
 
     // === 3. FLOW & PRESSURE COMBINATION ===

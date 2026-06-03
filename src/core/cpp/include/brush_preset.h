@@ -523,6 +523,9 @@ struct BrushPreset {
     float rotation = 0.0f; // degrees
     QString blendMode = "multiply"; // "multiply", "mask", "add"
 
+    // Dual Grain
+    GrainSettings grain;
+
     QJsonObject toJson() const;
     static DualBrushSettings fromJson(const QJsonObject &obj);
   } dualBrush;

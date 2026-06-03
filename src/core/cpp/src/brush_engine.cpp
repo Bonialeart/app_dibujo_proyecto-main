@@ -3,7 +3,9 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
+#include <fstream>
 #include <QOpenGLFramebufferObject>
+#include <QOpenGLPaintDevice>
 #include <QFileInfo>
 #include <QImage>
 #include <QMap>
@@ -24,9 +26,10 @@ namespace artflow {
 static QMap<QString, uint32_t> g_textureCache;
 static std::vector<QOpenGLTexture *> g_textures; // To manage lifetime
 
-uint32_t BrushEngine::loadTexture(const QString &name) {
-  if (g_textureCache.contains(name))
-    return g_textureCache[name];
+uint32_t BrushEngine::loadTexture(const QString &name, bool isTip) {
+  QString cacheKey = name + (isTip ? "_tip" : "_grain");
+  if (g_textureCache.contains(cacheKey))
+    return g_textureCache[cacheKey];
 
   // First, check if name is already a valid absolute or relative path
   QString path;
@@ -110,7 +113,7 @@ uint32_t BrushEngine::loadTexture(const QString &name) {
     }
     double avgLum = count > 0 ? (totalLum / count) : 255.0;
     if (avgLum < 128.0) {
-      qDebug() << "BrushEngine: Detected dark brush tip texture on transparent background. Converting to white tip.";
+      qDebug() << "BrushEngine: Detected dark brush tip/grain texture on transparent background. Converting to white.";
       for (int y = 0; y < img.height(); ++y) {
         for (int x = 0; x < img.width(); ++x) {
           QRgb px = img.pixel(x, y);
@@ -132,16 +135,17 @@ uint32_t BrushEngine::loadTexture(const QString &name) {
   tex->generateMipMaps();
 
   uint32_t id = tex->textureId();
-  g_textureCache[name] = id;
+  g_textureCache[cacheKey] = id;
   g_textures.push_back(tex);
   return id;
 }
 
 // Helper to get/load texture image for Raster mode
-static QImage getTextureImage(const QString &name) {
+static QImage getTextureImage(const QString &name, bool isTip = true) {
   static QMap<QString, QImage> s_imageTextureCache;
-  if (s_imageTextureCache.contains(name))
-    return s_imageTextureCache[name];
+  QString cacheKey = name + (isTip ? "_tip" : "_grain");
+  if (s_imageTextureCache.contains(cacheKey))
+    return s_imageTextureCache[cacheKey];
 
   QString path = name; // Primero verificar si es ruta absoluta
   bool found = false;
@@ -207,7 +211,7 @@ static QImage getTextureImage(const QString &name) {
       }
       double avgLum = count > 0 ? (totalLum / count) : 255.0;
       if (avgLum < 128.0) {
-        qDebug() << "BrushEngine: getTextureImage detected dark brush tip texture on transparent background. Converting to white tip.";
+        qDebug() << "BrushEngine: getTextureImage detected dark brush tip/grain texture on transparent background. Converting to white.";
         for (int y = 0; y < img.height(); ++y) {
           for (int x = 0; x < img.width(); ++x) {
             QRgb px = img.pixel(x, y);
@@ -232,7 +236,7 @@ static QImage getTextureImage(const QString &name) {
     }
   }
 
-  s_imageTextureCache[name] = img;
+  s_imageTextureCache[cacheKey] = img;
   return img;
 }
 
@@ -240,7 +244,7 @@ static QImage getTextureImage(const QString &name) {
 static void paintTipRaster(QPainter *painter, const QPointF &point, float size,
                            float opacity, const QColor &color, float rotation,
                            const QString &texName) {
-  QImage tipImg = getTextureImage(texName);
+  QImage tipImg = getTextureImage(texName, true);
   if (tipImg.isNull())
     return;
 
@@ -282,31 +286,293 @@ static void paintTipRaster(QPainter *painter, const QPointF &point, float size,
   painter->restore();
 }
 
-static void paintTexturedRaster(QPainter *painter, const QPointF &point,
-                                float size, float opacity, const QColor &color,
-                                const QString &texName) {
-  QImage tex = getTextureImage(texName);
-  if (tex.isNull())
-    return;
+static float getGrainValueAt(const QImage &grainImg, float canvasX, float canvasY, const BrushSettings &settings) {
+  if (grainImg.isNull()) return 1.0f;
+
+  float scale = std::max(0.1f, settings.textureScale);
+  float gx = (canvasX / (5.0f * scale)) * grainImg.width();
+  float gy = (canvasY / (5.0f * scale)) * grainImg.height();
+
+  int ix = static_cast<int>(std::floor(gx)) % grainImg.width();
+  int iy = static_cast<int>(std::floor(gy)) % grainImg.height();
+  if (ix < 0) ix += grainImg.width();
+  if (iy < 0) iy += grainImg.height();
+
+  QRgb px = grainImg.pixel(ix, iy);
+  float grainVal = 1.0f;
+  
+  int alpha = qAlpha(px);
+  if (alpha < 252) {
+    grainVal = alpha / 255.0f;
+  } else {
+    grainVal = (0.299f * qRed(px) + 0.587f * qGreen(px) + 0.114f * qBlue(px)) / 255.0f;
+  }
+
+  if (settings.invertGrain) {
+    grainVal = 1.0f - grainVal;
+  }
+
+  float bright = settings.grainBright / 100.0f;
+  float contrast = settings.grainCon / 100.0f;
+  float factor = (1.0f + contrast);
+  grainVal = std::clamp((grainVal - 0.5f) * factor + 0.5f + bright, 0.0f, 1.0f);
+
+  return grainVal;
+}
+
+static float getDualGrainValueAt(const QImage &grainImg, float canvasX, float canvasY, const BrushSettings &settings) {
+  if (grainImg.isNull()) return 1.0f;
+
+  float scale = std::max(0.1f, settings.dualTextureScale);
+  float gx = (canvasX / (5.0f * scale)) * grainImg.width();
+  float gy = (canvasY / (5.0f * scale)) * grainImg.height();
+
+  int ix = static_cast<int>(std::floor(gx)) % grainImg.width();
+  int iy = static_cast<int>(std::floor(gy)) % grainImg.height();
+  if (ix < 0) ix += grainImg.width();
+  if (iy < 0) iy += grainImg.height();
+
+  QRgb px = grainImg.pixel(ix, iy);
+  float grainVal = 1.0f;
+  
+  int alpha = qAlpha(px);
+  if (alpha < 252) {
+    grainVal = alpha / 255.0f;
+  } else {
+    grainVal = (0.299f * qRed(px) + 0.587f * qGreen(px) + 0.114f * qBlue(px)) / 255.0f;
+  }
+
+  if (settings.invertDualGrain) {
+    grainVal = 1.0f - grainVal;
+  }
+
+  float bright = settings.dualGrainBright / 100.0f;
+  float contrast = settings.dualGrainCon / 100.0f;
+  float factor = (1.0f + contrast);
+  grainVal = std::clamp((grainVal - 0.5f) * factor + 0.5f + bright, 0.0f, 1.0f);
+
+  return grainVal;
+}
+
+static void paintTexturedDabRaster(QPainter *painter, const QPointF &point, float size,
+                                   float opacity, const QColor &color, float rotation,
+                                   const BrushSettings &settings, const QImage &grainImg,
+                                   const QImage &dualGrainImg) {
+  QImage tipImg;
+  if (!settings.tipTextureName.isEmpty()) {
+    tipImg = getTextureImage(settings.tipTextureName, true);
+  }
+
+  int finalSize = std::max(1, static_cast<int>(std::ceil(size)));
+  finalSize = std::min(1024, finalSize);
+
+  if (tipImg.isNull()) {
+    tipImg = QImage(finalSize, finalSize, QImage::Format_ARGB32);
+    tipImg.fill(Qt::transparent);
+
+    float center = finalSize / 2.0f;
+    float radius = size / 2.0f;
+    float hardness = settings.hardness;
+
+    for (int y = 0; y < finalSize; ++y) {
+      for (int x = 0; x < finalSize; ++x) {
+        float dx = x - center;
+        float dy = y - center;
+        float dist = std::sqrt(dx*dx + dy*dy);
+        if (dist <= radius) {
+          float d = dist / radius;
+          float val = 1.0f;
+          if (hardness < 0.99f) {
+            float core = hardness;
+            if (d > core) {
+              float t = (d - core) / (1.0f - core);
+              val = 0.5f * (1.0f + std::cos(t * 3.14159265f));
+              val = std::pow(val, 0.75f);
+            }
+          }
+          int a = static_cast<int>(255 * val);
+          tipImg.setPixel(x, y, qRgba(255, 255, 255, a));
+        }
+      }
+    }
+  } else {
+    if (tipImg.width() != tipImg.height()) {
+      int s = std::min(tipImg.width(), tipImg.height());
+      int cx = (tipImg.width() - s) / 2;
+      int cy = (tipImg.height() - s) / 2;
+      tipImg = tipImg.copy(cx, cy, s, s);
+    }
+    QImage scaledTip(finalSize, finalSize, QImage::Format_ARGB32);
+    scaledTip.fill(Qt::transparent);
+
+    QPainter p(&scaledTip);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.setRenderHint(QPainter::SmoothPixmapTransform);
+    p.translate(finalSize / 2.0f, finalSize / 2.0f);
+    p.rotate(rotation * 180.0f / 3.14159265f);
+    p.drawImage(QRectF(-size / 2.0f, -size / 2.0f, size, size), tipImg, tipImg.rect());
+    p.end();
+
+    tipImg = scaledTip;
+  }
+
+  float startX = point.x() - finalSize / 2.0f;
+  float startY = point.y() - finalSize / 2.0f;
+
+  bool dualGrainApplied = false;
+
+  QImage scaledDualTip(finalSize, finalSize, QImage::Format_ARGB32);
+  scaledDualTip.fill(Qt::transparent);
+
+  bool hasDualTip = (settings.dualTipEnabled && !settings.dualTipTextureName.isEmpty());
+  if (hasDualTip) {
+    QImage dualTipImg = getTextureImage(settings.dualTipTextureName, true);
+    if (!dualTipImg.isNull()) {
+      if (dualTipImg.width() != dualTipImg.height()) {
+        int s = std::min(dualTipImg.width(), dualTipImg.height());
+        int cx = (dualTipImg.width() - s) / 2;
+        int cy = (dualTipImg.height() - s) / 2;
+        dualTipImg = dualTipImg.copy(cx, cy, s, s);
+      }
+      QPainter p(&scaledDualTip);
+      p.setRenderHint(QPainter::Antialiasing);
+      p.setRenderHint(QPainter::SmoothPixmapTransform);
+      p.translate(finalSize / 2.0f, finalSize / 2.0f);
+      p.rotate((rotation + settings.dualTipRotation) * 180.0f / 3.14159265f);
+      float dualSize = size * settings.dualTipScale;
+      p.drawImage(QRectF(-dualSize / 2.0f, -dualSize / 2.0f, dualSize, dualSize), dualTipImg, dualTipImg.rect());
+      p.end();
+    }
+  }
+
+  if (hasDualTip && settings.useDualTexture && !dualGrainImg.isNull()) {
+    // 1. Modulate main tip by main grain
+    if (settings.useTexture && !grainImg.isNull()) {
+      for (int y = 0; y < finalSize; ++y) {
+        for (int x = 0; x < finalSize; ++x) {
+          QRgb px = tipImg.pixel(x, y);
+          int alpha = qAlpha(px);
+          if (alpha > 0) {
+            float canvasX = startX + x;
+            float canvasY = startY + y;
+            float grainVal = getGrainValueAt(grainImg, canvasX, canvasY, settings);
+            
+            float grainFactor = 1.0f;
+            if (settings.grainBlendMode == "subtract") {
+              grainFactor = std::clamp(1.0f - (1.0f - grainVal) * settings.textureIntensity, 0.0f, 1.0f);
+            } else if (settings.grainBlendMode == "threshold" || settings.grainBlendMode == "reveal") {
+              float threshold = (1.0f - opacity) * settings.textureIntensity;
+              auto smoothstep = [](float edge0, float edge1, float x) {
+                float t = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+                return t * t * (3.0f - 2.0f * t);
+              };
+              grainFactor = smoothstep(threshold - 0.05f, threshold + 0.05f, grainVal);
+            } else {
+              grainFactor = (1.0f - settings.textureIntensity) + grainVal * settings.textureIntensity;
+            }
+
+            int newAlpha = std::clamp(static_cast<int>(alpha * grainFactor), 0, 255);
+            tipImg.setPixel(x, y, qRgba(qRed(px), qGreen(px), qBlue(px), newAlpha));
+          }
+        }
+      }
+    }
+
+    // 2. Modulate dual tip by dual grain
+    for (int y = 0; y < finalSize; ++y) {
+      for (int x = 0; x < finalSize; ++x) {
+        QRgb px = scaledDualTip.pixel(x, y);
+        int alpha = qAlpha(px);
+        if (alpha > 0) {
+          float canvasX = startX + x;
+          float canvasY = startY + y;
+          float grainVal = getDualGrainValueAt(dualGrainImg, canvasX, canvasY, settings);
+          
+          float dualGrainFactor = 1.0f;
+          if (settings.dualGrainBlendMode == 1) {
+            dualGrainFactor = std::clamp(1.0f - (1.0f - grainVal) * settings.dualTextureIntensity, 0.0f, 1.0f);
+          } else if (settings.dualGrainBlendMode == 2) {
+            float threshold = (1.0f - opacity) * settings.dualTextureIntensity;
+            auto smoothstep = [](float edge0, float edge1, float x) {
+              float t = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+              return t * t * (3.0f - 2.0f * t);
+            };
+            dualGrainFactor = smoothstep(threshold - 0.05f, threshold + 0.05f, grainVal);
+          } else {
+            dualGrainFactor = (1.0f - settings.dualTextureIntensity) + grainVal * settings.dualTextureIntensity;
+          }
+
+          int newAlpha = std::clamp(static_cast<int>(alpha * dualGrainFactor), 0, 255);
+          scaledDualTip.setPixel(x, y, qRgba(qRed(px), qGreen(px), qBlue(px), newAlpha));
+        }
+      }
+    }
+
+    dualGrainApplied = true;
+  }
+
+  if (hasDualTip) {
+    for (int y = 0; y < finalSize; ++y) {
+      for (int x = 0; x < finalSize; ++x) {
+        QRgb pxMain = tipImg.pixel(x, y);
+        QRgb pxDual = scaledDualTip.pixel(x, y);
+        int alphaMain = qAlpha(pxMain);
+        int alphaDual = qAlpha(pxDual);
+
+        int newAlpha = alphaMain;
+        if (settings.dualTipBlendMode == "mask" || settings.dualTipBlendMode == "subtract") {
+          newAlpha = alphaMain * (255 - alphaDual) / 255;
+        } else if (settings.dualTipBlendMode == "add") {
+          newAlpha = std::min(255, alphaMain + alphaDual);
+        } else {
+          newAlpha = (alphaMain * alphaDual) / 255;
+        }
+
+        tipImg.setPixel(x, y, qRgba(qRed(pxMain), qGreen(pxMain), pxMain == 0 ? qBlue(pxDual) : qBlue(pxMain), newAlpha));
+      }
+    }
+  }
+
+  if (!dualGrainApplied && settings.useTexture && !grainImg.isNull()) {
+    for (int y = 0; y < finalSize; ++y) {
+      for (int x = 0; x < finalSize; ++x) {
+        QRgb px = tipImg.pixel(x, y);
+        int alpha = qAlpha(px);
+        if (alpha > 0) {
+          float canvasX = startX + x;
+          float canvasY = startY + y;
+          float grainVal = getGrainValueAt(grainImg, canvasX, canvasY, settings);
+          
+          float grainFactor = 1.0f;
+          if (settings.grainBlendMode == "subtract") {
+            grainFactor = std::clamp(1.0f - (1.0f - grainVal) * settings.textureIntensity, 0.0f, 1.0f);
+          } else if (settings.grainBlendMode == "threshold" || settings.grainBlendMode == "reveal") {
+            float threshold = (1.0f - opacity) * settings.textureIntensity;
+            auto smoothstep = [](float edge0, float edge1, float x) {
+              float t = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+              return t * t * (3.0f - 2.0f * t);
+            };
+            grainFactor = smoothstep(threshold - 0.05f, threshold + 0.05f, grainVal);
+          } else {
+            grainFactor = (1.0f - settings.textureIntensity) + grainVal * settings.textureIntensity;
+          }
+
+          int newAlpha = std::clamp(static_cast<int>(alpha * grainFactor), 0, 255);
+          tipImg.setPixel(x, y, qRgba(qRed(px), qGreen(px), qBlue(px), newAlpha));
+        }
+      }
+    }
+  }
+
+  QImage tintedImg = tipImg.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+  QPainter tintPainter(&tintedImg);
+  tintPainter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+  tintPainter.fillRect(tintedImg.rect(), color);
+  tintPainter.end();
 
   painter->save();
   painter->setOpacity(opacity);
-  painter->setPen(Qt::NoPen);
-
-  QBrush brush(tex);
-  QTransform matrix;
-  matrix.translate(point.x(), point.y());
-  float scale = 0.5f;
-  matrix.scale(scale, scale);
-  brush.setTransform(matrix);
-
-  painter->setBrush(brush);
-  painter->drawEllipse(point, size / 2.0f, size / 2.0f);
-
-  // Color tint
-  painter->setBrush(color);
-  painter->setCompositionMode(QPainter::CompositionMode_Overlay);
-  painter->drawEllipse(point, size / 2.0f, size / 2.0f);
+  painter->drawImage(point - QPointF(finalSize / 2.0f, finalSize / 2.0f), tintedImg);
   painter->restore();
 }
 
@@ -345,7 +611,9 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     effectivePressure = 1.0f;
   }
 
-  bool isOpenGL = (painter->paintEngine()->type() != QPaintEngine::Raster);
+  bool isOpenGL = (QOpenGLContext::currentContext() != nullptr &&
+                   (painter->device()->devType() == 12 ||
+                    dynamic_cast<QOpenGLPaintDevice*>(painter->device()) != nullptr));
 
   static bool hasLoggedMode = false;
   if (!hasLoggedMode) {
@@ -359,27 +627,53 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     uint32_t grainTexID = settings.grainTextureID;
     uint32_t tipTexID = settings.tipTextureID;
     uint32_t dualTipTexID = settings.dualTipTextureID;
+    uint32_t dualGrainTexID = settings.dualGrainTextureID;
 
     // Load grain texture if needed
     if (settings.useTexture && grainTexID == 0 &&
         !settings.textureName.isEmpty()) {
-      grainTexID = loadTexture(settings.textureName);
+      grainTexID = loadTexture(settings.textureName, false);
     }
 
     // Load tip texture if needed
     if (tipTexID == 0 && !settings.tipTextureName.isEmpty()) {
-      tipTexID = loadTexture(settings.tipTextureName);
+      tipTexID = loadTexture(settings.tipTextureName, true);
     }
 
     // Load dual tip texture if needed
     if (settings.dualTipEnabled && dualTipTexID == 0 &&
         !settings.dualTipTextureName.isEmpty()) {
-      dualTipTexID = loadTexture(settings.dualTipTextureName);
+      dualTipTexID = loadTexture(settings.dualTipTextureName, true);
+    }
+
+    // Load dual grain texture if needed
+    if (settings.useDualTexture && dualGrainTexID == 0 &&
+        !settings.dualTextureName.isEmpty()) {
+      dualGrainTexID = loadTexture(settings.dualTextureName, false);
     }
 
     bool hasGrain = (grainTexID != 0 && settings.useTexture);
     bool hasTip = (tipTexID != 0);
     bool hasDualTip = (dualTipTexID != 0 && settings.dualTipEnabled);
+    bool hasDualGrain = (dualGrainTexID != 0 && settings.useDualTexture);
+
+    // DEBUG: trace grain state at draw time
+    static int grainDbgCount = 0;
+    if (grainDbgCount++ % 10 == 0) {
+      std::ofstream logFile("e:/Programacion/Rescate_Proyecto/grain_debug_cpp.txt", std::ios::app);
+      if (logFile.is_open()) {
+        logFile << "[GRAIN-DEBUG] useTexture: " << settings.useTexture
+                << " | textureName: " << settings.textureName.toStdString()
+                << " | grainTextureID(settings): " << settings.grainTextureID
+                << " | grainTexID(loaded): " << grainTexID
+                << " | hasGrain: " << hasGrain
+                << " | textureIntensity: " << settings.textureIntensity
+                << " | textureScale: " << settings.textureScale
+                << " | grainBright: " << settings.grainBright
+                << " | grainCon: " << settings.grainCon
+                << " | invertGrain: " << settings.invertGrain << "\n";
+      }
+    }
 
     int uDualTipBlendMode = 0; // multiply
     if (settings.dualTipBlendMode == "mask" || settings.dualTipBlendMode == "subtract") {
@@ -609,6 +903,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               settings.canvasSkipValleys, settings.canvasCatchPeaks,
               settings.temperatureShift, settings.brokenColor,
               dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
+              dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
+              settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode,
               settings.type == BrushSettings::Type::Eraser);
 
           // Blit the result from pongFBO (write target) back to pingFBO (read target)
@@ -649,6 +945,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             settings.canvasSkipValleys, settings.canvasCatchPeaks,
             settings.temperatureShift, settings.brokenColor,
             dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
+            dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
+            settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode,
             settings.type == BrushSettings::Type::Eraser);
       }
     }
@@ -669,6 +967,15 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     painter->setCompositionMode(QPainter::CompositionMode_DestinationOut);
   } else {
     painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+  }
+
+  QImage grainImg;
+  if (settings.useTexture && !settings.textureName.isEmpty()) {
+    grainImg = getTextureImage(settings.textureName, false);
+  }
+  QImage dualGrainImg;
+  if (settings.useDualTexture && !settings.dualTextureName.isEmpty()) {
+    dualGrainImg = getTextureImage(settings.dualTextureName, false);
   }
 
   float currentSize =
@@ -768,12 +1075,15 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
         currentTipRot += strokeAngle;
       }
 
-      if (!settings.tipTextureName.isEmpty()) {
+      bool hasGrain = (settings.useTexture && !settings.textureName.isEmpty() && !grainImg.isNull()) ||
+                      (settings.useDualTexture && !settings.dualTextureName.isEmpty() && !dualGrainImg.isNull());
+      bool hasDualTip = (settings.dualTipEnabled && !settings.dualTipTextureName.isEmpty());
+      if (hasGrain || hasDualTip) {
+        paintTexturedDabRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
+                               currentTipRot + jRot, settings, grainImg, dualGrainImg);
+      } else if (!settings.tipTextureName.isEmpty()) {
         paintTipRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
                        currentTipRot + jRot, settings.tipTextureName);
-      } else if (settings.useTexture && !settings.textureName.isEmpty()) {
-        paintTexturedRaster(painter, finalPt, finalSize, finalOpacity,
-                            finalColor, settings.textureName);
       } else {
         paintSoftStamp(painter, finalPt, finalSize, finalOpacity, finalColor,
                        settings.hardness);
@@ -853,23 +1163,30 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
   uint32_t grainTexId = m_currentSettings.grainTextureID;
   if (m_currentSettings.useTexture && grainTexId == 0 &&
       !m_currentSettings.textureName.isEmpty()) {
-    grainTexId = loadTexture(m_currentSettings.textureName);
+    grainTexId = loadTexture(m_currentSettings.textureName, false);
   }
 
   uint32_t tipTexId = m_currentSettings.tipTextureID;
   if (tipTexId == 0 && !m_currentSettings.tipTextureName.isEmpty()) {
-    tipTexId = loadTexture(m_currentSettings.tipTextureName);
+    tipTexId = loadTexture(m_currentSettings.tipTextureName, true);
   }
 
   uint32_t dualTipTexId = m_currentSettings.dualTipTextureID;
   if (m_currentSettings.dualTipEnabled && dualTipTexId == 0 &&
       !m_currentSettings.dualTipTextureName.isEmpty()) {
-    dualTipTexId = loadTexture(m_currentSettings.dualTipTextureName);
+    dualTipTexId = loadTexture(m_currentSettings.dualTipTextureName, true);
+  }
+
+  uint32_t dualGrainTexId = m_currentSettings.dualGrainTextureID;
+  if (m_currentSettings.useDualTexture && dualGrainTexId == 0 &&
+      !m_currentSettings.dualTextureName.isEmpty()) {
+    dualGrainTexId = loadTexture(m_currentSettings.dualTextureName, false);
   }
 
   bool hasGrain = (grainTexId != 0 && m_currentSettings.useTexture);
   bool hasTip = (tipTexId != 0);
   bool hasDualTip = (dualTipTexId != 0 && m_currentSettings.dualTipEnabled);
+  bool hasDualGrain = (dualGrainTexId != 0 && m_currentSettings.useDualTexture);
 
   int uDualTipBlendMode = 0; // multiply
   if (m_currentSettings.dualTipBlendMode == "mask" || m_currentSettings.dualTipBlendMode == "subtract") {
@@ -1045,6 +1362,8 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         m_currentSettings.temperatureShift, m_currentSettings.brokenColor,
         // Dual brush and grain modes
         dualTipTexId, hasDualTip, m_currentSettings.dualTipScale, m_currentSettings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
+        dualGrainTexId, hasDualGrain, m_currentSettings.dualTextureScale, m_currentSettings.dualTextureIntensity,
+        m_currentSettings.dualGrainBright, m_currentSettings.dualGrainCon, m_currentSettings.invertDualGrain, m_currentSettings.dualGrainBlendMode,
         // Mode
         isEraser);
   }

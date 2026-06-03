@@ -85,12 +85,25 @@
                 "tip_texture": "acuarela_aguada_4.png",
                 "scale": 1.25,
                 "rotation": 0.0,
-                "blend_mode": "multiply"
+                "blend_mode": "multiply",
+                "grain": {
+                    "texture": "acuarela_aguada.sut.2.layer.png",
+                    "scale": 25.0,
+                    "intensity": 0.80,
+                    "brightness": -100.0,
+                    "contrast": 0.0,
+                    "invert": true,
+                    "blend_mode": "multiply"
+                }
             },
             "grain": {
-                "texture": "acuarela_aguada.sut.2.layer.png",
-                "scale": 25.0,
-                "intensity": 0.80,
+                "texture": "acuarela_aguada.sut.1.layer.png",
+                "scale": 15.0,
+                "intensity": 0.54,
+                "brightness": 75.0,
+                "contrast": -70.0,
+                "invert": true,
+                "blend_mode": "multiply",
                 "rolling": true
             },
             "stroke": {

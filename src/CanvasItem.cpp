@@ -2,6 +2,7 @@
 #include "CanvasItem.h"
 #include "PreferencesManager.h"
 #include "WintabManager.h"
+#include <fstream>
 #include "core/cpp/include/brush_preset_manager.h"
 #include "core/brushes/abr_parser.h"
 #include "core/cpp/include/undo_commands.h"
@@ -3189,6 +3190,19 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
   BrushSettings settings = m_brushEngine->getBrush();
 
+  // DEBUG: log settings to file at drawing time
+  static int handleDrawDbgCount = 0;
+  if (handleDrawDbgCount++ % 20 == 0) {
+    std::ofstream logFile("e:/Programacion/Rescate_Proyecto/canvas_draw_debug.txt", std::ios::app);
+    if (logFile.is_open()) {
+      logFile << "[HANDLE-DRAW] useTexture: " << settings.useTexture
+              << " | textureName: " << settings.textureName.toStdString()
+              << " | grainTextureID: " << settings.grainTextureID
+              << " | isWc: " << (isWatercolorBrush() && m_tool != ToolType::Eraser)
+              << " | activePreset: " << m_activeBrushName.toStdString() << "\n";
+    }
+  }
+
   // FIX: Support explicit Eraser Mode and "Transparent Color" (Clip Studio
   // Style)
   bool isTransparentColor = (m_brushColor.alpha() < 5);
@@ -3508,24 +3522,29 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     // Preload and cache GPU texture IDs before paintStroke so both
     // the brush shader and the watercolor engine can use them.
     if (settings.tipTextureID == 0 && !settings.tipTextureName.isEmpty()) {
-      settings.tipTextureID = artflow::BrushEngine::loadTexture(settings.tipTextureName);
+      settings.tipTextureID = artflow::BrushEngine::loadTexture(settings.tipTextureName, true);
     }
     if (settings.dualTipEnabled && settings.dualTipTextureID == 0 &&
         !settings.dualTipTextureName.isEmpty()) {
-      settings.dualTipTextureID = artflow::BrushEngine::loadTexture(settings.dualTipTextureName);
+      settings.dualTipTextureID = artflow::BrushEngine::loadTexture(settings.dualTipTextureName, true);
     }
     if (settings.useTexture && settings.grainTextureID == 0 &&
         !settings.textureName.isEmpty()) {
-      settings.grainTextureID = artflow::BrushEngine::loadTexture(settings.textureName);
+      settings.grainTextureID = artflow::BrushEngine::loadTexture(settings.textureName, false);
+    }
+    if (settings.useDualTexture && settings.dualGrainTextureID == 0 &&
+        !settings.dualTextureName.isEmpty()) {
+      settings.dualGrainTextureID = artflow::BrushEngine::loadTexture(settings.dualTextureName, false);
     }
     // Persist the loaded IDs back to the engine so they're cached
     // for subsequent frames and the watercolor engine.
     if (settings.tipTextureID != 0 || settings.dualTipTextureID != 0 ||
-        settings.grainTextureID != 0) {
+        settings.grainTextureID != 0 || settings.dualGrainTextureID != 0) {
       BrushSettings engineCopy = m_brushEngine->getBrush();
       engineCopy.tipTextureID = settings.tipTextureID;
       engineCopy.dualTipTextureID = settings.dualTipTextureID;
       engineCopy.grainTextureID = settings.grainTextureID;
+      engineCopy.dualGrainTextureID = settings.dualGrainTextureID;
       m_brushEngine->setBrush(engineCopy);
     }
     // ─── FIN LAZY TEXTURE LOADING ────────────────────────────────
@@ -3583,9 +3602,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
         // Sync the watercolor engine's grain texture ID in case the user
         // changed the grain texture mid-session via the Brush Studio.
-        if (settings.grainTextureID != 0) {
-            m_watercolorEngine->setGrainTextureId(settings.grainTextureID);
-        }
+        m_watercolorEngine->setGrainTextureId(settings.grainTextureID);
 
         QOpenGLFunctions *gl = QOpenGLContext::currentContext()->functions();
         if (!m_watercolorEngine->hasActiveWetAreas() ||
@@ -12637,11 +12654,17 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
   } else {
     QStringList searchPaths;
     searchPaths << "assets/textures"
+                << "assets/brushes"
                 << "src/assets/textures"
+                << "src/assets/brushes"
                 << QCoreApplication::applicationDirPath() + "/assets/textures"
+                << QCoreApplication::applicationDirPath() + "/assets/brushes"
                 << QCoreApplication::applicationDirPath() +
                        "/../assets/textures"
+                << QCoreApplication::applicationDirPath() +
+                       "/../assets/brushes"
                 << QCoreApplication::applicationDirPath() + "/textures"
+                << QCoreApplication::applicationDirPath() + "/brushes"
                 << QStandardPaths::writableLocation(
                        QStandardPaths::AppDataLocation) +
                        "/imported_brushes";
@@ -13148,20 +13171,55 @@ bool CanvasItem::isBuiltInBrush(const QString &name) const {
 
 QVariantList CanvasItem::getAvailableTipTextures() const {
   QVariantList result;
+  
+  // Define candidate search directories
+  QStringList brushesCandidates;
+  brushesCandidates << QCoreApplication::applicationDirPath() + "/assets/brushes"
+                    << QCoreApplication::applicationDirPath() + "/../assets/brushes"
+                    << QDir::currentPath() + "/assets/brushes";
+
+  QStringList texturesCandidates;
+  texturesCandidates << QCoreApplication::applicationDirPath() + "/assets/textures"
+                     << QCoreApplication::applicationDirPath() + "/../assets/textures"
+                     << QDir::currentPath() + "/assets/textures";
+
+  QStringList importedCandidates;
+  importedCandidates << QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/imported_brushes";
+
+  // Select the first existing path for each category to scan
   QStringList searchPaths;
-  searchPaths << QCoreApplication::applicationDirPath() + "/assets/brushes"
-              << QCoreApplication::applicationDirPath() + "/../assets/brushes"
-              << QDir::currentPath() + "/assets/brushes";
+  for (const QString &path : brushesCandidates) {
+    if (QDir(path).exists()) {
+      searchPaths << path;
+      break;
+    }
+  }
+  for (const QString &path : texturesCandidates) {
+    if (QDir(path).exists()) {
+      searchPaths << path;
+      break;
+    }
+  }
+  for (const QString &path : importedCandidates) {
+    if (QDir(path).exists()) {
+      searchPaths << path;
+      break;
+    }
+  }
 
   QStringList filters;
   filters << "*.png" << "*.PNG";
 
+  QSet<QString> addedFilenames;
+
   for (const QString &searchPath : searchPaths) {
     QDir dir(searchPath);
-    if (!dir.exists())
-      continue;
     const QStringList files = dir.entryList(filters, QDir::Files);
     for (const QString &file : files) {
+      if (addedFilenames.contains(file))
+        continue;
+      addedFilenames.insert(file);
+
       QVariantMap entry;
       entry["name"] = QFileInfo(file).baseName();
       entry["filename"] = file;
@@ -13169,8 +13227,6 @@ QVariantList CanvasItem::getAvailableTipTextures() const {
       entry["path"] = QUrl::fromLocalFile(dir.absoluteFilePath(file)).toString();
       result.append(entry);
     }
-    if (!result.isEmpty())
-      break;
   }
   return result;
 }

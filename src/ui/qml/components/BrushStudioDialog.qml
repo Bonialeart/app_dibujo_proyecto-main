@@ -40,6 +40,10 @@ Rectangle {
                 targetCanvas.resizePreviewPad(padCanvasContainer.width, padCanvasContainer.height)
             }
         }
+        if (settingsLoader) {
+            settingsLoader.active = false
+            settingsLoader.active = true
+        }
         openAnim.start()
     }
 
@@ -357,46 +361,6 @@ Rectangle {
                 // Right border
                 Rectangle { width: 1; height: parent.height; anchors.right: parent.right; color: borderDim }
 
-                // Preview sin parpadeo: usa un Timer + crossfade entre dos imágenes
-                property string nextPreviewSrc: ""
-
-                Timer {
-                    id: previewThrottle
-                    interval: 120
-                    repeat: false
-                    onTriggered: {
-                        if (targetCanvas) {
-                            var newSrc = targetCanvas.get_brush_preview(studio.brushName)
-                            brushShapeImg2.source = newSrc
-                            brushShapeImg2.opacity = 1
-                            brushShapeImg.opacity = 0
-                            swapTimer.start()
-                        }
-                    }
-                }
-                Timer {
-                    id: swapTimer
-                    interval: 180
-                    repeat: false
-                    onTriggered: {
-                        brushShapeImg.source  = brushShapeImg2.source
-                        brushShapeImg.opacity = 1
-                        brushShapeImg2.opacity = 0
-                    }
-                }
-
-                Connections {
-                    target: targetCanvas
-                    function onEditingPresetChanged() {
-                        studio.brushPropertySeed++
-                        previewThrottle.restart()
-                    }
-                    function onBrushPropertyChanged(category, key) {
-                        studio.brushPropertySeed++
-                        previewThrottle.restart()
-                    }
-                }
-
                 // ═══════ Reusable Studio Components ═══════
 
                 // Slider with label + reset + numeric display (matching Image 2's two-row layout)
@@ -532,12 +496,60 @@ Rectangle {
                     }
                 }
 
-                // Scrollable Content
-                Flickable {
+                Loader {
+                    id: settingsLoader
                     anchors.fill: parent
-                    contentHeight: contentCol.height + 40
-                    clip: true
-                    boundsBehavior: Flickable.StopAtBounds
+                    sourceComponent: settingsComponent
+                }
+
+                Component {
+                    id: settingsComponent
+
+                    Flickable {
+                        anchors.fill: parent
+                        contentHeight: contentCol.height + 40
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+
+                        // Preview sin parpadeo: usa un Timer + crossfade entre dos imágenes
+                        property string nextPreviewSrc: ""
+
+                        Timer {
+                            id: previewThrottle
+                            interval: 120
+                            repeat: false
+                            onTriggered: {
+                                if (targetCanvas) {
+                                    var newSrc = targetCanvas.get_brush_preview(studio.brushName)
+                                    brushShapeImg2.source = newSrc
+                                    brushShapeImg2.opacity = 1
+                                    brushShapeImg.opacity = 0
+                                    swapTimer.start()
+                                }
+                            }
+                        }
+                        Timer {
+                            id: swapTimer
+                            interval: 180
+                            repeat: false
+                            onTriggered: {
+                                brushShapeImg.source  = brushShapeImg2.source
+                                brushShapeImg.opacity = 1
+                                brushShapeImg2.opacity = 0
+                            }
+                        }
+
+                        Connections {
+                            target: targetCanvas
+                            function onEditingPresetChanged() {
+                                studio.brushPropertySeed++
+                                previewThrottle.restart()
+                            }
+                            function onBrushPropertyChanged(category, key) {
+                                studio.brushPropertySeed++
+                                previewThrottle.restart()
+                            }
+                        }
 
                     Column {
                         id: contentCol
@@ -1552,7 +1564,13 @@ Rectangle {
                                 MouseArea {
                                     id: resetMa
                                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                    onClicked: if(targetCanvas) targetCanvas.resetBrushToDefault()
+                                    onClicked: {
+                                        if (targetCanvas) {
+                                            targetCanvas.resetBrushToDefault()
+                                            settingsLoader.active = false
+                                            settingsLoader.active = true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1849,8 +1867,9 @@ Rectangle {
                     }
                 }
             }
+        }
 
-            // ─── RIGHT: DRAWING PAD / TEST AREA ───
+        // ─── RIGHT: DRAWING PAD / TEST AREA ───
             Rectangle {
                 id: drawingPad
                 Layout.fillHeight: true

@@ -88,6 +88,7 @@ public:
       float temperatureShift = 0.0f, float brokenColor = 0.0f,
       // Dual brush and grain modes
       uint32_t dualTipTexId = 0, bool hasDualTip = false, float dualTipScale = 1.0f, float dualTipRotation = 0.0f, int dualTipBlendMode = 0, int grainBlendMode = 0,
+      uint32_t dualGrainTexId = 0, bool hasDualGrain = false, float dualGrainScale = 1.0f, float dualGrainIntensity = 0.5f, float dualGrainBright = 0.0f, float dualGrainCon = 1.0f, bool invertDualGrain = false, int dualGrainBlendMode = 0,
       // Mode
       bool isEraser = false);
 
@@ -147,6 +148,7 @@ public:
       float temperatureShift = 0.0f, float brokenColor = 0.0f,
       // Dual brush and grain modes
       uint32_t dualTipTexId = 0, bool hasDualTip = false, float dualTipScale = 1.0f, float dualTipRotation = 0.0f, int dualTipBlendMode = 0, int grainBlendMode = 0,
+      uint32_t dualGrainTexId = 0, bool hasDualGrain = false, float dualGrainScale = 1.0f, float dualGrainIntensity = 0.5f, float dualGrainBright = 0.0f, float dualGrainCon = 1.0f, bool invertDualGrain = false, int dualGrainBlendMode = 0,
       // Mode
       bool isEraser = false);
 

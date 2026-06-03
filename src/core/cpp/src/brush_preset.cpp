@@ -62,6 +62,7 @@ QJsonObject BrushPreset::DualBrushSettings::toJson() const {
   obj["scale"] = scale;
   obj["rotation"] = rotation;
   obj["blend_mode"] = blendMode;
+  obj["grain"] = grain.toJson();
   return obj;
 }
 
@@ -73,6 +74,9 @@ BrushPreset::DualBrushSettings::fromJson(const QJsonObject &obj) {
   d.scale = obj.value("scale").toDouble(1.0);
   d.rotation = obj.value("rotation").toDouble(0.0);
   d.blendMode = obj.value("blend_mode").toString("multiply");
+  if (obj.contains("grain")) {
+    d.grain = GrainSettings::fromJson(obj["grain"].toObject());
+  }
   return d;
 }
 
@@ -771,6 +775,10 @@ BrushPreset BrushPreset::fromJson(const QJsonObject &root) {
 // Bridge: BrushPreset -> legacy BrushSettings
 // ============================================================
 void BrushPreset::applyToLegacy(BrushSettings &s) const {
+  s.tipTextureID = 0;
+  s.dualTipTextureID = 0;
+  s.grainTextureID = 0;
+
   s.size = defaultSize;
   s.opacity = defaultOpacity;
   s.hardness = defaultHardness;
@@ -798,6 +806,35 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.dualTipScale = dualBrush.scale;
   s.dualTipRotation = dualBrush.rotation * 3.14159265f / 180.0f; // deg to rad
   s.dualTipBlendMode = dualBrush.blendMode;
+
+  // Dual Grain Settings
+  if (dualBrush.enabled && !dualBrush.grain.texture.isEmpty()) {
+    s.useDualTexture = true;
+    s.dualTextureName = dualBrush.grain.texture;
+    s.dualGrainTextureID = 0; // Loaded lazily
+    s.dualTextureScale = dualBrush.grain.scale;
+    s.dualTextureIntensity = dualBrush.grain.intensity;
+    s.invertDualGrain = dualBrush.grain.invert;
+    s.dualGrainBright = dualBrush.grain.brightness;
+    s.dualGrainCon = dualBrush.grain.contrast;
+    int dbm = 0;
+    if (dualBrush.grain.blendMode == "subtract") {
+      dbm = 1;
+    } else if (dualBrush.grain.blendMode == "threshold" || dualBrush.grain.blendMode == "reveal") {
+      dbm = 2;
+    }
+    s.dualGrainBlendMode = dbm;
+  } else {
+    s.useDualTexture = false;
+    s.dualTextureName = "";
+    s.dualGrainTextureID = 0;
+    s.dualTextureScale = 100.0f;
+    s.dualTextureIntensity = 0.5f;
+    s.invertDualGrain = false;
+    s.dualGrainBright = 0.0f;
+    s.dualGrainCon = 1.0f;
+    s.dualGrainBlendMode = 0;
+  }
 
   // Grain texture (paper grain) — separate slot
   if (!grain.texture.isEmpty()) {
