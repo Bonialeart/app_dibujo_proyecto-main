@@ -522,6 +522,7 @@ struct BrushPreset {
     float scale = 1.0f;
     float rotation = 0.0f; // degrees
     QString blendMode = "multiply"; // "multiply", "mask", "add"
+    float flow = 1.0f;
 
     // Dual Grain
     GrainSettings grain;

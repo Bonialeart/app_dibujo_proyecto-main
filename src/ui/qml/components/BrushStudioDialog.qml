@@ -104,6 +104,20 @@ Rectangle {
         return ""
     }
 
+    // Helper to get active dual grain texture path
+    function getActiveDualGrainTexturePath() {
+        var dummy = studio.brushPropertySeed
+        if (!targetCanvas) return ""
+        var currentGrain = targetCanvas.getBrushProperty("dualbrush", "grain_texture") || ""
+        var list = targetCanvas.getAvailableTipTextures() // Grain uses tip textures list too
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].filename === currentGrain || list[i].path.indexOf(currentGrain) !== -1) {
+                return list[i].path
+            }
+        }
+        return ""
+    }
+
     // === ANIMATIONS ===
     ParallelAnimation {
         id: openAnim
@@ -415,7 +429,14 @@ Rectangle {
                             }
                             
                             Text {
-                                text: Math.round(slider.value * 100) / 100 + suffix
+                                text: {
+                                    var val = slider.value
+                                    if (suffix === "%" && slider.to <= 2.0) {
+                                        return Math.round(val * 1000) / 10 + suffix
+                                    } else {
+                                        return Math.round(val * 100) / 100 + suffix
+                                    }
+                                }
                                 color: textMuted
                                 font.pixelSize: 11
                                 font.weight: Font.Medium
@@ -1823,6 +1844,14 @@ Rectangle {
                                     onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "rotation", value)
                                 }
 
+                                StudioSlider {
+                                    label: "Flujo Secundario"
+                                    from: 0; to: 1.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "flow") || 1.0 : 1.0
+                                    suffix: "%"
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "flow", value)
+                                }
+
                                 // Blend Mode Selector
                                 Column {
                                     width: parent.width; spacing: 8
@@ -1860,6 +1889,228 @@ Rectangle {
                                         BlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
                                         BlendButton { modeName: "mask"; displayLabel: "Restar" }
                                         BlendButton { modeName: "add"; displayLabel: "Añadir" }
+                                    }
+                                }
+
+                                // Divider line
+                                Rectangle { width: parent.width; height: 1; color: borderDim }
+
+                                Row {
+                                    spacing: 8
+                                    Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                    Text { text: "TEXTURA DE GRANO SECUNDARIO"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
+                                }
+
+                                // Secondary Grain Texture Card
+                                Rectangle {
+                                    width: parent.width
+                                    height: 160
+                                    radius: 12
+                                    color: "#08080a"
+                                    border.color: borderDim
+                                    border.width: 1
+                                    clip: true
+
+                                    Image {
+                                        anchors.centerIn: parent
+                                        width: parent.width - 24; height: parent.height - 24
+                                        source: getActiveDualGrainTexturePath()
+                                        fillMode: Image.PreserveAspectFit
+                                        opacity: 0.85
+                                        smooth: true
+                                        visible: getActiveDualGrainTexturePath() !== ""
+                                    }
+
+                                    Text {
+                                        text: "Sin Textura Secundaria"
+                                        color: textDim; font.pixelSize: 13
+                                        anchors.centerIn: parent
+                                        visible: getActiveDualGrainTexturePath() === ""
+                                    }
+
+                                    // Reset button in bottom-left
+                                    Rectangle {
+                                        width: 26; height: 26; radius: 13
+                                        color: "#a01c1c1e"
+                                        border.color: borderDim; border.width: 1
+                                        anchors.left: parent.left; anchors.leftMargin: 10
+                                        anchors.bottom: parent.bottom; anchors.bottomMargin: 10
+
+                                        Text {
+                                            text: "↺"
+                                            color: "#ffffff"
+                                            font.pixelSize: 12
+                                            font.weight: Font.Bold
+                                            anchors.centerIn: parent
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_texture", "")
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Expandable Grain Picker Grid for Secondary Grain
+                                Column {
+                                    width: parent.width; spacing: 8
+
+                                    Rectangle {
+                                        width: parent.width; height: 32; radius: 8
+                                        color: changeDualGrainMa.containsMouse ? bgSurface : "transparent"
+                                        border.color: borderDim; border.width: 1
+
+                                        Text {
+                                            text: "▼ Seleccionar textura de grano secundario..."
+                                            color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
+                                            anchors.centerIn: parent
+                                        }
+
+                                        MouseArea {
+                                            id: changeDualGrainMa
+                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            onClicked: dualGrainSelectionGrid.visible = !dualGrainSelectionGrid.visible
+                                        }
+                                    }
+
+                                    Grid {
+                                        id: dualGrainSelectionGrid
+                                        width: parent.width
+                                        columns: 4
+                                        spacing: 8
+                                        visible: false
+
+                                        // "None" option
+                                        Rectangle {
+                                            width: (parent.width - 3 * 8) / 4
+                                            height: width
+                                            radius: 8
+                                            color: (studio.brushPropertySeed, (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") === "" ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface)
+                                            border.color: (studio.brushPropertySeed, (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") === "" ? colorAccent : borderDim)
+                                            border.width: (studio.brushPropertySeed, (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") === "" ? 2 : 1)
+
+                                            Text {
+                                                text: "Ninguno"; color: textMuted; font.pixelSize: 10
+                                                anchors.centerIn: parent
+                                            }
+                                            MouseArea {
+                                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_texture", "")
+                                                }
+                                            }
+                                        }
+
+                                        Repeater {
+                                            model: targetCanvas ? targetCanvas.getAvailableTipTextures() : []
+                                            delegate: Rectangle {
+                                                width: (parent.width - 3 * 8) / 4
+                                                height: width
+                                                radius: 8
+                                                color: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : bgSurface)
+                                                border.color: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") ? colorAccent : borderDim)
+                                                border.width: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") ? 2 : 1)
+
+                                                Image {
+                                                    anchors.centerIn: parent
+                                                    width: parent.width - 12; height: parent.height - 12
+                                                    source: modelData.path
+                                                    fillMode: Image.PreserveAspectFit
+                                                    opacity: 0.85
+                                                }
+                                                Text {
+                                                    text: modelData.name; color: textDim; font.pixelSize: 8
+                                                    anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
+                                                    anchors.bottomMargin: 3; elide: Text.ElideRight
+                                                    width: parent.width - 4; horizontalAlignment: Text.AlignHCenter
+                                                }
+                                                MouseArea {
+                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        if (targetCanvas) targetCanvas.setDualGrainTextureForBrush(studio.brushName, modelData.path)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Invert Grain Toggle for Secondary Grain
+                                StudioToggle {
+                                    label: "Invertir Grano Secundario"
+                                    checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_invert") || false : false)
+                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_invert", checked)
+                                }
+
+                                // Secondary Grain Properties
+                                StudioSlider {
+                                    label: "Escala del Grano Secundario"
+                                    from: 10; to: 500
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_scale") || 100 : 100
+                                    suffix: "%"
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_scale", value)
+                                }
+
+                                StudioSlider {
+                                    label: "Profundidad del Grano Secundario"
+                                    from: 0; to: 1.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_intensity") || 0.5 : 0.5
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_intensity", value)
+                                }
+
+                                StudioSlider {
+                                    label: "Brillo del Grano Secundario"
+                                    from: -1.0; to: 1.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_brightness") || 0 : 0
+                                    offsetColor: true
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_brightness", value)
+                                }
+
+                                StudioSlider {
+                                    label: "Contraste del Grano Secundario"
+                                    from: 0; to: 2.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_contrast") || 1.0 : 1.0
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_contrast", value)
+                                }
+
+                                Column {
+                                    width: parent.width; spacing: 8
+                                    Text { text: "Modo de Mezcla del Grano Secundario"; color: textPrimary; font.pixelSize: 12 }
+                                    Row {
+                                        width: parent.width; spacing: 6
+                                        property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_blend_mode") || "multiply" : "multiply"
+
+                                        component DualGrainBlendButton : Rectangle {
+                                            property string modeName: "multiply"
+                                            property string displayLabel: "Multiplicar"
+                                            height: 28
+                                            width: (parent.parent.width - 12) / 3
+                                            radius: 6
+                                            color: parent.currentMode === modeName ? colorAccent : (dgBlendMa.containsMouse ? bgSurface : "#1a1a1c")
+                                            border.color: parent.currentMode === modeName ? "transparent" : borderDim
+                                            border.width: 1
+
+                                            Text {
+                                                text: displayLabel
+                                                color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
+                                                font.pixelSize: 10; font.weight: Font.Medium
+                                                anchors.centerIn: parent
+                                            }
+
+                                            MouseArea {
+                                                id: dgBlendMa
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onClicked: {
+                                                    if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_blend_mode", modeName)
+                                                }
+                                            }
+                                        }
+
+                                        DualGrainBlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
+                                        DualGrainBlendButton { modeName: "subtract"; displayLabel: "Restar" }
+                                        DualGrainBlendButton { modeName: "threshold"; displayLabel: "Umbral Seco" }
                                     }
                                 }
                             }

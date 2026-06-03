@@ -512,6 +512,7 @@ static void paintTexturedDabRaster(QPainter *painter, const QPointF &point, floa
   }
 
   if (hasDualTip) {
+    float flow = settings.dualTipFlow;
     for (int y = 0; y < finalSize; ++y) {
       for (int x = 0; x < finalSize; ++x) {
         QRgb pxMain = tipImg.pixel(x, y);
@@ -519,15 +520,19 @@ static void paintTexturedDabRaster(QPainter *painter, const QPointF &point, floa
         int alphaMain = qAlpha(pxMain);
         int alphaDual = qAlpha(pxDual);
 
-        int newAlpha = alphaMain;
+        float mainVal = alphaMain / 255.0f;
+        float dualVal = alphaDual / 255.0f;
+        float resultVal = mainVal;
+
         if (settings.dualTipBlendMode == "mask" || settings.dualTipBlendMode == "subtract") {
-          newAlpha = alphaMain * (255 - alphaDual) / 255;
+          resultVal = mainVal * ((1.0f - flow) + flow * (1.0f - dualVal));
         } else if (settings.dualTipBlendMode == "add") {
-          newAlpha = std::min(255, alphaMain + alphaDual);
-        } else {
-          newAlpha = (alphaMain * alphaDual) / 255;
+          resultVal = std::clamp(mainVal + dualVal * flow, 0.0f, 1.0f);
+        } else { // multiply
+          resultVal = mainVal * ((1.0f - flow) + flow * dualVal);
         }
 
+        int newAlpha = std::clamp(static_cast<int>(resultVal * 255.0f + 0.5f), 0, 255);
         tipImg.setPixel(x, y, qRgba(qRed(pxMain), qGreen(pxMain), pxMain == 0 ? qBlue(pxDual) : qBlue(pxMain), newAlpha));
       }
     }
@@ -902,7 +907,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               settings.smudgeSmear, settings.canvasAbsorption,
               settings.canvasSkipValleys, settings.canvasCatchPeaks,
               settings.temperatureShift, settings.brokenColor,
-              dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
+              dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, settings.dualTipFlow, uGrainBlendMode,
               dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
               settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode,
               settings.type == BrushSettings::Type::Eraser);
@@ -944,7 +949,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             settings.smudgeSmear, settings.canvasAbsorption,
             settings.canvasSkipValleys, settings.canvasCatchPeaks,
             settings.temperatureShift, settings.brokenColor,
-            dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
+            dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, settings.dualTipFlow, uGrainBlendMode,
             dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
             settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode,
             settings.type == BrushSettings::Type::Eraser);
@@ -1361,7 +1366,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         // Color Dynamics Oil
         m_currentSettings.temperatureShift, m_currentSettings.brokenColor,
         // Dual brush and grain modes
-        dualTipTexId, hasDualTip, m_currentSettings.dualTipScale, m_currentSettings.dualTipRotation, uDualTipBlendMode, uGrainBlendMode,
+        dualTipTexId, hasDualTip, m_currentSettings.dualTipScale, m_currentSettings.dualTipRotation, uDualTipBlendMode, m_currentSettings.dualTipFlow, uGrainBlendMode,
         dualGrainTexId, hasDualGrain, m_currentSettings.dualTextureScale, m_currentSettings.dualTextureIntensity,
         m_currentSettings.dualGrainBright, m_currentSettings.dualGrainCon, m_currentSettings.invertDualGrain, m_currentSettings.dualGrainBlendMode,
         // Mode

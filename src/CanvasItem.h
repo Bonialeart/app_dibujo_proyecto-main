@@ -549,6 +549,10 @@ public:
                                          const QString &texturePath);
   Q_INVOKABLE void setGrainTextureForBrush(const QString &brushName,
                                            const QString &texturePath);
+  Q_INVOKABLE void setDualTipTextureForBrush(const QString &brushName,
+                                             const QString &texturePath);
+  Q_INVOKABLE void setDualGrainTextureForBrush(const QString &brushName,
+                                               const QString &texturePath);
 
   QVariantList pressureCurvePoints() const { return m_rawPoints; }
   Q_INVOKABLE void setCurvePoints(const QVariantList &points);

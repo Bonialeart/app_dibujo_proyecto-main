@@ -274,7 +274,7 @@ void StrokeRenderer::renderStroke(
     // Oil Color Dynamics
     float temperatureShift, float brokenColor,
     // Dual brush and grain modes
-    uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, int grainBlendMode,
+    uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, float dualTipFlow, int grainBlendMode,
     uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode,
     // Mode
     bool isEraser) {
@@ -359,11 +359,13 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("dualTipScale", dualTipScale);
     m_program->setUniformValue("dualTipRotation", dualTipRotation);
     m_program->setUniformValue("uDualTipBlendMode", dualTipBlendMode);
+    m_program->setUniformValue("uDualTipFlow", dualTipFlow);
   } else {
     m_program->setUniformValue("uHasDualTip", 0);
     m_program->setUniformValue("dualTipScale", 1.0f);
     m_program->setUniformValue("dualTipRotation", 0.0f);
     m_program->setUniformValue("uDualTipBlendMode", 0);
+    m_program->setUniformValue("uDualTipFlow", 1.0f);
   }
 
   // --- DUAL GRAIN TEXTURE ---
@@ -549,7 +551,7 @@ void StrokeRenderer::renderStrokeInstanced(
     // Oil Color Dynamics
     float temperatureShift, float brokenColor,
     // Dual brush and grain modes
-    uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, int grainBlendMode,
+    uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, float dualTipFlow, int grainBlendMode,
     uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode,
     // Mode
     bool isEraser) {
@@ -618,11 +620,13 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("dualTipScale", dualTipScale);
     m_program->setUniformValue("dualTipRotation", dualTipRotation);
     m_program->setUniformValue("uDualTipBlendMode", dualTipBlendMode);
+    m_program->setUniformValue("uDualTipFlow", dualTipFlow);
   } else {
     m_program->setUniformValue("uHasDualTip", 0);
     m_program->setUniformValue("dualTipScale", 1.0f);
     m_program->setUniformValue("dualTipRotation", 0.0f);
     m_program->setUniformValue("uDualTipBlendMode", 0);
+    m_program->setUniformValue("uDualTipFlow", 1.0f);
   }
 
   // --- DUAL GRAIN TEXTURE ---

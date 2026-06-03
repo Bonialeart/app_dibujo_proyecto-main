@@ -62,6 +62,7 @@ QJsonObject BrushPreset::DualBrushSettings::toJson() const {
   obj["scale"] = scale;
   obj["rotation"] = rotation;
   obj["blend_mode"] = blendMode;
+  obj["flow"] = flow;
   obj["grain"] = grain.toJson();
   return obj;
 }
@@ -74,6 +75,7 @@ BrushPreset::DualBrushSettings::fromJson(const QJsonObject &obj) {
   d.scale = obj.value("scale").toDouble(1.0);
   d.rotation = obj.value("rotation").toDouble(0.0);
   d.blendMode = obj.value("blend_mode").toString("multiply");
+  d.flow = obj.value("flow").toDouble(1.0);
   if (obj.contains("grain")) {
     d.grain = GrainSettings::fromJson(obj["grain"].toObject());
   }
@@ -806,6 +808,7 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.dualTipScale = dualBrush.scale;
   s.dualTipRotation = dualBrush.rotation * 3.14159265f / 180.0f; // deg to rad
   s.dualTipBlendMode = dualBrush.blendMode;
+  s.dualTipFlow = dualBrush.flow;
 
   // Dual Grain Settings
   if (dualBrush.enabled && !dualBrush.grain.texture.isEmpty()) {

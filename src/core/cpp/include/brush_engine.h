@@ -90,6 +90,7 @@ struct BrushSettings {
   float dualTipScale = 1.0f;
   float dualTipRotation = 0.0f;
   QString dualTipBlendMode = "multiply";
+  float dualTipFlow = 1.0f;
 
   // Dual Grain Settings
   bool useDualTexture = false;

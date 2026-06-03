@@ -11314,6 +11314,22 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.dualBrush.rotation;
     if (key == "blend_mode")
       return m_editingPreset.dualBrush.blendMode;
+    if (key == "flow")
+      return m_editingPreset.dualBrush.flow;
+    if (key == "grain_texture")
+      return m_editingPreset.dualBrush.grain.texture;
+    if (key == "grain_scale")
+      return m_editingPreset.dualBrush.grain.scale;
+    if (key == "grain_intensity")
+      return m_editingPreset.dualBrush.grain.intensity;
+    if (key == "grain_brightness")
+      return m_editingPreset.dualBrush.grain.brightness;
+    if (key == "grain_contrast")
+      return m_editingPreset.dualBrush.grain.contrast;
+    if (key == "grain_invert")
+      return m_editingPreset.dualBrush.grain.invert;
+    if (key == "grain_blend_mode")
+      return m_editingPreset.dualBrush.grain.blendMode;
   }
 
   // ── wetmix ──
@@ -11552,6 +11568,30 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
     } else if (key == "blend_mode") {
       m_editingPreset.dualBrush.blendMode = value.toString();
       changed = true;
+    } else if (key == "flow") {
+      m_editingPreset.dualBrush.flow = value.toFloat();
+      changed = true;
+    } else if (key == "grain_texture") {
+      m_editingPreset.dualBrush.grain.texture = value.toString();
+      changed = true;
+    } else if (key == "grain_scale") {
+      m_editingPreset.dualBrush.grain.scale = value.toFloat();
+      changed = true;
+    } else if (key == "grain_intensity") {
+      m_editingPreset.dualBrush.grain.intensity = value.toFloat();
+      changed = true;
+    } else if (key == "grain_brightness") {
+      m_editingPreset.dualBrush.grain.brightness = value.toFloat();
+      changed = true;
+    } else if (key == "grain_contrast") {
+      m_editingPreset.dualBrush.grain.contrast = value.toFloat();
+      changed = true;
+    } else if (key == "grain_invert") {
+      m_editingPreset.dualBrush.grain.invert = value.toBool();
+      changed = true;
+    } else if (key == "grain_blend_mode") {
+      m_editingPreset.dualBrush.grain.blendMode = value.toString();
+      changed = true;
     }
   }
 
@@ -11775,6 +11815,14 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
     map["scale"] = m_editingPreset.dualBrush.scale;
     map["rotation"] = m_editingPreset.dualBrush.rotation;
     map["blend_mode"] = m_editingPreset.dualBrush.blendMode;
+    map["flow"] = m_editingPreset.dualBrush.flow;
+    map["grain_texture"] = m_editingPreset.dualBrush.grain.texture;
+    map["grain_scale"] = m_editingPreset.dualBrush.grain.scale;
+    map["grain_intensity"] = m_editingPreset.dualBrush.grain.intensity;
+    map["grain_brightness"] = m_editingPreset.dualBrush.grain.brightness;
+    map["grain_contrast"] = m_editingPreset.dualBrush.grain.contrast;
+    map["grain_invert"] = m_editingPreset.dualBrush.grain.invert;
+    map["grain_blend_mode"] = m_editingPreset.dualBrush.grain.blendMode;
   } else if (category == "wetmix") {
     map["wet_mix"] = m_editingPreset.wetMix.wetMix;
     map["pigment"] = m_editingPreset.wetMix.pigment;
@@ -13286,6 +13334,62 @@ void CanvasItem::setGrainTextureForBrush(const QString &brushName,
   }
 
   emit brushPropertyChanged("grain", "texture");
+  applyEditingPresetToEngine();
+}
+
+void CanvasItem::setDualTipTextureForBrush(const QString &brushName,
+                                          const QString &texturePath) {
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *p = bpm->findByName(brushName);
+  
+  QString localPath = texturePath;
+  if (localPath.startsWith("file:///")) {
+    localPath = QUrl(texturePath).toLocalFile();
+  }
+  QString filename = QFileInfo(localPath).fileName();
+
+  if (p) {
+    artflow::BrushPreset updated = *p;
+    updated.dualBrush.tipTexture = filename;
+    bpm->updatePreset(updated);
+  }
+  if (m_isEditingBrush) {
+    m_editingPreset.dualBrush.tipTexture = filename;
+  }
+
+  emit brushPropertyChanged("dualbrush", "tip_texture");
+  applyEditingPresetToEngine();
+}
+
+void CanvasItem::setDualGrainTextureForBrush(const QString &brushName,
+                                            const QString &texturePath) {
+  auto *bpm = artflow::BrushPresetManager::instance();
+  const artflow::BrushPreset *p = bpm->findByName(brushName);
+  
+  QString localPath = texturePath;
+  if (localPath.startsWith("file:///")) {
+    localPath = QUrl(texturePath).toLocalFile();
+  }
+  QString filename = QFileInfo(localPath).fileName();
+
+  if (p) {
+    artflow::BrushPreset updated = *p;
+    updated.dualBrush.grain.texture = filename;
+    if (updated.dualBrush.grain.intensity < 0.01f)
+      updated.dualBrush.grain.intensity = 0.5f;
+    if (updated.dualBrush.grain.scale < 0.01f)
+      updated.dualBrush.grain.scale = 1.0f;
+    bpm->updatePreset(updated);
+  }
+  if (m_isEditingBrush) {
+    m_editingPreset.dualBrush.grain.texture = filename;
+    if (m_editingPreset.dualBrush.grain.intensity < 0.01f)
+      m_editingPreset.dualBrush.grain.intensity = 0.5f;
+    if (m_editingPreset.dualBrush.grain.scale < 0.01f)
+      m_editingPreset.dualBrush.grain.scale = 1.0f;
+  }
+
+  emit brushPropertyChanged("dualbrush", "grain_texture");
   applyEditingPresetToEngine();
 }
 

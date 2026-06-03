@@ -47,6 +47,7 @@ uniform int uHasDualTip;
 uniform float dualTipScale;
 uniform float dualTipRotation;
 uniform int uDualTipBlendMode; // 0 = multiply, 1 = mask (subtract), 2 = add
+uniform float uDualTipFlow;
 uniform int uGrainBlendMode;   // 0 = multiply, 1 = subtract, 2 = threshold/reveal
 
 // === Wet Mix Engine ===
@@ -266,11 +267,11 @@ void main() {
         }
 
         if (uDualTipBlendMode == 0) {
-            shapeAlpha *= dualAlpha;
+            shapeAlpha *= mix(1.0, dualAlpha, uDualTipFlow);
         } else if (uDualTipBlendMode == 1) {
-            shapeAlpha *= (1.0 - dualAlpha);
+            shapeAlpha *= mix(1.0, 1.0 - dualAlpha, uDualTipFlow);
         } else if (uDualTipBlendMode == 2) {
-            shapeAlpha = clamp(shapeAlpha + dualAlpha, 0.0, 1.0);
+            shapeAlpha = clamp(shapeAlpha + dualAlpha * uDualTipFlow, 0.0, 1.0);
         }
     }
 
