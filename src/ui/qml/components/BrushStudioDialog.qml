@@ -299,7 +299,9 @@ Rectangle {
                             id: tabsModel
                             ListElement { icon: "trayectoria.svg"; label: "Trayectoria";       idx: 0 }
                             ListElement { icon: "forma.svg";       label: "Forma";            idx: 1 }
+                            ListElement { icon: "aleatorizar.svg"; label: "Efecto pulverizador"; idx: 12 }
                             ListElement { icon: "forma.svg";       label: "Pincel Dual";      idx: 10 }
+                            ListElement { icon: "textura.svg";     label: "D- Textura";       idx: 11 }
                             ListElement { icon: "aleatorizar.svg"; label: "Aleatorizar";      idx: 2 }
                             ListElement { icon: "textura.svg";     label: "Textura";          idx: 3 }
                             ListElement { icon: "visibilidad.svg"; label: "Visibilidad";      idx: 4 }
@@ -486,7 +488,9 @@ Rectangle {
                 component StudioToggle : RowLayout {
                     property string label: "Etiqueta"
                     property alias checked: toggle.checked
-                    width: parent.width
+                    property real leftPadding: 0
+                    x: leftPadding
+                    width: parent.width - leftPadding
                     spacing: 12
 
                     Text { text: label; color: textPrimary; font.pixelSize: 12; Layout.fillWidth: true }
@@ -1204,10 +1208,86 @@ Rectangle {
                             width: parent.width
                             spacing: 20
                              Row {
-                                spacing: 8
-                                Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "MEZCLA HÚMEDA (WET MIX)"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
+                                 spacing: 8
+                                 Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                 Text { text: "MEZCLA HÚMEDA (WET MIX)"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
                              }
+
+                            // Modo de combinación
+                            Column {
+                                width: parent.width; spacing: 8
+                                Text { text: "Modo de combinación"; color: textPrimary; font.pixelSize: 12 }
+                                Grid {
+                                    id: renderBlendGrid
+                                    width: parent.width
+                                    columns: 3
+                                    spacing: 6
+                                    property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("rendering", "blend_mode") || "normal" : "normal"
+                                    
+                                    component RenderBlendButton : Rectangle {
+                                        property string modeName: "normal"
+                                        property string displayLabel: "Normal"
+                                        height: 28
+                                        width: (parent.width - 12) / 3
+                                        radius: 6
+                                        color: parent.currentMode === modeName ? colorAccent : (renderBlendMa.containsMouse ? bgSurface : "#1a1a1c")
+                                        border.color: parent.currentMode === modeName ? "transparent" : borderDim
+                                        border.width: 1
+
+                                         Text {
+                                             text: displayLabel
+                                             color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
+                                             font.pixelSize: 10; font.weight: Font.Medium
+                                             anchors.centerIn: parent
+                                         }
+
+                                         MouseArea {
+                                             id: renderBlendMa
+                                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                             onClicked: {
+                                                 if (targetCanvas) targetCanvas.setBrushProperty("rendering", "blend_mode", modeName)
+                                             }
+                                         }
+                                    }
+
+                                    RenderBlendButton { modeName: "normal"; displayLabel: "Normal" }
+                                    RenderBlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
+                                    RenderBlendButton { modeName: "screen"; displayLabel: "Trama" }
+                                    RenderBlendButton { modeName: "overlay"; displayLabel: "Superponer" }
+                                    RenderBlendButton { modeName: "darken"; displayLabel: "Oscurecer" }
+                                    RenderBlendButton { modeName: "lighten"; displayLabel: "Aclarar" }
+                                }
+                            }
+
+                            // Mezclar colores Toggle
+                            StudioToggle {
+                                label: "Mezclar colores"
+                                checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_mixing") || false : false)
+                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "color_mixing", checked)
+                            }
+
+                            // Paint mixing details
+                            Column {
+                                width: parent.width
+                                spacing: 20
+                                visible: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_mixing") || false : false)
+
+                                StudioSlider {
+                                    label: "Cantidad de pintura"
+                                    from: 0; to: 1.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "paint_amount") || 0.7 : 0.7
+                                    suffix: "%"
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "paint_amount", value)
+                                }
+
+                                StudioSlider {
+                                    label: "Extender color"
+                                    from: 0; to: 1.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_stretch") || 0.1 : 0.1
+                                    suffix: "%"
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "color_stretch", value)
+                                }
+                            }
                             
                             StudioSlider {
                                 label: "Dilución"
@@ -1893,16 +1973,142 @@ Rectangle {
                                     }
                                 }
 
-                                // Divider line
-                                Rectangle { width: parent.width; height: 1; color: borderDim }
-
-                                Row {
-                                    spacing: 8
-                                    Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
-                                    Text { text: "TEXTURA DE GRANO SECUNDARIO"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
+                                // Spray Effect Toggle
+                                StudioToggle {
+                                    label: "D- Efecto pulverizador"
+                                    checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "spray_enabled") || false : false)
+                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "spray_enabled", checked)
                                 }
 
-                                // Secondary Grain Texture Card
+                                // Spray Effect Sub-Configurations
+                                Column {
+                                    width: parent.width
+                                    spacing: 16
+                                    visible: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "spray_enabled") || false : false)
+
+                                    StudioSlider {
+                                        label: "D- Tamaño de las partículas"
+                                        from: 1.0; to: 200.0
+                                        value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "particle_size") || 50.0 : 50.0
+                                        suffix: "px"
+                                        onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "particle_size", value)
+                                    }
+
+                                    StudioToggle {
+                                        label: "D- Tamaño del pincel"
+                                        leftPadding: 24
+                                        checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "spray_size_by_brush") || false : false)
+                                        onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "spray_size_by_brush", checked)
+                                    }
+
+                                    // Particle Density Segmented Selector
+                                    Row {
+                                        width: parent.width; spacing: 8
+                                        Text {
+                                            text: "D- Densidad de las partículas"
+                                            color: textMuted; font.pixelSize: 11
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: 170
+                                        }
+                                        Row {
+                                            spacing: 4
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            property int currentValue: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "particle_density") || 3 : 3
+                                            Repeater {
+                                                model: 5
+                                                delegate: Rectangle {
+                                                    width: 24; height: 12; radius: 2
+                                                    color: (index + 1) <= parent.currentValue ? colorAccent : "#1a1a1c"
+                                                    border.color: borderDim; border.width: 1
+                                                    MouseArea {
+                                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                        onClicked: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "particle_density", index + 1)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Spray Deviation Segmented Selector
+                                    Row {
+                                        width: parent.width; spacing: 8
+                                        Text {
+                                            text: "D- Desviación de pulverización"
+                                            color: textMuted; font.pixelSize: 11
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: 170
+                                        }
+                                        Row {
+                                            spacing: 4
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            property int currentValue: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "spray_deviation") || 3 : 3
+                                            Repeater {
+                                                model: 5
+                                                delegate: Rectangle {
+                                                    width: 24; height: 12; radius: 2
+                                                    color: (index + 1) <= parent.currentValue ? colorAccent : "#1a1a1c"
+                                                    border.color: borderDim; border.width: 1
+                                                    MouseArea {
+                                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                        onClicked: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "spray_deviation", index + 1)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    StudioSlider {
+                                        label: "D- Dirección de las partículas"
+                                        from: 0.0; to: 360.0
+                                        value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "particle_direction") || 0.0 : 0.0
+                                        suffix: "°"
+                                        onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "particle_direction", value)
+                                    }
+                                }
+                            }
+                        }
+
+                        // --- TAB 11: D- TEXTURA ---
+                        Column {
+                            id: tab11Col
+                            visible: studio.activeTab === 11
+                            width: parent.width
+                            spacing: 20
+
+                            property bool isDualBrushEnabled: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false
+
+                            Row {
+                                spacing: 8
+                                Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: "D- TEXTURA DEL PAPEL"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
+                            }
+
+                            Rectangle {
+                                width: parent.width
+                                height: 100
+                                radius: 8
+                                color: "#08080a"
+                                border.color: borderDim
+                                border.width: 1
+                                visible: !tab11Col.isDualBrushEnabled
+
+                                Text {
+                                    text: "Habilite 'Habilitar Pincel Dual' en la pestaña Pincel Dual para configurar la textura secundaria."
+                                    color: textMuted
+                                    font.pixelSize: 11
+                                    horizontalAlignment: Text.AlignHCenter
+                                    anchors.centerIn: parent
+                                    width: parent.width - 32
+                                    wrapMode: Text.Wrap
+                                }
+                            }
+
+                            Column {
+                                width: parent.width
+                                spacing: 20
+                                visible: tab11Col.isDualBrushEnabled
+
+                                // D- Textura del papel Card
                                 Rectangle {
                                     width: parent.width
                                     height: 160
@@ -1923,13 +2129,13 @@ Rectangle {
                                     }
 
                                     Text {
-                                        text: "Sin Textura Secundaria"
+                                        text: "Sin Textura"
                                         color: textDim; font.pixelSize: 13
                                         anchors.centerIn: parent
                                         visible: getActiveDualGrainTexturePath() === ""
                                     }
 
-                                    // Reset button in bottom-left
+                                    // Reset button
                                     Rectangle {
                                         width: 26; height: 26; radius: 13
                                         color: "#a01c1c1e"
@@ -1938,46 +2144,40 @@ Rectangle {
                                         anchors.bottom: parent.bottom; anchors.bottomMargin: 10
 
                                         Text {
-                                            text: "↺"
-                                            color: "#ffffff"
-                                            font.pixelSize: 12
-                                            font.weight: Font.Bold
-                                            anchors.centerIn: parent
+                                            text: "↺"; color: "#ffffff"; font.pixelSize: 12; font.weight: Font.Bold; anchors.centerIn: parent
                                         }
 
                                         MouseArea {
                                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_texture", "")
-                                            }
+                                            onClicked: if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_texture", "")
                                         }
                                     }
                                 }
 
-                                // Expandable Grain Picker Grid for Secondary Grain
+                                // Selector Grid for Secondary Grain
                                 Column {
                                     width: parent.width; spacing: 8
 
                                     Rectangle {
                                         width: parent.width; height: 32; radius: 8
-                                        color: changeDualGrainMa.containsMouse ? bgSurface : "transparent"
+                                        color: changeDualGrainMaTab11.containsMouse ? bgSurface : "transparent"
                                         border.color: borderDim; border.width: 1
 
                                         Text {
-                                            text: "▼ Seleccionar textura de grano secundario..."
+                                            text: "▼ Seleccionar textura de grano..."
                                             color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
                                             anchors.centerIn: parent
                                         }
 
                                         MouseArea {
-                                            id: changeDualGrainMa
+                                            id: changeDualGrainMaTab11
                                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                            onClicked: dualGrainSelectionGrid.visible = !dualGrainSelectionGrid.visible
+                                            onClicked: dualGrainSelectionGridTab11.visible = !dualGrainSelectionGridTab11.visible
                                         }
                                     }
 
                                     Grid {
-                                        id: dualGrainSelectionGrid
+                                        id: dualGrainSelectionGridTab11
                                         width: parent.width
                                         columns: 4
                                         spacing: 8
@@ -1992,15 +2192,10 @@ Rectangle {
                                             border.color: (studio.brushPropertySeed, (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") === "" ? colorAccent : borderDim)
                                             border.width: (studio.brushPropertySeed, (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") === "" ? 2 : 1)
 
-                                            Text {
-                                                text: "Ninguno"; color: textMuted; font.pixelSize: 10
-                                                anchors.centerIn: parent
-                                            }
+                                            Text { text: "Ninguno"; color: textMuted; font.pixelSize: 10; anchors.centerIn: parent }
                                             MouseArea {
                                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_texture", "")
-                                                }
+                                                onClicked: if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_texture", "")
                                             }
                                         }
 
@@ -2015,81 +2210,92 @@ Rectangle {
                                                 border.width: (studio.brushPropertySeed, modelData.filename === (targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_texture") : "") ? 2 : 1)
 
                                                 Image {
-                                                    anchors.centerIn: parent
-                                                    width: parent.width - 12; height: parent.height - 12
-                                                    source: modelData.path
-                                                    fillMode: Image.PreserveAspectFit
-                                                    opacity: 0.85
-                                                }
-                                                Text {
-                                                    text: modelData.name; color: textDim; font.pixelSize: 8
-                                                    anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
-                                                    anchors.bottomMargin: 3; elide: Text.ElideRight
-                                                    width: parent.width - 4; horizontalAlignment: Text.AlignHCenter
+                                                    anchors.centerIn: parent; width: parent.width - 12; height: parent.height - 12
+                                                    source: modelData.path; fillMode: Image.PreserveAspectFit; opacity: 0.85
                                                 }
                                                 MouseArea {
                                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: {
-                                                        if (targetCanvas) targetCanvas.setDualGrainTextureForBrush(studio.brushName, modelData.path)
-                                                    }
+                                                    onClicked: if (targetCanvas) targetCanvas.setDualGrainTextureForBrush(studio.brushName, modelData.path)
                                                 }
                                             }
                                         }
                                     }
                                 }
 
-                                // Invert Grain Toggle for Secondary Grain
+                                // D- Densidad de textura del papel
+                                StudioSlider {
+                                    label: "D- Densidad de textura del papel"
+                                    from: 0; to: 1.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_intensity") || 0.5 : 0.5
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_intensity", value)
+                                }
+
+                                // D- Invertir textura Toggle
                                 StudioToggle {
-                                    label: "Invertir Grano Secundario"
+                                    label: "D- Invertir textura"
+                                    leftPadding: 24
                                     checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_invert") || false : false)
                                     onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_invert", checked)
                                 }
 
-                                // Secondary Grain Properties
+                                // D- Enfatizar densidad Toggle
+                                StudioToggle {
+                                    label: "D- Enfatizar densidad"
+                                    leftPadding: 24
+                                    checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_emphasize_density") || false : false)
+                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_emphasize_density", checked)
+                                }
+
+                                // D- Porcentaje de escala
                                 StudioSlider {
-                                    label: "Escala del Grano Secundario"
+                                    label: "D- Porcentaje de escala"
                                     from: 10; to: 500
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_scale") || 100 : 100
                                     suffix: "%"
                                     onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_scale", value)
                                 }
 
+                                // D- Ángulo de rotación
                                 StudioSlider {
-                                    label: "Profundidad del Grano Secundario"
-                                    from: 0; to: 1.0
-                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_intensity") || 0.5 : 0.5
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_intensity", value)
+                                    label: "D- Ángulo de rotación"
+                                    from: 0; to: 360
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_rotation") || 0 : 0
+                                    suffix: "°"
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_rotation", value)
                                 }
 
+                                // D- Brillo
                                 StudioSlider {
-                                    label: "Brillo del Grano Secundario"
+                                    label: "D- Brillo"
                                     from: -1.0; to: 1.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_brightness") || 0 : 0
                                     offsetColor: true
                                     onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_brightness", value)
                                 }
 
+                                // D- Contraste
                                 StudioSlider {
-                                    label: "Contraste del Grano Secundario"
+                                    label: "D- Contraste"
                                     from: 0; to: 2.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_contrast") || 1.0 : 1.0
                                     onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_contrast", value)
                                 }
 
+                                // D- Modo (segmented blend mode)
                                 Column {
                                     width: parent.width; spacing: 8
-                                    Text { text: "Modo de Mezcla del Grano Secundario"; color: textPrimary; font.pixelSize: 12 }
+                                    Text { text: "D- Modo"; color: textPrimary; font.pixelSize: 12 }
                                     Row {
                                         width: parent.width; spacing: 6
                                         property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_blend_mode") || "multiply" : "multiply"
 
-                                        component DualGrainBlendButton : Rectangle {
+                                        component DualGrainBlendButtonTab11 : Rectangle {
                                             property string modeName: "multiply"
                                             property string displayLabel: "Multiplicar"
                                             height: 28
                                             width: (parent.parent.width - 12) / 3
                                             radius: 6
-                                            color: parent.currentMode === modeName ? colorAccent : (dgBlendMa.containsMouse ? bgSurface : "#1a1a1c")
+                                            color: parent.currentMode === modeName ? colorAccent : (dgBlendMaTab11.containsMouse ? bgSurface : "#1a1a1c")
                                             border.color: parent.currentMode === modeName ? "transparent" : borderDim
                                             border.width: 1
 
@@ -2101,25 +2307,136 @@ Rectangle {
                                             }
 
                                             MouseArea {
-                                                id: dgBlendMa
+                                                id: dgBlendMaTab11
                                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_blend_mode", modeName)
-                                                }
+                                                onClicked: if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_blend_mode", modeName)
                                             }
                                         }
 
-                                        DualGrainBlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
-                                        DualGrainBlendButton { modeName: "subtract"; displayLabel: "Restar" }
-                                        DualGrainBlendButton { modeName: "threshold"; displayLabel: "Umbral Seco" }
+                                        DualGrainBlendButtonTab11 { modeName: "multiply"; displayLabel: "Multiplicar" }
+                                        DualGrainBlendButtonTab11 { modeName: "subtract"; displayLabel: "Restar" }
+                                        DualGrainBlendButtonTab11 { modeName: "threshold"; displayLabel: "Umbral" }
                                     }
                                 }
+
+                                // D- Aplicar a cada punta Toggle
+                                StudioToggle {
+                                    label: "D- Aplicar a cada punta"
+                                    checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_apply_to_tips") || false : false)
+                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_apply_to_tips", checked)
+                                }
                             }
+                        }
+
+                        // --- TAB 12: EFECTO PULVERIZADOR (MAIN BRUSH) ---
+                        Column {
+                            visible: studio.activeTab === 12
+                            width: parent.width
+                            spacing: 20
+
+                            Row {
+                                spacing: 8
+                                Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: "EFECTO PULVERIZADOR"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
+                            }
+
+                            // Enable Toggle
+                            StudioToggle {
+                                label: "Efecto pulverizador"
+                                checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("spray", "enabled") || false : false)
+                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("spray", "enabled", checked)
+                            }
+
+                            // Only show configurations if main spray is enabled
+                            Column {
+                                width: parent.width
+                                spacing: 16
+                                visible: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("spray", "enabled") || false : false)
+
+                                StudioSlider {
+                                    label: "Tamaño de las partículas"
+                                    from: 1.0; to: 300.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("spray", "particle_size") || 50.0 : 50.0
+                                    suffix: "px"
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("spray", "particle_size", value)
+                                }
+
+                                StudioToggle {
+                                    label: "Tamaño del pincel"
+                                    leftPadding: 24
+                                    checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("spray", "spray_size_by_brush") || false : false)
+                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("spray", "spray_size_by_brush", checked)
+                                }
+
+                                // Particle Density Segmented Selector
+                                Row {
+                                    width: parent.width; spacing: 8
+                                    Text {
+                                        text: "Densidad de las partículas"
+                                        color: textMuted; font.pixelSize: 11
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 170
+                                    }
+                                    Row {
+                                        spacing: 4
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        property int currentValue: targetCanvas ? targetCanvas.getBrushProperty("spray", "particle_density") || 3 : 3
+                                        Repeater {
+                                            model: 5
+                                            delegate: Rectangle {
+                                                width: 24; height: 12; radius: 2
+                                                color: (index + 1) <= parent.currentValue ? colorAccent : "#1a1a1c"
+                                                border.color: borderDim; border.width: 1
+                                                MouseArea {
+                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: if(targetCanvas) targetCanvas.setBrushProperty("spray", "particle_density", index + 1)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Spray Deviation Segmented Selector
+                                Row {
+                                    width: parent.width; spacing: 8
+                                    Text {
+                                        text: "Desviación de pulverización"
+                                        color: textMuted; font.pixelSize: 11
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 170
+                                    }
+                                    Row {
+                                        spacing: 4
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        property int currentValue: targetCanvas ? targetCanvas.getBrushProperty("spray", "spray_deviation") || 3 : 3
+                                        Repeater {
+                                            model: 5
+                                            delegate: Rectangle {
+                                                width: 24; height: 12; radius: 2
+                                                color: (index + 1) <= parent.currentValue ? colorAccent : "#1a1a1c"
+                                                border.color: borderDim; border.width: 1
+                                                MouseArea {
+                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                                    onClicked: if(targetCanvas) targetCanvas.setBrushProperty("spray", "spray_deviation", index + 1)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                StudioSlider {
+                                    label: "Dirección de las partículas"
+                                    from: 0.0; to: 360.0
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("spray", "particle_direction") || 0.0 : 0.0
+                                    suffix: "°"
+                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("spray", "particle_direction", value)
+                                        }
+                                    }
+                                }
                         }
                     }
                 }
             }
-        }
 
         // ─── RIGHT: DRAWING PAD / TEST AREA ───
             Rectangle {

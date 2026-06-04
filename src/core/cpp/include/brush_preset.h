@@ -277,6 +277,8 @@ struct BrushPreset {
     float motionBlurAngle = 0.0f;
     bool randomOffset = false;
     QString blendMode = "normal";
+    bool emphasizeDensity = false;
+    bool applyToTips = true;
 
     QJsonObject toJson() const;
     static GrainSettings fromJson(const QJsonObject &obj);
@@ -518,6 +520,19 @@ struct BrushPreset {
   float defaultHardness = 0.8f;
   float defaultFlow = 1.0f;
 
+  // === Spray Settings (Main Brush Tip) ===
+  struct SpraySettings {
+    bool enabled = false;
+    float particleSize = 50.0f;
+    bool spraySizeByBrush = true;
+    int particleDensity = 3;
+    int sprayDeviation = 3;
+    float particleDirection = 0.0f;
+
+    QJsonObject toJson() const;
+    static SpraySettings fromJson(const QJsonObject &obj);
+  } spray;
+
   // === Dual Brush ===
   struct DualBrushSettings {
     bool enabled = false;
@@ -526,6 +541,14 @@ struct BrushPreset {
     float rotation = 0.0f; // degrees
     QString blendMode = "multiply"; // "multiply", "mask", "add"
     float flow = 1.0f;
+
+    // Dual Brush Spraying Effect
+    bool sprayEnabled = false;
+    float particleSize = 50.0f;
+    bool spraySizeByBrush = true;
+    int particleDensity = 3;
+    int sprayDeviation = 3;
+    float particleDirection = 0.0f;
 
     // Dual Grain
     GrainSettings grain;

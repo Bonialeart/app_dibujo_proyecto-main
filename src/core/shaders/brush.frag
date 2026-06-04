@@ -30,6 +30,7 @@ uniform float grainIntensity;
 uniform float uGrainBrightness;
 uniform float uGrainContrast;
 uniform int uInvertGrain;
+uniform float uGrainRotation;
 
 // === Dual Grain (Secondary Paper Texture) — Global Canvas Mapping ===
 uniform sampler2D dualGrainTexture;
@@ -40,6 +41,7 @@ uniform float uDualGrainBrightness;
 uniform float uDualGrainContrast;
 uniform int uInvertDualGrain;
 uniform int uDualGrainBlendMode;
+uniform float uDualGrainRotation;
 
 // === Dual Brush Tip (Secondary Shape) — Local UV Mapping ===
 uniform sampler2D dualTipTexture;
@@ -131,8 +133,13 @@ uniform float uDabSize;          // Current brush diameter in pixels
 // === Rotation ===
 uniform float tipRotation;       // Brush tip rotation in radians
 
-float evaluateGrain(sampler2D grainTex, vec2 worldPos, float scale, float intensity, float brightness, float contrast, int invert, int blendMode, float press) {
+float evaluateGrain(sampler2D grainTex, vec2 worldPos, float scale, float rotation, float intensity, float brightness, float contrast, int invert, int blendMode, float press) {
     vec2 globalCoord = worldPos / (5.0 * scale);
+    if (rotation != 0.0) {
+        float cosR = cos(rotation);
+        float sinR = sin(rotation);
+        globalCoord = vec2(globalCoord.x * cosR - globalCoord.y * sinR, globalCoord.x * sinR + globalCoord.y * cosR);
+    }
     vec4 grainSample = texture(grainTex, globalCoord);
     float grainVal = (grainSample.a < 0.99) ? grainSample.a : dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
     if (invert == 1) {
@@ -246,7 +253,7 @@ void main() {
     bool dualGrainApplied = false;
     float mainGrainFactor = 1.0;
     if (uHasGrain == 1 && grainIntensity > 0.001) {
-        mainGrainFactor = evaluateGrain(grainTexture, vWorldPos, grainScale, grainIntensity, uGrainBrightness, uGrainContrast, uInvertGrain, uGrainBlendMode, pressure);
+        mainGrainFactor = evaluateGrain(grainTexture, vWorldPos, grainScale, uGrainRotation, grainIntensity, uGrainBrightness, uGrainContrast, uInvertGrain, uGrainBlendMode, pressure);
     }
 
     if (uHasDualTip == 1) {
@@ -266,7 +273,7 @@ void main() {
         }
 
         if (uHasDualGrain == 1 && dualGrainIntensity > 0.001) {
-            float dualGrainFactor = evaluateGrain(dualGrainTexture, vWorldPos, dualGrainScale, dualGrainIntensity, uDualGrainBrightness, uDualGrainContrast, uInvertDualGrain, uDualGrainBlendMode, pressure);
+            float dualGrainFactor = evaluateGrain(dualGrainTexture, vWorldPos, dualGrainScale, uDualGrainRotation, dualGrainIntensity, uDualGrainBrightness, uDualGrainContrast, uInvertDualGrain, uDualGrainBlendMode, pressure);
             dualAlpha *= dualGrainFactor;
             shapeAlpha *= mainGrainFactor;
             dualGrainApplied = true;

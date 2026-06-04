@@ -748,6 +748,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
         std::sqrt(xform.m11() * xform.m11() + xform.m12() * xform.m12());
 
     std::vector<StrokeRenderer::DabInstance> instancedDabs;
+    std::vector<StrokeRenderer::DabInstance> particleDabs;
 
     while (distanceToDab <= dist) {
       float t = (dist > 0.0001f) ? (distanceToDab / dist) : 0.0f;
@@ -786,80 +787,210 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           currentSize * scaleFactor * sizeMultiplier * calligraphyWidth;
       float opacityBase = c.alphaF() * opacityMultiplier;
 
-      // Loop for Count (Stamp stacking)
-      int count = std::max(1, settings.count);
-      for (int k = 0; k < count; ++k) {
-        // Jitters
-        float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
-        if (settings.posJitterX > 0)
-          jX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX *
-               devSizeBase;
-        if (settings.posJitterY > 0)
-          jY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY *
-               devSizeBase;
-        if (settings.sizeJitter > 0)
-          jSize = 1.0f +
-                  ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
-        if (settings.rotationJitter > 0)
-          jRot = ((std::rand() % 2001 - 1000) / 1000.0f) *
-                 settings.rotationJitter * 3.14159f;
-        if (settings.opacityJitter > 0)
-          jOpac =
-              1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
-
-        QColor finalColor = c;
-        finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
-
-        // Basic Color Dynamics
-        if (settings.hueJitter > 0 || settings.satJitter > 0) {
-          float h, s, l, a;
-          finalColor.getHslF(&h, &s, &l, &a);
-          h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) *
-                                settings.hueJitter,
-                        1.0f);
-          if (h < 0)
-            h += 1.0f;
-          s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) *
-                                 settings.satJitter,
-                         0.0f, 1.0f);
-          finalColor.setHslF(h, s, l, a);
-        }
-
-        // Blend-only brushes (e.g. blenders or watercolor wet mixers) have 0 opacity pigment
-        // but need to draw dabs to trigger GPU neighbor blending and smudging.
-        bool isBlendOnly = (settings.blendOnly || 
-                            settings.dilution > 0.01f || 
-                            settings.smudge > 0.01f || 
-                            settings.type == BrushSettings::Type::Watercolor || 
-                            settings.type == BrushSettings::Type::Oil);
-
-        if (devSizeBase < 1.0f || effectivePressure < 0.001f ||
-            (!isBlendOnly && opacityBase < 0.001f))
-          continue;
-
-        // Calculate base rotation
-        float currentTipRot = settings.tipRotation;
-        if (settings.rotateWithStroke) {
-          currentTipRot += strokeAngle;
-        }
-
-        StrokeRenderer::DabInstance dab;
-        dab.x = devPt.x() + jX;
-        dab.y = devPt.y() + jY;
-        dab.size = devSizeBase * jSize;
-        dab.rotation = currentTipRot + jRot;
-        dab.colorR = finalColor.redF();
-        dab.colorG = finalColor.greenF();
-        dab.colorB = finalColor.blueF();
-        dab.colorA = finalColor.alphaF();
+      if (settings.mainSprayEnabled) {
+        int numParticles = std::max(1, settings.mainParticleDensity * 3);
         
-        float dabPaintLoad = 1.0f;
-        if (settings.type == BrushSettings::Type::Oil) {
-          dabPaintLoad = std::max(0.0f, 1.0f - totalDist * settings.depletionRate);
+        float pSize = settings.mainParticleSize;
+        if (settings.mainSpraySizeByBrush) {
+          pSize = currentSize * (settings.mainParticleSize / 100.0f);
         }
-        dab.paintLoad = dabPaintLoad;
+        
+        float maxScatter = (currentSize - pSize) * 0.5f;
+        float scatterRadius = std::max(0.0f, maxScatter) * (settings.mainSprayDeviation / 5.0f);
+        
+        for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
+          float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
+          float tRandom = (std::rand() % 1001) / 1000.0f;
+          float r = std::pow(tRandom, 1.5f) * scatterRadius;
+          float pOffsetX = r * std::cos(theta);
+          float pOffsetY = r * std::sin(theta);
+          QPointF particlePt = pt + QPointF(pOffsetX, pOffsetY);
+          QPointF devParticlePt = xform.map(particlePt);
 
-        instancedDabs.push_back(dab);
+          // Jitters
+          float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+          if (settings.posJitterX > 0)
+            jX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX * devSizeBase;
+          if (settings.posJitterY > 0)
+            jY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY * devSizeBase;
+          if (settings.sizeJitter > 0)
+            jSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
+          if (settings.rotationJitter > 0)
+            jRot = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.rotationJitter * 3.14159f;
+          if (settings.opacityJitter > 0)
+            jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
+
+          float devParticleSize = pSize * scaleFactor * sizeMultiplier * calligraphyWidth * jSize;
+
+          QColor finalColor = c;
+          finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
+
+          // Basic Color Dynamics
+          if (settings.hueJitter > 0 || settings.satJitter > 0) {
+            float h, s, l, a;
+            finalColor.getHslF(&h, &s, &l, &a);
+            h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.hueJitter, 1.0f);
+            if (h < 0) h += 1.0f;
+            s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.satJitter, 0.0f, 1.0f);
+            finalColor.setHslF(h, s, l, a);
+          }
+
+          StrokeRenderer::DabInstance pDab;
+          pDab.x = devParticlePt.x() + jX;
+          pDab.y = devParticlePt.y() + jY;
+          pDab.size = devParticleSize;
+          pDab.rotation = (settings.mainParticleDirection * 3.14159265f / 180.0f) + jRot;
+          pDab.colorR = finalColor.redF();
+          pDab.colorG = finalColor.greenF();
+          pDab.colorB = finalColor.blueF();
+          pDab.colorA = finalColor.alphaF();
+          
+          float dabPaintLoad = 1.0f;
+          if (settings.type == BrushSettings::Type::Oil) {
+            dabPaintLoad = std::max(0.0f, 1.0f - totalDist * settings.depletionRate);
+          }
+          pDab.paintLoad = dabPaintLoad;
+
+          instancedDabs.push_back(pDab);
+        }
+      } else {
+        // Loop for Count (Stamp stacking)
+        int count = std::max(1, settings.count);
+        for (int k = 0; k < count; ++k) {
+          // Jitters
+          float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+          if (settings.posJitterX > 0)
+            jX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX *
+                 devSizeBase;
+          if (settings.posJitterY > 0)
+            jY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY *
+                 devSizeBase;
+          if (settings.sizeJitter > 0)
+            jSize = 1.0f +
+                    ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
+          if (settings.rotationJitter > 0)
+            jRot = ((std::rand() % 2001 - 1000) / 1000.0f) *
+                   settings.rotationJitter * 3.14159f;
+          if (settings.opacityJitter > 0)
+            jOpac =
+                1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
+
+          QColor finalColor = c;
+          finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
+
+          // Basic Color Dynamics
+          if (settings.hueJitter > 0 || settings.satJitter > 0) {
+            float h, s, l, a;
+            finalColor.getHslF(&h, &s, &l, &a);
+            h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                                  settings.hueJitter,
+                          1.0f);
+            if (h < 0)
+              h += 1.0f;
+            s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                                   settings.satJitter,
+                           0.0f, 1.0f);
+            finalColor.setHslF(h, s, l, a);
+          }
+
+          // Blend-only brushes (e.g. blenders or watercolor wet mixers) have 0 opacity pigment
+          // but need to draw dabs to trigger GPU neighbor blending and smudging.
+          bool isBlendOnly = (settings.blendOnly || 
+                              settings.dilution > 0.01f || 
+                              settings.smudge > 0.01f || 
+                              settings.type == BrushSettings::Type::Watercolor || 
+                              settings.type == BrushSettings::Type::Oil);
+
+          if (devSizeBase < 1.0f || effectivePressure < 0.001f ||
+              (!isBlendOnly && opacityBase < 0.001f))
+            continue;
+
+          // Calculate base rotation
+          float currentTipRot = settings.tipRotation;
+          if (settings.rotateWithStroke) {
+            currentTipRot += strokeAngle;
+          }
+
+          StrokeRenderer::DabInstance dab;
+          dab.x = devPt.x() + jX;
+          dab.y = devPt.y() + jY;
+          dab.size = devSizeBase * jSize;
+          dab.rotation = currentTipRot + jRot;
+          dab.colorR = finalColor.redF();
+          dab.colorG = finalColor.greenF();
+          dab.colorB = finalColor.blueF();
+          dab.colorA = finalColor.alphaF();
+          
+          float dabPaintLoad = 1.0f;
+          if (settings.type == BrushSettings::Type::Oil) {
+            dabPaintLoad = std::max(0.0f, 1.0f - totalDist * settings.depletionRate);
+          }
+          dab.paintLoad = dabPaintLoad;
+
+          instancedDabs.push_back(dab);
+        }
+      }
+
+      // Generate Dual Brush Spray Particles
+      if (settings.dualTipEnabled && settings.sprayEnabled) {
+        int numParticles = std::max(1, settings.particleDensity * 3);
+        
+        float pSize = settings.particleSize;
+        if (settings.spraySizeByBrush) {
+          pSize = currentSize * (settings.particleSize / 100.0f);
+        }
+        
+        float maxScatter = (currentSize - pSize) * 0.5f;
+        float scatterRadius = std::max(0.0f, maxScatter) * (settings.sprayDeviation / 5.0f);
+        
+        for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
+          float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
+          float tRandom = (std::rand() % 1001) / 1000.0f;
+          float r = std::pow(tRandom, 1.5f) * scatterRadius;
+          float pOffsetX = r * std::cos(theta);
+          float pOffsetY = r * std::sin(theta);
+          QPointF particlePt = pt + QPointF(pOffsetX, pOffsetY);
+          QPointF devParticlePt = xform.map(particlePt);
+
+          float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+          if (settings.posJitterX > 0)
+            jX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX * devSizeBase;
+          if (settings.posJitterY > 0)
+            jY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY * devSizeBase;
+          if (settings.sizeJitter > 0)
+            jSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
+          if (settings.rotationJitter > 0)
+            jRot = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.rotationJitter * 3.14159f;
+          if (settings.opacityJitter > 0)
+            jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
+
+          float devParticleSize = pSize * scaleFactor * sizeMultiplier * calligraphyWidth * jSize;
+
+          QColor finalColor = c;
+          finalColor.setAlphaF(std::clamp(opacityBase * jOpac * settings.dualTipFlow, 0.0f, 1.0f));
+
+          if (settings.hueJitter > 0 || settings.satJitter > 0) {
+            float h, s, l, a;
+            finalColor.getHslF(&h, &s, &l, &a);
+            h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.hueJitter, 1.0f);
+            if (h < 0) h += 1.0f;
+            s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.satJitter, 0.0f, 1.0f);
+            finalColor.setHslF(h, s, l, a);
+          }
+
+          StrokeRenderer::DabInstance pDab;
+          pDab.x = devParticlePt.x() + jX;
+          pDab.y = devParticlePt.y() + jY;
+          pDab.size = devParticleSize;
+          pDab.rotation = (settings.particleDirection * 3.14159265f / 180.0f) + jRot;
+          pDab.colorR = finalColor.redF();
+          pDab.colorG = finalColor.greenF();
+          pDab.colorB = finalColor.blueF();
+          pDab.colorA = finalColor.alphaF();
+          pDab.paintLoad = 1.0f;
+
+          particleDabs.push_back(pDab);
+        }
       }
 
       distanceToDab += stepSize;
@@ -883,7 +1014,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               m_renderer->viewportHeight(), grainTexID,
               (grainTexID != 0 && settings.useTexture),
               settings.textureScale * scaleFactor, settings.textureIntensity,
-              settings.grainBright, settings.grainCon, settings.invertGrain,
+              settings.grainBright, settings.grainCon, settings.invertGrain, settings.grainRotation,
               tipTexID, (tipTexID != 0), dab.rotation, tilt, velocity, settings.flow,
               pingFBO->texture(), // Read from pingFBO
               wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
@@ -911,14 +1042,65 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               settings.smudgeSmear, settings.canvasAbsorption,
               settings.canvasSkipValleys, settings.canvasCatchPeaks,
               settings.temperatureShift, settings.brokenColor,
-              dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, settings.dualTipFlow, uGrainBlendMode,
+              dualTipTexID, (hasDualTip && !settings.sprayEnabled), settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, settings.dualTipFlow, uGrainBlendMode,
               dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
-              settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode,
+              settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
               settings.type == BrushSettings::Type::Eraser,
               settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
 
           // Blit the result from pongFBO (write target) back to pingFBO (read target)
           QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
+        }
+
+        // Render sprayed particles
+        if (settings.dualTipEnabled && settings.sprayEnabled && !particleDabs.empty()) {
+          for (size_t i = 0; i < particleDabs.size(); ++i) {
+            const auto &dab = particleDabs[i];
+
+            m_renderer->renderStroke(
+                dab.x, dab.y, dab.size, effectivePressure, settings.hardness,
+                QColor::fromRgbF(dab.colorR, dab.colorG, dab.colorB, dab.colorA),
+                static_cast<int>(settings.type), m_renderer->viewportWidth(),
+                m_renderer->viewportHeight(), grainTexID,
+                (grainTexID != 0 && settings.useTexture),
+                settings.textureScale * scaleFactor, settings.textureIntensity,
+                settings.grainBright, settings.grainCon, settings.invertGrain, settings.grainRotation,
+                dualTipTexID, (dualTipTexID != 0), dab.rotation, tilt, velocity, settings.flow,
+                pingFBO->texture(), // Read from pingFBO
+                wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
+                settings.dryingTime, settings.wetOnWetMultiplier,
+                settings.granulation, settings.pigmentFlow, settings.staining,
+                settings.separation, settings.bloomEnabled, settings.bloomIntensity,
+                settings.bloomRadius, settings.bloomThreshold,
+                settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
+                settings.edgeDarkeningWidth, settings.textureRevealEnabled,
+                settings.textureRevealIntensity,
+                settings.textureRevealPressureInfluence, settings.mixing,
+                1.0f, // loading for particle dabs
+                settings.depletionRate, settings.dirtyMixing,
+                settings.colorPickup, settings.blendOnly, settings.scrapeThrough,
+                settings.impastoEnabled, settings.impastoDepth, settings.impastoShine,
+                settings.impastoTextureStrength, settings.impastoEdgeBuildup,
+                settings.impastoDirectionalRidges, settings.impastoSmoothing,
+                settings.impastoPreserveExisting, settings.bristlesEnabled,
+                settings.bristleCount, settings.bristleStiffness,
+                settings.bristleClumping, settings.bristleFanSpread,
+                settings.bristleIndividualVariation, settings.bristleDryBrushEffect,
+                settings.bristleSoftness, settings.bristlePointTaper,
+                settings.smudgeStrength, settings.smudgePressureInfluence,
+                settings.smudgeLength, settings.smudgeGaussianBlur,
+                settings.smudgeSmear, settings.canvasAbsorption,
+                settings.canvasSkipValleys, settings.canvasCatchPeaks,
+                settings.temperatureShift, settings.brokenColor,
+                0, false, 1.0f, 0.0f, 0, 1.0f, uGrainBlendMode, // no dual tip
+                dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
+                settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
+                settings.type == BrushSettings::Type::Eraser,
+                settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
+
+            // Blit the result from pongFBO (write target) back to pingFBO (read target)
+            QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
+          }
         }
       } else {
         // Fast instanced path for standard/dry brushes
@@ -928,7 +1110,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             m_renderer->viewportHeight(), grainTexID,
             (grainTexID != 0 && settings.useTexture),
             settings.textureScale * scaleFactor, settings.textureIntensity,
-            settings.grainBright, settings.grainCon, settings.invertGrain,
+            settings.grainBright, settings.grainCon, settings.invertGrain, settings.grainRotation,
             tipTexID, (tipTexID != 0), tilt, velocity, settings.flow, canvasTexId,
             wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
             settings.dryingTime, settings.wetOnWetMultiplier,
@@ -954,11 +1136,53 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             settings.smudgeSmear, settings.canvasAbsorption,
             settings.canvasSkipValleys, settings.canvasCatchPeaks,
             settings.temperatureShift, settings.brokenColor,
-            dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, settings.dualTipFlow, uGrainBlendMode,
+            dualTipTexID, (hasDualTip && !settings.sprayEnabled), settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, settings.dualTipFlow, uGrainBlendMode,
             dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
-            settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode,
+            settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
             settings.type == BrushSettings::Type::Eraser,
             settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
+
+        // Render sprayed particles as instances
+        if (settings.dualTipEnabled && settings.sprayEnabled && !particleDabs.empty()) {
+          m_renderer->renderStrokeInstanced(
+              particleDabs, effectivePressure, settings.hardness,
+              static_cast<int>(settings.type), m_renderer->viewportWidth(),
+              m_renderer->viewportHeight(), grainTexID,
+              (grainTexID != 0 && settings.useTexture),
+              settings.textureScale * scaleFactor, settings.textureIntensity,
+              settings.grainBright, settings.grainCon, settings.invertGrain, settings.grainRotation,
+              dualTipTexID, (dualTipTexID != 0), tilt, velocity, settings.flow, canvasTexId,
+              wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
+              settings.dryingTime, settings.wetOnWetMultiplier,
+              settings.granulation, settings.pigmentFlow, settings.staining,
+              settings.separation, settings.bloomEnabled, settings.bloomIntensity,
+              settings.bloomRadius, settings.bloomThreshold,
+              settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
+              settings.edgeDarkeningWidth, settings.textureRevealEnabled,
+              settings.textureRevealIntensity,
+              settings.textureRevealPressureInfluence, settings.mixing,
+              1.0f, // loading for particle dabs
+              settings.depletionRate, settings.dirtyMixing,
+              settings.colorPickup, settings.blendOnly, settings.scrapeThrough,
+              settings.impastoEnabled, settings.impastoDepth, settings.impastoShine,
+              settings.impastoTextureStrength, settings.impastoEdgeBuildup,
+              settings.impastoDirectionalRidges, settings.impastoSmoothing,
+              settings.impastoPreserveExisting, settings.bristlesEnabled,
+              settings.bristleCount, settings.bristleStiffness,
+              settings.bristleClumping, settings.bristleFanSpread,
+              settings.bristleIndividualVariation, settings.bristleDryBrushEffect,
+              settings.bristleSoftness, settings.bristlePointTaper,
+              settings.smudgeStrength, settings.smudgePressureInfluence,
+              settings.smudgeLength, settings.smudgeGaussianBlur,
+              settings.smudgeSmear, settings.canvasAbsorption,
+              settings.canvasSkipValleys, settings.canvasCatchPeaks,
+              settings.temperatureShift, settings.brokenColor,
+              0, false, 1.0f, 0.0f, 0, 1.0f, uGrainBlendMode, // no dual tip
+              dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
+              settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
+              settings.type == BrushSettings::Type::Eraser,
+              settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
+        }
       }
     }
     // Update state
@@ -1089,15 +1313,75 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       bool hasGrain = (settings.useTexture && !settings.textureName.isEmpty() && !grainImg.isNull()) ||
                       (settings.useDualTexture && !settings.dualTextureName.isEmpty() && !dualGrainImg.isNull());
       bool hasDualTip = (settings.dualTipEnabled && !settings.dualTipTextureName.isEmpty());
-      if (hasGrain || hasDualTip) {
-        paintTexturedDabRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
-                               currentTipRot + jRot, settings, grainImg, dualGrainImg);
-      } else if (!settings.tipTextureName.isEmpty()) {
-        paintTipRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
-                       currentTipRot + jRot, settings.tipTextureName);
+      if (settings.sprayEnabled) {
+        // Draw main dab if visible
+        if (hasGrain) {
+          paintTexturedDabRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
+                                 currentTipRot + jRot, settings, grainImg, dualGrainImg);
+        } else if (!settings.tipTextureName.isEmpty()) {
+          paintTipRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
+                         currentTipRot + jRot, settings.tipTextureName);
+        } else {
+          paintSoftStamp(painter, finalPt, finalSize, finalOpacity, finalColor,
+                         settings.hardness);
+        }
+
+        // Draw sprayed particles
+        if (settings.dualTipEnabled && !settings.dualTipTextureName.isEmpty()) {
+          QImage dualTipImg = getTextureImage(settings.dualTipTextureName, true);
+          if (!dualTipImg.isNull()) {
+            int numParticles = std::max(1, settings.particleDensity * 3);
+            
+            float pSize = settings.particleSize;
+            if (settings.spraySizeByBrush) {
+              pSize = currentSize * (settings.particleSize / 100.0f);
+            }
+            
+            float maxScatter = (currentSize - pSize) * 0.5f;
+            float scatterRadius = std::max(0.0f, maxScatter) * (settings.sprayDeviation / 5.0f);
+            
+            for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
+              float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
+              float tRandom = (std::rand() % 1001) / 1000.0f;
+              float r = std::pow(tRandom, 1.5f) * scatterRadius;
+              float pOffsetX = r * std::cos(theta);
+              float pOffsetY = r * std::sin(theta);
+              QPointF particlePt = pt + QPointF(pOffsetX, pOffsetY);
+
+              float pjX = 0, pjY = 0, pjSize = 1.0f, pjRot = 0, pjOpac = 1.0f;
+              if (settings.posJitterX > 0)
+                pjX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX * dabSize;
+              if (settings.posJitterY > 0)
+                pjY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY * dabSize;
+              if (settings.sizeJitter > 0)
+                pjSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
+              if (settings.rotationJitter > 0)
+                pjRot = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.rotationJitter * 3.14159f;
+              if (settings.opacityJitter > 0)
+                pjOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
+
+              float finalParticleSize = std::max(0.1f, pSize * sizeMultiplier * calligraphyWidth * pjSize);
+              float finalParticleOpacity = std::clamp(dabOpacity * pjOpac * settings.dualTipFlow, 0.0f, 1.0f);
+
+              QPointF finalParticlePt = particlePt + QPointF(pjX, pjY);
+              float pRot = (settings.particleDirection * 3.14159265f / 180.0f) + pjRot;
+
+              paintTipRaster(painter, finalParticlePt, finalParticleSize, finalParticleOpacity, finalColor,
+                             pRot, settings.dualTipTextureName);
+            }
+          }
+        }
       } else {
-        paintSoftStamp(painter, finalPt, finalSize, finalOpacity, finalColor,
-                       settings.hardness);
+        if (hasGrain || hasDualTip) {
+          paintTexturedDabRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
+                                 currentTipRot + jRot, settings, grainImg, dualGrainImg);
+        } else if (!settings.tipTextureName.isEmpty()) {
+          paintTipRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
+                         currentTipRot + jRot, settings.tipTextureName);
+        } else {
+          paintSoftStamp(painter, finalPt, finalSize, finalOpacity, finalColor,
+                         settings.hardness);
+        }
       }
     }
 
@@ -1225,6 +1509,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
   bool isEraser = (m_currentSettings.type == BrushSettings::Type::Eraser);
 
   std::vector<StrokeRenderer::DabInstance> instancedDabs;
+  std::vector<StrokeRenderer::DabInstance> particleDabs;
 
   // Render Loop
   while (coveredDist <= dist) {
@@ -1249,69 +1534,196 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
     float devSizeBase = size * sizeMultiplier;
     float opacityBase = opacity * opacityMultiplier;
 
-    // Loop for Count (Stamp stacking)
-    int count = std::max(1, m_currentSettings.count);
-    for (int k = 0; k < count; ++k) {
-      // Jitters
-      float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
-      if (m_currentSettings.posJitterX > 0)
-        jX = ((std::rand() % 2001 - 1000) / 1000.0f) *
-             m_currentSettings.posJitterX * devSizeBase;
-      if (m_currentSettings.posJitterY > 0)
-        jY = ((std::rand() % 2001 - 1000) / 1000.0f) *
-             m_currentSettings.posJitterY * devSizeBase;
-      if (m_currentSettings.sizeJitter > 0)
-        jSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) *
-                           m_currentSettings.sizeJitter;
-      if (m_currentSettings.rotationJitter > 0)
-        jRot = ((std::rand() % 2001 - 1000) / 1000.0f) *
-               m_currentSettings.rotationJitter * 3.14159f;
-      if (m_currentSettings.opacityJitter > 0)
-        jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) *
-                           m_currentSettings.opacityJitter;
-
-      QColor finalColor = m_currentSettings.color;
-      finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
-
-      // Basic Color Dynamics
-      if (m_currentSettings.hueJitter > 0 || m_currentSettings.satJitter > 0) {
-        float h, s, l, a;
-        finalColor.getHslF(&h, &s, &l, &a);
-        h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) *
-                              m_currentSettings.hueJitter,
-                      1.0f);
-        if (h < 0)
-          h += 1.0f;
-        s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) *
-                               m_currentSettings.satJitter,
-                       0.0f, 1.0f);
-        finalColor.setHslF(h, s, l, a);
-      }
-
-      // Calculate base rotation
-      float strokeAngle = std::atan2(dy, dx);
-      float currentTipRot = m_currentSettings.tipRotation;
-      if (m_currentSettings.rotateWithStroke) {
-        currentTipRot += strokeAngle;
-      }
-
-      StrokeRenderer::DabInstance dab;
-      dab.x = pt.x() + jX;
-      dab.y = pt.y() + jY;
-      dab.size = devSizeBase * jSize;
-      dab.rotation = currentTipRot + jRot;
-      dab.colorR = finalColor.redF();
-      dab.colorG = finalColor.greenF();
-      dab.colorB = finalColor.blueF();
-      dab.colorA = finalColor.alphaF();
+    if (m_currentSettings.mainSprayEnabled) {
+      int numParticles = std::max(1, m_currentSettings.mainParticleDensity * 3);
       
-      float dabPaintLoad = 1.0f;
-      if (m_currentSettings.type == BrushSettings::Type::Oil) {
-        dabPaintLoad = std::max(0.0f, 1.0f - totalDist * m_currentSettings.depletionRate);
+      float pSize = m_currentSettings.mainParticleSize;
+      if (m_currentSettings.mainSpraySizeByBrush) {
+        pSize = size * (m_currentSettings.mainParticleSize / 100.0f);
       }
-      dab.paintLoad = dabPaintLoad;
+      
+      float maxScatter = (size - pSize) * 0.5f;
+      float scatterRadius = std::max(0.0f, maxScatter) * (m_currentSettings.mainSprayDeviation / 5.0f);
+      
+      for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
+        float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
+        float tRandom = (std::rand() % 1001) / 1000.0f;
+        float r = std::pow(tRandom, 1.5f) * scatterRadius;
+        float pOffsetX = r * std::cos(theta);
+        float pOffsetY = r * std::sin(theta);
+        QPointF particlePt = pt + QPointF(pOffsetX, pOffsetY);
 
-      instancedDabs.push_back(dab);
+        // Jitters
+        float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+        if (m_currentSettings.posJitterX > 0)
+          jX = ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.posJitterX * devSizeBase;
+        if (m_currentSettings.posJitterY > 0)
+          jY = ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.posJitterY * devSizeBase;
+        if (m_currentSettings.sizeJitter > 0)
+          jSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.sizeJitter;
+        if (m_currentSettings.rotationJitter > 0)
+          jRot = ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.rotationJitter * 3.14159f;
+        if (m_currentSettings.opacityJitter > 0)
+          jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * m_currentSettings.opacityJitter;
+
+        float devParticleSize = pSize * sizeMultiplier * jSize;
+
+        QColor finalColor = m_currentSettings.color;
+        finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
+
+        if (m_currentSettings.hueJitter > 0 || m_currentSettings.satJitter > 0) {
+          float h, s, l, a;
+          finalColor.getHslF(&h, &s, &l, &a);
+          h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.hueJitter, 1.0f);
+          if (h < 0) h += 1.0f;
+          s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.satJitter, 0.0f, 1.0f);
+          finalColor.setHslF(h, s, l, a);
+        }
+
+        StrokeRenderer::DabInstance pDab;
+        pDab.x = particlePt.x() + jX;
+        pDab.y = particlePt.y() + jY;
+        pDab.size = devParticleSize;
+        pDab.rotation = (m_currentSettings.mainParticleDirection * 3.14159265f / 180.0f) + jRot;
+        pDab.colorR = finalColor.redF();
+        pDab.colorG = finalColor.greenF();
+        pDab.colorB = finalColor.blueF();
+        pDab.colorA = finalColor.alphaF();
+        
+        float dabPaintLoad = 1.0f;
+        if (m_currentSettings.type == BrushSettings::Type::Oil) {
+          dabPaintLoad = std::max(0.0f, 1.0f - totalDist * m_currentSettings.depletionRate);
+        }
+        pDab.paintLoad = dabPaintLoad;
+
+        instancedDabs.push_back(pDab);
+      }
+    } else {
+      // Loop for Count (Stamp stacking)
+      int count = std::max(1, m_currentSettings.count);
+      for (int k = 0; k < count; ++k) {
+        // Jitters
+        float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+        if (m_currentSettings.posJitterX > 0)
+          jX = ((std::rand() % 2001 - 1000) / 1000.0f) *
+               m_currentSettings.posJitterX * devSizeBase;
+        if (m_currentSettings.posJitterY > 0)
+          jY = ((std::rand() % 2001 - 1000) / 1000.0f) *
+               m_currentSettings.posJitterY * devSizeBase;
+        if (m_currentSettings.sizeJitter > 0)
+          jSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                             m_currentSettings.sizeJitter;
+        if (m_currentSettings.rotationJitter > 0)
+          jRot = ((std::rand() % 2001 - 1000) / 1000.0f) *
+                 m_currentSettings.rotationJitter * 3.14159f;
+        if (m_currentSettings.opacityJitter > 0)
+          jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) *
+                             m_currentSettings.opacityJitter;
+
+        QColor finalColor = m_currentSettings.color;
+        finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
+
+        // Basic Color Dynamics
+        if (m_currentSettings.hueJitter > 0 || m_currentSettings.satJitter > 0) {
+          float h, s, l, a;
+          finalColor.getHslF(&h, &s, &l, &a);
+          h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                                m_currentSettings.hueJitter,
+                        1.0f);
+          if (h < 0)
+            h += 1.0f;
+          s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) *
+                                 m_currentSettings.satJitter,
+                         0.0f, 1.0f);
+          finalColor.setHslF(h, s, l, a);
+        }
+
+        // Calculate base rotation
+        float strokeAngle = std::atan2(dy, dx);
+        float currentTipRot = m_currentSettings.tipRotation;
+        if (m_currentSettings.rotateWithStroke) {
+          currentTipRot += strokeAngle;
+        }
+
+        StrokeRenderer::DabInstance dab;
+        dab.x = pt.x() + jX;
+        dab.y = pt.y() + jY;
+        dab.size = devSizeBase * jSize;
+        dab.rotation = currentTipRot + jRot;
+        dab.colorR = finalColor.redF();
+        dab.colorG = finalColor.greenF();
+        dab.colorB = finalColor.blueF();
+        dab.colorA = finalColor.alphaF();
+        
+        float dabPaintLoad = 1.0f;
+        if (m_currentSettings.type == BrushSettings::Type::Oil) {
+          dabPaintLoad = std::max(0.0f, 1.0f - totalDist * m_currentSettings.depletionRate);
+        }
+        dab.paintLoad = dabPaintLoad;
+
+        instancedDabs.push_back(dab);
+      }
+    }
+
+    // Generate continueStroke particles
+    if (m_currentSettings.dualTipEnabled && m_currentSettings.sprayEnabled) {
+      int numParticles = std::max(1, m_currentSettings.particleDensity * 3);
+      
+      float pSize = m_currentSettings.particleSize;
+      if (m_currentSettings.spraySizeByBrush) {
+        pSize = size * (m_currentSettings.particleSize / 100.0f);
+      }
+      
+      float maxScatter = (size - pSize) * 0.5f;
+      float scatterRadius = std::max(0.0f, maxScatter) * (m_currentSettings.sprayDeviation / 5.0f);
+      
+      for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
+        float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
+        float tRandom = (std::rand() % 1001) / 1000.0f;
+        float r = std::pow(tRandom, 1.5f) * scatterRadius;
+        float pOffsetX = r * std::cos(theta);
+        float pOffsetY = r * std::sin(theta);
+        QPointF particlePt = pt + QPointF(pOffsetX, pOffsetY);
+
+        float jX = 0, jY = 0, jSize = 1.0f, jRot = 0, jOpac = 1.0f;
+        if (m_currentSettings.posJitterX > 0)
+          jX = ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.posJitterX * devSizeBase;
+        if (m_currentSettings.posJitterY > 0)
+          jY = ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.posJitterY * devSizeBase;
+        if (m_currentSettings.sizeJitter > 0)
+          jSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.sizeJitter;
+        if (m_currentSettings.rotationJitter > 0)
+          jRot = ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.rotationJitter * 3.14159f;
+        if (m_currentSettings.opacityJitter > 0)
+          jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * m_currentSettings.opacityJitter;
+
+        float devParticleSize = pSize * sizeMultiplier * jSize;
+
+        QColor finalColor = m_currentSettings.color;
+        finalColor.setAlphaF(std::clamp(opacityBase * jOpac * m_currentSettings.dualTipFlow, 0.0f, 1.0f));
+
+        if (m_currentSettings.hueJitter > 0 || m_currentSettings.satJitter > 0) {
+          float h, s, l, a;
+          finalColor.getHslF(&h, &s, &l, &a);
+          h = std::fmod(h + ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.hueJitter, 1.0f);
+          if (h < 0) h += 1.0f;
+          s = std::clamp(s + ((std::rand() % 2001 - 1000) / 1000.0f) * m_currentSettings.satJitter, 0.0f, 1.0f);
+          finalColor.setHslF(h, s, l, a);
+        }
+
+        StrokeRenderer::DabInstance pDab;
+        pDab.x = particlePt.x() + jX;
+        pDab.y = particlePt.y() + jY;
+        pDab.size = devParticleSize;
+        pDab.rotation = (m_currentSettings.particleDirection * 3.14159265f / 180.0f) + jRot;
+        pDab.colorR = finalColor.redF();
+        pDab.colorG = finalColor.greenF();
+        pDab.colorB = finalColor.blueF();
+        pDab.colorA = finalColor.alphaF();
+        pDab.paintLoad = 1.0f;
+
+        particleDabs.push_back(pDab);
+      }
     }
     coveredDist += spacing;
   }
@@ -1323,6 +1735,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         // Grain
         grainTexId, hasGrain, m_currentSettings.textureScale,
         m_currentSettings.textureIntensity,
+        m_currentSettings.grainBright, m_currentSettings.grainCon, m_currentSettings.invertGrain, m_currentSettings.grainRotation,
         // Tip
         tipTexId, hasTip,
         // Dynamics
@@ -1337,18 +1750,12 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         m_currentSettings.staining, m_currentSettings.separation,
         m_currentSettings.bloomEnabled, m_currentSettings.bloomIntensity,
         m_currentSettings.bloomRadius, m_currentSettings.bloomThreshold,
-        m_currentSettings.edgeDarkeningEnabled,
-        m_currentSettings.edgeDarkeningIntensity,
-        m_currentSettings.edgeDarkeningWidth,
-        m_currentSettings.textureRevealEnabled,
+        m_currentSettings.edgeDarkeningEnabled, m_currentSettings.edgeDarkeningIntensity,
+        m_currentSettings.edgeDarkeningWidth, m_currentSettings.textureRevealEnabled,
         m_currentSettings.textureRevealIntensity,
-        m_currentSettings.textureRevealPressureInfluence,
-        // Oil Params
-        m_currentSettings.mixing, m_currentSettings.loading,
-        m_currentSettings.depletionRate, m_currentSettings.dirtyMixing,
-        m_currentSettings.colorPickup, m_currentSettings.blendOnly,
-        m_currentSettings.scrapeThrough,
-        // Impasto
+        m_currentSettings.textureRevealPressureInfluence, m_currentSettings.mixing,
+        m_currentSettings.loading, m_currentSettings.depletionRate, m_currentSettings.dirtyMixing,
+        m_currentSettings.colorPickup, m_currentSettings.blendOnly, m_currentSettings.scrapeThrough,
         m_currentSettings.impastoEnabled, m_currentSettings.impastoDepth,
         m_currentSettings.impastoShine,
         m_currentSettings.impastoTextureStrength,
@@ -1374,12 +1781,63 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         // Color Dynamics Oil
         m_currentSettings.temperatureShift, m_currentSettings.brokenColor,
         // Dual brush and grain modes
-        dualTipTexId, hasDualTip, m_currentSettings.dualTipScale, m_currentSettings.dualTipRotation, uDualTipBlendMode, m_currentSettings.dualTipFlow, uGrainBlendMode,
+        dualTipTexId, (hasDualTip && !m_currentSettings.sprayEnabled), m_currentSettings.dualTipScale, m_currentSettings.dualTipRotation, uDualTipBlendMode, m_currentSettings.dualTipFlow, uGrainBlendMode,
         dualGrainTexId, hasDualGrain, m_currentSettings.dualTextureScale, m_currentSettings.dualTextureIntensity,
-        m_currentSettings.dualGrainBright, m_currentSettings.dualGrainCon, m_currentSettings.invertDualGrain, m_currentSettings.dualGrainBlendMode,
+        m_currentSettings.dualGrainBright, m_currentSettings.dualGrainCon, m_currentSettings.invertDualGrain, m_currentSettings.dualGrainBlendMode, m_currentSettings.dualGrainRotation,
         // Mode
         isEraser,
         m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode);
+
+    if (m_currentSettings.dualTipEnabled && m_currentSettings.sprayEnabled && !particleDabs.empty()) {
+      m_renderer->renderStrokeInstanced(
+          particleDabs, point.pressure, m_currentSettings.hardness,
+          (int)m_currentSettings.type, w, h,
+          grainTexId, hasGrain, m_currentSettings.textureScale,
+          m_currentSettings.textureIntensity,
+          m_currentSettings.grainBright, m_currentSettings.grainCon, m_currentSettings.invertGrain, m_currentSettings.grainRotation,
+          dualTipTexId, (dualTipTexId != 0),
+          0.0f, 0.0f, m_currentSettings.flow,
+          0, m_currentSettings.wetness, m_currentSettings.dilution,
+          m_currentSettings.smudge,
+          m_currentSettings.bleed, m_currentSettings.absorptionRate,
+          m_currentSettings.dryingTime, m_currentSettings.wetOnWetMultiplier,
+          m_currentSettings.granulation, m_currentSettings.pigmentFlow,
+          m_currentSettings.staining, m_currentSettings.separation,
+          m_currentSettings.bloomEnabled, m_currentSettings.bloomIntensity,
+          m_currentSettings.bloomRadius, m_currentSettings.bloomThreshold,
+          m_currentSettings.edgeDarkeningEnabled, m_currentSettings.edgeDarkeningIntensity,
+          m_currentSettings.edgeDarkeningWidth, m_currentSettings.textureRevealEnabled,
+          m_currentSettings.textureRevealIntensity,
+          m_currentSettings.textureRevealPressureInfluence, m_currentSettings.mixing,
+          1.0f, // loading for particles
+          m_currentSettings.depletionRate, m_currentSettings.dirtyMixing,
+          m_currentSettings.colorPickup, m_currentSettings.blendOnly, m_currentSettings.scrapeThrough,
+          m_currentSettings.impastoEnabled, m_currentSettings.impastoDepth,
+          m_currentSettings.impastoShine,
+          m_currentSettings.impastoTextureStrength,
+          m_currentSettings.impastoEdgeBuildup,
+          m_currentSettings.impastoDirectionalRidges,
+          m_currentSettings.impastoSmoothing,
+          m_currentSettings.impastoPreserveExisting,
+          m_currentSettings.bristlesEnabled, m_currentSettings.bristleCount,
+          m_currentSettings.bristleStiffness, m_currentSettings.bristleClumping,
+          m_currentSettings.bristleFanSpread,
+          m_currentSettings.bristleIndividualVariation,
+          m_currentSettings.bristleDryBrushEffect,
+          m_currentSettings.bristleSoftness, m_currentSettings.bristlePointTaper,
+          m_currentSettings.smudgeStrength,
+          m_currentSettings.smudgePressureInfluence,
+          m_currentSettings.smudgeLength, m_currentSettings.smudgeGaussianBlur,
+          m_currentSettings.smudgeSmear,
+          m_currentSettings.canvasAbsorption, m_currentSettings.canvasSkipValleys,
+          m_currentSettings.canvasCatchPeaks,
+          m_currentSettings.temperatureShift, m_currentSettings.brokenColor,
+          0, false, 1.0f, 0.0f, 0, 1.0f, uGrainBlendMode, // no dual tip
+          dualGrainTexId, hasDualGrain, m_currentSettings.dualTextureScale, m_currentSettings.dualTextureIntensity,
+          m_currentSettings.dualGrainBright, m_currentSettings.dualGrainCon, m_currentSettings.invertDualGrain, m_currentSettings.dualGrainBlendMode, m_currentSettings.dualGrainRotation,
+          isEraser,
+          m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode);
+    }
   }
   // Update State
   m_accumulatedDistance += dist;

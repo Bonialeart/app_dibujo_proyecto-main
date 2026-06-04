@@ -46,6 +46,7 @@ public:
       // Grain texture
       uint32_t grainTexId, bool hasGrain, float grainScale,
       float grainIntensity, float grainBright, float grainCon, bool invertGrain,
+      float grainRotation,
       // Tip texture
       uint32_t tipTexId, bool hasTip, float tipRotation,
       // Dynamics
@@ -88,7 +89,7 @@ public:
       float temperatureShift = 0.0f, float brokenColor = 0.0f,
       // Dual brush and grain modes
       uint32_t dualTipTexId = 0, bool hasDualTip = false, float dualTipScale = 1.0f, float dualTipRotation = 0.0f, int dualTipBlendMode = 0, float dualTipFlow = 1.0f, int grainBlendMode = 0,
-      uint32_t dualGrainTexId = 0, bool hasDualGrain = false, float dualGrainScale = 1.0f, float dualGrainIntensity = 0.5f, float dualGrainBright = 0.0f, float dualGrainCon = 1.0f, bool invertDualGrain = false, int dualGrainBlendMode = 0,
+      uint32_t dualGrainTexId = 0, bool hasDualGrain = false, float dualGrainScale = 1.0f, float dualGrainIntensity = 0.5f, float dualGrainBright = 0.0f, float dualGrainCon = 1.0f, bool invertDualGrain = false, int dualGrainBlendMode = 0, float dualGrainRotation = 0.0f,
       // Mode
       bool isEraser = false,
       // Color mixing and combine mode params
@@ -108,6 +109,7 @@ public:
       // Grain texture
       uint32_t grainTexId, bool hasGrain, float grainScale,
       float grainIntensity, float grainBright, float grainCon, bool invertGrain,
+      float grainRotation,
       // Tip texture
       uint32_t tipTexId, bool hasTip,
       // Dynamics
@@ -150,7 +152,7 @@ public:
       float temperatureShift = 0.0f, float brokenColor = 0.0f,
       // Dual brush and grain modes
       uint32_t dualTipTexId = 0, bool hasDualTip = false, float dualTipScale = 1.0f, float dualTipRotation = 0.0f, int dualTipBlendMode = 0, float dualTipFlow = 1.0f, int grainBlendMode = 0,
-      uint32_t dualGrainTexId = 0, bool hasDualGrain = false, float dualGrainScale = 1.0f, float dualGrainIntensity = 0.5f, float dualGrainBright = 0.0f, float dualGrainCon = 1.0f, bool invertDualGrain = false, int dualGrainBlendMode = 0,
+      uint32_t dualGrainTexId = 0, bool hasDualGrain = false, float dualGrainScale = 1.0f, float dualGrainIntensity = 0.5f, float dualGrainBright = 0.0f, float dualGrainCon = 1.0f, bool invertDualGrain = false, int dualGrainBlendMode = 0, float dualGrainRotation = 0.0f,
       // Mode
       bool isEraser = false,
       // Color mixing and combine mode params

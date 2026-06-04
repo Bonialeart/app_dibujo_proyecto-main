@@ -52,6 +52,32 @@ BrushPreset::ShapeSettings::fromJson(const QJsonObject &obj) {
 }
 
 // ============================================================
+// SpraySettings
+// ============================================================
+QJsonObject BrushPreset::SpraySettings::toJson() const {
+  QJsonObject obj;
+  obj["enabled"] = enabled;
+  obj["particle_size"] = particleSize;
+  obj["spray_size_by_brush"] = spraySizeByBrush;
+  obj["particle_density"] = particleDensity;
+  obj["spray_deviation"] = sprayDeviation;
+  obj["particle_direction"] = particleDirection;
+  return obj;
+}
+
+BrushPreset::SpraySettings
+BrushPreset::SpraySettings::fromJson(const QJsonObject &obj) {
+  SpraySettings s;
+  s.enabled = obj.value("enabled").toBool(false);
+  s.particleSize = obj.value("particle_size").toDouble(50.0);
+  s.spraySizeByBrush = obj.value("spray_size_by_brush").toBool(true);
+  s.particleDensity = obj.value("particle_density").toInt(3);
+  s.sprayDeviation = obj.value("spray_deviation").toInt(3);
+  s.particleDirection = obj.value("particle_direction").toDouble(0.0);
+  return s;
+}
+
+// ============================================================
 // DualBrushSettings
 // ============================================================
 QJsonObject BrushPreset::DualBrushSettings::toJson() const {
@@ -63,6 +89,12 @@ QJsonObject BrushPreset::DualBrushSettings::toJson() const {
   obj["rotation"] = rotation;
   obj["blend_mode"] = blendMode;
   obj["flow"] = flow;
+  obj["spray_enabled"] = sprayEnabled;
+  obj["particle_size"] = particleSize;
+  obj["spray_size_by_brush"] = spraySizeByBrush;
+  obj["particle_density"] = particleDensity;
+  obj["spray_deviation"] = sprayDeviation;
+  obj["particle_direction"] = particleDirection;
   obj["grain"] = grain.toJson();
   return obj;
 }
@@ -76,6 +108,12 @@ BrushPreset::DualBrushSettings::fromJson(const QJsonObject &obj) {
   d.rotation = obj.value("rotation").toDouble(0.0);
   d.blendMode = obj.value("blend_mode").toString("multiply");
   d.flow = obj.value("flow").toDouble(1.0);
+  d.sprayEnabled = obj.value("spray_enabled").toBool(false);
+  d.particleSize = obj.value("particle_size").toDouble(50.0);
+  d.spraySizeByBrush = obj.value("spray_size_by_brush").toBool(true);
+  d.particleDensity = obj.value("particle_density").toInt(3);
+  d.sprayDeviation = obj.value("spray_deviation").toInt(3);
+  d.particleDirection = obj.value("particle_direction").toDouble(0.0);
   if (obj.contains("grain")) {
     d.grain = GrainSettings::fromJson(obj["grain"].toObject());
   }
@@ -128,6 +166,8 @@ QJsonObject BrushPreset::GrainSettings::toJson() const {
   obj["motion_blur_angle"] = motionBlurAngle;
   obj["random_offset"] = randomOffset;
   obj["blend_mode"] = blendMode;
+  obj["emphasize_density"] = emphasizeDensity;
+  obj["apply_to_tips"] = applyToTips;
   return obj;
 }
 
@@ -148,6 +188,8 @@ BrushPreset::GrainSettings::fromJson(const QJsonObject &obj) {
   g.motionBlurAngle = obj.value("motion_blur_angle").toDouble(0.0);
   g.randomOffset = obj.value("random_offset").toBool(false);
   g.blendMode = obj.value("blend_mode").toString("normal");
+  g.emphasizeDensity = obj.value("emphasize_density").toBool(false);
+  g.applyToTips = obj.value("apply_to_tips").toBool(true);
   return g;
 }
 
@@ -620,6 +662,9 @@ QJsonObject BrushPreset::toJson() const {
   // Shape
   root["shape"] = shape.toJson();
 
+  // Spray
+  root["spray"] = spray.toJson();
+
   // Dual Brush
   root["dual_brush"] = dualBrush.toJson();
 
@@ -699,6 +744,10 @@ BrushPreset BrushPreset::fromJson(const QJsonObject &root) {
   // Shape
   if (root.contains("shape"))
     preset.shape = ShapeSettings::fromJson(root["shape"].toObject());
+
+  // Spray
+  if (root.contains("spray"))
+    preset.spray = SpraySettings::fromJson(root["spray"].toObject());
 
   // Dual Brush
   if (root.contains("dual_brush"))
@@ -786,6 +835,12 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.tipTextureID = 0;
   s.dualTipTextureID = 0;
   s.grainTextureID = 0;
+  s.grainRotation = 0.0f;
+  s.grainEmphasizeDensity = false;
+  s.grainApplyToTips = true;
+  s.dualGrainRotation = 0.0f;
+  s.dualGrainEmphasizeDensity = false;
+  s.dualGrainApplyToTips = true;
 
   s.size = defaultSize;
   s.opacity = defaultOpacity;
@@ -816,6 +871,22 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.dualTipBlendMode = dualBrush.blendMode;
   s.dualTipFlow = dualBrush.flow;
 
+  // Dual Brush Spray Settings
+  s.sprayEnabled = dualBrush.sprayEnabled;
+  s.particleSize = dualBrush.particleSize;
+  s.spraySizeByBrush = dualBrush.spraySizeByBrush;
+  s.particleDensity = dualBrush.particleDensity;
+  s.sprayDeviation = dualBrush.sprayDeviation;
+  s.particleDirection = dualBrush.particleDirection;
+
+  // Main Brush Spray Settings
+  s.mainSprayEnabled = spray.enabled;
+  s.mainParticleSize = spray.particleSize;
+  s.mainSpraySizeByBrush = spray.spraySizeByBrush;
+  s.mainParticleDensity = spray.particleDensity;
+  s.mainSprayDeviation = spray.sprayDeviation;
+  s.mainParticleDirection = spray.particleDirection;
+
   // Dual Grain Settings
   if (dualBrush.enabled && !dualBrush.grain.texture.isEmpty()) {
     s.useDualTexture = true;
@@ -826,6 +897,9 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
     s.invertDualGrain = dualBrush.grain.invert;
     s.dualGrainBright = dualBrush.grain.brightness;
     s.dualGrainCon = dualBrush.grain.contrast;
+    s.dualGrainRotation = dualBrush.grain.rotation * 3.14159265f / 180.0f;
+    s.dualGrainEmphasizeDensity = dualBrush.grain.emphasizeDensity;
+    s.dualGrainApplyToTips = dualBrush.grain.applyToTips;
     int dbm = 0;
     if (dualBrush.grain.blendMode == "subtract") {
       dbm = 1;
@@ -842,6 +916,9 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
     s.invertDualGrain = false;
     s.dualGrainBright = 0.0f;
     s.dualGrainCon = 1.0f;
+    s.dualGrainRotation = 0.0f;
+    s.dualGrainEmphasizeDensity = false;
+    s.dualGrainApplyToTips = true;
     s.dualGrainBlendMode = 0;
   }
 
@@ -851,6 +928,9 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
     s.textureName = grain.texture;
     s.textureScale = grain.scale;
     s.textureIntensity = grain.intensity;
+    s.grainRotation = grain.rotation * 3.14159265f / 180.0f;
+    s.grainEmphasizeDensity = grain.emphasizeDensity;
+    s.grainApplyToTips = grain.applyToTips;
   }
 
   // If only tip texture is set (no grain), still mark texture as used for

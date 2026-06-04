@@ -238,7 +238,7 @@ void StrokeRenderer::renderStroke(
     const QColor &color, int type, int width, int height,
     // Grain texture
     uint32_t grainTexId, bool hasGrain, float grainScale, float grainIntensity,
-    float grainBright, float grainCon, bool invertGrain,
+    float grainBright, float grainCon, bool invertGrain, float grainRotation,
     // Tip texture
     uint32_t tipTexId, bool hasTip, float tipRotation,
     // Dynamics
@@ -275,7 +275,7 @@ void StrokeRenderer::renderStroke(
     float temperatureShift, float brokenColor,
     // Dual brush and grain modes
     uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, float dualTipFlow, int grainBlendMode,
-    uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode,
+    uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode, float dualGrainRotation,
     bool isEraser,
     bool colorMixing, float paintAmount, float colorStretch, int blendMode) {
 
@@ -341,6 +341,7 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("uGrainBrightness", grainBright);
     m_program->setUniformValue("uGrainContrast", grainCon);
     m_program->setUniformValue("uInvertGrain", invertGrain ? 1 : 0);
+    m_program->setUniformValue("uGrainRotation", grainRotation);
   } else {
     m_program->setUniformValue("uHasGrain", 0);
     m_program->setUniformValue("grainScale", 1.0f);
@@ -348,6 +349,7 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("uGrainBrightness", 0.0f);
     m_program->setUniformValue("uGrainContrast", 1.0f);
     m_program->setUniformValue("uInvertGrain", 0);
+    m_program->setUniformValue("uGrainRotation", 0.0f);
   }
 
   // --- DUAL TIP TEXTURE ---
@@ -380,6 +382,7 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("uDualGrainContrast", dualGrainCon);
     m_program->setUniformValue("uInvertDualGrain", invertDualGrain ? 1 : 0);
     m_program->setUniformValue("uDualGrainBlendMode", dualGrainBlendMode);
+    m_program->setUniformValue("uDualGrainRotation", dualGrainRotation);
   } else {
     m_program->setUniformValue("uHasDualGrain", 0);
     m_program->setUniformValue("dualGrainScale", 1.0f);
@@ -388,6 +391,7 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("uDualGrainContrast", 1.0f);
     m_program->setUniformValue("uInvertDualGrain", 0);
     m_program->setUniformValue("uDualGrainBlendMode", 0);
+    m_program->setUniformValue("uDualGrainRotation", 0.0f);
   }
 
   // --- GRAIN BLEND MODE ---
@@ -526,7 +530,7 @@ void StrokeRenderer::renderStrokeInstanced(
     int type, int width, int height,
     // Grain texture
     uint32_t grainTexId, bool hasGrain, float grainScale, float grainIntensity,
-    float grainBright, float grainCon, bool invertGrain,
+    float grainBright, float grainCon, bool invertGrain, float grainRotation,
     // Tip texture
     uint32_t tipTexId, bool hasTip,
     // Dynamics
@@ -563,7 +567,7 @@ void StrokeRenderer::renderStrokeInstanced(
     float temperatureShift, float brokenColor,
     // Dual brush and grain modes
     uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, float dualTipFlow, int grainBlendMode,
-    uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode,
+    uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode, float dualGrainRotation,
     bool isEraser,
     bool colorMixing, float paintAmount, float colorStretch, int blendMode) {
 
@@ -613,6 +617,7 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("uGrainBrightness", grainBright);
     m_program->setUniformValue("uGrainContrast", grainCon);
     m_program->setUniformValue("uInvertGrain", invertGrain ? 1 : 0);
+    m_program->setUniformValue("uGrainRotation", grainRotation);
   } else {
     m_program->setUniformValue("uHasGrain", 0);
     m_program->setUniformValue("grainScale", 1.0f);
@@ -620,6 +625,7 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("uGrainBrightness", 0.0f);
     m_program->setUniformValue("uGrainContrast", 1.0f);
     m_program->setUniformValue("uInvertGrain", 0);
+    m_program->setUniformValue("uGrainRotation", 0.0f);
   }
 
   // --- DUAL TIP TEXTURE ---
@@ -652,6 +658,7 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("uDualGrainContrast", dualGrainCon);
     m_program->setUniformValue("uInvertDualGrain", invertDualGrain ? 1 : 0);
     m_program->setUniformValue("uDualGrainBlendMode", dualGrainBlendMode);
+    m_program->setUniformValue("uDualGrainRotation", dualGrainRotation);
   } else {
     m_program->setUniformValue("uHasDualGrain", 0);
     m_program->setUniformValue("dualGrainScale", 1.0f);
@@ -660,6 +667,7 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("uDualGrainContrast", 1.0f);
     m_program->setUniformValue("uInvertDualGrain", 0);
     m_program->setUniformValue("uDualGrainBlendMode", 0);
+    m_program->setUniformValue("uDualGrainRotation", 0.0f);
   }
 
   // --- GRAIN BLEND MODE ---

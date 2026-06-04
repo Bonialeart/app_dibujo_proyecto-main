@@ -4483,3 +4483,483 @@
 [HANDLE-DRAW] useTexture: 1 | textureName: grain_canvas_weave.png | grainTextureID: 0 | isWc: 0 | activePreset: Dry Oil Paint
 [HANDLE-DRAW] useTexture: 1 | textureName: grain_canvas_weave.png | grainTextureID: 0 | isWc: 0 | activePreset: Dry Oil Paint
 [HANDLE-DRAW] useTexture: 1 | textureName: grain_canvas_weave.png | grainTextureID: 0 | isWc: 0 | activePreset: Dry Oil Paint
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_seca_1.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: húmedo_suave.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: agua_clara.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela lavado suave
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: pincel_redondo.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela clásica
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro
+[HANDLE-DRAW] useTexture: 1 | textureName: salpicaduras.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela Salpicaduras Pro

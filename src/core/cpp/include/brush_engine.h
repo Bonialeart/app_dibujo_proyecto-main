@@ -102,6 +102,25 @@ struct BrushSettings {
   int dualGrainBlendMode = 0;
   float dualGrainBright = 0.0f;
   float dualGrainCon = 1.0f;
+  float dualGrainRotation = 0.0f;
+  bool dualGrainEmphasizeDensity = false;
+  bool dualGrainApplyToTips = true;
+
+  // Dual Brush Spray Settings
+  bool sprayEnabled = false;
+  float particleSize = 50.0f;
+  bool spraySizeByBrush = true;
+  int particleDensity = 3;
+  int sprayDeviation = 3;
+  float particleDirection = 0.0f;
+
+  // Main Brush Spray Settings
+  bool mainSprayEnabled = false;
+  float mainParticleSize = 50.0f;
+  bool mainSpraySizeByBrush = true;
+  int mainParticleDensity = 3;
+  int mainSprayDeviation = 3;
+  float mainParticleDirection = 0.0f;
 
   // === NEW BRUSH STUDIO FIELDS ===
   // Shape
@@ -125,6 +144,9 @@ struct BrushSettings {
   QString grainBlendMode = "multiply";
   float grainBright = 0.0f;
   float grainCon = 1.0f;
+  float grainRotation = 0.0f;
+  bool grainEmphasizeDensity = false;
+  bool grainApplyToTips = true;
 
   // Jitter
   float jitterLateral = 0.0f;

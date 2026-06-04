@@ -11345,6 +11345,26 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.grain.blendMode;
     if (key == "invert")
       return m_editingPreset.grain.invert;
+    if (key == "emphasize_density")
+      return m_editingPreset.grain.emphasizeDensity;
+    if (key == "apply_to_tips")
+      return m_editingPreset.grain.applyToTips;
+  }
+
+  // ── spray ──
+  if (category == "spray") {
+    if (key == "enabled")
+      return m_editingPreset.spray.enabled;
+    if (key == "particle_size")
+      return m_editingPreset.spray.particleSize;
+    if (key == "spray_size_by_brush")
+      return m_editingPreset.spray.spraySizeByBrush;
+    if (key == "particle_density")
+      return m_editingPreset.spray.particleDensity;
+    if (key == "spray_deviation")
+      return m_editingPreset.spray.sprayDeviation;
+    if (key == "particle_direction")
+      return m_editingPreset.spray.particleDirection;
   }
 
   // ── dualbrush ──
@@ -11361,6 +11381,18 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.dualBrush.blendMode;
     if (key == "flow")
       return m_editingPreset.dualBrush.flow;
+    if (key == "spray_enabled")
+      return m_editingPreset.dualBrush.sprayEnabled;
+    if (key == "particle_size")
+      return m_editingPreset.dualBrush.particleSize;
+    if (key == "spray_size_by_brush")
+      return m_editingPreset.dualBrush.spraySizeByBrush;
+    if (key == "particle_density")
+      return m_editingPreset.dualBrush.particleDensity;
+    if (key == "spray_deviation")
+      return m_editingPreset.dualBrush.sprayDeviation;
+    if (key == "particle_direction")
+      return m_editingPreset.dualBrush.particleDirection;
     if (key == "grain_texture")
       return m_editingPreset.dualBrush.grain.texture;
     if (key == "grain_scale")
@@ -11375,6 +11407,12 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.dualBrush.grain.invert;
     if (key == "grain_blend_mode")
       return m_editingPreset.dualBrush.grain.blendMode;
+    if (key == "grain_rotation")
+      return m_editingPreset.dualBrush.grain.rotation;
+    if (key == "grain_emphasize_density")
+      return m_editingPreset.dualBrush.grain.emphasizeDensity;
+    if (key == "grain_apply_to_tips")
+      return m_editingPreset.dualBrush.grain.applyToTips;
   }
 
   // ── wetmix ──
@@ -11599,6 +11637,35 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
     } else if (key == "invert") {
       m_editingPreset.grain.invert = value.toBool();
       changed = true;
+    } else if (key == "emphasize_density") {
+      m_editingPreset.grain.emphasizeDensity = value.toBool();
+      changed = true;
+    } else if (key == "apply_to_tips") {
+      m_editingPreset.grain.applyToTips = value.toBool();
+      changed = true;
+    }
+  }
+
+  // ── spray ──
+  else if (category == "spray") {
+    if (key == "enabled") {
+      m_editingPreset.spray.enabled = value.toBool();
+      changed = true;
+    } else if (key == "particle_size") {
+      m_editingPreset.spray.particleSize = value.toFloat();
+      changed = true;
+    } else if (key == "spray_size_by_brush") {
+      m_editingPreset.spray.spraySizeByBrush = value.toBool();
+      changed = true;
+    } else if (key == "particle_density") {
+      m_editingPreset.spray.particleDensity = value.toInt();
+      changed = true;
+    } else if (key == "spray_deviation") {
+      m_editingPreset.spray.sprayDeviation = value.toInt();
+      changed = true;
+    } else if (key == "particle_direction") {
+      m_editingPreset.spray.particleDirection = value.toFloat();
+      changed = true;
     }
   }
 
@@ -11622,6 +11689,24 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
     } else if (key == "flow") {
       m_editingPreset.dualBrush.flow = value.toFloat();
       changed = true;
+    } else if (key == "spray_enabled") {
+      m_editingPreset.dualBrush.sprayEnabled = value.toBool();
+      changed = true;
+    } else if (key == "particle_size") {
+      m_editingPreset.dualBrush.particleSize = value.toFloat();
+      changed = true;
+    } else if (key == "spray_size_by_brush") {
+      m_editingPreset.dualBrush.spraySizeByBrush = value.toBool();
+      changed = true;
+    } else if (key == "particle_density") {
+      m_editingPreset.dualBrush.particleDensity = value.toInt();
+      changed = true;
+    } else if (key == "spray_deviation") {
+      m_editingPreset.dualBrush.sprayDeviation = value.toInt();
+      changed = true;
+    } else if (key == "particle_direction") {
+      m_editingPreset.dualBrush.particleDirection = value.toFloat();
+      changed = true;
     } else if (key == "grain_texture") {
       m_editingPreset.dualBrush.grain.texture = value.toString();
       changed = true;
@@ -11642,6 +11727,15 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
       changed = true;
     } else if (key == "grain_blend_mode") {
       m_editingPreset.dualBrush.grain.blendMode = value.toString();
+      changed = true;
+    } else if (key == "grain_rotation") {
+      m_editingPreset.dualBrush.grain.rotation = value.toFloat();
+      changed = true;
+    } else if (key == "grain_emphasize_density") {
+      m_editingPreset.dualBrush.grain.emphasizeDensity = value.toBool();
+      changed = true;
+    } else if (key == "grain_apply_to_tips") {
+      m_editingPreset.dualBrush.grain.applyToTips = value.toBool();
       changed = true;
     }
   }
@@ -11869,6 +11963,15 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
     map["rolling"] = m_editingPreset.grain.rolling;
     map["blend_mode"] = m_editingPreset.grain.blendMode;
     map["invert"] = m_editingPreset.grain.invert;
+    map["emphasize_density"] = m_editingPreset.grain.emphasizeDensity;
+    map["apply_to_tips"] = m_editingPreset.grain.applyToTips;
+  } else if (category == "spray") {
+    map["enabled"] = m_editingPreset.spray.enabled;
+    map["particle_size"] = m_editingPreset.spray.particleSize;
+    map["spray_size_by_brush"] = m_editingPreset.spray.spraySizeByBrush;
+    map["particle_density"] = m_editingPreset.spray.particleDensity;
+    map["spray_deviation"] = m_editingPreset.spray.sprayDeviation;
+    map["particle_direction"] = m_editingPreset.spray.particleDirection;
   } else if (category == "dualbrush") {
     map["enabled"] = m_editingPreset.dualBrush.enabled;
     map["tip_texture"] = m_editingPreset.dualBrush.tipTexture;
@@ -11876,6 +11979,12 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
     map["rotation"] = m_editingPreset.dualBrush.rotation;
     map["blend_mode"] = m_editingPreset.dualBrush.blendMode;
     map["flow"] = m_editingPreset.dualBrush.flow;
+    map["spray_enabled"] = m_editingPreset.dualBrush.sprayEnabled;
+    map["particle_size"] = m_editingPreset.dualBrush.particleSize;
+    map["spray_size_by_brush"] = m_editingPreset.dualBrush.spraySizeByBrush;
+    map["particle_density"] = m_editingPreset.dualBrush.particleDensity;
+    map["spray_deviation"] = m_editingPreset.dualBrush.sprayDeviation;
+    map["particle_direction"] = m_editingPreset.dualBrush.particleDirection;
     map["grain_texture"] = m_editingPreset.dualBrush.grain.texture;
     map["grain_scale"] = m_editingPreset.dualBrush.grain.scale;
     map["grain_intensity"] = m_editingPreset.dualBrush.grain.intensity;
@@ -11883,6 +11992,9 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
     map["grain_contrast"] = m_editingPreset.dualBrush.grain.contrast;
     map["grain_invert"] = m_editingPreset.dualBrush.grain.invert;
     map["grain_blend_mode"] = m_editingPreset.dualBrush.grain.blendMode;
+    map["grain_rotation"] = m_editingPreset.dualBrush.grain.rotation;
+    map["grain_emphasize_density"] = m_editingPreset.dualBrush.grain.emphasizeDensity;
+    map["grain_apply_to_tips"] = m_editingPreset.dualBrush.grain.applyToTips;
   } else if (category == "wetmix") {
     map["wet_mix"] = m_editingPreset.wetMix.wetMix;
     map["pigment"] = m_editingPreset.wetMix.pigment;
