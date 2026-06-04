@@ -235,6 +235,9 @@ static QImage getTextureImage(const QString &name, bool isTip = true) {
       }
     }
   }
+  if (!isTip) {
+    img = img.convertToFormat(QImage::Format_Grayscale8);
+  }
 
   s_imageTextureCache[cacheKey] = img;
   return img;
@@ -290,8 +293,18 @@ static float getGrainValueAt(const QImage &grainImg, float canvasX, float canvas
   if (grainImg.isNull()) return 1.0f;
 
   float scale = std::max(0.1f, settings.textureScale);
-  float gx = (canvasX / (5.0f * scale)) * grainImg.width();
-  float gy = (canvasY / (5.0f * scale)) * grainImg.height();
+  float gx = canvasX / (5.0f * scale);
+  float gy = canvasY / (5.0f * scale);
+  if (settings.grainRotation != 0.0f) {
+    float cosR = std::cos(settings.grainRotation);
+    float sinR = std::sin(settings.grainRotation);
+    float rx = gx * cosR - gy * sinR;
+    float ry = gx * sinR + gy * cosR;
+    gx = rx;
+    gy = ry;
+  }
+  gx *= grainImg.width();
+  gy *= grainImg.height();
 
   int ix = static_cast<int>(std::floor(gx)) % grainImg.width();
   int iy = static_cast<int>(std::floor(gy)) % grainImg.height();
@@ -324,8 +337,18 @@ static float getDualGrainValueAt(const QImage &grainImg, float canvasX, float ca
   if (grainImg.isNull()) return 1.0f;
 
   float scale = std::max(0.1f, settings.dualTextureScale);
-  float gx = (canvasX / (5.0f * scale)) * grainImg.width();
-  float gy = (canvasY / (5.0f * scale)) * grainImg.height();
+  float gx = canvasX / (5.0f * scale);
+  float gy = canvasY / (5.0f * scale);
+  if (settings.dualGrainRotation != 0.0f) {
+    float cosR = std::cos(settings.dualGrainRotation);
+    float sinR = std::sin(settings.dualGrainRotation);
+    float rx = gx * cosR - gy * sinR;
+    float ry = gx * sinR + gy * cosR;
+    gx = rx;
+    gy = ry;
+  }
+  gx *= grainImg.width();
+  gy *= grainImg.height();
 
   int ix = static_cast<int>(std::floor(gx)) % grainImg.width();
   int iy = static_cast<int>(std::floor(gy)) % grainImg.height();
@@ -370,16 +393,23 @@ static void paintTexturedDabRaster(QPainter *painter, const QPointF &point, floa
     tipImg = QImage(finalSize, finalSize, QImage::Format_ARGB32);
     tipImg.fill(Qt::transparent);
 
+    uint32_t *tipBits = reinterpret_cast<uint32_t*>(tipImg.bits());
+    int tipStride = tipImg.bytesPerLine() / 4;
+
     float center = finalSize / 2.0f;
     float radius = size / 2.0f;
     float hardness = settings.hardness;
 
     for (int y = 0; y < finalSize; ++y) {
+      float dy = y - center;
+      float dy2 = dy * dy;
+      uint32_t *row = tipBits + y * tipStride;
       for (int x = 0; x < finalSize; ++x) {
         float dx = x - center;
-        float dy = y - center;
-        float dist = std::sqrt(dx*dx + dy*dy);
-        if (dist <= radius) {
+        float dist2 = dx * dx + dy2;
+        float radius2 = radius * radius;
+        if (dist2 <= radius2) {
+          float dist = std::sqrt(dist2);
           float d = dist / radius;
           float val = 1.0f;
           if (hardness < 0.99f) {
@@ -391,7 +421,7 @@ static void paintTexturedDabRaster(QPainter *painter, const QPointF &point, floa
             }
           }
           int a = static_cast<int>(255 * val);
-          tipImg.setPixel(x, y, qRgba(255, 255, 255, a));
+          row[x] = 0x00FFFFFF | (static_cast<uint32_t>(a) << 24);
         }
       }
     }
@@ -445,66 +475,172 @@ static void paintTexturedDabRaster(QPainter *painter, const QPointF &point, floa
     }
   }
 
-  if (hasDualTip && settings.useDualTexture && !dualGrainImg.isNull()) {
+  // Ensure grain textures are in Grayscale8 for fast 1-byte direct bits access
+  QImage localGrainImg = grainImg;
+  if (!localGrainImg.isNull() && localGrainImg.format() != QImage::Format_Grayscale8) {
+    localGrainImg = localGrainImg.convertToFormat(QImage::Format_Grayscale8);
+  }
+  QImage localDualGrainImg = dualGrainImg;
+  if (!localDualGrainImg.isNull() && localDualGrainImg.format() != QImage::Format_Grayscale8) {
+    localDualGrainImg = localDualGrainImg.convertToFormat(QImage::Format_Grayscale8);
+  }
+
+  if (hasDualTip && settings.useDualTexture && !localDualGrainImg.isNull()) {
     // 1. Modulate main tip by main grain
-    if (settings.useTexture && !grainImg.isNull()) {
+    if (settings.useTexture && !localGrainImg.isNull()) {
+      uint32_t *tipBits = reinterpret_cast<uint32_t*>(tipImg.bits());
+      int tipStride = tipImg.bytesPerLine() / 4;
+      const uchar *grainBits = localGrainImg.constBits();
+      int grainStride = localGrainImg.bytesPerLine();
+      int grainW = localGrainImg.width();
+      int grainH = localGrainImg.height();
+
+      float scale = std::max(0.1f, settings.textureScale);
+      float invScaleW = grainW / (5.0f * scale);
+      float invScaleH = grainH / (5.0f * scale);
+
+      float cosR = std::cos(settings.grainRotation);
+      float sinR = std::sin(settings.grainRotation);
+
+      float dx_tx = cosR * invScaleW;
+      float dx_ty = sinR * invScaleH;
+
+      float bright = settings.grainBright / 100.0f;
+      float contrast = settings.grainCon / 100.0f;
+      float f = (1.0f + contrast);
+
+      // Pre-compute LUT
+      float grainLUT[256];
+      for (int i = 0; i < 256; ++i) {
+        float val = i / 255.0f;
+        if (settings.invertGrain) {
+          val = 1.0f - val;
+        }
+        val = std::clamp((val - 0.5f) * f + 0.5f + bright, 0.0f, 1.0f);
+        grainLUT[i] = val;
+      }
+
+      float threshold = (1.0f - opacity) * settings.textureIntensity;
+      float textureIntensity = settings.textureIntensity;
+      bool isSubtract = (settings.grainBlendMode == "subtract");
+      bool isThreshold = (settings.grainBlendMode == "threshold" || settings.grainBlendMode == "reveal");
+
       for (int y = 0; y < finalSize; ++y) {
+        float canvasY = startY + y;
+        float tx_row = startX * cosR * invScaleW - canvasY * sinR * invScaleW;
+        float ty_row = startX * sinR * invScaleH + canvasY * cosR * invScaleH;
+
+        uint32_t *tipRow = tipBits + y * tipStride;
+
+        float tx = tx_row;
+        float ty = ty_row;
+
         for (int x = 0; x < finalSize; ++x) {
-          QRgb px = tipImg.pixel(x, y);
-          int alpha = qAlpha(px);
+          uint32_t &px = tipRow[x];
+          int alpha = (px >> 24) & 0xFF;
           if (alpha > 0) {
-            float canvasX = startX + x;
-            float canvasY = startY + y;
-            float grainVal = getGrainValueAt(grainImg, canvasX, canvasY, settings);
-            
+            int px_idx = static_cast<int>(std::floor(tx)) % grainW;
+            if (px_idx < 0) px_idx += grainW;
+            int py = static_cast<int>(std::floor(ty)) % grainH;
+            if (py < 0) py += grainH;
+
+            int grayVal = grainBits[py * grainStride + px_idx];
+            float grainVal = grainLUT[grayVal];
+
             float grainFactor = 1.0f;
-            if (settings.grainBlendMode == "subtract") {
-              grainFactor = std::clamp(1.0f - (1.0f - grainVal) * settings.textureIntensity, 0.0f, 1.0f);
-            } else if (settings.grainBlendMode == "threshold" || settings.grainBlendMode == "reveal") {
-              float threshold = (1.0f - opacity) * settings.textureIntensity;
-              auto smoothstep = [](float edge0, float edge1, float x) {
-                float t = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
-                return t * t * (3.0f - 2.0f * t);
-              };
-              grainFactor = smoothstep(threshold - 0.05f, threshold + 0.05f, grainVal);
+            if (isSubtract) {
+              grainFactor = std::clamp(1.0f - (1.0f - grainVal) * textureIntensity, 0.0f, 1.0f);
+            } else if (isThreshold) {
+              float t = std::clamp((grainVal - (threshold - 0.05f)) * 10.0f, 0.0f, 1.0f);
+              grainFactor = t * t * (3.0f - 2.0f * t);
             } else {
-              grainFactor = (1.0f - settings.textureIntensity) + grainVal * settings.textureIntensity;
+              grainFactor = (1.0f - textureIntensity) + grainVal * textureIntensity;
             }
 
             int newAlpha = std::clamp(static_cast<int>(alpha * grainFactor), 0, 255);
-            tipImg.setPixel(x, y, qRgba(qRed(px), qGreen(px), qBlue(px), newAlpha));
+            px = (px & 0x00FFFFFF) | (static_cast<uint32_t>(newAlpha) << 24);
           }
+          tx += dx_tx;
+          ty += dx_ty;
         }
       }
     }
 
     // 2. Modulate dual tip by dual grain
+    uint32_t *dualBits = reinterpret_cast<uint32_t*>(scaledDualTip.bits());
+    int dualStride = scaledDualTip.bytesPerLine() / 4;
+    const uchar *dualGrainBits = localDualGrainImg.constBits();
+    int dgStride = localDualGrainImg.bytesPerLine();
+    int dgW = localDualGrainImg.width();
+    int dgH = localDualGrainImg.height();
+
+    float dgScale = std::max(0.1f, settings.dualTextureScale);
+    float dgInvScaleW = dgW / (5.0f * dgScale);
+    float dgInvScaleH = dgH / (5.0f * dgScale);
+
+    float dgCosR = std::cos(settings.dualGrainRotation);
+    float dgSinR = std::sin(settings.dualGrainRotation);
+
+    float dgdx_tx = dgCosR * dgInvScaleW;
+    float dgdx_ty = dgSinR * dgInvScaleH;
+
+    float dgBright = settings.dualGrainBright / 100.0f;
+    float dgContrast = settings.dualGrainCon / 100.0f;
+    float dgF = (1.0f + dgContrast);
+
+    // Pre-compute dual grain LUT
+    float dualGrainLUT[256];
+    for (int i = 0; i < 256; ++i) {
+      float val = i / 255.0f;
+      if (settings.invertDualGrain) {
+        val = 1.0f - val;
+      }
+      val = std::clamp((val - 0.5f) * dgF + 0.5f + dgBright, 0.0f, 1.0f);
+      dualGrainLUT[i] = val;
+    }
+
+    float dgThreshold = (1.0f - opacity) * settings.dualTextureIntensity;
+    float dgIntensity = settings.dualTextureIntensity;
+    bool isDgSubtract = (settings.dualGrainBlendMode == 1);
+    bool isDgThreshold = (settings.dualGrainBlendMode == 2);
+
     for (int y = 0; y < finalSize; ++y) {
+      float canvasY = startY + y;
+      float tx_row = startX * dgCosR * dgInvScaleW - canvasY * dgSinR * dgInvScaleW;
+      float ty_row = startX * dgSinR * dgInvScaleH + canvasY * dgCosR * dgInvScaleH;
+
+      uint32_t *dualRow = dualBits + y * dualStride;
+
+      float tx = tx_row;
+      float ty = ty_row;
+
       for (int x = 0; x < finalSize; ++x) {
-        QRgb px = scaledDualTip.pixel(x, y);
-        int alpha = qAlpha(px);
+        uint32_t &px = dualRow[x];
+        int alpha = (px >> 24) & 0xFF;
         if (alpha > 0) {
-          float canvasX = startX + x;
-          float canvasY = startY + y;
-          float grainVal = getDualGrainValueAt(dualGrainImg, canvasX, canvasY, settings);
-          
+          int px_idx = static_cast<int>(std::floor(tx)) % dgW;
+          if (px_idx < 0) px_idx += dgW;
+          int py = static_cast<int>(std::floor(ty)) % dgH;
+          if (py < 0) py += dgH;
+
+          int grayVal = dualGrainBits[py * dgStride + px_idx];
+          float grainVal = dualGrainLUT[grayVal];
+
           float dualGrainFactor = 1.0f;
-          if (settings.dualGrainBlendMode == 1) {
-            dualGrainFactor = std::clamp(1.0f - (1.0f - grainVal) * settings.dualTextureIntensity, 0.0f, 1.0f);
-          } else if (settings.dualGrainBlendMode == 2) {
-            float threshold = (1.0f - opacity) * settings.dualTextureIntensity;
-            auto smoothstep = [](float edge0, float edge1, float x) {
-              float t = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
-              return t * t * (3.0f - 2.0f * t);
-            };
-            dualGrainFactor = smoothstep(threshold - 0.05f, threshold + 0.05f, grainVal);
+          if (isDgSubtract) {
+            dualGrainFactor = std::clamp(1.0f - (1.0f - grainVal) * dgIntensity, 0.0f, 1.0f);
+          } else if (isDgThreshold) {
+            float t = std::clamp((grainVal - (dgThreshold - 0.05f)) * 10.0f, 0.0f, 1.0f);
+            dualGrainFactor = t * t * (3.0f - 2.0f * t);
           } else {
-            dualGrainFactor = (1.0f - settings.dualTextureIntensity) + grainVal * settings.dualTextureIntensity;
+            dualGrainFactor = (1.0f - dgIntensity) + grainVal * dgIntensity;
           }
 
           int newAlpha = std::clamp(static_cast<int>(alpha * dualGrainFactor), 0, 255);
-          scaledDualTip.setPixel(x, y, qRgba(qRed(px), qGreen(px), qBlue(px), newAlpha));
+          px = (px & 0x00FFFFFF) | (static_cast<uint32_t>(newAlpha) << 24);
         }
+        tx += dgdx_tx;
+        ty += dgdx_ty;
       }
     }
 
@@ -513,60 +649,124 @@ static void paintTexturedDabRaster(QPainter *painter, const QPointF &point, floa
 
   if (hasDualTip) {
     float flow = settings.dualTipFlow;
+    uint32_t *tipBits = reinterpret_cast<uint32_t*>(tipImg.bits());
+    int tipStride = tipImg.bytesPerLine() / 4;
+    const uint32_t *dualBits = reinterpret_cast<const uint32_t*>(scaledDualTip.constBits());
+    int dualStride = scaledDualTip.bytesPerLine() / 4;
+
+    bool isMask = (settings.dualTipBlendMode == "mask" || settings.dualTipBlendMode == "subtract");
+    bool isAdd = (settings.dualTipBlendMode == "add");
+    bool isHeight = (settings.dualTipBlendMode == "height_linear" || settings.dualTipBlendMode == "height");
+
     for (int y = 0; y < finalSize; ++y) {
+      uint32_t *tipRow = tipBits + y * tipStride;
+      const uint32_t *dualRow = dualBits + y * dualStride;
+
       for (int x = 0; x < finalSize; ++x) {
-        QRgb pxMain = tipImg.pixel(x, y);
-        QRgb pxDual = scaledDualTip.pixel(x, y);
-        int alphaMain = qAlpha(pxMain);
-        int alphaDual = qAlpha(pxDual);
+        uint32_t &pxMain = tipRow[x];
+        uint32_t pxDual = dualRow[x];
+        int alphaMain = (pxMain >> 24) & 0xFF;
+        int alphaDual = (pxDual >> 24) & 0xFF;
 
         float mainVal = alphaMain / 255.0f;
         float dualVal = alphaDual / 255.0f;
         float resultVal = mainVal;
 
-        if (settings.dualTipBlendMode == "mask" || settings.dualTipBlendMode == "subtract") {
+        if (isMask) {
           resultVal = mainVal * ((1.0f - flow) + flow * (1.0f - dualVal));
-        } else if (settings.dualTipBlendMode == "add") {
+        } else if (isAdd) {
           resultVal = std::clamp(mainVal + dualVal * flow, 0.0f, 1.0f);
-        } else if (settings.dualTipBlendMode == "height_linear" || settings.dualTipBlendMode == "height") {
+        } else if (isHeight) {
           resultVal = std::clamp(mainVal + (dualVal - 1.0f) * flow, 0.0f, 1.0f);
         } else { // multiply
           resultVal = mainVal * ((1.0f - flow) + flow * dualVal);
         }
 
         int newAlpha = std::clamp(static_cast<int>(resultVal * 255.0f + 0.5f), 0, 255);
-        tipImg.setPixel(x, y, qRgba(qRed(pxMain), qGreen(pxMain), pxMain == 0 ? qBlue(pxDual) : qBlue(pxMain), newAlpha));
+        uint32_t rgb = pxMain & 0x00FFFFFF;
+        if (rgb == 0) {
+          rgb = pxDual & 0x00FFFFFF;
+        }
+        pxMain = rgb | (static_cast<uint32_t>(newAlpha) << 24);
       }
     }
   }
 
-  if (!dualGrainApplied && settings.useTexture && !grainImg.isNull()) {
+  if (!dualGrainApplied && settings.useTexture && !localGrainImg.isNull()) {
+    uint32_t *tipBits = reinterpret_cast<uint32_t*>(tipImg.bits());
+    int tipStride = tipImg.bytesPerLine() / 4;
+    const uchar *grainBits = localGrainImg.constBits();
+    int grainStride = localGrainImg.bytesPerLine();
+    int grainW = localGrainImg.width();
+    int grainH = localGrainImg.height();
+
+    float scale = std::max(0.1f, settings.textureScale);
+    float invScaleW = grainW / (5.0f * scale);
+    float invScaleH = grainH / (5.0f * scale);
+
+    float cosR = std::cos(settings.grainRotation);
+    float sinR = std::sin(settings.grainRotation);
+
+    float dx_tx = cosR * invScaleW;
+    float dx_ty = sinR * invScaleH;
+
+    float bright = settings.grainBright / 100.0f;
+    float contrast = settings.grainCon / 100.0f;
+    float f = (1.0f + contrast);
+
+    // Pre-compute LUT
+    float grainLUT[256];
+    for (int i = 0; i < 256; ++i) {
+      float val = i / 255.0f;
+      if (settings.invertGrain) {
+        val = 1.0f - val;
+      }
+      val = std::clamp((val - 0.5f) * f + 0.5f + bright, 0.0f, 1.0f);
+      grainLUT[i] = val;
+    }
+
+    float threshold = (1.0f - opacity) * settings.textureIntensity;
+    float textureIntensity = settings.textureIntensity;
+    bool isSubtract = (settings.grainBlendMode == "subtract");
+    bool isThreshold = (settings.grainBlendMode == "threshold" || settings.grainBlendMode == "reveal");
+
     for (int y = 0; y < finalSize; ++y) {
+      float canvasY = startY + y;
+      float tx_row = startX * cosR * invScaleW - canvasY * sinR * invScaleW;
+      float ty_row = startX * sinR * invScaleH + canvasY * cosR * invScaleH;
+
+      uint32_t *tipRow = tipBits + y * tipStride;
+
+      float tx = tx_row;
+      float ty = ty_row;
+
       for (int x = 0; x < finalSize; ++x) {
-        QRgb px = tipImg.pixel(x, y);
-        int alpha = qAlpha(px);
+        uint32_t &px = tipRow[x];
+        int alpha = (px >> 24) & 0xFF;
         if (alpha > 0) {
-          float canvasX = startX + x;
-          float canvasY = startY + y;
-          float grainVal = getGrainValueAt(grainImg, canvasX, canvasY, settings);
-          
+          int px_idx = static_cast<int>(std::floor(tx)) % grainW;
+          if (px_idx < 0) px_idx += grainW;
+          int py = static_cast<int>(std::floor(ty)) % grainH;
+          if (py < 0) py += grainH;
+
+          int grayVal = grainBits[py * grainStride + px_idx];
+          float grainVal = grainLUT[grayVal];
+
           float grainFactor = 1.0f;
-          if (settings.grainBlendMode == "subtract") {
-            grainFactor = std::clamp(1.0f - (1.0f - grainVal) * settings.textureIntensity, 0.0f, 1.0f);
-          } else if (settings.grainBlendMode == "threshold" || settings.grainBlendMode == "reveal") {
-            float threshold = (1.0f - opacity) * settings.textureIntensity;
-            auto smoothstep = [](float edge0, float edge1, float x) {
-              float t = std::clamp((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
-              return t * t * (3.0f - 2.0f * t);
-            };
-            grainFactor = smoothstep(threshold - 0.05f, threshold + 0.05f, grainVal);
+          if (isSubtract) {
+            grainFactor = std::clamp(1.0f - (1.0f - grainVal) * textureIntensity, 0.0f, 1.0f);
+          } else if (isThreshold) {
+            float t = std::clamp((grainVal - (threshold - 0.05f)) * 10.0f, 0.0f, 1.0f);
+            grainFactor = t * t * (3.0f - 2.0f * t);
           } else {
-            grainFactor = (1.0f - settings.textureIntensity) + grainVal * settings.textureIntensity;
+            grainFactor = (1.0f - textureIntensity) + grainVal * textureIntensity;
           }
 
           int newAlpha = std::clamp(static_cast<int>(alpha * grainFactor), 0, 255);
-          tipImg.setPixel(x, y, qRgba(qRed(px), qGreen(px), qBlue(px), newAlpha));
+          px = (px & 0x00FFFFFF) | (static_cast<uint32_t>(newAlpha) << 24);
         }
+        tx += dx_tx;
+        ty += dx_ty;
       }
     }
   }
@@ -619,13 +819,21 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   }
 
   bool isOpenGL = (QOpenGLContext::currentContext() != nullptr &&
-                   (painter->device()->devType() == 12 ||
-                    dynamic_cast<QOpenGLPaintDevice*>(painter->device()) != nullptr));
+                   (painter->device()->devType() == 10 || // QInternal::OpenGL
+                    painter->device()->devType() == 12 || // QInternal::QuickPaintNode
+                    dynamic_cast<QOpenGLPaintDevice*>(painter->device()) != nullptr ||
+                    (painter->paintEngine() &&
+                     (painter->paintEngine()->type() == QPaintEngine::OpenGL2 ||
+                      painter->paintEngine()->type() == QPaintEngine::OpenGL))));
 
   static bool hasLoggedMode = false;
   if (!hasLoggedMode) {
     qDebug() << "BrushEngine: paintStroke mode:"
-             << (isOpenGL ? "OpenGL" : "Raster");
+             << (isOpenGL ? "OpenGL" : "Raster")
+             << "devType:" << painter->device()->devType()
+             << "paintEngineType:" << (painter->paintEngine() ? painter->paintEngine()->type() : -1)
+             << "glContext:" << (QOpenGLContext::currentContext() != nullptr)
+             << "dynamicCast:" << (dynamic_cast<QOpenGLPaintDevice*>(painter->device()) != nullptr);
     hasLoggedMode = true;
   }
 
@@ -1313,66 +1521,56 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       bool hasGrain = (settings.useTexture && !settings.textureName.isEmpty() && !grainImg.isNull()) ||
                       (settings.useDualTexture && !settings.dualTextureName.isEmpty() && !dualGrainImg.isNull());
       bool hasDualTip = (settings.dualTipEnabled && !settings.dualTipTextureName.isEmpty());
-      if (settings.sprayEnabled) {
-        // Draw main dab if visible
-        if (hasGrain) {
-          paintTexturedDabRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
-                                 currentTipRot + jRot, settings, grainImg, dualGrainImg);
-        } else if (!settings.tipTextureName.isEmpty()) {
-          paintTipRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
-                         currentTipRot + jRot, settings.tipTextureName);
-        } else {
-          paintSoftStamp(painter, finalPt, finalSize, finalOpacity, finalColor,
-                         settings.hardness);
+
+      // 1. Draw Main Dab (or Main Spray Particles)
+      if (settings.mainSprayEnabled) {
+        int numParticles = std::max(1, settings.mainParticleDensity * 3);
+        float pSize = settings.mainParticleSize;
+        if (settings.mainSpraySizeByBrush) {
+          pSize = currentSize * (settings.mainParticleSize / 100.0f);
         }
+        float maxScatter = (currentSize - pSize) * 0.5f;
+        float scatterRadius = std::max(0.0f, maxScatter) * (settings.mainSprayDeviation / 5.0f);
 
-        // Draw sprayed particles
-        if (settings.dualTipEnabled && !settings.dualTipTextureName.isEmpty()) {
-          QImage dualTipImg = getTextureImage(settings.dualTipTextureName, true);
-          if (!dualTipImg.isNull()) {
-            int numParticles = std::max(1, settings.particleDensity * 3);
-            
-            float pSize = settings.particleSize;
-            if (settings.spraySizeByBrush) {
-              pSize = currentSize * (settings.particleSize / 100.0f);
-            }
-            
-            float maxScatter = (currentSize - pSize) * 0.5f;
-            float scatterRadius = std::max(0.0f, maxScatter) * (settings.sprayDeviation / 5.0f);
-            
-            for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
-              float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
-              float tRandom = (std::rand() % 1001) / 1000.0f;
-              float r = std::pow(tRandom, 1.5f) * scatterRadius;
-              float pOffsetX = r * std::cos(theta);
-              float pOffsetY = r * std::sin(theta);
-              QPointF particlePt = pt + QPointF(pOffsetX, pOffsetY);
+        for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
+          float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
+          float tRandom = (std::rand() % 1001) / 1000.0f;
+          float r = std::pow(tRandom, 1.5f) * scatterRadius;
+          float pOffsetX = r * std::cos(theta);
+          float pOffsetY = r * std::sin(theta);
+          QPointF particlePt = finalPt + QPointF(pOffsetX, pOffsetY);
 
-              float pjX = 0, pjY = 0, pjSize = 1.0f, pjRot = 0, pjOpac = 1.0f;
-              if (settings.posJitterX > 0)
-                pjX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX * dabSize;
-              if (settings.posJitterY > 0)
-                pjY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY * dabSize;
-              if (settings.sizeJitter > 0)
-                pjSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
-              if (settings.rotationJitter > 0)
-                pjRot = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.rotationJitter * 3.14159f;
-              if (settings.opacityJitter > 0)
-                pjOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
+          float pjX = 0, pjY = 0, pjSize = 1.0f, pjRot = 0, pjOpac = 1.0f;
+          if (settings.posJitterX > 0)
+            pjX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX * dabSize;
+          if (settings.posJitterY > 0)
+            pjY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY * dabSize;
+          if (settings.sizeJitter > 0)
+            pjSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
+          if (settings.rotationJitter > 0)
+            pjRot = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.rotationJitter * 3.14159f;
+          if (settings.opacityJitter > 0)
+            pjOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
 
-              float finalParticleSize = std::max(0.1f, pSize * sizeMultiplier * calligraphyWidth * pjSize);
-              float finalParticleOpacity = std::clamp(dabOpacity * pjOpac * settings.dualTipFlow, 0.0f, 1.0f);
+          float finalParticleSize = std::max(0.1f, pSize * sizeMultiplier * calligraphyWidth * pjSize);
+          float finalParticleOpacity = std::clamp(dabOpacity * pjOpac, 0.0f, 1.0f);
+          QPointF finalParticlePt = particlePt + QPointF(pjX, pjY);
+          float pRot = (settings.mainParticleDirection * 3.14159265f / 180.0f) + pjRot;
 
-              QPointF finalParticlePt = particlePt + QPointF(pjX, pjY);
-              float pRot = (settings.particleDirection * 3.14159265f / 180.0f) + pjRot;
-
-              paintTipRaster(painter, finalParticlePt, finalParticleSize, finalParticleOpacity, finalColor,
-                             pRot, settings.dualTipTextureName);
-            }
+          if (hasGrain) {
+            paintTexturedDabRaster(painter, finalParticlePt, finalParticleSize, finalParticleOpacity, finalColor,
+                                   pRot, settings, grainImg, dualGrainImg);
+          } else if (!settings.tipTextureName.isEmpty()) {
+            paintTipRaster(painter, finalParticlePt, finalParticleSize, finalParticleOpacity, finalColor,
+                           pRot, settings.tipTextureName);
+          } else {
+            paintSoftStamp(painter, finalParticlePt, finalParticleSize, finalParticleOpacity, finalColor,
+                           settings.hardness);
           }
         }
       } else {
-        if (hasGrain || hasDualTip) {
+        // Draw single main dab (or textured/dual dab if dual brush is not sprayed)
+        if (hasGrain || (hasDualTip && !settings.sprayEnabled)) {
           paintTexturedDabRaster(painter, finalPt, finalSize, finalOpacity, finalColor,
                                  currentTipRot + jRot, settings, grainImg, dualGrainImg);
         } else if (!settings.tipTextureName.isEmpty()) {
@@ -1381,6 +1579,49 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
         } else {
           paintSoftStamp(painter, finalPt, finalSize, finalOpacity, finalColor,
                          settings.hardness);
+        }
+      }
+
+      // 2. Draw Sprayed Dual Brush Particles (if enabled)
+      if (settings.dualTipEnabled && settings.sprayEnabled && !settings.dualTipTextureName.isEmpty()) {
+        QImage dualTipImg = getTextureImage(settings.dualTipTextureName, true);
+        if (!dualTipImg.isNull()) {
+          int numParticles = std::max(1, settings.particleDensity * 3);
+          float pSize = settings.particleSize;
+          if (settings.spraySizeByBrush) {
+            pSize = currentSize * (settings.particleSize / 100.0f);
+          }
+          float maxScatter = (currentSize - pSize) * 0.5f;
+          float scatterRadius = std::max(0.0f, maxScatter) * (settings.sprayDeviation / 5.0f);
+
+          for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
+            float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
+            float tRandom = (std::rand() % 1001) / 1000.0f;
+            float r = std::pow(tRandom, 1.5f) * scatterRadius;
+            float pOffsetX = r * std::cos(theta);
+            float pOffsetY = r * std::sin(theta);
+            QPointF particlePt = finalPt + QPointF(pOffsetX, pOffsetY);
+
+            float pjX = 0, pjY = 0, pjSize = 1.0f, pjRot = 0, pjOpac = 1.0f;
+            if (settings.posJitterX > 0)
+              pjX = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterX * dabSize;
+            if (settings.posJitterY > 0)
+              pjY = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.posJitterY * dabSize;
+            if (settings.sizeJitter > 0)
+              pjSize = 1.0f + ((std::rand() % 2001 - 1000) / 1000.0f) * settings.sizeJitter;
+            if (settings.rotationJitter > 0)
+              pjRot = ((std::rand() % 2001 - 1000) / 1000.0f) * settings.rotationJitter * 3.14159f;
+            if (settings.opacityJitter > 0)
+              pjOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
+
+            float finalParticleSize = std::max(0.1f, pSize * sizeMultiplier * calligraphyWidth * pjSize);
+            float finalParticleOpacity = std::clamp(dabOpacity * pjOpac * settings.dualTipFlow, 0.0f, 1.0f);
+            QPointF finalParticlePt = particlePt + QPointF(pjX, pjY);
+            float pRot = (settings.particleDirection * 3.14159265f / 180.0f) + pjRot;
+
+            paintTipRaster(painter, finalParticlePt, finalParticleSize, finalParticleOpacity, finalColor,
+                           pRot, settings.dualTipTextureName);
+          }
         }
       }
     }

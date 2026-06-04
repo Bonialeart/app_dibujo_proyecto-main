@@ -904,6 +904,13 @@ Rectangle {
                             }
 
                             StudioToggle {
+                                id: rotateTipToggle
+                                label: "Habilitar Rotación de Punta"
+                                checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "rotate_tip") !== false : true
+                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "rotate_tip", checked)
+                            }
+
+                            StudioToggle {
                                 label: "Seguir Trazo"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "follow_stroke") || false : false
                                 onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "follow_stroke", checked)
@@ -1103,10 +1110,18 @@ Rectangle {
 
                             StudioSlider {
                                 label: "Escala"
-                                from: 10; to: 500
+                                from: 1; to: 500
                                 value: targetCanvas ? targetCanvas.getBrushProperty("grain", "scale") || 100 : 100
                                 suffix: "%"
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "scale", value)
+                            }
+
+                            StudioSlider {
+                                label: "Ángulo de rotación"
+                                from: 0; to: 360
+                                value: targetCanvas ? targetCanvas.getBrushProperty("grain", "rotation") || 0 : 0
+                                suffix: "°"
+                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "rotation", value)
                             }
 
                             StudioSlider {
@@ -1118,7 +1133,7 @@ Rectangle {
 
                             StudioSlider {
                                 label: "Brillo"
-                                from: -1.0; to: 1.0
+                                from: -100; to: 100
                                 value: targetCanvas ? targetCanvas.getBrushProperty("grain", "brightness") || 0 : 0
                                 offsetColor: true
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "brightness", value)
@@ -1126,8 +1141,8 @@ Rectangle {
 
                             StudioSlider {
                                 label: "Contraste"
-                                from: 0; to: 2.0
-                                value: targetCanvas ? targetCanvas.getBrushProperty("grain", "contrast") || 1.0 : 1.0
+                                from: -100; to: 100
+                                value: targetCanvas ? targetCanvas.getBrushProperty("grain", "contrast") || 0 : 0
                                 onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "contrast", value)
                             }
 
@@ -1616,6 +1631,53 @@ Rectangle {
                                         verticalAlignment: TextInput.AlignVCenter
                                         onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "name", text)
                                     }
+                                }
+                            }
+
+                            // Brush Type Grid Selector
+                            Column {
+                                width: parent.width; spacing: 8
+                                Text { text: "Motor / Tipo de Pincel"; color: textDim; font.pixelSize: 11 }
+                                Grid {
+                                    width: parent.width
+                                    columns: 2
+                                    spacing: 8
+                                    property string currentType: targetCanvas ? targetCanvas.getBrushProperty("meta", "type") || "" : ""
+
+                                    component TypeButton : Rectangle {
+                                        property string typeVal: ""
+                                        property string labelText: ""
+                                        height: 32
+                                        width: (parent.width - 8) / 2
+                                        radius: 8
+                                        color: parent.currentType === typeVal ? colorAccent : (typeMa.containsMouse ? bgSurface : "#1a1a1c")
+                                        border.color: parent.currentType === typeVal ? "transparent" : borderDim
+                                        border.width: 1
+
+                                        Text {
+                                            text: labelText
+                                            color: parent.parent.currentType === typeVal ? "#ffffff" : textPrimary
+                                            font.pixelSize: 11; font.weight: parent.parent.currentType === typeVal ? Font.DemiBold : Font.Normal
+                                            anchors.centerIn: parent
+                                        }
+
+                                        MouseArea {
+                                            id: typeMa
+                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (targetCanvas) targetCanvas.setBrushProperty("meta", "type", typeVal)
+                                            }
+                                        }
+                                    }
+
+                                    TypeButton { typeVal: "round"; labelText: "Estándar / Redondo" }
+                                    TypeButton { typeVal: "pencil"; labelText: "Lápiz" }
+                                    TypeButton { typeVal: "airbrush"; labelText: "Aerógrafo" }
+                                    TypeButton { typeVal: "ink"; labelText: "Tinta" }
+                                    TypeButton { typeVal: "watercolor"; labelText: "Acuarela" }
+                                    TypeButton { typeVal: "oil"; labelText: "Óleo" }
+                                    TypeButton { typeVal: "eraser"; labelText: "Borrador" }
+                                    TypeButton { typeVal: "custom"; labelText: "Personalizado" }
                                 }
                             }
 

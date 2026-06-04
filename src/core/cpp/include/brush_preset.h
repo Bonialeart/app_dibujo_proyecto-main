@@ -217,6 +217,7 @@ struct BrushPreset {
   QString category; // e.g. "Sketching", "Inking", "Painting"
   QString author = "ArtFlow Studio";
   int version = 1;
+  QString type = "";
 
   // === Rendering ===
   enum class BlendMode { Normal, Multiply, Screen, Overlay, Darken, Lighten };
@@ -241,6 +242,7 @@ struct BrushPreset {
     int count = 1;
     float countJitter = 0.0f;
     float calligraphic = 0.0f; // 0..1 angle influence
+    bool rotateTip = true;
 
     QJsonObject toJson() const;
     static ShapeSettings fromJson(const QJsonObject &obj);

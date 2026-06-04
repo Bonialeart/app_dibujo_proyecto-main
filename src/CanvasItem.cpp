@@ -3272,7 +3272,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
   if (activePreset &&
       !(m_isEraser || isTransparentColor || m_tool == ToolType::Eraser)) {
     // Evaluate pressure through the preset's response curve LUT
-    float rawPressure = std::clamp(effectivePressure, 0.0f, 1.0f);
+    float rawPressure = std::clamp(applyPressureCurve(effectivePressure), 0.0f, 1.0f);
 
     // SIZE dynamics: evaluate curve and apply range
     float sizeT = activePreset->sizeDynamics.evaluate(rawPressure);
@@ -11323,6 +11323,8 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.shape.tipTexture;
     if (key == "invert")
       return m_editingPreset.shape.invert;
+    if (key == "rotate_tip")
+      return m_editingPreset.shape.rotateTip;
   }
 
   // ── grain ──
@@ -11539,6 +11541,8 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.author;
     if (key == "version")
       return m_editingPreset.version;
+    if (key == "type")
+      return m_editingPreset.type;
   }
 
   qDebug() << "getBrushProperty: Unknown" << category << "/" << key;
@@ -11604,6 +11608,9 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
       changed = true;
     } else if (key == "invert") {
       m_editingPreset.shape.invert = value.toBool();
+      changed = true;
+    } else if (key == "rotate_tip") {
+      m_editingPreset.shape.rotateTip = value.toBool();
       changed = true;
     }
   }
@@ -11899,6 +11906,9 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
     } else if (key == "author") {
       m_editingPreset.author = value.toString();
       changed = true;
+    } else if (key == "type") {
+      m_editingPreset.type = value.toString();
+      changed = true;
     }
   }
 
@@ -11953,6 +11963,7 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
     }
     map["tip_texture"] = m_editingPreset.shape.tipTexture;
     map["invert"] = m_editingPreset.shape.invert;
+    map["rotate_tip"] = m_editingPreset.shape.rotateTip;
   } else if (category == "grain") {
     map["texture"] = m_editingPreset.grain.texture;
     map["scale"] = m_editingPreset.grain.scale;
@@ -12059,6 +12070,7 @@ QVariantMap CanvasItem::getBrushCategoryProperties(const QString &category) {
     map["category"] = m_editingPreset.category;
     map["author"] = m_editingPreset.author;
     map["version"] = m_editingPreset.version;
+    map["type"] = m_editingPreset.type;
   }
 
   return map;
@@ -13744,6 +13756,10 @@ bool CanvasItem::isWatercolorBrush() const {
         preset = bpm->findByName(m_activeBrushName);
     }
     if (!preset) return false;
+
+    if (!preset->type.isEmpty()) {
+        return (preset->type == "watercolor");
+    }
 
     // Verificación por prefijo de UUID (todos los pinceles de acuarela tienen "wc-")
     if (preset->uuid.startsWith("wc-", Qt::CaseInsensitive)) {

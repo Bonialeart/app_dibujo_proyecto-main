@@ -28,6 +28,7 @@ QJsonObject BrushPreset::ShapeSettings::toJson() const {
   obj["count"] = count;
   obj["count_jitter"] = countJitter;
   obj["calligraphic"] = calligraphic;
+  obj["rotate_tip"] = rotateTip;
   return obj;
 }
 
@@ -48,6 +49,7 @@ BrushPreset::ShapeSettings::fromJson(const QJsonObject &obj) {
   s.count = obj.value("count").toInt(1);
   s.countJitter = obj.value("count_jitter").toDouble(0.0);
   s.calligraphic = obj.value("calligraphic").toDouble(0.0);
+  s.rotateTip = obj.value("rotate_tip").toBool(true);
   return s;
 }
 
@@ -651,6 +653,7 @@ QJsonObject BrushPreset::toJson() const {
   meta["category"] = category;
   meta["author"] = author;
   meta["version"] = version;
+  meta["type"] = type;
   root["meta"] = meta;
 
   // Rendering
@@ -730,6 +733,7 @@ BrushPreset BrushPreset::fromJson(const QJsonObject &root) {
   preset.category = meta.value("category").toString("General");
   preset.author = meta.value("author").toString("ArtFlow Studio");
   preset.version = meta.value("version").toInt(1);
+  preset.type = meta.value("type").toString("");
 
   if (preset.uuid.isEmpty()) {
     preset.uuid = generateUUID();
@@ -940,8 +944,13 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   }
 
   // Apply tip rotation
-  s.tipRotation = shape.rotation * 3.14159265f / 180.0f;
-  s.rotateWithStroke = shape.followStroke;
+  if (shape.rotateTip) {
+    s.tipRotation = shape.rotation * 3.14159265f / 180.0f;
+    s.rotateWithStroke = shape.followStroke;
+  } else {
+    s.tipRotation = 0.0f;
+    s.rotateWithStroke = false;
+  }
 
   // Dynamics
   s.sizeByPressure =
@@ -1086,40 +1095,54 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.temperatureShift = colorDynamics.temperatureShift;
   s.brokenColor = colorDynamics.brokenColor;
 
-  // Determine brush type from category/name heuristics
-  if (category == "Eraser" || name.contains("Eraser", Qt::CaseInsensitive)) {
-    s.type = BrushSettings::Type::Eraser;
-  } else if (name.contains("Pencil", Qt::CaseInsensitive) ||
-             name.contains("Mechanical", Qt::CaseInsensitive) ||
-             category == "Sketching") {
-    s.type = BrushSettings::Type::Pencil;
-  } else if (category == "Inking" || category == "Sketch & Ink" ||
-             name.contains("Ink", Qt::CaseInsensitive) ||
-             name.contains("Pen", Qt::CaseInsensitive)) {
-    s.type = BrushSettings::Type::Ink;
-  } else if (name.contains("Water", Qt::CaseInsensitive) ||
-             name.contains("Acuarela", Qt::CaseInsensitive) ||
-             name.contains("Aguada", Qt::CaseInsensitive) ||
-             name.contains("Agua", Qt::CaseInsensitive) ||
-             name.contains("Wash", Qt::CaseInsensitive) ||
-             name.contains("Humedo", Qt::CaseInsensitive) ||
-             name.contains("Húmedo", Qt::CaseInsensitive) ||
-             category.contains("Watercolor", Qt::CaseInsensitive)) {
-    s.type = BrushSettings::Type::Watercolor;
-  } else if (name.contains("Oil", Qt::CaseInsensitive) ||
-             name.contains("Óleo", Qt::CaseInsensitive) ||
-             name.contains("Acrylic", Qt::CaseInsensitive) ||
-             name.contains("Blender", Qt::CaseInsensitive) ||
-             name.contains("Smudge", Qt::CaseInsensitive)) {
-    s.type = BrushSettings::Type::Oil;
-  } else if (name.contains("Soft", Qt::CaseInsensitive) ||
-             name.contains("Hard", Qt::CaseInsensitive) ||
-             name.contains("Airbrush", Qt::CaseInsensitive)) {
-    s.type = BrushSettings::Type::Airbrush;
-  } else if (name.contains("Marker", Qt::CaseInsensitive)) {
-    s.type = BrushSettings::Type::Round;
+  // Determine brush type from explicit property first
+  if (!type.isEmpty()) {
+    if (type == "round") s.type = BrushSettings::Type::Round;
+    else if (type == "pencil") s.type = BrushSettings::Type::Pencil;
+    else if (type == "airbrush") s.type = BrushSettings::Type::Airbrush;
+    else if (type == "ink") s.type = BrushSettings::Type::Ink;
+    else if (type == "watercolor") s.type = BrushSettings::Type::Watercolor;
+    else if (type == "oil") s.type = BrushSettings::Type::Oil;
+    else if (type == "acrylic") s.type = BrushSettings::Type::Acrylic;
+    else if (type == "eraser") s.type = BrushSettings::Type::Eraser;
+    else if (type == "custom") s.type = BrushSettings::Type::Custom;
+    else s.type = BrushSettings::Type::Round;
   } else {
-    s.type = BrushSettings::Type::Round;
+    // Determine brush type from category/name heuristics
+    if (category == "Eraser" || name.contains("Eraser", Qt::CaseInsensitive)) {
+      s.type = BrushSettings::Type::Eraser;
+    } else if (name.contains("Pencil", Qt::CaseInsensitive) ||
+               name.contains("Mechanical", Qt::CaseInsensitive) ||
+               category == "Sketching") {
+      s.type = BrushSettings::Type::Pencil;
+    } else if (category == "Inking" || category == "Sketch & Ink" ||
+               name.contains("Ink", Qt::CaseInsensitive) ||
+               name.contains("Pen", Qt::CaseInsensitive)) {
+      s.type = BrushSettings::Type::Ink;
+    } else if (name.contains("Water", Qt::CaseInsensitive) ||
+               name.contains("Acuarela", Qt::CaseInsensitive) ||
+               name.contains("Aguada", Qt::CaseInsensitive) ||
+               name.contains("Agua", Qt::CaseInsensitive) ||
+               name.contains("Wash", Qt::CaseInsensitive) ||
+               name.contains("Humedo", Qt::CaseInsensitive) ||
+               name.contains("Húmedo", Qt::CaseInsensitive) ||
+               category.contains("Watercolor", Qt::CaseInsensitive)) {
+      s.type = BrushSettings::Type::Watercolor;
+    } else if (name.contains("Oil", Qt::CaseInsensitive) ||
+               name.contains("Óleo", Qt::CaseInsensitive) ||
+               name.contains("Acrylic", Qt::CaseInsensitive) ||
+               name.contains("Blender", Qt::CaseInsensitive) ||
+               name.contains("Smudge", Qt::CaseInsensitive)) {
+      s.type = BrushSettings::Type::Oil;
+    } else if (name.contains("Soft", Qt::CaseInsensitive) ||
+               name.contains("Hard", Qt::CaseInsensitive) ||
+               name.contains("Airbrush", Qt::CaseInsensitive)) {
+      s.type = BrushSettings::Type::Airbrush;
+    } else if (name.contains("Marker", Qt::CaseInsensitive)) {
+      s.type = BrushSettings::Type::Round;
+    } else {
+      s.type = BrushSettings::Type::Round;
+    }
   }
 }
 
