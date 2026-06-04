@@ -96,14 +96,26 @@ int main(int argc, char *argv[]) {
         if (!obj && url == objUrl) {
           QCoreApplication::exit(-1);
         } else if (obj) {
+          qDebug() << "QQmlApplicationEngine::objectCreated emitted. obj:" << obj 
+                   << "className:" << (obj ? obj->metaObject()->className() : "null");
           QWindow *window = qobject_cast<QWindow *>(obj);
           if (window) {
             HWND hwnd = (HWND)window->winId();
+            qDebug() << "Casting to QWindow succeeded. HWND:" << hwnd;
             WintabManager::instance()->init(hwnd);
+          } else {
+            qDebug() << "Casting root QML object to QWindow failed! Trying topLevelWindows...";
+            if (!QGuiApplication::topLevelWindows().isEmpty()) {
+              QWindow *topWin = QGuiApplication::topLevelWindows().first();
+              qDebug() << "Found topLevelWindow:" << topWin << "className:" << topWin->metaObject()->className();
+              HWND hwnd = (HWND)topWin->winId();
+              WintabManager::instance()->init(hwnd);
+            } else {
+              qDebug() << "No topLevelWindows found either!";
+            }
           }
         }
-      },
-      Qt::QueuedConnection);
+      });
 
   engine.load(url);
 

@@ -1864,31 +1864,32 @@ Rectangle {
                                             property string modeName: "multiply"
                                             property string displayLabel: "Multiplicar"
                                             height: 28
-                                            width: (parent.parent.width - 12) / 3
+                                            width: (parent.parent.width - 18) / 4
                                             radius: 6
                                             color: parent.currentMode === modeName ? colorAccent : (blendMa.containsMouse ? bgSurface : "#1a1a1c")
                                             border.color: parent.currentMode === modeName ? "transparent" : borderDim
                                             border.width: 1
 
-                                            Text {
-                                                text: displayLabel
-                                                color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
-                                                font.pixelSize: 10; font.weight: Font.Medium
-                                                anchors.centerIn: parent
-                                            }
+                                             Text {
+                                                 text: displayLabel
+                                                 color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
+                                                 font.pixelSize: 9; font.weight: Font.Medium
+                                                 anchors.centerIn: parent
+                                             }
 
-                                            MouseArea {
-                                                id: blendMa
-                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: {
-                                                    if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "blend_mode", modeName)
-                                                }
-                                            }
+                                             MouseArea {
+                                                 id: blendMa
+                                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                 onClicked: {
+                                                     if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "blend_mode", modeName)
+                                                 }
+                                             }
                                         }
 
                                         BlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
                                         BlendButton { modeName: "mask"; displayLabel: "Restar" }
                                         BlendButton { modeName: "add"; displayLabel: "Añadir" }
+                                        BlendButton { modeName: "height_linear"; displayLabel: "Altura (Lin.)" }
                                     }
                                 }
 

@@ -731,6 +731,8 @@ private:
   float m_wintabTiltX = 0.0f;
   float m_wintabTiltY = 0.0f;
   bool m_wintabActive = false;
+  qint64 m_lastWintabTime = 0;
+  bool m_wintabInitAttempted = false;
   QString m_brushTip;
   QVariantList m_availableBrushes;
   QString m_activeBrushName;

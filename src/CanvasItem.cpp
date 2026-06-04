@@ -307,6 +307,13 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 
   // Wintab integration
   connect(WintabManager::instance(), &WintabManager::wintabEvent, this, &CanvasItem::onWintabEvent);
+  connect(this, &QQuickItem::windowChanged, this, [this](QQuickWindow *win) {
+    if (win) {
+        HWND hwnd = (HWND)win->winId();
+        qDebug() << "CanvasItem: windowChanged, winId:" << hwnd;
+        WintabManager::instance()->init(hwnd);
+    }
+  });
   // ---------------------------------
 
   setAcceptHoverEvents(true);
@@ -4522,6 +4529,11 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       return;
     }
 
+    if (PreferencesManager::instance()->tabletInputMode() == "Wintab" && !m_wintabInitAttempted && window()) {
+      m_wintabInitAttempted = true;
+      WintabManager::instance()->init((HWND)window()->winId());
+    }
+
     m_isDrawing = true;
     m_lastPos = canvasPos;
     m_strokeStartPos = canvasPos;
@@ -4903,22 +4915,40 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   }
 
   if (m_isDrawing) {
+    if (PreferencesManager::instance()->tabletInputMode() == "Wintab" && !m_wintabInitAttempted && window()) {
+      m_wintabInitAttempted = true;
+      WintabManager::instance()->init((HWND)window()->winId());
+    }
+
     float pressure = 1.0f;
     float tiltFactor = 0.0f;
     
-    if (event->source() == Qt::MouseEventNotSynthesized) {
-        m_wintabActive = false; // It's a real mouse, stop using old Wintab data
-    }
+    // Check if Wintab should be used according to user preferences
+    bool useWintab = (PreferencesManager::instance()->tabletInputMode() == "Wintab");
+    qint64 now = QDateTime::currentMSecsSinceEpoch();
+    bool wintabRecentlyActive = useWintab && (now - m_lastWintabTime < 250); // Wintab was active within the last 250ms
     
-    if (m_wintabActive) {
+    if (wintabRecentlyActive) {
+      m_wintabActive = true;
       pressure = m_wintabPressure;
       // Convert Wintab tilts to a single tiltFactor like Qt does
       float tiltDist = std::sqrt(m_wintabTiltX*m_wintabTiltX + m_wintabTiltY*m_wintabTiltY);
       tiltFactor = std::min(1.0f, tiltDist / 60.0f); 
-    } else if (!event->points().isEmpty()) {
-      float p = event->points().first().pressure();
-      if (p > 0.0f)
-        pressure = p;
+    } else {
+      m_wintabActive = false;
+      bool isStylus = false;
+      if (event->device()) {
+          if (event->device()->type() == QInputDevice::DeviceType::Stylus ||
+              event->device()->type() == QInputDevice::DeviceType::Airbrush) {
+              isStylus = true;
+          }
+      }
+      
+      if (!event->points().isEmpty()) {
+        float p = event->points().first().pressure();
+        if (p > 0.0f)
+          pressure = p;
+      }
     }
 
     if (m_isHoldingForShape && m_quickShapeType != QuickShapeType::None) {
@@ -5290,10 +5320,15 @@ void CanvasItem::mouseDoubleClickEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::onWintabEvent(float x, float y, float pressure, float tiltX, float tiltY) {
+    if (PreferencesManager::instance()->tabletInputMode() != "Wintab") {
+        m_wintabActive = false;
+        return;
+    }
     m_wintabPressure = pressure;
     m_wintabTiltX = tiltX;
     m_wintabTiltY = tiltY;
     m_wintabActive = true;
+    m_lastWintabTime = QDateTime::currentMSecsSinceEpoch();
 }
 
 void CanvasItem::tabletEvent(QTabletEvent *event) {
@@ -5358,6 +5393,11 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     }
   }
 
+  if (PreferencesManager::instance()->tabletInputMode() == "Wintab" && !m_wintabInitAttempted && window()) {
+    m_wintabInitAttempted = true;
+    WintabManager::instance()->init((HWND)window()->winId());
+  }
+
   float pressure = event->pressure();
   // Normalizar presión
   if (pressure > 1.0f)
@@ -5368,6 +5408,11 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
   // Obtenemos un factor de 0.0 (vertical) a 1.0 (máxima inclinación)
   float tiltX = event->xTilt();
   float tiltY = event->yTilt();
+  
+  bool useWintab = (PreferencesManager::instance()->tabletInputMode() == "Wintab");
+  if (!useWintab) {
+      m_wintabActive = false;
+  }
   
   if (m_wintabActive) {
       pressure = m_wintabPressure;
@@ -11348,6 +11393,12 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.wetMix.blur;
     if (key == "dilution")
       return m_editingPreset.wetMix.dilution;
+    if (key == "color_mixing")
+      return m_editingPreset.wetMix.colorMixing;
+    if (key == "paint_amount")
+      return m_editingPreset.wetMix.paintAmount;
+    if (key == "color_stretch")
+      return m_editingPreset.wetMix.colorStretch;
   }
 
   // ── color dynamics ──
@@ -11617,6 +11668,15 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
       changed = true;
     } else if (key == "dilution") {
       m_editingPreset.wetMix.dilution = value.toFloat();
+      changed = true;
+    } else if (key == "color_mixing") {
+      m_editingPreset.wetMix.colorMixing = value.toBool();
+      changed = true;
+    } else if (key == "paint_amount") {
+      m_editingPreset.wetMix.paintAmount = value.toFloat();
+      changed = true;
+    } else if (key == "color_stretch") {
+      m_editingPreset.wetMix.colorStretch = value.toFloat();
       changed = true;
     }
   }
@@ -13623,6 +13683,10 @@ WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
     params.dryingRate = std::max(0.1f, preset->wetMix.dryingTime > 0.0f
                                        ? (1.0f / preset->wetMix.dryingTime)
                                        : 0.4f);
+    params.colorMixing = preset->wetMix.colorMixing;
+    params.paintAmount = preset->wetMix.paintAmount;
+    params.colorStretch = preset->wetMix.colorStretch;
+    params.blendMode = static_cast<int>(preset->blendMode);
 
     // PigmentSettings
     params.granulation = preset->pigment.granulation;

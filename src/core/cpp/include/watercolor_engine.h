@@ -49,6 +49,10 @@ public:
         float grainContrast   = 0.0f;  // Contraste del grano
         bool  invertGrain     = false; // Invertir grano
         bool  blendOnly      = false; // Si es true, solo mezcla/difumina (agua pura)
+        bool  colorMixing    = true;  // Mezclar colores
+        float paintAmount    = 0.7f;  // Cantidad de pintura
+        float colorStretch   = 0.1f;  // Extender color
+        int   blendMode      = 0;     // Modo de combinación
     };
 
     explicit WatercolorEngine(QObject *parent = nullptr);

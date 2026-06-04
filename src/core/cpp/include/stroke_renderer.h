@@ -90,7 +90,9 @@ public:
       uint32_t dualTipTexId = 0, bool hasDualTip = false, float dualTipScale = 1.0f, float dualTipRotation = 0.0f, int dualTipBlendMode = 0, float dualTipFlow = 1.0f, int grainBlendMode = 0,
       uint32_t dualGrainTexId = 0, bool hasDualGrain = false, float dualGrainScale = 1.0f, float dualGrainIntensity = 0.5f, float dualGrainBright = 0.0f, float dualGrainCon = 1.0f, bool invertDualGrain = false, int dualGrainBlendMode = 0,
       // Mode
-      bool isEraser = false);
+      bool isEraser = false,
+      // Color mixing and combine mode params
+      bool colorMixing = true, float paintAmount = 0.7f, float colorStretch = 0.1f, int blendMode = 0);
 
   struct DabInstance {
     float x, y;
@@ -150,7 +152,9 @@ public:
       uint32_t dualTipTexId = 0, bool hasDualTip = false, float dualTipScale = 1.0f, float dualTipRotation = 0.0f, int dualTipBlendMode = 0, float dualTipFlow = 1.0f, int grainBlendMode = 0,
       uint32_t dualGrainTexId = 0, bool hasDualGrain = false, float dualGrainScale = 1.0f, float dualGrainIntensity = 0.5f, float dualGrainBright = 0.0f, float dualGrainCon = 1.0f, bool invertDualGrain = false, int dualGrainBlendMode = 0,
       // Mode
-      bool isEraser = false);
+      bool isEraser = false,
+      // Color mixing and combine mode params
+      bool colorMixing = true, float paintAmount = 0.7f, float colorStretch = 0.1f, int blendMode = 0);
 
   void setClippingEnabled(bool enabled) { m_clippingEnabled = enabled; }
 

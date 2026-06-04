@@ -3,6 +3,7 @@
 #include <QGuiApplication>
 #include <QWindow>
 #include <QScreen>
+#include <QDateTime>
 
 // Estructura AXIS de Wintab para obtener los rangos
 typedef struct tagAXIS {
@@ -31,6 +32,7 @@ WintabManager::~WintabManager() {
 }
 
 bool WintabManager::init(HWND hwnd) {
+    qDebug() << "WintabManager::init called with HWND:" << hwnd;
     if (m_wintabLib) return true; // Ya inicializado
 
     m_wintabLib = LoadLibraryA("wintab32.dll");
@@ -58,15 +60,19 @@ bool WintabManager::init(HWND hwnd) {
     }
 
     // Obtener rangos de presión
-    AXIS pressureAxis;
+    AXIS pressureAxis = { 0, 0, 0, 0 };
     if (m_ptrWTInfoA(WTI_DEVICES, DVC_NPRESSURE, &pressureAxis)) {
         m_maxPressure = pressureAxis.axMax;
     } else {
         m_maxPressure = 1024; // fallback standard
     }
+    if (m_maxPressure <= 0) {
+        m_maxPressure = 1024;
+    }
     
     // Obtener dimensiones de tableta física (resolución nativa Wintab)
-    AXIS xAxis, yAxis;
+    AXIS xAxis = { 0, 0, 0, 0 };
+    AXIS yAxis = { 0, 0, 0, 0 };
     if (m_ptrWTInfoA(WTI_DEVICES, DVC_X, &xAxis)) {
         m_tabletExtX = xAxis.axMax;
     } else {
@@ -147,6 +153,15 @@ bool WintabManager::nativeEventFilter(const QByteArray &eventType, void *message
             float pressure = (float)pkt.pkNormalPressure / (float)m_maxPressure;
             if (pressure < 0.0f) pressure = 0.0f;
             if (pressure > 1.0f) pressure = 1.0f;
+
+            static qint64 lastLogTime = 0;
+            qint64 now = QDateTime::currentMSecsSinceEpoch();
+            if (pressure > 0.0f && now - lastLogTime > 200) {
+                qDebug() << "[Wintab Info] Raw Pressure:" << pkt.pkNormalPressure
+                         << "Max:" << m_maxPressure
+                         << "Normalized:" << pressure;
+                lastLogTime = now;
+            }
 
             // Inclinación (tilt)
             // orAzimuth: 0 a 3600 (0.1 grados)

@@ -204,6 +204,10 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
     m_shader->setUniformValue("uCanvasSize",   QVector2D(m_width, m_height));
     m_shader->setUniformValue("uMode",         0);  // Paint Dab
     m_shader->setUniformValue("uBlendOnly",    params.blendOnly ? 1 : 0);
+    m_shader->setUniformValue("uColorMixing",   params.colorMixing ? 1 : 0);
+    m_shader->setUniformValue("uPaintAmount",   params.paintAmount);
+    m_shader->setUniformValue("uColorStretch",  params.colorStretch);
+    m_shader->setUniformValue("uBrushBlendMode", params.blendMode);
 
     canvasFBOout->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
@@ -338,6 +342,10 @@ void WatercolorEngine::performSpread() {
     m_shader->setUniformValue("uCanvasSize",     QVector2D(m_width, m_height));
     m_shader->setUniformValue("uMode",           1);  // Spread Wet
     m_shader->setUniformValue("uBlendOnly",      m_lastParams.blendOnly ? 1 : 0);
+    m_shader->setUniformValue("uColorMixing",   m_lastParams.colorMixing ? 1 : 0);
+    m_shader->setUniformValue("uPaintAmount",   m_lastParams.paintAmount);
+    m_shader->setUniformValue("uColorStretch",  m_lastParams.colorStretch);
+    m_shader->setUniformValue("uBrushBlendMode", m_lastParams.blendMode);
 
     m_spreadFBO->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
@@ -377,6 +385,10 @@ void WatercolorEngine::performSpread() {
     m_shader->setUniformValue("uCanvasSize",     QVector2D(m_width, m_height));
     m_shader->setUniformValue("uMode",           2);  // Dry Step (Difusión + Evaporación de Agua)
     m_shader->setUniformValue("uBlendOnly",      m_lastParams.blendOnly ? 1 : 0);
+    m_shader->setUniformValue("uColorMixing",   m_lastParams.colorMixing ? 1 : 0);
+    m_shader->setUniformValue("uPaintAmount",   m_lastParams.paintAmount);
+    m_shader->setUniformValue("uColorStretch",  m_lastParams.colorStretch);
+    m_shader->setUniformValue("uBrushBlendMode", m_lastParams.blendMode);
 
     m_wetMapFBO_B->bind();
     m_gl->glViewport(0, 0, m_width, m_height);

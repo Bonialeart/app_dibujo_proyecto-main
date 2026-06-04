@@ -37,6 +37,12 @@ uniform float uGrainBrightness;    // Brillo del grano (-100..100)
 uniform float uGrainContrast;      // Contraste del grano (-100..100)
 uniform int uInvertGrain;          // Invertir grano (0 o 1)
 
+// ── New Color Mixing and Blend Mode Uniforms ──
+uniform int uColorMixing;
+uniform float uPaintAmount;
+uniform float uColorStretch;
+uniform int uBrushBlendMode;
+
 // ── Parámetros del canvas ──
 uniform vec2  uCanvasSize;         // Tamaño del canvas en píxeles
 uniform float uTime;               // Tiempo global para animación de secado
@@ -132,6 +138,7 @@ vec4 paintDab() {
     vec4 wetSample    = texture(uWetMap, vTexCoord);  // R=wetness G=sec_age
     vec4 dabSample    = texture(uBrushDab, vTexCoord);
 
+    float localPaintAmount = uPaintAmount * uPressure;
     float dabAlpha    = dabSample.a * uFlow * uPressure;
     float localWet    = wetSample.r;   // Humedad preexistente en este pixel
     float secAge      = wetSample.g;   // Edad del pigmento húmedo (0=fresco 1=viejo)
@@ -141,13 +148,15 @@ vec4 paintDab() {
     if (uGrainIntensity > 0.001) {
         vec2 globalCoord = getGlobalCoord(vTexCoord);
         float gv = getGrainValue(globalCoord);
-        grain = mix(1.0, gv, uGrainIntensity);
+        float localGrainIntensity = uGrainIntensity * (1.0 - localPaintAmount * 0.5);
+        grain = mix(1.0, gv, localGrainIntensity);
     }
     dabAlpha *= grain;
 
     // ── DILUCIÓN: el agua diluye el pigmento del pincel ──
     // Mayor dilución = pigmento más transparente pero mayor depósito de agua
     float effectivePigment = (uBlendOnly == 1) ? 1.0 : (uPigment * (1.0 - uDilution * 0.7));
+    effectivePigment *= localPaintAmount;
     dabAlpha *= effectivePigment;
 
     if (dabAlpha < 0.001) {
@@ -177,7 +186,8 @@ vec4 paintDab() {
         vec2 globalCoord = getGlobalCoord(vTexCoord);
         float gv = getGrainValue(globalCoord);
         // En valles del papel (gv bajo) se concentra más el pigmento
-        float granFactor = 1.0 + uGranulation * (0.5 - gv) * 2.0;
+        float localGranulation = uGranulation * (1.0 - localPaintAmount * 0.7);
+        float granFactor = 1.0 + localGranulation * (0.5 - gv) * 2.0;
         dabAlpha = clamp(dabAlpha * granFactor, 0.0, 1.0);
     }
 
@@ -186,9 +196,10 @@ vec4 paintDab() {
     vec3 finalRGB = brushRGB;
     float finalAlpha = dabAlpha;
 
-    if (canvasSample.a > 0.001) {
+    if (uColorMixing != 0 && canvasSample.a > 0.001) {
         // Despremutiplicar color del canvas
         vec3 canvasRGB = canvasSample.rgb / canvasSample.a;
+        float blendModulation = clamp((1.0 - localPaintAmount) * 2.0 + uColorStretch * 2.0, 0.0, 2.0);
 
         if (localWet > 0.05) {
             // ━━━ ÁREA HÚMEDA: Wet-on-wet ━━━
@@ -196,6 +207,7 @@ vec4 paintDab() {
             // La frescura del agua determina cuánto se mezclan
             float freshness = 1.0 - secAge;               // 1=reciente, 0=viejo
             float blendFactor = localWet * freshness * 0.8;
+            blendFactor = clamp(blendFactor * blendModulation, 0.0, 1.0);
 
             // Mezcla física de pigmentos
             vec3 mixedRGB = mixKubelkaMunk(brushRGB, canvasRGB, blendFactor);
@@ -208,6 +220,7 @@ vec4 paintDab() {
                 // atenuamos drásticamente el layerKubelkaMunk para que el color se mezcle
                 // de forma fluida pero no se oscurezca repetidamente sobre sí mismo mientras no se levante el lápiz.
                 float wetAccumulation = uPressure * 0.40 * (1.0 - freshness * 0.95);
+                wetAccumulation = clamp(wetAccumulation * (1.0 + localPaintAmount), 0.0, 1.0);
                 finalRGB = layerKubelkaMunk(mixedRGB, brushRGB, wetAccumulation);
             }
 
@@ -225,6 +238,7 @@ vec4 paintDab() {
                 // Súper acumulación física utilizando el modelo aditivo K-M
                 // Aumenta proporcionalmente a la presión del lápiz para oscurecer
                 float accumulation = (1.0 - uDilution * 0.40) * uPressure * 1.55;
+                accumulation = clamp(accumulation * (1.0 + localPaintAmount), 0.0, 3.0);
                 finalRGB = layerKubelkaMunk(canvasRGB, brushRGB, accumulation);
 
                 // En zonas secas, la opacidad se acumula también (se oscurece)
@@ -246,12 +260,17 @@ vec4 paintDab() {
         vec3 srcRGB = finalRGB;
         vec3 dstRGB = canvasSample.a > 0.001 ? canvasSample.rgb / canvasSample.a : vec3(1.0);
         
-        // Multiply blend modulated by brush alpha
-        vec3 multipliedRGB = mix(dstRGB, srcRGB * dstRGB, finalAlpha);
-        // Standard source over fallback
-        vec3 overRGB = srcPre + dstPre * (1.0 - finalAlpha);
-        
-        outRGB = mix(overRGB, multipliedRGB * outAlpha, canvasSample.a);
+        if (uBrushBlendMode == 1) { // Multiply
+            vec3 multipliedRGB = mix(dstRGB, srcRGB * dstRGB, finalAlpha);
+            outRGB = multipliedRGB * outAlpha;
+        } else if (uBrushBlendMode == 2) { // Screen
+            vec3 screenRGB = mix(dstRGB, srcRGB + dstRGB - srcRGB * dstRGB, finalAlpha);
+            outRGB = screenRGB * outAlpha;
+        } else { // Normal (default glazing watercolor composition)
+            vec3 multipliedRGB = mix(dstRGB, srcRGB * dstRGB, finalAlpha);
+            vec3 overRGB = srcPre + dstPre * (1.0 - finalAlpha);
+            outRGB = mix(overRGB, multipliedRGB * outAlpha, canvasSample.a);
+        }
     } else {
         outRGB = vec3(0.0);
     }
@@ -263,9 +282,14 @@ vec4 paintDab() {
 // MODO 1: SPREAD WET — Difusión del pigmento en zonas húmedas
 // ============================================================================
 // Simula la difusión física del pigmento que fluye y se expande con el agua,
-// limitada por la fricción/vec4 spreadWet() {
+// limitada por la fricción
+vec4 spreadWet() {
     vec4 centerCenter = texture(uCanvas, vTexCoord);
     vec4 wetCenter    = texture(uWetMap, vTexCoord);
+
+    if (uColorMixing == 0) {
+        return centerCenter;
+    }
 
     float wetness = wetCenter.r;
     if (wetness < 0.01) {
@@ -368,8 +392,9 @@ vec4 paintDab() {
     float flowResistance = paperGrain * uGrainIntensity * 0.5;
     
     // Tasa de difusión escalada por el sangrado (uBleed) y la frescura del agua (1.0 - edad)
+    float blendModulation = clamp((1.0 - localPaintAmount) * 2.0 + uColorStretch * 2.0, 0.0, 2.0);
     float diffusionRate = uBleed * (1.0 - wetCenter.g);
-    float effectiveRate = clamp(diffusionRate * (1.0 - flowResistance), 0.0, 1.0);
+    float effectiveRate = clamp(diffusionRate * blendModulation * (1.0 - flowResistance), 0.0, 1.0);
 
     vec3 centerRGB_unp = centerCenter.a > 0.001 ? centerCenter.rgb / centerCenter.a : vec3(0.0);
 

@@ -208,6 +208,9 @@ QJsonObject BrushPreset::WetMixSettings::toJson() const {
   obj["absorption_rate"] = absorptionRate;
   obj["drying_time"] = dryingTime;
   obj["wet_on_wet_multiplier"] = wetOnWetMultiplier;
+  obj["color_mixing"] = colorMixing;
+  obj["paint_amount"] = paintAmount;
+  obj["color_stretch"] = colorStretch;
 
   // Oil Paint
   obj["mixing"] = mixing;
@@ -240,6 +243,9 @@ BrushPreset::WetMixSettings::fromJson(const QJsonObject &obj) {
   w.absorptionRate = obj.value("absorption_rate").toDouble(0.0);
   w.dryingTime = obj.value("drying_time").toDouble(0.0);
   w.wetOnWetMultiplier = obj.value("wet_on_wet_multiplier").toDouble(1.0);
+  w.colorMixing = obj.value("color_mixing").toBool(true);
+  w.paintAmount = obj.value("paint_amount").toDouble(0.7);
+  w.colorStretch = obj.value("color_stretch").toDouble(0.1);
 
   // Oil Paint
   w.mixing = obj.value("mixing").toDouble(0.5);
@@ -914,6 +920,10 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.absorptionRate = wetMix.absorptionRate;
   s.dryingTime = wetMix.dryingTime;
   s.wetOnWetMultiplier = wetMix.wetOnWetMultiplier;
+  s.colorMixing = wetMix.colorMixing;
+  s.paintAmount = wetMix.paintAmount;
+  s.colorStretch = wetMix.colorStretch;
+  s.blendMode = static_cast<int>(blendMode);
 
   // Oil Wet Mix
   s.mixing = wetMix.mixing;
@@ -1008,6 +1018,12 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
              name.contains("Pen", Qt::CaseInsensitive)) {
     s.type = BrushSettings::Type::Ink;
   } else if (name.contains("Water", Qt::CaseInsensitive) ||
+             name.contains("Acuarela", Qt::CaseInsensitive) ||
+             name.contains("Aguada", Qt::CaseInsensitive) ||
+             name.contains("Agua", Qt::CaseInsensitive) ||
+             name.contains("Wash", Qt::CaseInsensitive) ||
+             name.contains("Humedo", Qt::CaseInsensitive) ||
+             name.contains("Húmedo", Qt::CaseInsensitive) ||
              category.contains("Watercolor", Qt::CaseInsensitive)) {
     s.type = BrushSettings::Type::Watercolor;
   } else if (name.contains("Oil", Qt::CaseInsensitive) ||

@@ -420,7 +420,7 @@ void BrushPresetManager::loadDefaults() {
            "", 0, 0, "tinta_china.png", 0, 0, true, false);
 
   // ==================== PAINT & BLEND ====================
-  addBrush("Paint & Blend", "Watercolor", 50, 0.3f, 0.15f, 0.08f, 0.45f,
+  addBrush("Paint & Blend", "Acuarela clásica", 50, 0.3f, 0.15f, 0.08f, 0.45f,
            "pincel_redondo.sut.1.layer.png", 80.0f, 0.5f, "shape_round.png", 0.78f, 0,
            true, false, 0, 0.06f);
   {
@@ -440,7 +440,7 @@ void BrushPresetManager::loadDefaults() {
     wcPreset.edgeDarkening.width = 0.18f;
   }
 
-  addBrush("Paint & Blend", "Watercolor Wet", 60, 0.25f, 0.05f, 0.1f, 0.5f,
+  addBrush("Paint & Blend", "Acuarela aguada", 60, 0.25f, 0.05f, 0.1f, 0.5f,
            "acuarela_aguada.sut.2.layer.png", 25.0f, 0.8f, "acuarela_aguada.sut.3.layer.png", 0.88f, 0,
            true, false, 0, 0.1f);
   {
@@ -465,7 +465,7 @@ void BrushPresetManager::loadDefaults() {
     wcPreset.dualBrush.blendMode = "multiply";
   }
 
-  addBrush("Paint & Blend", "Watercolor Splatter", 75, 0.4f, 0.1f, 0.25f, 0.1f,
+  addBrush("Paint & Blend", "Acuarela salpicaduras", 75, 0.4f, 0.1f, 0.25f, 0.1f,
            "salpicaduras.sut.1.layer.png", 120.0f, 0.6f, "salpicaduras.sut.2.layer.png", 0.65f, 0,
            true, false, 0, 0.35f);
   {

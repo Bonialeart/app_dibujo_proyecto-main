@@ -328,6 +328,9 @@ struct BrushPreset {
     float absorptionRate = 0.0f;
     float dryingTime = 0.0f;
     float wetOnWetMultiplier = 1.0f;
+    bool colorMixing = true;
+    float paintAmount = 0.7f;
+    float colorStretch = 0.1f;
 
     // Oil Paint fields
     float mixing = 0.5f;

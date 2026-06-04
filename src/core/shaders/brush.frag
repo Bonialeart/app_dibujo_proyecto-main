@@ -46,7 +46,7 @@ uniform sampler2D dualTipTexture;
 uniform int uHasDualTip;
 uniform float dualTipScale;
 uniform float dualTipRotation;
-uniform int uDualTipBlendMode; // 0 = multiply, 1 = mask (subtract), 2 = add
+uniform int uDualTipBlendMode; // 0 = multiply, 1 = mask (subtract), 2 = add, 3 = height_linear
 uniform float uDualTipFlow;
 uniform int uGrainBlendMode;   // 0 = multiply, 1 = subtract, 2 = threshold/reveal
 
@@ -76,6 +76,12 @@ uniform float edgeDarkeningWidth;
 uniform int textureRevealEnabled;
 uniform float textureRevealIntensity;
 uniform float textureRevealPressureInfluence;
+
+// === New Color Mixing and Blend Mode Uniforms ===
+uniform int uColorMixing;
+uniform float uPaintAmount;
+uniform float uColorStretch;
+uniform int uBrushBlendMode;
 
 // === Oil Paint Uniforms ===
 uniform float mixing;
@@ -272,6 +278,8 @@ void main() {
             shapeAlpha *= mix(1.0, 1.0 - dualAlpha, uDualTipFlow);
         } else if (uDualTipBlendMode == 2) {
             shapeAlpha = clamp(shapeAlpha + dualAlpha * uDualTipFlow, 0.0, 1.0);
+        } else if (uDualTipBlendMode == 3) {
+            shapeAlpha = clamp(shapeAlpha + (dualAlpha - 1.0) * uDualTipFlow, 0.0, 1.0);
         }
     }
 
@@ -419,9 +427,11 @@ void main() {
     vec3 finalRGB = resultColor;
 
     // === 8. WET MIX ENGINE — Acuarela Profesional + Óleo ===
-    if (brushType != 7 && (max(wetness, mixing) > 0.01 || max(smudge, smudgeStrength) > 0.01 || bloomEnabled == 1 || blendOnly == 1) && canvasSize.x > 1.0) {
+    if (uColorMixing != 0 && brushType != 7 && (max(wetness, mixing) > 0.01 || max(smudge, smudgeStrength) > 0.01 || bloomEnabled == 1 || blendOnly == 1) && canvasSize.x > 1.0) {
         float effectiveWetness = max(wetness, mixing);
         float effectiveSmudge  = max(smudge, smudgeStrength);
+        float localPaintAmount = uPaintAmount * pressure;
+        float blendModulation = clamp((1.0 - localPaintAmount) * 2.0 + uColorStretch * 2.0, 0.0, 2.0);
 
         vec2 screenPos = gl_FragCoord.xy / canvasSize;
         vec4 canvasColor = texture(canvasTexture, screenPos);
@@ -484,7 +494,7 @@ void main() {
                 avgRGB = blendedRGB / weightSum;
 
                 float blendStrength = max(bleed * effectiveWetness, effectiveSmudge);
-                blendStrength = clamp(blendStrength, 0.0, 0.92);
+                blendStrength = clamp(blendStrength * blendModulation, 0.0, 0.92);
 
                 // Mezcla Kubelka-Munk entre el color local y el promedio vecino
                 finalRGB = mixColorsKM(canvasRGB, avgRGB, blendStrength);
@@ -519,7 +529,7 @@ void main() {
             // Con bleed=0.65: pintar azul sobre rojo da morado suave.
             // mixColorsKM usa el modelo Kubelka-Munk (mezcla de pigmentos real).
             float colorFuseAmount = existingDensity * bleed * effectiveWetness;
-            colorFuseAmount = clamp(colorFuseAmount, 0.0, 0.72);
+            colorFuseAmount = clamp(colorFuseAmount * blendModulation, 0.0, 0.72);
             finalRGB = mixColorsKM(finalRGB, canvasRGB, colorFuseAmount);
 
             // ── OSCURECIMIENTO POR ACUMULACIÓN (Layering) ───────────────────
@@ -574,6 +584,7 @@ void main() {
         // ─── MEZCLADO ESTÁNDAR WET (pinceles de óleo y otros) ────────────────
         if (!isWatercolor && blendOnly == 0 && effectiveWetness > 0.01 && canvasA > 0.01) {
             float mixAmount = clamp(effectiveWetness * 0.5 * canvasA + bleed * 0.3, 0.0, 1.0);
+            mixAmount = clamp(mixAmount * blendModulation, 0.0, 1.0);
             finalRGB = mixColorsKM(finalRGB, canvasRGB, mixAmount);
             if (dirtyMixing == 1) finalRGB = mixColorsKM(finalRGB, canvasRGB, 0.2);
             if (temperatureShift != 0.0) {
@@ -586,7 +597,7 @@ void main() {
     if (brushType == 5) {
         // --- PHYSICAL OIL PAINT SIMULATION ---
         float effPaintLoad = (instanced == 1) ? vPaintLoad : loading;
-        if (canvasSize.x > 1.0) {
+        if (uColorMixing != 0 && canvasSize.x > 1.0) {
             vec2 screenPos = gl_FragCoord.xy / canvasSize;
             vec4 canvasColor = texture(canvasTexture, screenPos);
             vec3 canvasRGB = canvasColor.a > 0.001 ? canvasColor.rgb / canvasColor.a : vec3(1.0);
@@ -594,13 +605,15 @@ void main() {
             // Simular la mezcla física de pigmentos usando Kubelka-Munk
             vec3 mixedColor = mixColorsKM(canvasRGB, effColor.rgb, effPaintLoad);
             
-            // El arrastre (smudge) depende de la humedad (wetness)
-            finalRGB = mix(effColor.rgb, mixedColor, wetness);
+            // El arrastre (smudge) depende de la humedad (wetness) e influjo de paint amount / stretch
+            float localPaintAmount = uPaintAmount * pressure;
+            float oilBlend = wetness * clamp(1.0 - localPaintAmount * 0.8 + uColorStretch * 0.8, 0.0, 1.0);
+            finalRGB = mix(effColor.rgb, mixedColor, oilBlend);
             
             // Calcular el alfa resultante
             baseAlpha = max(canvasColor.a, shapeAlpha * effPaintLoad) * effColor.a * flow;
         } else {
-            // Safe fallback when no canvas is present (e.g. preset previews)
+            // Safe fallback when no canvas is present or color mixing is disabled
             finalRGB = effColor.rgb;
             baseAlpha = shapeAlpha * effPaintLoad * effColor.a * flow;
         }

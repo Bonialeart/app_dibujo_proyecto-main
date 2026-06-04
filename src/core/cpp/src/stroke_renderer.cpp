@@ -276,8 +276,8 @@ void StrokeRenderer::renderStroke(
     // Dual brush and grain modes
     uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, float dualTipFlow, int grainBlendMode,
     uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode,
-    // Mode
-    bool isEraser) {
+    bool isEraser,
+    bool colorMixing, float paintAmount, float colorStretch, int blendMode) {
 
   if (!m_program)
     return;
@@ -478,6 +478,11 @@ void StrokeRenderer::renderStroke(
     m_program->setUniformValue("canvasTexture", 2);
   }
 
+  m_program->setUniformValue("uColorMixing", colorMixing ? 1 : 0);
+  m_program->setUniformValue("uPaintAmount", paintAmount);
+  m_program->setUniformValue("uColorStretch", colorStretch);
+  m_program->setUniformValue("uBrushBlendMode", blendMode);
+
   // --- BLEND MODE ---
   glEnable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
@@ -499,7 +504,13 @@ void StrokeRenderer::renderStroke(
   } else {
     // PINTURA NORMAL
     m_program->setUniformValue("color", color);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    if (blendMode == 1) { // Multiply
+      glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+    } else if (blendMode == 2) { // Screen
+      glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
+    } else { // Normal
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
   }
 
   // Draw the pre-loaded quad
@@ -553,8 +564,8 @@ void StrokeRenderer::renderStrokeInstanced(
     // Dual brush and grain modes
     uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, float dualTipFlow, int grainBlendMode,
     uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode,
-    // Mode
-    bool isEraser) {
+    bool isEraser,
+    bool colorMixing, float paintAmount, float colorStretch, int blendMode) {
 
   if (!m_program || dabs.empty())
     return;
@@ -738,6 +749,11 @@ void StrokeRenderer::renderStrokeInstanced(
     m_program->setUniformValue("canvasTexture", 2);
   }
 
+  m_program->setUniformValue("uColorMixing", colorMixing ? 1 : 0);
+  m_program->setUniformValue("uPaintAmount", paintAmount);
+  m_program->setUniformValue("uColorStretch", colorStretch);
+  m_program->setUniformValue("uBrushBlendMode", blendMode);
+
   // --- BLEND MODE ---
   glEnable(GL_BLEND);
   glDisable(GL_DEPTH_TEST);
@@ -750,7 +766,13 @@ void StrokeRenderer::renderStrokeInstanced(
     glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
                         GL_ONE_MINUS_SRC_ALPHA);
   } else {
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    if (blendMode == 1) { // Multiply
+      glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
+    } else if (blendMode == 2) { // Screen
+      glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
+    } else { // Normal
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
   }
 
   m_program->setUniformValue("instanced", 1);

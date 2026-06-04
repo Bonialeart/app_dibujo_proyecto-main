@@ -528,6 +528,8 @@ static void paintTexturedDabRaster(QPainter *painter, const QPointF &point, floa
           resultVal = mainVal * ((1.0f - flow) + flow * (1.0f - dualVal));
         } else if (settings.dualTipBlendMode == "add") {
           resultVal = std::clamp(mainVal + dualVal * flow, 0.0f, 1.0f);
+        } else if (settings.dualTipBlendMode == "height_linear" || settings.dualTipBlendMode == "height") {
+          resultVal = std::clamp(mainVal + (dualVal - 1.0f) * flow, 0.0f, 1.0f);
         } else { // multiply
           resultVal = mainVal * ((1.0f - flow) + flow * dualVal);
         }
@@ -685,6 +687,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       uDualTipBlendMode = 1;
     } else if (settings.dualTipBlendMode == "add") {
       uDualTipBlendMode = 2;
+    } else if (settings.dualTipBlendMode == "height_linear" || settings.dualTipBlendMode == "height") {
+      uDualTipBlendMode = 3;
     }
 
     int uGrainBlendMode = 0; // multiply
@@ -910,7 +914,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, settings.dualTipFlow, uGrainBlendMode,
               dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
               settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode,
-              settings.type == BrushSettings::Type::Eraser);
+              settings.type == BrushSettings::Type::Eraser,
+              settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
 
           // Blit the result from pongFBO (write target) back to pingFBO (read target)
           QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
@@ -952,7 +957,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             dualTipTexID, hasDualTip, settings.dualTipScale, settings.dualTipRotation, uDualTipBlendMode, settings.dualTipFlow, uGrainBlendMode,
             dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
             settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode,
-            settings.type == BrushSettings::Type::Eraser);
+            settings.type == BrushSettings::Type::Eraser,
+            settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
       }
     }
     // Update state
@@ -1198,6 +1204,8 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
     uDualTipBlendMode = 1;
   } else if (m_currentSettings.dualTipBlendMode == "add") {
     uDualTipBlendMode = 2;
+  } else if (m_currentSettings.dualTipBlendMode == "height_linear" || m_currentSettings.dualTipBlendMode == "height") {
+    uDualTipBlendMode = 3;
   }
 
   int uGrainBlendMode = 0; // multiply
@@ -1370,7 +1378,8 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         dualGrainTexId, hasDualGrain, m_currentSettings.dualTextureScale, m_currentSettings.dualTextureIntensity,
         m_currentSettings.dualGrainBright, m_currentSettings.dualGrainCon, m_currentSettings.invertDualGrain, m_currentSettings.dualGrainBlendMode,
         // Mode
-        isEraser);
+        isEraser,
+        m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode);
   }
   // Update State
   m_accumulatedDistance += dist;

@@ -5,7 +5,7 @@
         {
             "meta": {
                 "uuid": "wc-classic-001",
-                "name": "Watercolor Classic",
+                "name": "Acuarela clásica",
                 "category": "Watercolor",
                 "description": "Acuarela clasica — forma de charco, borde oscuro tipo tide-mark"
             },
@@ -69,7 +69,7 @@
         {
             "meta": {
                 "uuid": "wc-pull-001",
-                "name": "Watercolor Watery Dilution",
+                "name": "Acuarela aguada",
                 "category": "Watercolor",
                 "description": "Efecto aguada — mucha agua, pintura muy clara y transparente con hermosos bordes"
             },
@@ -85,13 +85,13 @@
                 "tip_texture": "acuarela_aguada_4.png",
                 "scale": 1.25,
                 "rotation": 0.0,
-                "blend_mode": "multiply",
+                "blend_mode": "height_linear",
                 "flow": 0.30,
                 "grain": {
                     "texture": "acuarela_aguada.sut.2.layer.png",
                     "scale": 25.0,
                     "intensity": 0.80,
-                    "brightness": -100.0,
+                    "brightness": 0.0,
                     "contrast": 0.0,
                     "invert": true,
                     "blend_mode": "multiply"
@@ -101,8 +101,8 @@
                 "texture": "acuarela_aguada.sut.1.layer.png",
                 "scale": 15.0,
                 "intensity": 0.54,
-                "brightness": 75.0,
-                "contrast": -70.0,
+                "brightness": 0.0,
+                "contrast": 0.0,
                 "invert": true,
                 "blend_mode": "multiply",
                 "rolling": true
@@ -132,7 +132,7 @@
         {
             "meta": {
                 "uuid": "wc-wetwet-001",
-                "name": "Watercolor Soft Wash",
+                "name": "Acuarela lavado suave",
                 "category": "Watercolor",
                 "description": "Lavado suave y transparente — ideal para degradados y fondos fluidos"
             },
@@ -170,7 +170,7 @@
         {
             "meta": {
                 "uuid": "wc-dry-001",
-                "name": "Watercolor Dry Brush",
+                "name": "Acuarela pincel seco",
                 "category": "Watercolor",
                 "description": "Pincel seco — cerdas visibles, alta textura"
             },
