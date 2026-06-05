@@ -135,6 +135,7 @@ float getGrainValue(vec2 coord) {
 //   • La dilución reduce la densidad del pigmento pero aumenta la humedad
 // ============================================================================
 vec4 paintDab() {
+    return vec4(1.0, 1.0, 0.0, 1.0); // DIAGNOSTIC: yellow
     vec4 canvasSample = texture(uCanvas, vTexCoord);
     vec4 wetSample    = texture(uWetMap, vTexCoord);  // R=wetness G=sec_age
     vec4 dabSample    = texture(uBrushDab, vTexCoord);

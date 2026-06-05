@@ -78,7 +78,13 @@
                 "follow_stroke": false,
                 "roundness": 1.0,
                 "scatter": 0.0,
-                "count": 1
+                "count": 1,
+                "blur": 0.7
+            },
+            "randomize": {
+                "rotation_jitter": 1.0,
+                "size_jitter": 0.15,
+                "opacity_jitter": 0.10
             },
             "spray": {
                 "enabled": true,
@@ -105,27 +111,27 @@
                     "texture": "acuarela_aguada.sut.2.layer.png",
                     "scale": 25.0,
                     "intensity": 0.80,
-                    "brightness": 0.0,
-                    "contrast": 0.0,
+                    "brightness": 75.0,
+                    "contrast": -70.0,
                     "invert": true,
                     "blend_mode": "multiply",
                     "rotation": 0.0,
                     "emphasize_density": false,
-                    "apply_to_tips": true
+                    "apply_to_tips": false
                 }
             },
             "grain": {
                 "texture": "acuarela_aguada.sut.1.layer.png",
                 "scale": 15.0,
                 "intensity": 0.54,
-                "brightness": 0.0,
-                "contrast": 0.0,
+                "brightness": 75.0,
+                "contrast": -70.0,
                 "invert": true,
                 "blend_mode": "multiply",
                 "rolling": true,
-                "rotation": 0.0,
+                "rotation": 50.0,
                 "emphasize_density": false,
-                "apply_to_tips": true
+                "apply_to_tips": false
             },
             "stroke": {
                 "spacing": 0.035,

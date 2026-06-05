@@ -13756,14 +13756,25 @@ bool CanvasItem::isWatercolorBrush() const {
         auto *bpm = artflow::BrushPresetManager::instance();
         preset = bpm->findByName(m_activeBrushName);
     }
-    if (!preset) return false;
+    if (!preset) {
+        qWarning() << "isWatercolorBrush: Preset is NULL for active brush:" << m_activeBrushName;
+        return false;
+    }
+
+    qWarning() << "isWatercolorBrush: Checking preset" << preset->name
+               << "type =" << preset->type
+               << "uuid =" << preset->uuid
+               << "category =" << preset->category;
 
     if (!preset->type.isEmpty()) {
-        return (preset->type == "watercolor");
+        bool res = (preset->type == "watercolor");
+        qWarning() << "isWatercolorBrush: early type check returns:" << res;
+        return res;
     }
 
     // Verificación por prefijo de UUID (todos los pinceles de acuarela tienen "wc-")
     if (preset->uuid.startsWith("wc-", Qt::CaseInsensitive)) {
+        qWarning() << "isWatercolorBrush: matches UUID prefix 'wc-'. Returning true";
         return true;
     }
 
@@ -13772,6 +13783,7 @@ bool CanvasItem::isWatercolorBrush() const {
     if (name.contains("watercolor") || name.contains("acuarela") ||
         name.contains("aquarela")   || name.contains("aguada") ||
         name.contains("wet")        || name.contains("splatter")) {
+        qWarning() << "isWatercolorBrush: matches name. Returning true";
         return true;
     }
 

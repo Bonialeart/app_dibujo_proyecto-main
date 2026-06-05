@@ -53,6 +53,8 @@ uniform float dualTipRotation;
 uniform int uDualTipBlendMode; // 0 = multiply, 1 = mask (subtract), 2 = add, 3 = height_linear
 uniform float uDualTipFlow;
 uniform int uGrainBlendMode;   // 0 = multiply, 1 = subtract, 2 = threshold/reveal
+uniform int uGrainApplyToTips;
+uniform int uDualGrainApplyToTips;
 
 // === Wet Mix Engine ===
 uniform sampler2D canvasTexture;  // Ping-pong buffer (existing paint on canvas)
@@ -143,12 +145,28 @@ uniform float uRoundness;
 uniform float uShapeContrast;
 uniform float uShapeBlur;
 
-float evaluateGrain(sampler2D grainTex, vec2 worldPos, float scale, float rotation, float intensity, float brightness, float contrast, int invert, int blendMode, float press) {
-    vec2 globalCoord = worldPos / (5.0 * scale);
-    if (rotation != 0.0) {
-        float cosR = cos(rotation);
-        float sinR = sin(rotation);
-        globalCoord = vec2(globalCoord.x * cosR - globalCoord.y * sinR, globalCoord.x * sinR + globalCoord.y * cosR);
+float evaluateGrain(sampler2D grainTex, vec2 worldPos, float scale, float rotation, float intensity, float brightness, float contrast, int invert, int blendMode, float press, int applyToTips, vec2 texCoords) {
+    vec2 globalCoord;
+    if (applyToTips == 1) {
+        vec2 localCoord = texCoords;
+        float sFactor = scale / 100.0;
+        if (sFactor > 0.001) {
+            localCoord = (localCoord - vec2(0.5)) / sFactor + vec2(0.5);
+        }
+        if (rotation != 0.0) {
+            float cosR = cos(rotation);
+            float sinR = sin(rotation);
+            vec2 centered = localCoord - vec2(0.5);
+            localCoord = vec2(centered.x * cosR - centered.y * sinR, centered.x * sinR + centered.y * cosR) + vec2(0.5);
+        }
+        globalCoord = localCoord;
+    } else {
+        globalCoord = worldPos / (5.0 * scale);
+        if (rotation != 0.0) {
+            float cosR = cos(rotation);
+            float sinR = sin(rotation);
+            globalCoord = vec2(globalCoord.x * cosR - globalCoord.y * sinR, globalCoord.x * sinR + globalCoord.y * cosR);
+        }
     }
     vec4 grainSample = texture(grainTex, globalCoord);
     float grainVal = (grainSample.a < 0.99) ? grainSample.a : dot(grainSample.rgb, vec3(0.299, 0.587, 0.114));
@@ -206,7 +224,7 @@ void main() {
     float dist = distance(TexCoords, vec2(0.5));
 
     bool isWcTip = (brushType == 4 || wetness > 0.3);
-    if (isWcTip && uHasGrain == 1 && grainIntensity > 0.01) {
+    if (isWcTip && uHasTip == 0 && uHasGrain == 1 && grainIntensity > 0.01) {
         vec2 globalCoord = vWorldPos / (5.0 * grainScale);
         float grainVal = texture(grainTexture, globalCoord).r;
         dist += (grainVal - 0.5) * grainIntensity * 0.16 * smoothstep(0.18, 0.5, dist);
@@ -286,12 +304,12 @@ void main() {
     bool dualGrainApplied = false;
     float mainGrainFactor = 1.0;
     if (uHasGrain == 1 && grainIntensity > 0.001) {
-        mainGrainFactor = evaluateGrain(grainTexture, vWorldPos, grainScale, uGrainRotation, grainIntensity, uGrainBrightness, uGrainContrast, uInvertGrain, uGrainBlendMode, pressure);
+        mainGrainFactor = evaluateGrain(grainTexture, vWorldPos, grainScale, uGrainRotation, grainIntensity, uGrainBrightness, uGrainContrast, uInvertGrain, uGrainBlendMode, pressure, uGrainApplyToTips, TexCoords);
     }
 
     float grainColorMod = 1.0;
     if (uHasGrain == 1 && uGrainEmphasizeDensity == 0) {
-        grainColorMod *= mainGrainFactor;
+        grainColorMod = mainGrainFactor;
     }
 
     if (uHasDualTip == 1) {
@@ -311,15 +329,17 @@ void main() {
         }
 
         if (uHasDualGrain == 1 && dualGrainIntensity > 0.001) {
-            float dualGrainFactor = evaluateGrain(dualGrainTexture, vWorldPos, dualGrainScale, uDualGrainRotation, dualGrainIntensity, uDualGrainBrightness, uDualGrainContrast, uInvertDualGrain, uDualGrainBlendMode, pressure);
+            float dualGrainFactor = evaluateGrain(dualGrainTexture, vWorldPos, dualGrainScale, uDualGrainRotation, dualGrainIntensity, uDualGrainBrightness, uDualGrainContrast, uInvertDualGrain, uDualGrainBlendMode, pressure, uDualGrainApplyToTips, TexCoords);
             if (uDualGrainEmphasizeDensity == 1) {
                 dualAlpha *= dualGrainFactor;
             }
             if (uGrainEmphasizeDensity == 1) {
                 shapeAlpha *= mainGrainFactor;
             }
+            // Combine dual grain with main grain softly — use min to avoid
+            // multiplicative over-darkening that makes the brush look dirty
             if (uDualGrainEmphasizeDensity == 0) {
-                grainColorMod *= dualGrainFactor;
+                grainColorMod = min(grainColorMod, dualGrainFactor);
             }
             dualGrainApplied = true;
         }
@@ -374,7 +394,7 @@ void main() {
         float outerRing = smoothstep(0.44, 0.50, dist) * (1.0 - smoothstep(0.50, 0.54, dist));
 
         // El centro es más claro (el pigmento migró al borde)
-        float centerDepletion = mix(0.40, 1.0, ring); // 40% de opacidad en el centro, sube a 100% en el anillo
+        float centerDepletion = mix(0.40, 1.0, ring);
         float edgeAccumulation = mix(centerDepletion, centerDepletion + migr * 3.5, ring);
         edgeAccumulation += outerRing * migr * 2.0;
 
@@ -586,15 +606,18 @@ void main() {
             finalRGB = mixColorsKM(finalRGB, canvasRGB, colorFuseAmount);
 
             // ── OSCURECIMIENTO POR ACUMULACIÓN (Layering) ───────────────────
-            // Cada capa de acuarela transparente oscurece levemente el total.
-            // Efecto Multiply controlado — más sutil que la fusión de colores.
-            float darken = existingDensity * effectiveWetness * 0.32;
-            darken = clamp(darken, 0.0, 0.55);
-            vec3 darkened = finalRGB * canvasRGB;
-            finalRGB = mix(finalRGB, darkened, darken);
+            // Solo para puntas procedurales redondas. Para puntas personalizadas
+            // el oscurecimiento lo maneja watercolor.frag a nivel de canvas (tide-mark).
+            // Aplicar por-dab a custom tips crea un efecto tubo 3D no deseado.
+            if (uHasTip == 0) {
+                float darken = existingDensity * effectiveWetness * 0.32;
+                darken = clamp(darken, 0.0, 0.55);
+                vec3 darkened = finalRGB * canvasRGB;
+                finalRGB = mix(finalRGB, darkened, darken);
 
-            // Aumentar alpha donde hay pigmento acumulado (densidad visual)
-            baseAlpha = min(baseAlpha + existingDensity * darken * 0.28, 1.0);
+                // Aumentar alpha donde hay pigmento acumulado (densidad visual)
+                baseAlpha = min(baseAlpha + existingDensity * darken * 0.28, 1.0);
+            }
 
             // ── DILUCIÓN, EXPANSIÓN Y BLOOM (Circular) ─────────────────────
             if (uHasTip == 0) {
@@ -680,7 +703,10 @@ void main() {
     float finalAlpha = clamp(baseAlpha, 0.0, 1.0);
     
     // Apply grain color modulation when emphasize density is disabled
-    if (brushType != 7) {
+    // For watercolor brushes, skip per-dab grain — it's applied once at canvas
+    // level in watercolor.frag to avoid noisy grain stacking from spray particles
+    bool skipDabGrain = (brushType == 4 || wetness > 0.3);
+    if (brushType != 7 && !skipDabGrain) {
         finalRGB *= grainColorMod;
     }
     

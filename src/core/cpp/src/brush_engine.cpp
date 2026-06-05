@@ -1257,7 +1257,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               settings.type == BrushSettings::Type::Eraser,
               settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode,
               settings.invertShape, settings.flipX, settings.flipY, settings.roundness, settings.shapeContrast, settings.shapeBlur,
-              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity);
+              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity, settings.grainApplyToTips, settings.dualGrainApplyToTips);
 
           // Blit the result from pongFBO (write target) back to pingFBO (read target)
           QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
@@ -1306,7 +1306,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               settings.type == BrushSettings::Type::Eraser,
               settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode,
               false, false, false, 1.0f, 1.0f, 0.0f, // dual brush tip defaults
-              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity);
+              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity, settings.grainApplyToTips, settings.dualGrainApplyToTips);
 
           // Blit the result from pongFBO (write target) back to pingFBO (read target)
           QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
@@ -1352,7 +1352,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             settings.type == BrushSettings::Type::Eraser,
             settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode,
             settings.invertShape, settings.flipX, settings.flipY, settings.roundness, settings.shapeContrast, settings.shapeBlur,
-            settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity);
+            settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity, settings.grainApplyToTips, settings.dualGrainApplyToTips);
 
         // Render sprayed particles as instances
         if (settings.dualTipEnabled && settings.sprayEnabled && !particleDabs.empty()) {
@@ -1395,7 +1395,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               settings.type == BrushSettings::Type::Eraser,
               settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode,
               false, false, false, 1.0f, 1.0f, 0.0f, // dual brush tip defaults
-              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity);
+              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity, settings.grainApplyToTips, settings.dualGrainApplyToTips);
         }
       }
     }
@@ -2035,7 +2035,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         isEraser,
         m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode,
         m_currentSettings.invertShape, m_currentSettings.flipX, m_currentSettings.flipY, m_currentSettings.roundness, m_currentSettings.shapeContrast, m_currentSettings.shapeBlur,
-        m_currentSettings.grainEmphasizeDensity, m_currentSettings.dualGrainEmphasizeDensity);
+        m_currentSettings.grainEmphasizeDensity, m_currentSettings.dualGrainEmphasizeDensity, m_currentSettings.grainApplyToTips, m_currentSettings.dualGrainApplyToTips);
 
     if (m_currentSettings.dualTipEnabled && m_currentSettings.sprayEnabled && !particleDabs.empty()) {
       m_renderer->renderStrokeInstanced(
@@ -2087,7 +2087,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
           isEraser,
           m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode,
           false, false, false, 1.0f, 1.0f, 0.0f, // dual brush tip defaults
-          m_currentSettings.grainEmphasizeDensity, m_currentSettings.dualGrainEmphasizeDensity);
+          m_currentSettings.grainEmphasizeDensity, m_currentSettings.dualGrainEmphasizeDensity, m_currentSettings.grainApplyToTips, m_currentSettings.dualGrainApplyToTips);
     }
   }
   // Update State

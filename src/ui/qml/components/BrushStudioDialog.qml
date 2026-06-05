@@ -1174,7 +1174,14 @@ Rectangle {
                                             id: gBlendMa
                                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                             onClicked: {
-                                                if (targetCanvas) targetCanvas.setBrushProperty("grain", "blend_mode", modeName)
+                                                if (targetCanvas) {
+                                                    var curr = targetCanvas.getBrushProperty("grain", "blend_mode") || "multiply"
+                                                    if (curr === modeName) {
+                                                        targetCanvas.setBrushProperty("grain", "blend_mode", "normal")
+                                                    } else {
+                                                        targetCanvas.setBrushProperty("grain", "blend_mode", modeName)
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -2079,7 +2086,14 @@ Rectangle {
                                                  id: blendMa
                                                  anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                                  onClicked: {
-                                                     if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "blend_mode", modeName)
+                                                     if (targetCanvas) {
+                                                         var curr = targetCanvas.getBrushProperty("dualbrush", "blend_mode") || "multiply"
+                                                         if (curr === modeName) {
+                                                             targetCanvas.setBrushProperty("dualbrush", "blend_mode", "normal")
+                                                         } else {
+                                                             targetCanvas.setBrushProperty("dualbrush", "blend_mode", modeName)
+                                                         }
+                                                     }
                                                  }
                                              }
                                         }
@@ -2385,7 +2399,7 @@ Rectangle {
                                 // D- Brillo
                                 StudioSlider {
                                     label: "D- Brillo"
-                                    from: -1.0; to: 1.0
+                                    from: -100; to: 100
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_brightness") || 0 : 0
                                     offsetColor: true
                                     onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_brightness", value)
@@ -2394,8 +2408,9 @@ Rectangle {
                                 // D- Contraste
                                 StudioSlider {
                                     label: "D- Contraste"
-                                    from: 0; to: 2.0
-                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_contrast") || 1.0 : 1.0
+                                    from: -100; to: 100
+                                    value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_contrast") || 0 : 0
+                                    offsetColor: true
                                     onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_contrast", value)
                                 }
 
@@ -2427,7 +2442,16 @@ Rectangle {
                                             MouseArea {
                                                 id: dgBlendMaTab11
                                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                                onClicked: if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_blend_mode", modeName)
+                                                onClicked: {
+                                                     if (targetCanvas) {
+                                                         var curr = targetCanvas.getBrushProperty("dualbrush", "grain_blend_mode") || "multiply"
+                                                         if (curr === modeName) {
+                                                             targetCanvas.setBrushProperty("dualbrush", "grain_blend_mode", "normal")
+                                                         } else {
+                                                             targetCanvas.setBrushProperty("dualbrush", "grain_blend_mode", modeName)
+                                                         }
+                                                     }
+                                                 }
                                             }
                                         }
 

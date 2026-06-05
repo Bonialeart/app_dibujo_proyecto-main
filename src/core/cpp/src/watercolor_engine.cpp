@@ -155,7 +155,11 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
                                 float pressure,
                                 float flow)
 {
+    qWarning() << "paintDab: called. m_initialized =" << m_initialized
+               << "m_shader =" << (m_shader != nullptr)
+               << "canvasFBOout =" << (canvasFBOout != nullptr);
     if (!m_initialized || !m_shader || !canvasFBOout) return;
+
 
     m_lastCanvasTexId  = canvasTexIn;
     m_lastCanvasFBOOut = canvasFBOout;
@@ -473,15 +477,18 @@ void WatercolorEngine::ensureShader() {
 
     QString vertPath, fragPath;
     for (const QString &p : paths) {
+        qWarning() << "WatercolorEngine: checking path:" << p;
         if (QFile::exists(p + "watercolor.vert") &&
             QFile::exists(p + "watercolor.frag")) {
             vertPath = p + "watercolor.vert";
             fragPath = p + "watercolor.frag";
+            qWarning() << "WatercolorEngine: Found shaders at:" << p;
             break;
         }
     }
 
     if (!vertPath.isEmpty()) {
+        qWarning() << "WatercolorEngine: Compiling vertex shader:" << vertPath << "and fragment shader:" << fragPath;
         m_shader->addShaderFromSourceFile(QOpenGLShader::Vertex,   vertPath);
         m_shader->addShaderFromSourceFile(QOpenGLShader::Fragment, fragPath);
         m_shader->bindAttributeLocation("aPosition", 0);
@@ -490,6 +497,8 @@ void WatercolorEngine::ensureShader() {
             qWarning() << "WatercolorEngine: shader link failed:" << m_shader->log();
             delete m_shader;
             m_shader = nullptr;
+        } else {
+            qWarning() << "WatercolorEngine: shader link succeeded!";
         }
     } else {
         qWarning() << "WatercolorEngine: watercolor shaders not found in search paths";

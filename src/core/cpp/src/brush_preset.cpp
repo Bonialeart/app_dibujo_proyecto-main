@@ -934,7 +934,7 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
     s.textureIntensity = grain.intensity;
     s.grainRotation = grain.rotation * 3.14159265f / 180.0f;
     s.grainEmphasizeDensity = grain.emphasizeDensity;
-    s.grainApplyToTips = grain.applyToTips;
+    s.grainApplyToTips = !grain.rolling;
   }
 
   // If only tip texture is set (no grain), still mark texture as used for
