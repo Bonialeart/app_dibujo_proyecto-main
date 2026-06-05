@@ -906,7 +906,7 @@ Rectangle {
                             StudioToggle {
                                 id: rotateTipToggle
                                 label: "Habilitar Rotación de Punta"
-                                checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "rotate_tip") !== false : true
+                                checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "rotate_tip") === true : false
                                 onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "rotate_tip", checked)
                             }
 
@@ -1232,45 +1232,101 @@ Rectangle {
                             Column {
                                 width: parent.width; spacing: 8
                                 Text { text: "Modo de combinación"; color: textPrimary; font.pixelSize: 12 }
-                                Grid {
-                                    id: renderBlendGrid
+                                ComboBox {
+                                    id: renderBlendCombo
                                     width: parent.width
-                                    columns: 3
-                                    spacing: 6
-                                    property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("rendering", "blend_mode") || "normal" : "normal"
+                                    height: 36
                                     
-                                    component RenderBlendButton : Rectangle {
-                                        property string modeName: "normal"
-                                        property string displayLabel: "Normal"
-                                        height: 28
-                                        width: (parent.width - 12) / 3
-                                        radius: 6
-                                        color: parent.currentMode === modeName ? colorAccent : (renderBlendMa.containsMouse ? bgSurface : "#1a1a1c")
-                                        border.color: parent.currentMode === modeName ? "transparent" : borderDim
-                                        border.width: 1
-
-                                         Text {
-                                             text: displayLabel
-                                             color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
-                                             font.pixelSize: 10; font.weight: Font.Medium
-                                             anchors.centerIn: parent
-                                         }
-
-                                         MouseArea {
-                                             id: renderBlendMa
-                                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                             onClicked: {
-                                                 if (targetCanvas) targetCanvas.setBrushProperty("rendering", "blend_mode", modeName)
-                                             }
-                                         }
+                                    readonly property var modes: ["normal", "multiply", "screen", "overlay", "darken", "lighten"]
+                                    readonly property var modeLabels: ["Normal", "Multiplicar", "Trama (Screen)", "Superponer (Overlay)", "Oscurecer (Darken)", "Aclarar (Lighten)"]
+                                    
+                                    model: modeLabels
+                                    
+                                    currentIndex: {
+                                        var currentMode = targetCanvas ? targetCanvas.getBrushProperty("rendering", "blend_mode") || "normal" : "normal"
+                                        return modes.indexOf(currentMode)
                                     }
-
-                                    RenderBlendButton { modeName: "normal"; displayLabel: "Normal" }
-                                    RenderBlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
-                                    RenderBlendButton { modeName: "screen"; displayLabel: "Trama" }
-                                    RenderBlendButton { modeName: "overlay"; displayLabel: "Superponer" }
-                                    RenderBlendButton { modeName: "darken"; displayLabel: "Oscurecer" }
-                                    RenderBlendButton { modeName: "lighten"; displayLabel: "Aclarar" }
+                                    
+                                    onActivated: (index) => {
+                                        if (targetCanvas) {
+                                            targetCanvas.setBrushProperty("rendering", "blend_mode", modes[index])
+                                        }
+                                    }
+                                    
+                                    delegate: ItemDelegate {
+                                        width: renderBlendCombo.width
+                                        height: 32
+                                        contentItem: Text {
+                                            text: modelData
+                                            color: highlighted ? "#ffffff" : textPrimary
+                                            font.pixelSize: 12
+                                            verticalAlignment: Text.AlignVCenter
+                                            leftPadding: 8
+                                        }
+                                        background: Rectangle {
+                                            color: highlighted ? colorAccent : (hovered ? bgSurface : "transparent")
+                                            radius: 4
+                                        }
+                                    }
+                                    
+                                    indicator: Canvas {
+                                        id: canvas
+                                        x: renderBlendCombo.width - width - 12
+                                        y: (renderBlendCombo.height - height) / 2
+                                        width: 12
+                                        height: 8
+                                        contextType: "2d"
+                                        onPaint: {
+                                            var context = getContext("2d");
+                                            context.reset();
+                                            context.moveTo(0, 0);
+                                            context.lineTo(width, 0);
+                                            context.lineTo(width / 2, height);
+                                            context.closePath();
+                                            context.fillStyle = textMuted;
+                                            context.fill();
+                                        }
+                                    }
+                                    
+                                    contentItem: Text {
+                                        leftPadding: 12
+                                        rightPadding: renderBlendCombo.indicator.width + 24
+                                        text: renderBlendCombo.displayText
+                                        font.pixelSize: 12
+                                        color: textPrimary
+                                        verticalAlignment: Text.AlignVCenter
+                                        elide: Text.ElideRight
+                                    }
+                                    
+                                    background: Rectangle {
+                                        color: "#1a1a1c"
+                                        border.color: renderBlendCombo.pressed ? colorAccent : (renderBlendCombo.hovered ? borderLit : borderDim)
+                                        border.width: 1
+                                        radius: 6
+                                    }
+                                    
+                                    popup: Popup {
+                                        y: renderBlendCombo.height + 4
+                                        width: renderBlendCombo.width
+                                        implicitHeight: Math.min(200, contentItem.implicitHeight + 8)
+                                        padding: 4
+                                        
+                                        contentItem: ListView {
+                                            clip: true
+                                            implicitHeight: contentHeight
+                                            model: renderBlendCombo.popup.visible ? renderBlendCombo.delegateModel : null
+                                            currentIndex: renderBlendCombo.highlightedIndex
+                                            
+                                            ScrollIndicator.vertical: ScrollIndicator { }
+                                        }
+                                        
+                                        background: Rectangle {
+                                            color: bgCard
+                                            border.color: borderDim
+                                            border.width: 1
+                                            radius: 8
+                                        }
+                                    }
                                 }
                             }
 
@@ -2735,11 +2791,13 @@ Rectangle {
                                     width: 20; height: 150
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     orientation: Qt.Vertical
-                                    from: 2; to: 100
-                                    value: drawingPad.padBrushSize
+                                    from: 0.0
+                                    to: 1.0
+                                    value: Math.pow((drawingPad.padBrushSize - 0.5) / 1999.5, 1.0 / 3.0)
                                     onMoved: {
-                                        drawingPad.padBrushSize = value
-                                        if (targetCanvas) targetCanvas.brushSize = value
+                                        var newSz = 0.5 + 1999.5 * Math.pow(value, 3.0);
+                                        drawingPad.padBrushSize = newSz
+                                        if (targetCanvas) targetCanvas.brushSize = newSz
                                     }
                                     background: Item {
                                         implicitWidth: 20

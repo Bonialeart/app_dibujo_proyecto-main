@@ -36,6 +36,7 @@ uniform float uGrainScale;         // Escala del grano de papel
 uniform float uGrainBrightness;    // Brillo del grano (-100..100)
 uniform float uGrainContrast;      // Contraste del grano (-100..100)
 uniform int uInvertGrain;          // Invertir grano (0 o 1)
+uniform int uGrainEmphasizeDensity; // Enfatizar densidad del grano (0 o 1)
 
 // ── New Color Mixing and Blend Mode Uniforms ──
 uniform int uColorMixing;
@@ -151,7 +152,9 @@ vec4 paintDab() {
         float localGrainIntensity = uGrainIntensity * (1.0 - localPaintAmount * 0.5);
         grain = mix(1.0, gv, localGrainIntensity);
     }
-    dabAlpha *= grain;
+    if (uGrainEmphasizeDensity == 1) {
+        dabAlpha *= grain;
+    }
 
     // ── DILUCIÓN: el agua diluye el pigmento del pincel ──
     // Mayor dilución = pigmento más transparente pero mayor depósito de agua
@@ -260,16 +263,33 @@ vec4 paintDab() {
         vec3 srcRGB = finalRGB;
         vec3 dstRGB = canvasSample.a > 0.001 ? canvasSample.rgb / canvasSample.a : vec3(1.0);
         
-        if (uBrushBlendMode == 1) { // Multiply
+        vec3 overRGB = srcPre + dstPre * (1.0 - finalAlpha);
+        
+        if (uBrushBlendMode == 0) { // Normal glazing watercolor
             vec3 multipliedRGB = mix(dstRGB, srcRGB * dstRGB, finalAlpha);
-            outRGB = multipliedRGB * outAlpha;
-        } else if (uBrushBlendMode == 2) { // Screen
-            vec3 screenRGB = mix(dstRGB, srcRGB + dstRGB - srcRGB * dstRGB, finalAlpha);
-            outRGB = screenRGB * outAlpha;
-        } else { // Normal (default glazing watercolor composition)
-            vec3 multipliedRGB = mix(dstRGB, srcRGB * dstRGB, finalAlpha);
-            vec3 overRGB = srcPre + dstPre * (1.0 - finalAlpha);
             outRGB = mix(overRGB, multipliedRGB * outAlpha, canvasSample.a);
+        } else {
+            vec3 blendModeResult;
+            if (uBrushBlendMode == 1) { // Multiply
+                blendModeResult = srcRGB * dstRGB;
+            } else if (uBrushBlendMode == 2) { // Screen
+                blendModeResult = srcRGB + dstRGB - srcRGB * dstRGB;
+            } else if (uBrushBlendMode == 3) { // Overlay
+                blendModeResult = vec3(
+                    dstRGB.r <= 0.5 ? 2.0 * srcRGB.r * dstRGB.r : 1.0 - 2.0 * (1.0 - srcRGB.r) * (1.0 - dstRGB.r),
+                    dstRGB.g <= 0.5 ? 2.0 * srcRGB.g * dstRGB.g : 1.0 - 2.0 * (1.0 - srcRGB.g) * (1.0 - dstRGB.g),
+                    dstRGB.b <= 0.5 ? 2.0 * srcRGB.b * dstRGB.b : 1.0 - 2.0 * (1.0 - srcRGB.b) * (1.0 - dstRGB.b)
+                );
+            } else if (uBrushBlendMode == 4) { // Darken
+                blendModeResult = min(dstRGB, srcRGB);
+            } else if (uBrushBlendMode == 5) { // Lighten
+                blendModeResult = max(dstRGB, srcRGB);
+            } else {
+                blendModeResult = srcRGB;
+            }
+            
+            vec3 blendedColor = canvasSample.a > 0.001 ? mix(dstRGB, blendModeResult, finalAlpha) : srcRGB;
+            outRGB = blendedColor * outAlpha;
         }
     } else {
         outRGB = vec3(0.0);

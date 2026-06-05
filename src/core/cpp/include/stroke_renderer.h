@@ -93,7 +93,11 @@ public:
       // Mode
       bool isEraser = false,
       // Color mixing and combine mode params
-      bool colorMixing = true, float paintAmount = 0.7f, float colorStretch = 0.1f, int blendMode = 0);
+      bool colorMixing = true, float paintAmount = 0.7f, float colorStretch = 0.1f, int blendMode = 0,
+      // Shape adjustments
+      bool invertShape = false, bool flipX = false, bool flipY = false,
+      float roundness = 1.0f, float shapeContrast = 1.0f, float shapeBlur = 0.0f,
+      bool grainEmphasizeDensity = false, bool dualGrainEmphasizeDensity = false, bool grainApplyToTips = true, bool dualGrainApplyToTips = true);
 
   struct DabInstance {
     float x, y;
@@ -156,7 +160,11 @@ public:
       // Mode
       bool isEraser = false,
       // Color mixing and combine mode params
-      bool colorMixing = true, float paintAmount = 0.7f, float colorStretch = 0.1f, int blendMode = 0);
+      bool colorMixing = true, float paintAmount = 0.7f, float colorStretch = 0.1f, int blendMode = 0,
+      // Shape adjustments
+      bool invertShape = false, bool flipX = false, bool flipY = false,
+      float roundness = 1.0f, float shapeContrast = 1.0f, float shapeBlur = 0.0f,
+      bool grainEmphasizeDensity = false, bool dualGrainEmphasizeDensity = false, bool grainApplyToTips = true, bool dualGrainApplyToTips = true);
 
   void setClippingEnabled(bool enabled) { m_clippingEnabled = enabled; }
 

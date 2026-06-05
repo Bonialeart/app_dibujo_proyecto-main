@@ -3321,13 +3321,14 @@ Window {
                         ProSlider {
                             label: "Size"
                             width: parent.width
-                            maxVal: 100.0
-                            value: mainCanvas.brushSize / 100.0
+                            from: 0.5
+                            to: 2000.0
+                            value: mainCanvas ? mainCanvas.brushSize : 10.0
                             previewType: "size"
                             previewOnRight: (sliderToolbox.x < mainWindow.width / 2)
                             brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
                             implicitHeight: 140 * mainWindow.uiScale
-                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 100 }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val }
                         }
                         
                         // Middle Circle Button (Active color well and morph toggle!)
@@ -3456,14 +3457,15 @@ Window {
                         
                         ProSliderHorizontal {
                             label: "Size"
-                            maxVal: 100.0
-                            value: mainCanvas.brushSize / 100.0
+                            from: 0.5
+                            to: 2000.0
+                            value: mainCanvas ? mainCanvas.brushSize : 10.0
                             previewType: "size"
                             previewOnBottom: (sliderToolbox.y < mainWindow.height / 2)
                             brushColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
                             implicitWidth: 110 * mainWindow.uiScale
                             implicitHeight: parent.height
-                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val * 100 }
+                            onMoved: (val) => { if (mainCanvas) mainCanvas.brushSize = val }
                         }
                         
                         ProSliderHorizontal {
@@ -5395,8 +5397,10 @@ Window {
                                     Slider {
                                         id: sliderSize
                                         width: parent.width; height: 28
-                                        from: 1; to: 100; value: mainCanvas.brushSize
-                                        onValueChanged: mainCanvas.brushSize = value
+                                        from: 0.0
+                                        to: 1.0
+                                        value: mainCanvas ? Math.pow((mainCanvas.brushSize - 0.5) / 1999.5, 1.0 / 3.0) : 0.05
+                                        onMoved: { if (mainCanvas) mainCanvas.brushSize = 0.5 + 1999.5 * Math.pow(value, 3.0) }
                                         
                                         background: Rectangle {
                                             y: (parent.height - height) / 2

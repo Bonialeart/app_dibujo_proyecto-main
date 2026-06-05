@@ -48,6 +48,7 @@ public:
         float grainBrightness = 0.0f;  // Brillo del grano
         float grainContrast   = 0.0f;  // Contraste del grano
         bool  invertGrain     = false; // Invertir grano
+        bool  grainEmphasizeDensity = false; // Enfatizar densidad del grano
         bool  blendOnly      = false; // Si es true, solo mezcla/difumina (agua pura)
         bool  colorMixing    = true;  // Mezclar colores
         float paintAmount    = 0.7f;  // Cantidad de pintura

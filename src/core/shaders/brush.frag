@@ -31,6 +31,8 @@ uniform float uGrainBrightness;
 uniform float uGrainContrast;
 uniform int uInvertGrain;
 uniform float uGrainRotation;
+uniform int uGrainEmphasizeDensity;
+uniform int uDualGrainEmphasizeDensity;
 
 // === Dual Grain (Secondary Paper Texture) — Global Canvas Mapping ===
 uniform sampler2D dualGrainTexture;
@@ -133,6 +135,14 @@ uniform float uDabSize;          // Current brush diameter in pixels
 // === Rotation ===
 uniform float tipRotation;       // Brush tip rotation in radians
 
+// === Shape Adjustments ===
+uniform int uInvertShape;
+uniform int uFlipX;
+uniform int uFlipY;
+uniform float uRoundness;
+uniform float uShapeContrast;
+uniform float uShapeBlur;
+
 float evaluateGrain(sampler2D grainTex, vec2 worldPos, float scale, float rotation, float intensity, float brightness, float contrast, int invert, int blendMode, float press) {
     vec2 globalCoord = worldPos / (5.0 * scale);
     if (rotation != 0.0) {
@@ -208,11 +218,34 @@ void main() {
         // así que NO necesitamos descartar manualmente; evita el borde duro al rotar.
         vec2 uv = TexCoords;
 
-        vec4 tipSample = texture(tipTexture, uv); // El GPU clampea a 0 automáticamente
-        // Luminancia como máscara de forma (texturas en escala de grises)
-        shapeAlpha = dot(tipSample.rgb, vec3(0.299, 0.587, 0.114));
-        // Multiplica por el canal alpha del tip (si tiene)
-        shapeAlpha *= tipSample.a;
+        // Apply flip X/Y
+        if (uFlipX == 1) uv.x = 1.0 - uv.x;
+        if (uFlipY == 1) uv.y = 1.0 - uv.y;
+
+        // Apply roundness (squash Y-axis around center 0.5)
+        if (uRoundness < 0.99) {
+            uv = uv - vec2(0.5);
+            uv.y /= max(uRoundness, 0.05);
+            uv = uv + vec2(0.5);
+        }
+
+        // Sample tip texture with mipmap bias for blur
+        vec4 tipSample = texture(tipTexture, uv, uShapeBlur * 5.0); // El GPU clampea a 0 automáticamente
+
+        // Compute shape alpha from luminance
+        float luminance = dot(tipSample.rgb, vec3(0.299, 0.587, 0.114));
+
+        // Apply shape contrast
+        if (uShapeContrast != 1.0) {
+            luminance = clamp((luminance - 0.5) * uShapeContrast + 0.5, 0.0, 1.0);
+        }
+
+        // Apply shape inversion
+        if (uInvertShape == 1) {
+            shapeAlpha = (1.0 - luminance) * tipSample.a;
+        } else {
+            shapeAlpha = luminance * tipSample.a;
+        }
     } else {
         // PROCEDURAL ROUND TIP — círculo suave con hardness y antialiasing premium
         float d = dist * 2.0; // 0.0 en el centro, 1.0 en el borde
@@ -256,6 +289,11 @@ void main() {
         mainGrainFactor = evaluateGrain(grainTexture, vWorldPos, grainScale, uGrainRotation, grainIntensity, uGrainBrightness, uGrainContrast, uInvertGrain, uGrainBlendMode, pressure);
     }
 
+    float grainColorMod = 1.0;
+    if (uHasGrain == 1 && uGrainEmphasizeDensity == 0) {
+        grainColorMod *= mainGrainFactor;
+    }
+
     if (uHasDualTip == 1) {
         vec2 dualUV = TexCoords - vec2(0.5);
         if (dualTipRotation != 0.0) {
@@ -274,8 +312,15 @@ void main() {
 
         if (uHasDualGrain == 1 && dualGrainIntensity > 0.001) {
             float dualGrainFactor = evaluateGrain(dualGrainTexture, vWorldPos, dualGrainScale, uDualGrainRotation, dualGrainIntensity, uDualGrainBrightness, uDualGrainContrast, uInvertDualGrain, uDualGrainBlendMode, pressure);
-            dualAlpha *= dualGrainFactor;
-            shapeAlpha *= mainGrainFactor;
+            if (uDualGrainEmphasizeDensity == 1) {
+                dualAlpha *= dualGrainFactor;
+            }
+            if (uGrainEmphasizeDensity == 1) {
+                shapeAlpha *= mainGrainFactor;
+            }
+            if (uDualGrainEmphasizeDensity == 0) {
+                grainColorMod *= dualGrainFactor;
+            }
             dualGrainApplied = true;
         }
 
@@ -313,14 +358,15 @@ void main() {
 
     // === 3. FLOW & PRESSURE COMBINATION ===
     float effectiveFlow = flow; // Pressure is now handled by C++ engine for more control
-    float baseAlpha = effColor.a * shapeAlpha * grainFactor * effectiveFlow;
+    float finalGrainFactor = (uGrainEmphasizeDensity == 1) ? grainFactor : 1.0;
+    float baseAlpha = effColor.a * shapeAlpha * finalGrainFactor * effectiveFlow;
 
     // --- WATERCOLOR PIGMENT MIGRATION ---
     // El pigmento se concentra más en el borde (tide-mark) y
     // la densidad global no se reduce, solo se redistribuye.
     bool isWatercolor = (brushType == 4 || wetness > 0.3);
     float watercolorEdgeDarkenFactor = 1.0;
-    if (isWatercolor) {
+    if (isWatercolor && uHasTip == 0) {
         float migr = bleed * 0.85;  // Aumentado para un borde más fuerte
 
         // Anillo exterior (tide-mark)
@@ -405,7 +451,7 @@ void main() {
         resultColor = mix(resultColor, burnedColor, darkBoost);
     }
     
-    if (brushType != 7 && edgeDarkeningEnabled == 1 && edgeDarkeningIntensity > 0.01) {
+    if (brushType != 7 && edgeDarkeningEnabled == 1 && edgeDarkeningIntensity > 0.01 && uHasTip == 0) {
         float edgeness = smoothstep(0.5 - edgeDarkeningWidth, 0.5, dist);
         
         // Darken RGB by increasing apparent density
@@ -550,41 +596,44 @@ void main() {
             // Aumentar alpha donde hay pigmento acumulado (densidad visual)
             baseAlpha = min(baseAlpha + existingDensity * darken * 0.28, 1.0);
 
-            // ── DILUCIÓN POR AGUA ACUMULADA (Watery Dilution) ────────────────
-            // Mientras más pintura húmeda haya debajo y más húmedo esté el pincel,
-            // más se disuelve/diluye el pigmento en el centro del trazo,
-            // simulando que el agua acumulada empuja el pigmento hacia el borde.
-            float moisture = effectiveWetness * existingDensity * 0.65;
-            if (moisture > 0.05) {
-                // Diluye el centro (distancia corta del centro)
-                float dilutionRing = smoothstep(0.0, 0.38, dist); // 0 en centro, 1 en borde
-                float localDilution = moisture * (1.0 - dilutionRing); // Disminuye hacia el borde
-                baseAlpha = mix(baseAlpha, baseAlpha * 0.28, localDilution); // Reduce hasta un 72% en el centro
-                
-                // El pigmento disuelto viaja al borde exterior
-                float edgeBoost = moisture * smoothstep(0.38, 0.50, dist) * 1.5;
-                baseAlpha = clamp(baseAlpha + edgeBoost, 0.0, 1.0);
-            }
+            // ── DILUCIÓN, EXPANSIÓN Y BLOOM (Circular) ─────────────────────
+            if (uHasTip == 0) {
+                // ── DILUCIÓN POR AGUA ACUMULADA (Watery Dilution) ────────────────
+                // Mientras más pintura húmeda haya debajo y más húmedo esté el pincel,
+                // más se disuelve/diluye el pigmento en el centro del trazo,
+                // simulando que el agua acumulada empuja el pigmento hacia el borde.
+                float moisture = effectiveWetness * existingDensity * 0.65;
+                if (moisture > 0.05) {
+                    // Diluye el centro (distancia corta del centro)
+                    float dilutionRing = smoothstep(0.0, 0.38, dist); // 0 en centro, 1 en borde
+                    float localDilution = moisture * (1.0 - dilutionRing); // Disminuye hacia el borde
+                    baseAlpha = mix(baseAlpha, baseAlpha * 0.28, localDilution); // Reduce hasta un 72% en el centro
+                    
+                    // El pigmento disuelto viaja al borde exterior
+                    float edgeBoost = moisture * smoothstep(0.38, 0.50, dist) * 1.5;
+                    baseAlpha = clamp(baseAlpha + edgeBoost, 0.0, 1.0);
+                }
 
-            // ── EXPANSIÓN DEL BORDE HÚMEDO (Capilaridad) ────────────────────
-            // El agua en el papel hace que el pigmento se extienda hacia el borde.
-            if (bleed > 0.01 && dist > 0.36) {
-                float borderFactor = smoothstep(0.36, 0.50, dist);
-                float spreadBoost  = existingDensity * bleed * borderFactor * 0.38;
-                baseAlpha = min(baseAlpha + spreadBoost, 1.0);
-                // El color del borde se tira hacia el canvas (fusión en el borde)
-                finalRGB = mix(finalRGB, canvasRGB, borderFactor * bleed * 0.28);
-            }
+                // ── EXPANSIÓN DEL BORDE HÚMEDO (Capilaridad) ────────────────────
+                // El agua en el papel hace que el pigmento se extienda hacia el borde.
+                if (bleed > 0.01 && dist > 0.36) {
+                    float borderFactor = smoothstep(0.36, 0.50, dist);
+                    float spreadBoost  = existingDensity * bleed * borderFactor * 0.38;
+                    baseAlpha = min(baseAlpha + spreadBoost, 1.0);
+                    // El color del borde se tira hacia el canvas (fusión en el borde)
+                    finalRGB = mix(finalRGB, canvasRGB, borderFactor * bleed * 0.28);
+                }
 
-            // ── BACKRUN BLOOM ────────────────────────────────────────────────
-            // Agua limpia empuja pigmento previo hacia el exterior (efecto
-            // cauliflower/backrun visible en acuarela real húmeda).
-            if (bloomEnabled == 1 && canvasA > 0.25 && effectiveWetness > 0.55) {
-                float dilutionFactor = max(0.0, 1.0 - dilution * 0.7);
-                float bloomDist = smoothstep(0.42, 0.50, dist);
-                float backrun = bloomIntensity * dilutionFactor * bloomDist * canvasA;
-                baseAlpha = min(baseAlpha + backrun * 0.35, 1.0);
-                finalRGB *= mix(1.0, 0.80, backrun * 0.5);
+                // ── BACKRUN BLOOM ────────────────────────────────────────────────
+                // Agua limpia empuja pigmento previo hacia el exterior (efecto
+                // cauliflower/backrun visible en acuarela real húmeda).
+                if (bloomEnabled == 1 && canvasA > 0.25 && effectiveWetness > 0.55) {
+                    float dilutionFactor = max(0.0, 1.0 - dilution * 0.7);
+                    float bloomDist = smoothstep(0.42, 0.50, dist);
+                    float backrun = bloomIntensity * dilutionFactor * bloomDist * canvasA;
+                    baseAlpha = min(baseAlpha + backrun * 0.35, 1.0);
+                    finalRGB *= mix(1.0, 0.80, backrun * 0.5);
+                }
             }
         }
 
@@ -629,6 +678,11 @@ void main() {
 
     // === FINAL OUTPUT (Premultiplied Alpha) ===
     float finalAlpha = clamp(baseAlpha, 0.0, 1.0);
+    
+    // Apply grain color modulation when emphasize density is disabled
+    if (brushType != 7) {
+        finalRGB *= grainColorMod;
+    }
     
     // For erasers, force black output to ensure blend mode (Dest * (1-Alpha)) works perfectly
     if (brushType == 7) finalRGB = vec3(0.0);

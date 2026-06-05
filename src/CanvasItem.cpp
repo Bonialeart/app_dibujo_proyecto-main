@@ -3420,6 +3420,7 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
     bool isWc = isWatercolorBrush() && settings.type != BrushSettings::Type::Eraser;
     if (isWc) {
+      settings.blendMode = 0; // Force normal blending when drawing to the isolated dab FBO
       m_dabFBO->bind();
       QOpenGLFunctions *f = QOpenGLContext::currentContext()->functions();
       f->glClearColor(0, 0, 0, 0);
@@ -13830,6 +13831,7 @@ WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
     params.grainBrightness = preset->grain.brightness;
     params.grainContrast   = preset->grain.contrast;
     params.invertGrain     = preset->grain.invert;
+    params.grainEmphasizeDensity = preset->grain.emphasizeDensity;
 
     return params;
 }

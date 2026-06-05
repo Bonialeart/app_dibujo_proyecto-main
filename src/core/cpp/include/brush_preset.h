@@ -242,7 +242,7 @@ struct BrushPreset {
     int count = 1;
     float countJitter = 0.0f;
     float calligraphic = 0.0f; // 0..1 angle influence
-    bool rotateTip = true;
+    bool rotateTip = false;
 
     QJsonObject toJson() const;
     static ShapeSettings fromJson(const QJsonObject &obj);

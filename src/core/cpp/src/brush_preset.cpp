@@ -49,7 +49,7 @@ BrushPreset::ShapeSettings::fromJson(const QJsonObject &obj) {
   s.count = obj.value("count").toInt(1);
   s.countJitter = obj.value("count_jitter").toDouble(0.0);
   s.calligraphic = obj.value("calligraphic").toDouble(0.0);
-  s.rotateTip = obj.value("rotate_tip").toBool(true);
+  s.rotateTip = obj.value("rotate_tip").toBool(false);
   return s;
 }
 

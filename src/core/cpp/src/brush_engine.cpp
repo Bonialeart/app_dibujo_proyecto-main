@@ -1223,7 +1223,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               (grainTexID != 0 && settings.useTexture),
               settings.textureScale * scaleFactor, settings.textureIntensity,
               settings.grainBright, settings.grainCon, settings.invertGrain, settings.grainRotation,
-              tipTexID, (tipTexID != 0), dab.rotation, tilt, velocity, settings.flow,
+              tipTexID, (tipTexID != 0), dab.rotation,
+              tilt, velocity, settings.flow,
               pingFBO->texture(), // Read from pingFBO
               wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
               settings.dryingTime, settings.wetOnWetMultiplier,
@@ -1254,61 +1255,61 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
               settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
               settings.type == BrushSettings::Type::Eraser,
-              settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
+              settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode,
+              settings.invertShape, settings.flipX, settings.flipY, settings.roundness, settings.shapeContrast, settings.shapeBlur,
+              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity);
 
           // Blit the result from pongFBO (write target) back to pingFBO (read target)
           QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
         }
 
-        // Render sprayed particles
+        // Render sprayed particles as instances (optimized to avoid rendering/blit loop lag)
         if (settings.dualTipEnabled && settings.sprayEnabled && !particleDabs.empty()) {
-          for (size_t i = 0; i < particleDabs.size(); ++i) {
-            const auto &dab = particleDabs[i];
+          m_renderer->renderStrokeInstanced(
+              particleDabs, effectivePressure, settings.hardness,
+              static_cast<int>(settings.type), m_renderer->viewportWidth(),
+              m_renderer->viewportHeight(), grainTexID,
+              (grainTexID != 0 && settings.useTexture),
+              settings.textureScale * scaleFactor, settings.textureIntensity,
+              settings.grainBright, settings.grainCon, settings.invertGrain, settings.grainRotation,
+              dualTipTexID, (dualTipTexID != 0),
+              tilt, velocity, settings.flow,
+              pingFBO->texture(), // Read from pingFBO
+              wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
+              settings.dryingTime, settings.wetOnWetMultiplier,
+              settings.granulation, settings.pigmentFlow, settings.staining,
+              settings.separation, settings.bloomEnabled, settings.bloomIntensity,
+              settings.bloomRadius, settings.bloomThreshold,
+              settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
+              settings.edgeDarkeningWidth, settings.textureRevealEnabled,
+              settings.textureRevealIntensity,
+              settings.textureRevealPressureInfluence, settings.mixing,
+              1.0f, // loading for particle dabs
+              settings.depletionRate, settings.dirtyMixing,
+              settings.colorPickup, settings.blendOnly, settings.scrapeThrough,
+              settings.impastoEnabled, settings.impastoDepth, settings.impastoShine,
+              settings.impastoTextureStrength, settings.impastoEdgeBuildup,
+              settings.impastoDirectionalRidges, settings.impastoSmoothing,
+              settings.impastoPreserveExisting, settings.bristlesEnabled,
+              settings.bristleCount, settings.bristleStiffness,
+              settings.bristleClumping, settings.bristleFanSpread,
+              settings.bristleIndividualVariation, settings.bristleDryBrushEffect,
+              settings.bristleSoftness, settings.bristlePointTaper,
+              settings.smudgeStrength, settings.smudgePressureInfluence,
+              settings.smudgeLength, settings.smudgeGaussianBlur,
+              settings.smudgeSmear, settings.canvasAbsorption,
+              settings.canvasSkipValleys, settings.canvasCatchPeaks,
+              settings.temperatureShift, settings.brokenColor,
+              0, false, 1.0f, 0.0f, 0, 1.0f, uGrainBlendMode, // no dual tip
+              dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
+              settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
+              settings.type == BrushSettings::Type::Eraser,
+              settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode,
+              false, false, false, 1.0f, 1.0f, 0.0f, // dual brush tip defaults
+              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity);
 
-            m_renderer->renderStroke(
-                dab.x, dab.y, dab.size, effectivePressure, settings.hardness,
-                QColor::fromRgbF(dab.colorR, dab.colorG, dab.colorB, dab.colorA),
-                static_cast<int>(settings.type), m_renderer->viewportWidth(),
-                m_renderer->viewportHeight(), grainTexID,
-                (grainTexID != 0 && settings.useTexture),
-                settings.textureScale * scaleFactor, settings.textureIntensity,
-                settings.grainBright, settings.grainCon, settings.invertGrain, settings.grainRotation,
-                dualTipTexID, (dualTipTexID != 0), dab.rotation, tilt, velocity, settings.flow,
-                pingFBO->texture(), // Read from pingFBO
-                wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
-                settings.dryingTime, settings.wetOnWetMultiplier,
-                settings.granulation, settings.pigmentFlow, settings.staining,
-                settings.separation, settings.bloomEnabled, settings.bloomIntensity,
-                settings.bloomRadius, settings.bloomThreshold,
-                settings.edgeDarkeningEnabled, settings.edgeDarkeningIntensity,
-                settings.edgeDarkeningWidth, settings.textureRevealEnabled,
-                settings.textureRevealIntensity,
-                settings.textureRevealPressureInfluence, settings.mixing,
-                1.0f, // loading for particle dabs
-                settings.depletionRate, settings.dirtyMixing,
-                settings.colorPickup, settings.blendOnly, settings.scrapeThrough,
-                settings.impastoEnabled, settings.impastoDepth, settings.impastoShine,
-                settings.impastoTextureStrength, settings.impastoEdgeBuildup,
-                settings.impastoDirectionalRidges, settings.impastoSmoothing,
-                settings.impastoPreserveExisting, settings.bristlesEnabled,
-                settings.bristleCount, settings.bristleStiffness,
-                settings.bristleClumping, settings.bristleFanSpread,
-                settings.bristleIndividualVariation, settings.bristleDryBrushEffect,
-                settings.bristleSoftness, settings.bristlePointTaper,
-                settings.smudgeStrength, settings.smudgePressureInfluence,
-                settings.smudgeLength, settings.smudgeGaussianBlur,
-                settings.smudgeSmear, settings.canvasAbsorption,
-                settings.canvasSkipValleys, settings.canvasCatchPeaks,
-                settings.temperatureShift, settings.brokenColor,
-                0, false, 1.0f, 0.0f, 0, 1.0f, uGrainBlendMode, // no dual tip
-                dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
-                settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
-                settings.type == BrushSettings::Type::Eraser,
-                settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
-
-            // Blit the result from pongFBO (write target) back to pingFBO (read target)
-            QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
-          }
+          // Blit the result from pongFBO (write target) back to pingFBO (read target)
+          QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
         }
       } else {
         // Fast instanced path for standard/dry brushes
@@ -1319,7 +1320,8 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             (grainTexID != 0 && settings.useTexture),
             settings.textureScale * scaleFactor, settings.textureIntensity,
             settings.grainBright, settings.grainCon, settings.invertGrain, settings.grainRotation,
-            tipTexID, (tipTexID != 0), tilt, velocity, settings.flow, canvasTexId,
+            tipTexID, (tipTexID != 0),
+            tilt, velocity, settings.flow, canvasTexId,
             wetness, dilution, smudge, settings.bleed, settings.absorptionRate,
             settings.dryingTime, settings.wetOnWetMultiplier,
             settings.granulation, settings.pigmentFlow, settings.staining,
@@ -1348,7 +1350,9 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
             settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
             settings.type == BrushSettings::Type::Eraser,
-            settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
+            settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode,
+            settings.invertShape, settings.flipX, settings.flipY, settings.roundness, settings.shapeContrast, settings.shapeBlur,
+            settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity);
 
         // Render sprayed particles as instances
         if (settings.dualTipEnabled && settings.sprayEnabled && !particleDabs.empty()) {
@@ -1389,7 +1393,9 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               dualGrainTexID, hasDualGrain, settings.dualTextureScale * scaleFactor, settings.dualTextureIntensity,
               settings.dualGrainBright, settings.dualGrainCon, settings.invertDualGrain, settings.dualGrainBlendMode, settings.dualGrainRotation,
               settings.type == BrushSettings::Type::Eraser,
-              settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode);
+              settings.colorMixing, settings.paintAmount, settings.colorStretch, settings.blendMode,
+              false, false, false, 1.0f, 1.0f, 0.0f, // dual brush tip defaults
+              settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity);
         }
       }
     }
@@ -2027,7 +2033,9 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         m_currentSettings.dualGrainBright, m_currentSettings.dualGrainCon, m_currentSettings.invertDualGrain, m_currentSettings.dualGrainBlendMode, m_currentSettings.dualGrainRotation,
         // Mode
         isEraser,
-        m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode);
+        m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode,
+        m_currentSettings.invertShape, m_currentSettings.flipX, m_currentSettings.flipY, m_currentSettings.roundness, m_currentSettings.shapeContrast, m_currentSettings.shapeBlur,
+        m_currentSettings.grainEmphasizeDensity, m_currentSettings.dualGrainEmphasizeDensity);
 
     if (m_currentSettings.dualTipEnabled && m_currentSettings.sprayEnabled && !particleDabs.empty()) {
       m_renderer->renderStrokeInstanced(
@@ -2077,7 +2085,9 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
           dualGrainTexId, hasDualGrain, m_currentSettings.dualTextureScale, m_currentSettings.dualTextureIntensity,
           m_currentSettings.dualGrainBright, m_currentSettings.dualGrainCon, m_currentSettings.invertDualGrain, m_currentSettings.dualGrainBlendMode, m_currentSettings.dualGrainRotation,
           isEraser,
-          m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode);
+          m_currentSettings.colorMixing, m_currentSettings.paintAmount, m_currentSettings.colorStretch, m_currentSettings.blendMode,
+          false, false, false, 1.0f, 1.0f, 0.0f, // dual brush tip defaults
+          m_currentSettings.grainEmphasizeDensity, m_currentSettings.dualGrainEmphasizeDensity);
     }
   }
   // Update State

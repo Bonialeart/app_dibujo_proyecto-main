@@ -277,7 +277,10 @@ void StrokeRenderer::renderStroke(
     uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, float dualTipFlow, int grainBlendMode,
     uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode, float dualGrainRotation,
     bool isEraser,
-    bool colorMixing, float paintAmount, float colorStretch, int blendMode) {
+    bool colorMixing, float paintAmount, float colorStretch, int blendMode,
+    bool invertShape, bool flipX, bool flipY, float roundness, float shapeContrast, float shapeBlur,
+    bool grainEmphasizeDensity, bool dualGrainEmphasizeDensity,
+    bool grainApplyToTips, bool dualGrainApplyToTips) {
 
   if (!m_program)
     return;
@@ -314,6 +317,16 @@ void StrokeRenderer::renderStroke(
   m_program->setUniformValue("uDabPos", QVector2D(x, y));
   m_program->setUniformValue("uDabSize", size);
   m_program->setUniformValue("tipRotation", tipRotation);
+  m_program->setUniformValue("uInvertShape", invertShape ? 1 : 0);
+  m_program->setUniformValue("uFlipX", flipX ? 1 : 0);
+  m_program->setUniformValue("uFlipY", flipY ? 1 : 0);
+  m_program->setUniformValue("uRoundness", roundness);
+  m_program->setUniformValue("uShapeContrast", shapeContrast);
+  m_program->setUniformValue("uShapeBlur", shapeBlur);
+  m_program->setUniformValue("uGrainEmphasizeDensity", grainEmphasizeDensity ? 1 : 0);
+  m_program->setUniformValue("uDualGrainEmphasizeDensity", dualGrainEmphasizeDensity ? 1 : 0);
+  m_program->setUniformValue("uGrainApplyToTips", grainApplyToTips ? 1 : 0);
+  m_program->setUniformValue("uDualGrainApplyToTips", dualGrainApplyToTips ? 1 : 0);
 
   // === TEXTURE UNIT ALLOCATION ===
   // Unit 0: Tip Texture (brush shape)
@@ -569,7 +582,10 @@ void StrokeRenderer::renderStrokeInstanced(
     uint32_t dualTipTexId, bool hasDualTip, float dualTipScale, float dualTipRotation, int dualTipBlendMode, float dualTipFlow, int grainBlendMode,
     uint32_t dualGrainTexId, bool hasDualGrain, float dualGrainScale, float dualGrainIntensity, float dualGrainBright, float dualGrainCon, bool invertDualGrain, int dualGrainBlendMode, float dualGrainRotation,
     bool isEraser,
-    bool colorMixing, float paintAmount, float colorStretch, int blendMode) {
+    bool colorMixing, float paintAmount, float colorStretch, int blendMode,
+    bool invertShape, bool flipX, bool flipY, float roundness, float shapeContrast, float shapeBlur,
+    bool grainEmphasizeDensity, bool dualGrainEmphasizeDensity,
+    bool grainApplyToTips, bool dualGrainApplyToTips) {
 
   if (!m_program || dabs.empty())
     return;
@@ -595,6 +611,16 @@ void StrokeRenderer::renderStrokeInstanced(
   m_program->setUniformValue("hardness", hardness);
   m_program->setUniformValue("flow", flow);
   m_program->setUniformValue("brushType", type);
+  m_program->setUniformValue("uInvertShape", invertShape ? 1 : 0);
+  m_program->setUniformValue("uFlipX", flipX ? 1 : 0);
+  m_program->setUniformValue("uFlipY", flipY ? 1 : 0);
+  m_program->setUniformValue("uRoundness", roundness);
+  m_program->setUniformValue("uShapeContrast", shapeContrast);
+  m_program->setUniformValue("uShapeBlur", shapeBlur);
+  m_program->setUniformValue("uGrainEmphasizeDensity", grainEmphasizeDensity ? 1 : 0);
+  m_program->setUniformValue("uDualGrainEmphasizeDensity", dualGrainEmphasizeDensity ? 1 : 0);
+  m_program->setUniformValue("uGrainApplyToTips", grainApplyToTips ? 1 : 0);
+  m_program->setUniformValue("uDualGrainApplyToTips", dualGrainApplyToTips ? 1 : 0);
 
   // === TEXTURE UNIT ALLOCATION ===
   if (hasTip && tipTexId != 0) {

@@ -17,7 +17,9 @@ Item {
     property color brushColor: "black"
     property color accentColor: "#3e3e42"
     
-    readonly property real visualPosition: (to > from) ? Math.max(0.0, Math.min(1.0, (value - from) / (to - from))) : 0.0
+    readonly property real visualPosition: (previewType === "size" || label === "Size" || label === "Border Width") 
+        ? Math.max(0.0, Math.min(1.0, Math.pow((value - 0.5) / 1999.5, 1.0 / 3.0)))
+        : ((to > from) ? Math.max(0.0, Math.min(1.0, (value - from) / (to - from))) : 0.0)
     
     signal moved(real val)
     
@@ -138,7 +140,7 @@ Item {
                 anchors.topMargin: 16 * uiScale
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.previewType === "size" 
-                      ? Math.round(root.value * root.maxVal) + " px" 
+                      ? Math.round(root.value) + " px" 
                       : Math.round(root.value * 100) + " %"
                 color: "#e2e2e7"
                 font.pixelSize: 13 * uiScale
@@ -195,7 +197,9 @@ Item {
                 var clickVal = mouse.x / width
                 clickVal = Math.max(0.0, Math.min(1.0, clickVal))
                 
-                var calculatedVal = root.from + clickVal * (root.to - root.from)
+                var calculatedVal = (root.previewType === "size" || root.label === "Size" || root.label === "Border Width")
+                    ? (0.5 + 1999.5 * Math.pow(clickVal, 3.0))
+                    : (root.from + clickVal * (root.to - root.from))
                 root.value = calculatedVal
                 root.moved(calculatedVal)
                 
@@ -218,7 +222,9 @@ Item {
                     var newVal = startValue + deltaVal
                     newVal = Math.max(0.0, Math.min(1.0, newVal))
                     
-                    var calculatedVal = root.from + newVal * (root.to - root.from)
+                    var calculatedVal = (root.previewType === "size" || root.label === "Size" || root.label === "Border Width")
+                        ? (0.5 + 1999.5 * Math.pow(newVal, 3.0))
+                        : (root.from + newVal * (root.to - root.from))
                     root.value = calculatedVal
                     root.moved(calculatedVal)
                     
