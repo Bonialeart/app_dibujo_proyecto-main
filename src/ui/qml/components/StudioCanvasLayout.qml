@@ -82,7 +82,7 @@ Item {
 
     signal switchToEssential()
     
-    function loadWorkspace(name) { panelManager.loadWorkspace(name) }
+    function loadWorkspace(name) { if (panelManager) panelManager.loadWorkspace(name) }
 
     visible: isProjectActive
     
@@ -119,6 +119,7 @@ Item {
     }
     
     function updateDragZones(gx, gy) {
+        if (!panelManager) return null;
         // --- C++ does the heavy math ---
         var zone = dragCalculator.computeDragZone(
             gx, studioLayout.width,
@@ -257,7 +258,7 @@ Item {
         
         
         Repeater {
-            model: panelManager.floatingModel
+            model: panelManager ? panelManager.floatingModel : null
             delegate: FloatingPanel {
                 // We only use the model pos to initialize, then the panel manages its own dragging natively
                 Component.onCompleted: {
@@ -794,7 +795,7 @@ Item {
                     
                     Text { text: "◫"; color: "#aaa"; font.pixelSize: 12 }
                     Text {
-                        text: panelManager.activeWorkspace
+                        text: panelManager ? panelManager.activeWorkspace : ""
                         color: "white"
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
@@ -917,12 +918,12 @@ Item {
                 delegate: RowLayout {
                     spacing: 0
                     Layout.fillHeight: true
-                    visible: !modelData.isSecond || (panelManager.leftDockModel2.count > 0 || (studioLayout.leftDock2 && studioLayout.leftDock2.isDragHover))
+                    visible: !modelData.isSecond || ((panelManager && panelManager.leftDockModel2 ? panelManager.leftDockModel2.count > 0 : false) || (studioLayout.leftDock2 && studioLayout.leftDock2.isDragHover))
                     
                     SideIconBar {
                         Layout.fillHeight: true
-                        panelModel: modelData.isSecond ? panelManager.leftDockModel2 : panelManager.leftDockModel
-                        isCollapsed: modelData.isSecond ? panelManager.leftCollapsed2 : panelManager.leftCollapsed
+                        panelModel: modelData.isSecond ? (panelManager ? panelManager.leftDockModel2 : null) : (panelManager ? panelManager.leftDockModel : null)
+                        isCollapsed: modelData.isSecond ? (panelManager ? panelManager.leftCollapsed2 : true) : (panelManager ? panelManager.leftCollapsed : true)
                         accentColor: studioLayout.accentColor
                         dockSide: modelData.side
                         onToggleDock: (panelId) => panelManager.togglePanel(panelId)
@@ -941,8 +942,8 @@ Item {
                         Layout.fillHeight: true
                         dockSide: modelData.side
                         manager: panelManager
-                        dockModel: modelData.isSecond ? panelManager.leftDockModel2 : panelManager.leftDockModel
-                        isCollapsed: modelData.isSecond ? panelManager.leftCollapsed2 : panelManager.leftCollapsed
+                        dockModel: modelData.isSecond ? (panelManager ? panelManager.leftDockModel2 : null) : (panelManager ? panelManager.leftDockModel : null)
+                        isCollapsed: modelData.isSecond ? (panelManager ? panelManager.leftCollapsed2 : true) : (panelManager ? panelManager.leftCollapsed : true)
                         mainCanvas: studioLayout.mainCanvas
                         accentColor: studioLayout.accentColor
                         
@@ -1004,7 +1005,7 @@ Item {
             
             MouseArea {
                 id: hoverGrip
-                anchors.fill: parent; hoverEnabled: true; cursorShape: dragGrip.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                anchors.fill: parent; hoverEnabled: true;                 cursorShape: (typeof dragGrip !== 'undefined' && dragGrip && dragGrip.active) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                 drag.target: toolsToolbar
                 drag.axis: Drag.XAndYAxis
                 // drag constraints
@@ -1131,14 +1132,14 @@ Item {
                 delegate: RowLayout {
                     spacing: 0
                     Layout.fillHeight: true
-                    visible: !modelData.isSecond || (panelManager.rightDockModel2.count > 0 || (studioLayout.rightDock2 && studioLayout.rightDock2.isDragHover))
+                    visible: !modelData.isSecond || ((panelManager && panelManager.rightDockModel2 ? panelManager.rightDockModel2.count > 0 : false) || (studioLayout.rightDock2 && studioLayout.rightDock2.isDragHover))
                     
                     DockContainer {
                         Layout.fillHeight: true
                         dockSide: modelData.side
                         manager: panelManager
-                        dockModel: modelData.isSecond ? panelManager.rightDockModel2 : panelManager.rightDockModel
-                        isCollapsed: modelData.isSecond ? panelManager.rightCollapsed2 : panelManager.rightCollapsed
+                        dockModel: modelData.isSecond ? (panelManager ? panelManager.rightDockModel2 : null) : (panelManager ? panelManager.rightDockModel : null)
+                        isCollapsed: modelData.isSecond ? (panelManager ? panelManager.rightCollapsed2 : true) : (panelManager ? panelManager.rightCollapsed : true)
                         mainCanvas: studioLayout.mainCanvas
                         accentColor: studioLayout.accentColor
                         
@@ -1158,8 +1159,8 @@ Item {
                     
                     SideIconBar {
                         Layout.fillHeight: true
-                        panelModel: modelData.isSecond ? panelManager.rightDockModel2 : panelManager.rightDockModel
-                        isCollapsed: modelData.isSecond ? panelManager.rightCollapsed2 : panelManager.rightCollapsed
+                        panelModel: modelData.isSecond ? (panelManager ? panelManager.rightDockModel2 : null) : (panelManager ? panelManager.rightDockModel : null)
+                        isCollapsed: modelData.isSecond ? (panelManager ? panelManager.rightCollapsed2 : true) : (panelManager ? panelManager.rightCollapsed : true)
                         accentColor: studioLayout.accentColor
                         dockSide: modelData.side
                         onToggleDock: (panelId) => panelManager.togglePanel(panelId)
@@ -1183,7 +1184,7 @@ Item {
             id: bottomDock
             dockSide: "bottom"
             manager: panelManager
-            isCollapsed: panelManager.bottomCollapsed
+            isCollapsed: panelManager ? panelManager.bottomCollapsed : true
             mainCanvas: studioLayout.mainCanvas
             accentColor: studioLayout.accentColor
             
@@ -1244,7 +1245,7 @@ Item {
             spacing: 4
             
             Repeater {
-                model: panelManager.availableWorkspaces
+                model: panelManager ? panelManager.availableWorkspaces : null
                 delegate: Rectangle {
                     width: parent.width
                     height: 32
@@ -1255,16 +1256,16 @@ Item {
                     
                     Text { 
                         text: modelData
-                        color: modelData === panelManager.activeWorkspace ? accentColor : (wsItemMa.containsMouse ? "white" : "#ddd")
+                        color: panelManager && modelData === panelManager.activeWorkspace ? accentColor : (wsItemMa.containsMouse ? "white" : "#ddd")
                         font.pixelSize: 12
-                        font.weight: modelData === panelManager.activeWorkspace ? Font.Bold : Font.Medium
+                        font.weight: panelManager && modelData === panelManager.activeWorkspace ? Font.Bold : Font.Medium
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.left: parent.left
                         anchors.leftMargin: 28
                     }
                     
                     Text {
-                        visible: modelData === panelManager.activeWorkspace
+                        visible: panelManager && modelData === panelManager.activeWorkspace
                         text: "✓"
                         color: accentColor
                         font.pixelSize: 14
@@ -1395,6 +1396,7 @@ Item {
                     border.width: 1
                     
                     function checkIsVisible(pid) {
+                        if (!panelManager) return false
                         var models = [
                             panelManager.leftDockModel,
                             panelManager.leftDockModel2,
@@ -1572,7 +1574,7 @@ Item {
             
             // List of available workspaces
             Repeater {
-                model: panelManager.availableWorkspaces
+                model: panelManager ? panelManager.availableWorkspaces : null
                 delegate: Rectangle {
                     width: parent.width; height: 30; radius: 6
                     color: wsItMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
@@ -1581,14 +1583,14 @@ Item {
                     
                     Text {
                         text: modelData
-                        color: modelData === panelManager.activeWorkspace ? accentColor : (wsItMa.containsMouse ? "white" : "#ddd")
+                        color: panelManager && modelData === panelManager.activeWorkspace ? accentColor : (wsItMa.containsMouse ? "white" : "#ddd")
                         font.pixelSize: 12
-                        font.weight: modelData === panelManager.activeWorkspace ? Font.Bold : Font.Medium
+                        font.weight: panelManager && modelData === panelManager.activeWorkspace ? Font.Bold : Font.Medium
                         anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 28
                     }
                     
                     Text {
-                        visible: modelData === panelManager.activeWorkspace
+                        visible: panelManager && modelData === panelManager.activeWorkspace
                         text: "✓"
                         color: accentColor
                         font.pixelSize: 14
@@ -1778,7 +1780,7 @@ Item {
                 
                 ListView {
                     id: customWsListView
-                    model: panelManager.availableWorkspaces
+                    model: panelManager ? panelManager.availableWorkspaces : null
                     spacing: 4
                     delegate: Item {
                         width: customWsListView.width
@@ -1837,6 +1839,7 @@ Item {
             
             Text {
                 visible: {
+                    if (!panelManager) return false
                     var avail = panelManager.availableWorkspaces;
                     var hasCustom = false;
                     for (var i = 0; i < avail.length; i++) {

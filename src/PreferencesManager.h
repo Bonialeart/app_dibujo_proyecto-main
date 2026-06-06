@@ -75,6 +75,10 @@ class PreferencesManager : public QObject {
   Q_PROPERTY(bool showRightToolbar READ showRightToolbar WRITE setShowRightToolbar NOTIFY settingsChanged)
   Q_PROPERTY(bool showRightColorSelector READ showRightColorSelector WRITE setShowRightColorSelector NOTIFY settingsChanged)
 
+  // --- ESSENTIAL MODE LAYOUT CUSTOMIZATION ---
+  Q_PROPERTY(QVariantMap essentialLayoutConfig READ essentialLayoutConfig WRITE setEssentialLayoutConfig NOTIFY layoutConfigChanged)
+  Q_PROPERTY(QVariantMap essentialButtonCatalog READ essentialButtonCatalog CONSTANT)
+
 public:
   static PreferencesManager *instance();
 
@@ -389,6 +393,119 @@ public slots:
       emit settingsChanged();
     }
   }
+
+  // --- ESSENTIAL MODE LAYOUT CONFIG ---
+  QVariantMap defaultEssentialLayout() const {
+    QVariantMap cfg;
+    cfg["topLeft"] = QStringList{"backButton","sidebarToggle","settingsButton","cubeToolsBtn","galleryBtn","effectsBtn","studioModeBtn"};
+    cfg["topRight"] = QStringList{"undoBtn","redoBtn","brushConfigBtn","layersBtn","storyBtn","colorSwatchBtn"};
+    cfg["side"] = QStringList{"tool_selection","tool_shapes","tool_lasso","tool_magnetic_lasso","tool_move","tool_pen","tool_pencil","tool_brush","tool_airbrush","tool_eraser","tool_fill","tool_picker","tool_hand","tool_panel_cut"};
+    cfg["rightColor"] = QStringList{"color_primary","color_secondary","transparency_orb"};
+    cfg["sliders"] = QStringList{"slider_size","slider_opacity"};
+    cfg["hidden"] = QStringList{};
+    return cfg;
+  }
+
+  QVariantMap essentialButtonCatalog() const {
+    QVariantMap cat;
+    auto add = [&](const QString &id, const QString &label, const QString &icon, const QString &defLoc) {
+      QVariantMap b;
+      b["label"] = label; b["icon"] = icon; b["defaultLocation"] = defLoc;
+      cat[id] = b;
+    };
+    // Top Bar Left
+    add("backButton",       "Volver al inicio",      "chevron-left.svg", "topLeft");
+    add("sidebarToggle",    "Panel lateral",          "sidebar.svg",     "topLeft");
+    add("settingsButton",   "Ajustes y Opciones",     "settings.svg",    "topLeft");
+    add("cubeToolsBtn",     "Herramientas",           "tools-cube.svg",  "topLeft");
+    add("galleryBtn",       "Galeria / Disenos",      "layout.svg",      "topLeft");
+    add("effectsBtn",       "Efectos y Ajustes",      "star.svg",        "topLeft");
+    add("studioModeBtn",    "Cambiar a Modo Studio",  "studio.svg",      "topLeft");
+    // Top Bar Right
+    add("undoBtn",          "Deshacer (Ctrl+Z)",      "undo.svg",        "topRight");
+    add("redoBtn",          "Rehacer (Ctrl+Y)",       "redo.svg",        "topRight");
+    add("brushConfigBtn",   "Configuracion de pincel","sliders.svg",     "topRight");
+    add("layersBtn",        "Capas",                  "layers.svg",      "topRight");
+    add("storyBtn",         "Story Manager",           "comic.svg",       "topRight");
+    add("colorSwatchBtn",   "Color del pincel",       "",                "topRight");
+    // Side Toolbar
+    add("tool_selection",    "Seleccion",              "selection.svg",   "side");
+    add("tool_shapes",       "Formas",                 "shapes.svg",      "side");
+    add("tool_lasso",        "Lazo",                   "lasso.svg",       "side");
+    add("tool_magnetic_lasso","Lazo Magnetico",        "magnet.svg",      "side");
+    add("tool_move",         "Mover",                  "move.svg",        "side");
+    add("tool_pen",          "Plumilla",               "pen.svg",         "side");
+    add("tool_pencil",       "Lapiz",                  "pencil.svg",      "side");
+    add("tool_brush",        "Pincel",                 "brush.svg",       "side");
+    add("tool_airbrush",     "Aerografo",              "airbrush.svg",    "side");
+    add("tool_eraser",       "Borrador",               "eraser.svg",      "side");
+    add("tool_fill",         "Relleno",                "fill.svg",        "side");
+    add("tool_picker",       "Cuentagotas",            "picker.svg",      "side");
+    add("tool_hand",         "Mano",                   "hand.svg",        "side");
+    add("tool_panel_cut",    "Cuchilla Viñetas",       "panel_cut.svg",   "side");
+    // Right Color
+    add("color_primary",     "Color frontal",          "",                "rightColor");
+    add("color_secondary",   "Color trasero",          "",                "rightColor");
+    add("transparency_orb",  "Transparencia (Borrador)","",               "rightColor");
+    // Sliders
+    add("slider_size",       "Control de tamaño",      "",                "sliders");
+    add("slider_opacity",    "Control de opacidad",    "",                "sliders");
+    return cat;
+  }
+
+  QVariantMap essentialLayoutConfig() const {
+    QVariantMap def = defaultEssentialLayout();
+    QVariantMap saved = m_settings->value("essential_layout_config", QVariantMap()).toMap();
+    // Merge: use saved if present, fall back to default
+    QVariantMap result;
+    QStringList keys{"topLeft","topRight","side","rightColor","sliders","hidden"};
+    for (const auto &k : keys) {
+      if (saved.contains(k)) {
+        result[k] = saved[k];
+      } else if (def.contains(k)) {
+        result[k] = def[k];
+      }
+    }
+    return result;
+  }
+
+  Q_INVOKABLE QVariantList getButtonsAtLocation(const QString &location) const {
+    QVariantMap cfg = essentialLayoutConfig();
+    return cfg.value(location, QStringList()).toList();
+  }
+
+  void setEssentialLayoutConfig(const QVariantMap &config) {
+    m_settings->setValue("essential_layout_config", config);
+    emit layoutConfigChanged();
+  }
+
+  Q_INVOKABLE void moveButtonTo(const QString &buttonId, const QString &targetLocation) {
+    QVariantMap cfg = essentialLayoutConfig();
+    QVariantMap catalog = essentialButtonCatalog();
+    QStringList keys{"topLeft","topRight","side","rightColor","sliders","hidden"};
+    // Remove from current location
+    for (const auto &k : keys) {
+      QVariantList list = cfg.value(k).toList();
+      for (int i = list.size() - 1; i >= 0; --i) {
+        if (list[i].toString() == buttonId) {
+          list.removeAt(i);
+          break;
+        }
+      }
+      cfg[k] = list;
+    }
+    // Add to target (skip if hidden)
+    if (targetLocation != "hidden" && !targetLocation.isEmpty()) {
+      QVariantList tgt = cfg.value(targetLocation).toList();
+      tgt.append(buttonId);
+      cfg[targetLocation] = tgt;
+    }
+    setEssentialLayoutConfig(cfg);
+  }
+
+  Q_INVOKABLE void resetEssentialLayout() {
+    setEssentialLayoutConfig(defaultEssentialLayout());
+  }
   void setPressureCurve(const QVariantList &curve) {
     QStringList parts;
     for (const auto &v : curve) {
@@ -496,12 +613,14 @@ public slots:
     QVariantList defCurve;
     defCurve << 0.0 << 0.0 << 0.5 << 0.5 << 1.0 << 1.0;
     setPressureCurve(defCurve);
+    setEssentialLayoutConfig(defaultEssentialLayout());
   }
 
 signals:
   void settingsChanged();
   void pressureCurveChanged();
   void shortcutsChanged();
+  void layoutConfigChanged();
 
 private:
   QSettings *m_settings;

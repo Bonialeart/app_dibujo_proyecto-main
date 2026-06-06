@@ -91,26 +91,26 @@ Item {
             fillColor: root.dropColor
             strokeWidth: 0
             
-            property real d: root.distance
-            property real w: Math.max(3, 16 * (1 - d / root.maxStretch))
-            property real controlY: -d * 0.5
+            readonly property real _d: root.distance || 0
+            readonly property real _w: Math.max(3, 16 * (1 - _d / Math.max(root.maxStretch, 1)))
+            readonly property real _controlY: -_d * 0.5
             
             // Base en el orbe (superior)
             startX: -16; startY: 0
             
             // Lado izquierdo estirándose hacia el origen
             PathCubic { 
-                x: -w; y: -d 
-                control1X: -16; control1Y: controlY 
-                control2X: -w; control2Y: controlY 
+                x: -_w; y: -_d 
+                control1X: -16; control1Y: _controlY 
+                control2X: -_w; control2Y: _controlY 
             }
             // Línea en el origen
-            PathLine { x: w; y: -d }
+            PathLine { x: _w; y: -_d }
             // Lado derecho volviendo al orbe
             PathCubic { 
                 x: 16; y: 0 
-                control1X: w; control1Y: controlY 
-                control2X: 16; control2Y: controlY 
+                control1X: _w; control1Y: _controlY 
+                control2X: 16; control2Y: _controlY 
             }
         }
     }

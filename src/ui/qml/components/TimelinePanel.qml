@@ -762,14 +762,14 @@ Item {
                 text: "⚡"
                 font.pixelSize: 13
                 color: root.accentColor
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
             }
 
             // Slider container
             Item {
                 Layout.fillWidth: true
                 height: 24
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
 
                 // Slider Track
                 Rectangle {
@@ -826,7 +826,7 @@ Item {
             // Presets
             Row {
                 spacing: 4
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 Repeater {
                     model: [8, 12, 24, 30]
                     Rectangle {

@@ -12,6 +12,16 @@ Item {
     property int projectFrames: 48
     property bool projectLoop: true
 
+    // ── Camera (optional) ───────────────────────────────────
+    // If provided, a non-drawing "Cámara" track is rendered at
+    // the top of the timeline so the user can keyframe pan/zoom
+    // per frame.
+    property var camera: null
+
+    // Emitted when the user clicks the "Edit Camera" button
+    // (opens the camera properties popup).
+    signal cameraEditRequested()
+
     // Canvas background color for frame thumbnails
     property color canvasBgColor: {
         if (targetCanvas && targetCanvas.layerModel && targetCanvas.layerModel.length > 0) {
@@ -47,6 +57,16 @@ Item {
     }
     onCurrentFrameIdxChanged: {
         syncVisibility()
+        if (root.camera) {
+            root.camera.currentFrameIdx = idx
+            root.camera.applyAtCurrent()
+        }
+    }
+    onIsPlayingChanged: {
+        if (root.camera) {
+            root.camera.isPlaying = isPlaying
+            if (isPlaying) root.camera.applyAtCurrent()
+        }
     }
 
     property int _frameCounter: 0
@@ -736,6 +756,197 @@ Item {
                     Column {
                         id: tracksCol; width: parent.width
 
+                        // ── CAMERA TRACK — special non-drawing track ──────
+                        // A thin row above the drawing tracks. The user clicks
+                        // on the rail to add a camera keyframe at that slot,
+                        // right-clicks to remove. Diamonds show existing
+                        // keyframes. The track is always shown when a camera
+                        // is provided so the user can click to add the first
+                        // keyframe.
+                        Item {
+                            id: camAdvTrack
+                            visible: root.camera !== null
+                            width: tracksCol.width
+                            height: 30
+
+                            // Track label (left)
+                            Rectangle {
+                                width: root.trackLabelWidth
+                                height: parent.height - 4
+                                anchors.verticalCenter: parent.verticalCenter
+                                radius: 10
+                                color: root.camera && root.camera.active
+                                    ? "#082f3a" : "#0c0c10"
+                                border.color: root.camera && root.camera.active
+                                    ? Qt.rgba(0.13, 0.83, 0.93, 0.5)
+                                    : Qt.rgba(1, 1, 1, 0.04)
+                                border.width: 1
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                                Row {
+                                    anchors.centerIn: parent; spacing: 5
+                                    Text { text: "🎥"; font.pixelSize: 11
+                                        anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: "Cámara"
+                                        color: root.camera && root.camera.active ? "#67e8f9" : "#888"
+                                        font.pixelSize: 10; font.weight: Font.DemiBold
+                                        anchors.verticalCenter: parent.verticalCenter
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (!root.camera) return
+                                        root.camera.active = !root.camera.active
+                                        root.camera.notify(
+                                            root.camera.active ? "Modo cámara activado" : "Modo cámara desactivado",
+                                            "info")
+                                    }
+                                }
+                            }
+
+                            // Frame area
+                            Item {
+                                x: root.trackLabelWidth + 2
+                                width: parent.width - root.trackLabelWidth - 2
+                                height: parent.height
+
+                                // Background rail
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.topMargin: 6
+                                    anchors.bottomMargin: 6
+                                    radius: 6
+                                    color: root.camera && root.camera.active
+                                        ? "#062b35" : "#0a0a0e"
+                                    border.color: root.camera && root.camera.active
+                                        ? Qt.rgba(0.13, 0.83, 0.93, 0.35)
+                                        : Qt.rgba(1, 1, 1, 0.04)
+                                    border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 200 } }
+                                    Behavior on border.color { ColorAnimation { duration: 200 } }
+                                }
+
+                                // Click on rail = add / remove keyframe
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    preventStealing: true
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                    onClicked: function(m) {
+                                        if (!root.camera) return
+                                        // m.x is in this Item's coordinates
+                                        var slot = Math.max(0, Math.round(m.x / root.pixelsPerFrame - 0.5))
+                                        if (slot < 0) slot = 0
+                                        if (slot >= root.totalFrames) slot = root.totalFrames - 1
+                                        if (m.button === Qt.RightButton) {
+                                            if (root.camera.hasKeyframeAt(slot)) {
+                                                root.camera.removeKeyframeAt(slot)
+                                                root.camera.notify("Keyframe eliminado", "info")
+                                            }
+                                        } else {
+                                            root.goToFrame(slot)
+                                            root.camera.addKeyframe()
+                                            root.camera.notify(
+                                                "Keyframe añadido en frame " + (slot + 1),
+                                                "success")
+                                        }
+                                    }
+                                }
+
+                                // Diamonds
+                                Repeater {
+                                    model: root.camera ? root.camera.keyframes : []
+                                    delegate: Item {
+                                        property var kf: (root.camera && modelData)
+                                            ? modelData
+                                            : ({ frameIdx: 0, x: 0, y: 0, zoom: 1 })
+                                        property real slotX: kf.frameIdx * root.pixelsPerFrame
+                                            + root.pixelsPerFrame / 2
+                                        x: slotX - 8
+                                        y: 0
+                                        width: 16; height: 30
+
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: 12; height: 12; rotation: 45
+                                            radius: 1.5
+                                            color: {
+                                                if (kf.frameIdx === root.currentFrameIdx)
+                                                    return "#ffffff"
+                                                if (root.camera && root.camera.active)
+                                                    return "#22d3ee"
+                                                return "#0e7490"
+                                            }
+                                            border.color: "#0b1220"
+                                            border.width: 1
+                                            Behavior on color { ColorAnimation { duration: 120 } }
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            preventStealing: true
+                                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                            onClicked: function(m) {
+                                                if (m.button === Qt.RightButton) {
+                                                    root.camera.removeKeyframeAt(kf.frameIdx)
+                                                    root.camera.notify("Keyframe eliminado", "info")
+                                                } else {
+                                                    root.goToFrame(kf.frameIdx)
+                                                }
+                                            }
+                                            onEntered: {
+                                                kfTip.text = "Frame " + (kf.frameIdx + 1)
+                                                    + "  •  X " + Math.round(kf.x)
+                                                    + "  Y " + Math.round(kf.y)
+                                                    + "  •  Z " + Math.round(kf.zoom * 100) + "%"
+                                                kfTip.visible = true
+                                            }
+                                            onExited: kfTip.visible = false
+                                        }
+
+                                        ToolTip { id: kfTip; visible: false; delay: 0 }
+                                    }
+                                }
+                            }
+
+                            // Edit camera properties button (right edge of track)
+                            Rectangle {
+                                width: 22; height: 22
+                                anchors.right: parent.right
+                                anchors.rightMargin: 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                radius: 11
+                                color: camEditMa.containsMouse ? "#0e7490" : "#0a0a0e"
+                                border.color: root.camera && root.camera.active
+                                    ? Qt.rgba(0.13, 0.83, 0.93, 0.6)
+                                    : Qt.rgba(1, 1, 1, 0.1)
+                                border.width: 1
+                                visible: root.camera && root.camera.active
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "✎"; font.pixelSize: 11
+                                    color: camEditMa.containsMouse ? "#ffffff" : "#67e8f9"
+                                }
+                                MouseArea {
+                                    id: camEditMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    preventStealing: true
+                                    onClicked: root.cameraEditRequested()
+                                }
+                                ToolTip.visible: camEditMa.containsMouse
+                                ToolTip.text: "Editar propiedades de la cámara"
+                                ToolTip.delay: 500
+                            }
+                        }
+
                         Repeater {
                             model: trackModel
 
@@ -1224,21 +1435,20 @@ Item {
                 font.pixelSize: 12
                 color: menuItem.isDestructive ? "#ff6666" : (ma.containsMouse ? root.accentColor : "#777")
                 Behavior on color { ColorAnimation { duration: 100 } }
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
             }
             Text {
                 text: menuItem.label
                 font.pixelSize: 10; font.weight: Font.DemiBold
                 color: menuItem.isDestructive ? "#ff6666" : (ma.containsMouse ? "#fff" : menuItem.labelColor)
                 Layout.fillWidth: true
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
             }
             Text {
                 visible: menuItem.subtitle !== ""
                 text: menuItem.subtitle
                 font.pixelSize: 8; color: "#555"
-                Layout.alignment: Qt.AlignRight
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             }
         }
 
@@ -1659,14 +1869,14 @@ Item {
                 text: "⚡"
                 font.pixelSize: 13
                 color: root.accentColor
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
             }
 
             // Slider container
             Item {
                 Layout.fillWidth: true
                 height: 24
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
 
                 // Slider Track
                 Rectangle {
@@ -1723,7 +1933,7 @@ Item {
             // Presets
             Row {
                 spacing: 4
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 Repeater {
                     model: [8, 12, 24, 30]
                     Rectangle {

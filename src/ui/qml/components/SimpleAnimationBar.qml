@@ -19,6 +19,22 @@ Item {
 
     property var    copiedFrame:    null
 
+    // ── Camera (optional) ───────────────────────────────────
+    // If provided, the camera adds a virtual-camera keyframe track
+    // above the frame strip and lets the user drive pan/zoom
+    // per frame so the same scene can be shot from different
+    // angles without re-animating.
+    property var    camera:         null
+    // Trigger to re-evaluate bindings that depend on the
+    // camera's keyframe set from QML.
+    property int    _camKeyVersion: 0
+
+    // Emitted when the user clicks the "Edit Camera" button
+    // (opens the camera properties popup).
+    signal cameraEditRequested()
+
+    function refreshCameraKeyMarker() { _camKeyVersion++ }
+
     // Canvas background color
     property color  canvasBgColor: {
         if (targetCanvas && targetCanvas.layerModel && targetCanvas.layerModel.length > 0) {
@@ -98,6 +114,11 @@ Item {
         _advancingFromTimer = false
         // Snap playhead to current frame start
         _playheadSlot = getSlotOffset(currentFrameIdx)
+        // Sync camera with playback state
+        if (root.camera) {
+            root.camera.isPlaying = isPlaying
+            if (isPlaying) root.camera.applyAtCurrent()
+        }
     }
 
     Timer {
@@ -148,6 +169,14 @@ Item {
 
     property bool isScrubbing: false
 
+    // Whenever the current frame changes, push the new index into
+    // the camera (if any) and re-evaluate the per-frame keyframe
+    // indicator so the timeline diamond can be redrawn.
+    onCurrentFrameIdxChanged: {
+        if (camera) camera.currentFrameIdx = currentFrameIdx
+        root.refreshCameraKeyMarker()
+    }
+
     function goToFrame(idx, force) {
         if (idx < 0 || idx >= frameCount) return
 
@@ -196,6 +225,22 @@ Item {
     onOnionBeforeChanged: { goToFrame(currentFrameIdx, true) }
     onOnionAfterChanged: { goToFrame(currentFrameIdx, true) }
     onOnionOpacityChanged: { goToFrame(currentFrameIdx, true) }
+
+    // ── CAMERA: react to keyframe changes & playback state ───
+    Connections {
+        target: root.camera
+        enabled: root.camera !== null
+        function onKeyframesChanged() { root.refreshCameraKeyMarker() }
+        function onKeyframeAdded(fi)   { root.refreshCameraKeyMarker() }
+        function onKeyframeRemoved(fi) { root.refreshCameraKeyMarker() }
+        function onKeyframeUpdated(fi) { root.refreshCameraKeyMarker() }
+    }
+    onIsScrubbingChanged: {
+        if (root.camera) {
+            root.camera.isScrubbing = isScrubbing
+            if (isScrubbing) root.camera.applyAtCurrent()
+        }
+    }
 
     function addFrame() {
         var newIdx = frameModel.count
@@ -454,6 +499,86 @@ Item {
                     tip: "Onion Skin"; visible: root.frameCount > 1
                     onToggled: root.onionEnabled = !root.onionEnabled
                 }
+                // Camera mode (virtual camera with keyframes)
+                IconBtn {
+                    icon: "🎥"; active: root.camera && root.camera.active; activeCol: "#22d3ee"
+                    tip: root.camera && root.camera.active
+                        ? "Modo cámara activado (clic para desactivar)"
+                        : "Modo cámara (keyframes de paneo/zoom)"
+                    visible: root.camera !== null && root.frameCount > 0
+                    onToggled: {
+                        if (!root.camera) return
+                        root.camera.active = !root.camera.active
+                        root.camera.notify(
+                            root.camera.active ? "Modo cámara activado" : "Modo cámara desactivado",
+                            "info")
+                    }
+                }
+                // Add / update camera keyframe at current frame
+                Rectangle {
+                    visible: root.camera !== null && root.frameCount > 0
+                    width: kfAddTxt.implicitWidth + 18
+                    height: 26; radius: 13
+                    color: {
+                        if (root.camera && root.camera.hasKeyframeAt(root.currentFrameIdx))
+                            return "#0e7490"
+                        if (root.camera && root.camera.active)
+                            return "#22d3ee"
+                        return Qt.rgba(1, 1, 1, 0.05)
+                    }
+                    border.color: root.camera && root.camera.hasKeyframeAt(root.currentFrameIdx)
+                        ? "#67e8f9" : Qt.rgba(1, 1, 1, 0.08)
+                    border.width: 1
+                    scale: kfAddMa.pressed ? 0.94 : (kfAddMa.containsMouse ? 1.04 : 1.0)
+                    Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutBack } }
+                    Behavior on color { ColorAnimation { duration: 120 } }
+
+                    Row {
+                        id: kfAddTxt; anchors.centerIn: parent; spacing: 4
+                        Text {
+                            text: root.camera && root.camera.hasKeyframeAt(root.currentFrameIdx)
+                                ? "◆" : "◇"
+                            color: "#ffffff"; font.pixelSize: 11
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            text: root.camera && root.camera.hasKeyframeAt(root.currentFrameIdx)
+                                ? "Actualizar Key" : "Añadir Key"
+                            color: "#ffffff"; font.pixelSize: 10; font.weight: Font.DemiBold
+                            font.family: "System-UI, Segoe UI, sans-serif"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                    MouseArea {
+                        id: kfAddMa; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (!root.camera) return
+                            var had = root.camera.hasKeyframeAt(root.currentFrameIdx)
+                            if (had) {
+                                root.camera.updateKeyframe()
+                                root.camera.notify("Keyframe actualizado", "success")
+                            } else {
+                                root.camera.addKeyframe()
+                                root.camera.notify(
+                                    "Keyframe añadido en frame " + (root.currentFrameIdx + 1),
+                                    "success")
+                            }
+                        }
+                    }
+                    ToolTip.visible: kfAddMa.containsMouse
+                    ToolTip.text: root.camera && root.camera.hasKeyframeAt(root.currentFrameIdx)
+                        ? "Actualizar el keyframe del frame actual con la vista actual"
+                        : "Capturar la vista actual (pan/zoom) como keyframe"
+                    ToolTip.delay: 400
+                }
+                // Edit camera properties (opens numeric panel popup)
+                IconBtn {
+                    icon: "✎"; active: false; activeCol: "#22d3ee"
+                    tip: "Editar propiedades de la cámara (Pos / Zoom / Rotación)"
+                    visible: root.camera !== null && root.camera.active
+                    onToggled: root.cameraEditRequested()
+                }
                 // Advanced mode
                 IconBtn {
                     icon: "≡"; active: false; activeCol: "#6366f1"
@@ -644,6 +769,124 @@ Item {
                             }
                         }
 
+                        // ── CAMERA KEYFRAME TRACK ──────────────────
+                        // A thin row at the top of the cellsRow showing
+                        // diamond markers for each camera keyframe, and
+                        // letting the user click on empty space to add a
+                        // keyframe at that slot. Visible whenever a
+                        // camera has been provided to the bar.
+                        Item {
+                            id: camTrack
+                            visible: root.camera !== null
+                            width: parent.width
+                            height: 14
+                            z: 6
+
+                            // Click on empty rail = add / update keyframe
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                preventStealing: true
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onClicked: function(m) {
+                                    if (!root.camera) return
+                                    var slot = Math.max(0, Math.floor(m.x / root.cellStep))
+                                    // Convert slot → frame index
+                                    var acc = 0
+                                    var targetFrame = root.frameCount - 1
+                                    for (var i = 0; i < root.frameCount; i++) {
+                                        var d = root.getFrameDuration(i)
+                                        if (slot < acc + d) { targetFrame = i; break }
+                                        acc += d
+                                    }
+                                    if (m.button === Qt.RightButton) {
+                                        if (root.camera.hasKeyframeAt(targetFrame)) {
+                                            root.camera.removeKeyframeAt(targetFrame)
+                                            root.camera.notify("Keyframe eliminado", "info")
+                                        }
+                                    } else {
+                                        root.goToFrame(targetFrame)
+                                        root.camera.addKeyframe()
+                                        root.camera.notify(
+                                            "Keyframe añadido en frame " + (targetFrame + 1),
+                                            "success")
+                                    }
+                                }
+                            }
+
+                            // Soft accent rail so users see the track
+                            Rectangle {
+                                anchors.fill: parent
+                                color: "#0c2230"
+                                opacity: 0.55
+                                radius: 4
+                            }
+                            Rectangle {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.top: parent.top
+                                anchors.topMargin: parent.height / 2 - 0.5
+                                width: parent.width - 8
+                                height: 1
+                                color: Qt.rgba(0.13, 0.83, 0.93, 0.45)
+                            }
+
+                            // Keyframe diamonds
+                            Repeater {
+                                model: root.camera ? root.camera.keyframes : []
+                                delegate: Item {
+                                    property var kf: (root.camera && modelData)
+                                        ? modelData
+                                        : ({ frameIdx: 0, x: 0, y: 0, zoom: 1 })
+                                    property real slotX: root.getSlotOffset(kf.frameIdx) * root.cellStep + root.cellStep / 2
+                                    x: slotX - 7
+                                    y: 0
+                                    width: 14
+                                    height: 14
+
+                                    // Diamond
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 10; height: 10; rotation: 45
+                                        radius: 1.5
+                                        color: {
+                                            if (kf.frameIdx === root.currentFrameIdx)
+                                                return "#ffffff"
+                                            if (root.camera && root.camera.active)
+                                                return "#22d3ee"
+                                            return "#0e7490"
+                                        }
+                                        border.color: "#0b1220"
+                                        border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 120 } }
+                                    }
+
+                                    MouseArea {
+                                        id: maHover
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        preventStealing: true
+                                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                        onClicked: function(m) {
+                                            if (m.button === Qt.RightButton) {
+                                                root.camera.removeKeyframeAt(kf.frameIdx)
+                                                root.camera.notify("Keyframe eliminado", "info")
+                                            } else {
+                                                root.goToFrame(kf.frameIdx)
+                                            }
+                                        }
+                                    }
+
+                                    ToolTip.visible: maHover.containsMouse
+                                    ToolTip.text: "Frame " + (kf.frameIdx + 1)
+                                        + "  •  X " + Math.round(kf.x)
+                                        + "  Y " + Math.round(kf.y)
+                                        + "  •  Z " + Math.round(kf.zoom * 100) + "%"
+                                    ToolTip.delay: 350
+                                }
+                            }
+                        }
+
                         // Frame cells — each can span multiple slots
                         Repeater {
                             model: root.frameCount
@@ -689,7 +932,7 @@ Item {
                                     NumberAnimation {
                                         target: fCell
                                         property: "snapImpulse"
-                                        from: dragDirection * 12
+                                        from: snapBounceAnim.dragDirection * 12
                                         to: 0
                                         duration: 160
                                         easing.type: Easing.OutBack
@@ -1145,14 +1388,14 @@ Item {
                 text: "⚡"
                 font.pixelSize: 13
                 color: root.accentColor
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
             }
 
             // Slider container
             Item {
                 Layout.fillWidth: true
                 height: 24
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
 
                 // Slider Track
                 Rectangle {
@@ -1209,7 +1452,7 @@ Item {
             // Presets
             Row {
                 spacing: 4
-                anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 Repeater {
                     model: [8, 12, 24, 30]
                     Rectangle {

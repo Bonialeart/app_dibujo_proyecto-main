@@ -947,7 +947,6 @@ Item {
                         model: ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Color Dodge", "Color Burn", "Soft Light", "Hard Light", "Difference", "Exclusion", "Hue", "Saturation", "Color", "Luminosity", "Glow Dodge", "Hard Mix", "Divide"]
                         
                         delegate: Rectangle {
-                            id: blendDelegate
                             width: blendModeList.width - 12; height: 32
                             radius: 6
                             color: {

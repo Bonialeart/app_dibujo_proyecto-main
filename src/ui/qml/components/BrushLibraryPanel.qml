@@ -31,10 +31,10 @@ Item {
     onStudioSelectedCategoryChanged: updateStudioBrushList()
     Component.onCompleted: updateStudioBrushList()
     
-    Connections {
-        target: mainCanvas
-        function onBrushesChanged() { updateStudioBrushList() }
-    }
+    // Connections {
+    //     target: mainCanvas
+    //     function onBrushesChanged() { updateStudioBrushList() }
+    // }
     
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 8; spacing: 6

@@ -30,7 +30,7 @@ Item {
             spacing: 2
             
             delegate: Rectangle {
-                width: parent.width
+                width: parent ? parent.width : 0
                 height: 32; radius: 4
                 color: index === 3 ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.1) : "transparent"
                 border.color: index === 3 ? accentColor : "transparent"

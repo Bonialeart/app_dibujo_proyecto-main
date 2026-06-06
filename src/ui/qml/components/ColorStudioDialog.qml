@@ -154,7 +154,7 @@ Popup {
 
     function getCMYK() {
         // Delegated to C++ colorHarmony for exact same result, faster
-        return colorHarmony.rgbToCMYK(currentColor)
+        return colorHarmony ? colorHarmony.rgbToCMYK(currentColor) : null
     }
 
     function setCMYK(c, m, y, k) {

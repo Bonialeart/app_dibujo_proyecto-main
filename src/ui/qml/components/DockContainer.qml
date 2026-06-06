@@ -117,12 +117,14 @@ Rectangle {
     Rectangle {
         visible: root.isDragHover && root.dragMode === "group"
         height: {
+            if (!dockModel) return 0
             var vCount = 0; for(var i=0; i<dockModel.count; i++) if(dockModel.get(i).visible) vCount++;
             return vCount > 0 ? (parent.height / vCount) - 10 : 0
         }
         width: parent.width - 20
         x: 10
         y: {
+            if (!dockModel) return 0
             var vCount = 0; for(var i=0; i<dockModel.count; i++) if(dockModel.get(i).visible) vCount++;
             return vCount > 0 ? (root.hoverIndex * (parent.height / vCount)) + 5 : 0
         }
@@ -267,7 +269,7 @@ Rectangle {
                     // For a grouped item, determine WHICH panel within the group is currently active
                     property string activeTabId: {
                         if (delegateGroupId === "") return delegatePanelId;
-                        var currentlyActive = root.manager.activeGroupTabs[delegateGroupId];
+                        var currentlyActive = root.manager ? root.manager.activeGroupTabs[delegateGroupId] : null;
                         if (currentlyActive) return currentlyActive;
                         // Fallback to first
                         return delegatePanelId; 

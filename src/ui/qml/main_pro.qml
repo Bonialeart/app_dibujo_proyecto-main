@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.15
 import QtQuick.Dialogs
 import QtQuick.Effects
 import Qt.labs.platform 1.1 // For ColorDialog
-import Qt.labs.settings 1.0 // For Window persistence
+import QtCore // For Window persistence
 
 // import QtWebEngine
 // import Qt5Compat.GraphicalEffects
@@ -22,6 +22,7 @@ Window {
     color: "#050507"
     property alias comicOverlayManager: comicOverlay
     property alias simpleAnimationBar: simpleAnimationBar
+    property alias animationCamera: animationCamera
     
     function openPanelSettings(layoutType, label) {
         panelSettingsPopup.layoutType = layoutType
@@ -285,6 +286,33 @@ Window {
         return "image://icons/" + name; 
     }
     // property string applicationDirPath removed as it's not needed for relative paths
+
+    // --- ESSENTIAL MODE LAYOUT CUSTOMIZATION HELPERS ---
+    function btnInLocation(btnId, location) {
+        if (!preferencesManager || !preferencesManager.essentialLayoutConfig) return true
+        var cfg = preferencesManager.essentialLayoutConfig
+        var list = cfg[location] || []
+        return list.indexOf(btnId) >= 0
+    }
+    function toolBtnInLocation(toolName) {
+        return btnInLocation("tool_" + toolName, "side")
+    }
+    function isSideToolVisible(toolName) {
+        if (!preferencesManager || !preferencesManager.essentialLayoutConfig) {
+            return toolName !== "pencil" && toolName !== "brush" && toolName !== "airbrush"
+        }
+        return btnInLocation("tool_" + toolName, "side")
+    }
+    function isInTopLeft(btnId) { return btnInLocation(btnId, "topLeft") }
+    function isInTopRight(btnId) { return btnInLocation(btnId, "topRight") }
+    function isInRightColor(btnId) { return btnInLocation(btnId, "rightColor") }
+    function isInSliders(btnId) { return btnInLocation(btnId, "sliders") }
+    function hasButtonsInLocation(location) {
+        if (!preferencesManager || !preferencesManager.essentialLayoutConfig) return true
+        var cfg = preferencesManager.essentialLayoutConfig
+        var list = cfg[location] || []
+        return list.length > 0
+    }
 
     // === CUSTOM COMPONENT: SLIDER ===
     component CustomSlider : Slider {
@@ -1121,7 +1149,7 @@ Window {
                 // --- WEBTOON SLICE GUIDES ---
                 Repeater {
                     id: comicSliceGuides
-                    model: (isStoryProject && comicMode === "webtoon" && storyPanelInternal) ? (storyPanelInternal.pagesModel.count - 1) : 0
+                    model: (isStoryProject && comicMode === "webtoon" && storyPanelInternal) ? Math.max(0, storyPanelInternal.pagesModel.count - 1) : 0
                     
                     delegate: Rectangle {
                         property int activeIdx: storyPanelInternal.selectedPageIndex
@@ -1752,9 +1780,43 @@ Window {
                                 canvasPage.activeToolIdx = canvasPage.lastToolIdx
                             }
                         }
-                    } 
+                    }
+
+                    // ═══════════════ CAMERA VIEWFINDER OVERLAY ═══════════════
+                    // The frame size is self-managed by the overlay based on
+                    // the camera's appliedZoom.  The parent only positions
+                    // the top-left corner (10 % margin from the viewport
+                    // origin).
+                    CameraViewfinderOverlay {
+                        id: cameraViewfinder
+                        x:      mainCanvas.viewOffset.x * mainCanvas.zoomLevel
+                              + (mainCanvas.canvasWidth  * mainCanvas.zoomLevel - cameraViewfinder.width ) / 2
+                        y:      mainCanvas.viewOffset.y * mainCanvas.zoomLevel
+                              + (mainCanvas.canvasHeight * mainCanvas.zoomLevel - cameraViewfinder.height) / 2
+                        camera: animationCamera
+                        frameColor: colorAccent
+                    }
+
+                    // ═══════════════ CAMERA PROPERTIES POPUP ═══════════════
+                    // Modal dialog with numeric inputs for the camera's
+                    // position / zoom / rotation. Opened by the "Edit"
+                    // button in the timeline.
+                    CameraPropertiesPanel {
+                        id: cameraPropertiesPanel
+                        camera: animationCamera
+                    }
+
+                    // Hook the "Edit Camera" button in the timelines
+                    Connections {
+                        target: simpleAnimationBar
+                        function onCameraEditRequested() { cameraPropertiesPanel.open() }
+                    }
+                    Connections {
+                        target: advancedAnimationBar
+                        function onCameraEditRequested() { cameraPropertiesPanel.open() }
+                    }
                 }
-                
+
                 // ═══════════════ COMIC OVERLAY ═══════════════
                 ComicOverlayManager {
                     id: comicOverlay
@@ -1928,7 +1990,7 @@ Window {
                         }
                     }
                     
-                    Row {
+                    RowLayout {
                         id: panelCutRow
                         anchors.centerIn: parent
                         spacing: 12
@@ -1939,7 +2001,7 @@ Window {
                             color: "#16251b" // dark subtle green
                             border.color: "#30d158" // neon green
                             border.width: 1
-                            anchors.verticalCenter: parent.verticalCenter
+                            Layout.alignment: Qt.AlignVCenter
                             
                             Image {
                                 source: iconPath("cut-snap.svg")
@@ -1972,12 +2034,12 @@ Window {
                             }
                         }
                         
-                        Rectangle { width: 1; height: 20; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#3e3e42"; Layout.alignment: Qt.AlignVCenter }
                         
                         // Gutter Control
                         Row {
                             spacing: 6
-                            anchors.verticalCenter: parent.verticalCenter
+                            Layout.alignment: Qt.AlignVCenter
                             
                             Image {
                                 source: iconPath("cut-gutter.svg")
@@ -2030,12 +2092,12 @@ Window {
                             }
                         }
                         
-                        Rectangle { width: 1; height: 20; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#3e3e42"; Layout.alignment: Qt.AlignVCenter }
                         
                         // Border Width Control
                         Row {
                             spacing: 6
-                            anchors.verticalCenter: parent.verticalCenter
+                            Layout.alignment: Qt.AlignVCenter
                             
                             Image {
                                 source: iconPath("cut-width.svg")
@@ -2088,13 +2150,13 @@ Window {
                             }
                         }
                         
-                        Rectangle { width: 1; height: 20; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#3e3e42"; Layout.alignment: Qt.AlignVCenter }
                         
                         // Style Picker
                         Row {
                             id: styleRow
                             spacing: 4
-                            anchors.verticalCenter: parent.verticalCenter
+                            Layout.alignment: Qt.AlignVCenter
                             
                             property var styles: ["solid", "sketchy", "double", "dotted", "blurry", "invisible"]
                             property var labels: ["Solid", "Sketchy", "Double", "Dotted", "Blurry", "Invisible"]
@@ -2130,7 +2192,7 @@ Window {
                             }
                         }
                         
-                        Rectangle { width: 1; height: 20; color: "#3e3e42"; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 1; height: 20; color: "#3e3e42"; Layout.alignment: Qt.AlignVCenter }
                         
                         // 3D Panel Breaker Toggle
                         Rectangle {
@@ -2139,7 +2201,7 @@ Window {
                             color: panelCutBar.is3DOverflowActive ? colorAccent : (breakerMa.containsMouse ? "#252528" : "transparent")
                             border.color: panelCutBar.is3DOverflowActive ? "transparent" : "#3e3e42"
                             border.width: panelCutBar.is3DOverflowActive ? 0 : 1
-                            anchors.verticalCenter: parent.verticalCenter
+                            Layout.alignment: Qt.AlignVCenter
                             
                             Image {
                                 source: iconPath("cut-3d.svg")
@@ -2472,11 +2534,11 @@ Window {
                         Repeater {
                             model: toolsModel
                             delegate: Rectangle {
-                                property bool isHiddenInSimple: model.name === "pencil" || model.name === "brush" || model.name === "airbrush"
-                                visible: !isHiddenInSimple
-                                enabled: !isHiddenInSimple
-                                width: isHiddenInSimple ? 0 : 42 * uiScale
-                                height: isHiddenInSimple ? -toolsColumn.spacing : 42 * uiScale
+                                property bool _hidden: !mainWindow.isSideToolVisible(model.name)
+                                visible: !_hidden
+                                enabled: !_hidden
+                                width: _hidden ? 0 : 42 * uiScale
+                                height: _hidden ? -toolsColumn.spacing : 42 * uiScale
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 radius: 14 * uiScale
                                 color: (index === canvasPage.activeToolIdx) ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (toolHover.containsMouse ? "#1affffff" : "transparent")
@@ -2627,7 +2689,7 @@ Window {
                         Column {
                             id: dualColorGroup
                             anchors.horizontalCenter: parent.horizontalCenter
-                            visible: mainWindow.showRightColorSelector
+                            visible: mainWindow.showRightColorSelector && (mainWindow.isInRightColor("color_primary") || mainWindow.isInRightColor("color_secondary") || mainWindow.isInRightColor("transparency_orb"))
                             spacing: 0
                             
                             Item { width: 1; height: 8 * uiScale } // Spacer
@@ -2645,6 +2707,7 @@ Window {
                                     // Slot 1 (Secondary/Back)
                                     Rectangle {
                                         id: barWell1
+                                        visible: mainWindow.isInRightColor("color_secondary")
                                         width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
                                         anchors.right: parent.right; anchors.bottom: parent.bottom
                                         color: colorStudioDialog.slot1Color
@@ -2679,6 +2742,7 @@ Window {
                                     // Slot 0 (Primary/Front)
                                     Rectangle {
                                         id: barWell0
+                                        visible: mainWindow.isInRightColor("color_primary")
                                         width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
                                         anchors.left: parent.left; anchors.top: parent.top
                                         color: colorStudioDialog.slot0Color
@@ -2985,6 +3049,19 @@ Window {
                 
                 // Studio Mode top bar is now integrated inside StudioCanvasLayout.qml (studioInfoBar)
 
+                // === ANIMATION CAMERA (shared by both timeline modes) ===
+                // A virtual camera that drives the canvas viewOffset (pan)
+                // and zoom per frame, with linear interpolation between
+                // keyframes. Shared between the Simple and Advanced
+                // timelines so the user can switch between them without
+                // losing their camera work.
+                AnimationCamera {
+                    id: animationCamera
+                    targetCanvas: mainCanvas
+                    accentColor:  colorAccent
+                    z: 700
+                }
+
                 // === ADVANCED ANIMATION BAR — Floating overlay (Simple Mode Procreate Dreams timeline) ===
                 AdvancedTimelineBar {
                     id: advancedAnimationBar
@@ -3002,6 +3079,7 @@ Window {
                     targetCanvas:  mainCanvas
                     accentColor:   colorAccent
                     projectFPS:    12
+                    camera:        animationCamera
                 }
 
                 // === SIMPLE ANIMATION BAR — Floating overlay (Flipbook style) ===
@@ -3023,6 +3101,7 @@ Window {
                     projectFPS:    12
                     projectFrames: 48
                     projectLoop:   true
+                    camera:        animationCamera
 
                     // Live sync: when user stretches frame duration, push to advanced
                     onDurationChanged: {
@@ -3969,6 +4048,7 @@ Window {
 
                             // 1. Circular Back Button
                             TopBarButton {
+                                visible: mainWindow.isInTopLeft("backButton")
                                 iconSource: iconPath("chevron-left.svg")
                                 tooltip: "Volver al inicio"
                                 radius: 18 * uiScale
@@ -3979,6 +4059,7 @@ Window {
 
                             // 2. Sidebar Toggle
                             TopBarButton {
+                                visible: mainWindow.isInTopLeft("sidebarToggle")
                                 iconSource: iconPath("sidebar.svg")
                                 tooltip: showSidebar ? "Ocultar panel lateral" : "Mostrar panel lateral"
                                 active: showSidebar
@@ -3990,6 +4071,7 @@ Window {
 
                             // 3. Settings Button
                             TopBarButton {
+                                visible: mainWindow.isInTopLeft("settingsButton")
                                 iconSource: iconPath("settings.svg")
                                 tooltip: "Ajustes y Opciones"
                                 active: settingsMenu.visible
@@ -4002,6 +4084,7 @@ Window {
                             // 4. Cube Tools Button (Herramientas)
                             TopBarButton {
                                 id: cubeToolsBtn
+                                visible: mainWindow.isInTopLeft("cubeToolsBtn")
                                 iconSource: iconPath("tools-cube.svg")
                                 tooltip: "Herramientas"
                                 active: toolsDropdown.visible
@@ -4013,6 +4096,7 @@ Window {
 
                             // 5. Gallery/Launcher Button
                             TopBarButton {
+                                visible: mainWindow.isInTopLeft("galleryBtn")
                                 iconSource: iconPath("layout.svg")
                                 tooltip: "Galería / Diseños"
                                 onClicked: toastManager.show("Galería de Diseños", "info")
@@ -4021,6 +4105,7 @@ Window {
                             // 6. Sparkle/Effects Button
                             TopBarButton {
                                 id: effectsBtn
+                                visible: mainWindow.isInTopLeft("effectsBtn")
                                 iconSource: iconPath("star.svg")
                                 tooltip: "Efectos y Ajustes"
                                 active: showScreentonePanel
@@ -4029,6 +4114,7 @@ Window {
 
                             // 7. Studio Mode Button
                             TopBarButton {
+                                visible: mainWindow.isInTopLeft("studioModeBtn")
                                 iconSource: iconPath("studio.svg")
                                 tooltip: "Cambiar a Modo Studio"
                                 onClicked: {
@@ -4203,12 +4289,12 @@ Window {
                                         property string text: ""
                                         property string shortcutText: ""
                                         property string iconName: ""
-                                        signal clicked()
+                                        signal actionClicked()
                                         Layout.fillWidth: true
                                         height: 38 * uiScale
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
-                                        onClicked: clicked()
+                                        onClicked: actionClicked()
                                         
                                         Rectangle {
                                             anchors.fill: parent
@@ -4617,6 +4703,7 @@ Window {
 
                             // Undo
                             TopBarButton {
+                                visible: mainWindow.isInTopRight("undoBtn")
                                 iconSource: iconPath("undo.svg")
                                 tooltip: "Deshacer (Ctrl+Z)"
                                 onClicked: mainCanvas.undo()
@@ -4624,6 +4711,7 @@ Window {
 
                             // Redo
                             TopBarButton {
+                                visible: mainWindow.isInTopRight("redoBtn")
                                 iconSource: iconPath("redo.svg")
                                 tooltip: "Rehacer (Ctrl+Y)"
                                 onClicked: mainCanvas.redo()
@@ -4658,6 +4746,7 @@ Window {
 
                             // Brush Config
                             TopBarButton {
+                                visible: mainWindow.isInTopRight("brushConfigBtn")
                                 iconSource: iconPath("sliders.svg")
                                 tooltip: "Configuración de pincel"
                                 active: showBrushSettings
@@ -4666,6 +4755,7 @@ Window {
 
                             // Layers
                             TopBarButton {
+                                visible: mainWindow.isInTopRight("layersBtn")
                                 iconSource: iconPath("layers.svg")
                                 tooltip: "Capas"
                                 active: showLayers
@@ -4674,16 +4764,17 @@ Window {
 
                             // Story Manager Toggle
                             TopBarButton {
+                                visible: mainWindow.isInTopRight("storyBtn") && isStoryProject
                                 iconSource: iconPath("comic.svg")
                                 tooltip: showStoryPanel ? "Ocultar Story Manager" : "Abrir Story Manager"
                                 active: showStoryPanel
                                 activeColor: colorAccent
-                                visible: isStoryProject
                                 onClicked: showStoryPanel = !showStoryPanel
                             }
 
                             // Color Swatch (special — not TopBarButton)
                             Rectangle {
+                                visible: mainWindow.isInTopRight("colorSwatchBtn")
                                 width: 32 * uiScale; height: 32 * uiScale; radius: 10 * uiScale
                                 color: mainCanvas.brushColor
                                 border.color: showColor ? "white" : Qt.rgba(1,1,1,0.25)
@@ -4779,8 +4870,8 @@ Window {
                                 Layout.fillWidth: true; Layout.fillHeight: true; radius: 8 * uiScale
                                 color: tlRecMouse.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent"
                                 Behavior on color { ColorAnimation { duration: 100 } }
-                                Text { text: tlIndicator.tlRecording ? "⏸  Pausar" : "⏺  Grabar"; color: "white"; font.pixelSize: 11 * uiScale; anchors.centerIn: parent }
-                                MouseArea { id: tlRecMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { tlIndicator.tlRecording = !tlIndicator.tlRecording; tlMiniMenu.visible = false } }
+                                Text { text: (typeof tlIndicator !== 'undefined' && tlIndicator && tlIndicator.tlRecording) ? "⏸  Pausar" : "⏺  Grabar"; color: "white"; font.pixelSize: 11 * uiScale; anchors.centerIn: parent }
+                                MouseArea { id: tlRecMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { if (typeof tlIndicator !== 'undefined' && tlIndicator) { tlIndicator.tlRecording = !tlIndicator.tlRecording }; tlMiniMenu.visible = false } }
                             }
                             Rectangle {
                                 Layout.fillWidth: true; Layout.fillHeight: true; radius: 8 * uiScale
@@ -5438,11 +5529,12 @@ Window {
                                         Item { width: parent.width - 100; height: 1 }
                                         Text { text: Math.round(mainCanvas.brushOpacity * 100) + "%"; color: colorAccent; font.pixelSize: 13; font.weight: Font.Medium }
                                     }
-                                    Slider {
-                                        id: sliderOpacity
-                                        width: parent.width; height: 28
-                                        from: 0; to: 1; value: mainCanvas.brushOpacity
-                                        onValueChanged: mainCanvas.brushOpacity = value
+                                     Slider {
+                                         id: sliderOpacity
+                                         width: parent.width; height: 28
+                                         from: 0; to: 1
+                                         Component.onCompleted: value = mainCanvas.brushOpacity
+                                         onValueChanged: mainCanvas.brushOpacity = value
                                         
                                         background: Rectangle {
                                             y: (parent.height - height) / 2
@@ -5499,11 +5591,12 @@ Window {
                                 Row {
                                     width: parent.width; height: 32
                                     Text { text: "Hardness"; color: "#aaa"; font.pixelSize: 12; width: 75; anchors.verticalCenter: parent.verticalCenter }
-                                    Slider {
-                                        id: sliderHardness
-                                        width: parent.width - 120; height: parent.height
-                                        from: 0; to: 1; value: mainCanvas.brushHardness
-                                        onValueChanged: mainCanvas.brushHardness = value
+                                     Slider {
+                                         id: sliderHardness
+                                         width: parent.width - 120; height: parent.height
+                                         from: 0; to: 1
+                                         Component.onCompleted: value = mainCanvas.brushHardness
+                                         onValueChanged: mainCanvas.brushHardness = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
                                         background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderHardness.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
@@ -5516,11 +5609,12 @@ Window {
                                 Row {
                                     width: parent.width; height: 32
                                     Text { text: "Roundness"; color: "#aaa"; font.pixelSize: 12; width: 75; anchors.verticalCenter: parent.verticalCenter }
-                                    Slider {
-                                        id: sliderRoundness
-                                        width: parent.width - 120; height: parent.height
-                                        from: 0.1; to: 1; value: mainCanvas.brushRoundness
-                                        onValueChanged: mainCanvas.brushRoundness = value
+                                     Slider {
+                                         id: sliderRoundness
+                                         width: parent.width - 120; height: parent.height
+                                         from: 0.1; to: 1
+                                         Component.onCompleted: value = mainCanvas.brushRoundness
+                                         onValueChanged: mainCanvas.brushRoundness = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
                                         background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderRoundness.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
@@ -5533,11 +5627,12 @@ Window {
                                 Row {
                                     width: parent.width; height: 32
                                     Text { text: "Angle"; color: "#aaa"; font.pixelSize: 12; width: 75; anchors.verticalCenter: parent.verticalCenter }
-                                    Slider {
-                                        id: sliderAngle
-                                        width: parent.width - 120; height: parent.height
-                                        from: 0; to: 360; value: mainCanvas.brushAngle
-                                        onValueChanged: mainCanvas.brushAngle = value
+                                     Slider {
+                                         id: sliderAngle
+                                         width: parent.width - 120; height: parent.height
+                                         from: 0; to: 360
+                                         Component.onCompleted: value = mainCanvas.brushAngle
+                                         onValueChanged: mainCanvas.brushAngle = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
                                         background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderAngle.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
@@ -5635,11 +5730,12 @@ Window {
                                 Row {
                                     width: parent.width; height: 32
                                     Text { text: "Grain"; color: "#aaa"; font.pixelSize: 12; width: 75; anchors.verticalCenter: parent.verticalCenter }
-                                    Slider {
-                                        id: sliderGrain
-                                        width: parent.width - 120; height: parent.height
-                                        from: 0; to: 1; value: mainCanvas.brushGrain
-                                        onValueChanged: mainCanvas.brushGrain = value
+                                     Slider {
+                                         id: sliderGrain
+                                         width: parent.width - 120; height: parent.height
+                                         from: 0; to: 1
+                                         Component.onCompleted: value = mainCanvas.brushGrain
+                                         onValueChanged: mainCanvas.brushGrain = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
                                         background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderGrain.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
@@ -5652,11 +5748,12 @@ Window {
                                 Row {
                                     width: parent.width; height: 32
                                     Text { text: "Spacing"; color: "#aaa"; font.pixelSize: 12; width: 75; anchors.verticalCenter: parent.verticalCenter }
-                                    Slider {
-                                        id: sliderSpacing
-                                        width: parent.width - 120; height: parent.height
-                                        from: 0.01; to: 1; value: mainCanvas.brushSpacing
-                                        onValueChanged: mainCanvas.brushSpacing = value
+                                     Slider {
+                                         id: sliderSpacing
+                                         width: parent.width - 120; height: parent.height
+                                         from: 0.01; to: 1
+                                         Component.onCompleted: value = mainCanvas.brushSpacing
+                                         onValueChanged: mainCanvas.brushSpacing = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
                                         background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderSpacing.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
@@ -5669,11 +5766,12 @@ Window {
                                 Row {
                                     width: parent.width; height: 32
                                     Text { text: "Streamline"; color: "#aaa"; font.pixelSize: 12; width: 75; anchors.verticalCenter: parent.verticalCenter }
-                                    Slider {
-                                        id: sliderStreamline
-                                        width: parent.width - 120; height: parent.height
-                                        from: 0; to: 20; stepSize: 1; value: mainCanvas.brushStreamline
-                                        onValueChanged: mainCanvas.brushStreamline = value
+                                     Slider {
+                                         id: sliderStreamline
+                                         width: parent.width - 120; height: parent.height
+                                         from: 0; to: 20; stepSize: 1
+                                         Component.onCompleted: value = mainCanvas.brushStreamline
+                                         onValueChanged: mainCanvas.brushStreamline = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
                                         background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderStreamline.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
@@ -8418,7 +8516,10 @@ Window {
                                         isProjectActive = true
                                         currentPage = 1
                                         mainCanvas.fitToView()
-                                        
+
+                                        // Clear camera keyframes — they belong to the previous project
+                                        if (animationCamera) animationCamera.clearKeyframes()
+
                                         // Auto-activate animation mode if Animation category selected
                                         if (newProjectDialog.selectedCategoryIndex === 3) {
                                             showAnimationBar = true
@@ -8752,6 +8853,7 @@ Window {
                 isProjectActive = true
                 currentPage = 1
                 mainCanvas.fitToView()
+                if (animationCamera) animationCamera.clearKeyframes()
             }
             return success
         })
@@ -8768,6 +8870,7 @@ Window {
                 isProjectActive = true
                 currentPage = 1
                 mainCanvas.fitToView()
+                if (animationCamera) animationCamera.clearKeyframes()
                 loadRecentProjects()
                 toastManager.show("Project loaded", "success")
             } else {
@@ -9048,8 +9151,8 @@ Window {
 
     // Feedback for Timelapse Export
     Connections {
-        target: timelapseController
-        function onVideoExportFinished(success, msg) {
+        target: typeof timelapseController !== 'undefined' ? timelapseController : null
+        function handleVideoExportFinished(success, msg) {
              if (success) {
                  toastManager.show("Timelapse Exported! Location: " + msg, "success")
              } else {
@@ -9476,7 +9579,8 @@ Window {
 
     LearnCenterPage {
         id: learnPage
-        anchors.left: leftNavbar.right
+        anchors.left: parent.left
+        anchors.leftMargin: leftNavbar.width
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -9486,7 +9590,8 @@ Window {
 
     AssetsPage {
         id: assetsPage
-        anchors.left: leftNavbar.right
+        anchors.left: parent.left
+        anchors.leftMargin: leftNavbar.width
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -9497,7 +9602,8 @@ Window {
     // Placeholder for Setup Page
     Rectangle {
         id: setupPage
-        anchors.left: leftNavbar.right
+        anchors.left: parent.left
+        anchors.leftMargin: leftNavbar.width
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom

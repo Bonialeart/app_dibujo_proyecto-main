@@ -65,6 +65,135 @@ Popup {
 
     readonly property string lang: (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.language : "en"
     function qs(key) { return Trans.get(key, lang); }
+
+    // --- LAYOUT CUSTOMIZATION HELPERS ---
+    property var _layoutCache: ({})
+    property int totalButtonCount: 0
+
+    function refreshLayoutCache() {
+        if (preferencesManager && preferencesManager.essentialLayoutConfig) {
+            _layoutCache = preferencesManager.essentialLayoutConfig
+        } else {
+            _layoutCache = {}
+        }
+        var count = 0
+        var keys = ["topLeft","topRight","side","rightColor","sliders"]
+        for (var i = 0; i < keys.length; i++) {
+            var list = _layoutCache[keys[i]]
+            if (list) count += list.length
+        }
+        totalButtonCount = count
+    }
+
+    function getLocationButtons(location) {
+        if (!_layoutCache || Object.keys(_layoutCache).length === 0)
+            refreshLayoutCache()
+        return _layoutCache[location] || []
+    }
+
+    function getButtonLabel(btnId) {
+        if (!preferencesManager || !preferencesManager.essentialButtonCatalog)
+            return btnId
+        var cat = preferencesManager.essentialButtonCatalog
+        var info = cat[btnId]
+        return info ? info.label : btnId
+    }
+
+    function getButtonIcon(btnId) {
+        if (!preferencesManager || !preferencesManager.essentialButtonCatalog)
+            return ""
+        var cat = preferencesManager.essentialButtonCatalog
+        var info = cat[btnId]
+        return info ? info.icon : ""
+    }
+
+    function getDefLocation(btnId) {
+        if (!preferencesManager || !preferencesManager.essentialButtonCatalog)
+            return "hidden"
+        var cat = preferencesManager.essentialButtonCatalog
+        var info = cat[btnId]
+        return info ? info.defaultLocation : "hidden"
+    }
+
+    function moveButton(btnId, targetLocation) {
+        if (preferencesManager && preferencesManager.moveButtonTo) {
+            preferencesManager.moveButtonTo(btnId, targetLocation)
+            refreshLayoutCache()
+        }
+    }
+
+    function openLocationMenu(btnId, sourceItem) {
+        if (!locationMenu) return
+        var pt = sourceItem.mapToItem(root, 0, sourceItem.height + 4)
+        locationMenu.btnId = btnId
+        locationMenu.x = pt.x
+        locationMenu.y = pt.y
+        locationMenu.open()
+    }
+
+    Connections {
+        target: preferencesManager
+        function onLayoutConfigChanged() {
+            root.refreshLayoutCache()
+        }
+    }
+
+    // Location picker popup
+    Popup {
+        id: locationMenu
+        property string btnId: ""
+        x: 0; y: 0
+        width: 200; height: locationCol.height + 16
+        padding: 8
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: root.isDark ? "#252526" : "#ffffff"
+            radius: 8
+            border.color: root.colorBorder; border.width: 1
+            layer.enabled: true
+        }
+
+        contentItem: ColumnLayout {
+            id: locationCol
+            spacing: 4
+
+            Repeater {
+                model: [
+                    { key: "topLeft", label: "Barra Superior Izquierda" },
+                    { key: "topRight", label: "Barra Superior Derecha" },
+                    { key: "side", label: "Barra Lateral" },
+                    { key: "rightColor", label: "Selector de Color" },
+                    { key: "sliders", label: "Controles Deslizantes" },
+                    { key: "hidden", label: "Oculto" }
+                ]
+                delegate: Rectangle {
+                    Layout.fillWidth: true; height: 28; radius: 4
+                    color: optMa.containsMouse ? Qt.rgba(root.colorAccent.r, root.colorAccent.g, root.colorAccent.b, 0.15) : "transparent"
+
+                    required property var modelData
+
+                    Text {
+                        text: modelData.label
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: 8
+                        color: root.colorText
+                        font.pixelSize: 12
+                        font.weight: locationMenu.btnId && root.getDefLocation(locationMenu.btnId) === modelData.key ? Font.Bold : Font.Normal
+                    }
+
+                    MouseArea {
+                        id: optMa
+                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.moveButton(locationMenu.btnId, modelData.key)
+                            locationMenu.close()
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     onOpened: {
         if (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") {
@@ -90,6 +219,7 @@ Popup {
             tempShowRightToolbar = preferencesManager.showRightToolbar
             tempShowRightColorSelector = preferencesManager.showRightColorSelector
             tempShortcuts = Object.assign({}, preferencesManager.shortcuts)
+            root.refreshLayoutCache()
         }
     }
     
@@ -194,7 +324,8 @@ Popup {
                         { name: root.qs("shortcuts"), icon: "keyboard.svg" }, 
                         { name: root.qs("tools"), icon: "tool.svg" },      
                         { name: root.qs("file"), icon: "file.svg" },
-                        { name: root.qs("color"), icon: "palette.svg" }
+                        { name: root.qs("color"), icon: "palette.svg" },
+                        { name: root.qs("layout_design"), icon: "layout.svg" }
                     ]
                     
                     delegate: Rectangle {
@@ -286,7 +417,7 @@ Popup {
                                         model: ["Dark", "Light", "Midnight", "Blue-Grey"]
                                         delegate: Rectangle {
                                             width: 100; height: 60
-                                            color: (preferencesManager.themeMode === modelData) ? colorAccent : colorPanel
+                                            color: (preferencesManager && preferencesManager.themeMode === modelData) ? colorAccent : colorPanel
                                             radius: 6
                                             border.color: colorBorder
                                             border.width: 1
@@ -294,7 +425,7 @@ Popup {
                                             Text {
                                                 text: modelData
                                                 anchors.centerIn: parent
-                                                color: (preferencesManager.themeMode === modelData) ? "white" : colorText
+                                                color: (preferencesManager && preferencesManager.themeMode === modelData) ? "white" : colorText
                                                 font.bold: true
                                             }
                                             
@@ -323,7 +454,7 @@ Popup {
                                             radius: 16
                                             color: modelData
                                             border.color: "white"
-                                            border.width: (preferencesManager.themeAccent === modelData) ? 2 : 0
+                                            border.width: (preferencesManager && preferencesManager.themeAccent === modelData) ? 2 : 0
                                             
                                             MouseArea {
                                                 anchors.fill: parent
@@ -443,16 +574,6 @@ Popup {
                                         text: "Mostrar selector de espacio de trabajo (Barra superior)"
                                         checked: root.tempShowTopWorkspaceSwitcher
                                         onCheckedChanged: root.tempShowTopWorkspaceSwitcher = checked
-                                    }
-                                    CheckBoxOption {
-                                        text: "Mostrar barra de herramientas derecha (Barra lateral)"
-                                        checked: root.tempShowRightToolbar
-                                        onCheckedChanged: root.tempShowRightToolbar = checked
-                                    }
-                                    CheckBoxOption {
-                                        text: "Mostrar selector de color dual (Barra lateral)"
-                                        checked: root.tempShowRightColorSelector
-                                        onCheckedChanged: root.tempShowRightColorSelector = checked
                                     }
                                 }
                             }
@@ -873,6 +994,258 @@ Popup {
                     
                     // 7. COLOR
                     Item { Text { text: "Color Config"; color: "white"; anchors.centerIn: parent } }
+
+                    // 8. DISEÑO / LAYOUT CUSTOMIZATION
+                    ScrollView {
+                        contentHeight: disenioCol.height
+                        ColumnLayout {
+                            id: disenioCol
+                            width: parent.width
+                            spacing: 20
+
+                            SettingsGroup {
+                                title: "Personalizacion de la Interfaz (Modo Esencial)"
+                                description: "Arrastra los botones entre zonas para reorganizar la barra lateral y la barra superior. Marca/desmarca para mostrar u ocultar cada elemento."
+
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Button {
+                                        text: "Restablecer diseño"
+                                        flat: true
+                                        palette.buttonText: root.colorTextMuted
+                                        onClicked: {
+                                            if (preferencesManager && preferencesManager.resetEssentialLayout)
+                                                preferencesManager.resetEssentialLayout()
+                                        }
+                                    }
+                                    Item { Layout.fillWidth: true }
+                                    Text {
+                                        text: "Total: " + root.totalButtonCount + " botones"
+                                        color: root.colorTextMuted
+                                        font.pixelSize: 12
+                                    }
+                                }
+                            }
+
+                            // --- Location Groups ---
+                            Repeater {
+                                model: [
+                                    { key: "topLeft",       label: "Barra Superior Izquierda", icon: "chevron-left.svg" },
+                                    { key: "topRight",      label: "Barra Superior Derecha",   icon: "chevron-right.svg" },
+                                    { key: "side",          label: "Barra Lateral (Herramientas)", icon: "tool.svg" },
+                                    { key: "rightColor",    label: "Selector de Color (Barra Lateral)", icon: "palette.svg" },
+                                    { key: "sliders",       label: "Controles Deslizantes (Tamaño/Opacidad)", icon: "sliders.svg" },
+                                    { key: "hidden",        label: "Ocultos", icon: "eye-off.svg" }
+                                ]
+                                delegate: Rectangle {
+                                    id: locationGroup
+                                    Layout.fillWidth: true
+                                    implicitHeight: groupCol.height + 20
+                                    color: root.isDark ? "#1a1a1e" : "#f4f4f5"
+                                    radius: 8
+                                    border.color: root.colorBorder
+                                    border.width: 1
+
+                                    required property string key
+                                    required property string label
+                                    required property string icon
+
+                                    ColumnLayout {
+                                        id: groupCol
+                                        anchors.fill: parent
+                                        anchors.margins: 10
+                                        spacing: 8
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+
+                                            Text {
+                                                text: modelData.label
+                                                color: root.colorText
+                                                font.pixelSize: 13
+                                                font.bold: true
+                                            }
+                                            Item { Layout.fillWidth: true }
+                                            Text {
+                                                text: "(" + root.getLocationButtons(modelData.key).length + ")"
+                                                color: root.colorTextMuted
+                                                font.pixelSize: 11
+                                            }
+                                        }
+
+                                        Rectangle { Layout.fillWidth: true; height: 1; color: root.colorBorder }
+
+                                        Flow {
+                                            Layout.fillWidth: true
+                                            spacing: 6
+
+                                            Repeater {
+                                                id: btnRepeater
+                                                model: root.getLocationButtons(modelData.key)
+
+                                                delegate: Rectangle {
+                                                    id: btnDelegate
+                                                    width: btnLayout.width + 20
+                                                    height: 32
+                                                    color: root.isDark ? "#2a2a2e" : "#ffffff"
+                                                    radius: 6
+                                                    border.color: root.colorBorder
+                                                    border.width: 1
+
+                                                    required property string modelData
+
+                                                    RowLayout {
+                                                        id: btnLayout
+                                                        anchors.centerIn: parent
+                                                        spacing: 6
+
+                                                        Text {
+                                                            text: root.getButtonLabel(modelData)
+                                                            color: root.colorText
+                                                            font.pixelSize: 12
+                                                        }
+
+                                                        Rectangle {
+                                                            width: 1; height: 14
+                                                            color: root.colorBorder
+                                                        }
+
+                                                        // Location changer
+                                                        Rectangle {
+                                                            width: 18; height: 18; radius: 9
+                                                            color: btnLocMa.containsMouse ? Qt.rgba(root.colorAccent.r, root.colorAccent.g, root.colorAccent.b, 0.2) : "transparent"
+                                                            border.color: btnLocMa.containsMouse ? root.colorAccent : "transparent"
+                                                            border.width: 1
+
+                                                            Text {
+                                                                text: "▾"
+                                                                anchors.centerIn: parent
+                                                                color: root.colorTextMuted
+                                                                font.pixelSize: 10
+                                                            }
+
+                                                            MouseArea {
+                                                                id: btnLocMa
+                                                                anchors.fill: parent
+                                                                hoverEnabled: true
+                                                                cursorShape: Qt.PointingHandCursor
+                                                                onClicked: {
+                                                                    root.openLocationMenu(modelData, btnDelegate)
+                                                                }
+                                                            }
+                                                        }
+
+                                                        // Hide/show toggle
+                                                        Rectangle {
+                                                            width: 18; height: 18; radius: 9
+                                                            color: hideMa.containsMouse ? "#333" : "transparent"
+                                                            border.color: hideMa.containsMouse ? "#555" : "transparent"
+                                                            border.width: 1
+
+                                                            Text {
+                                                                text: modelData.key === "hidden" ? "✕" : "✕"
+                                                                anchors.centerIn: parent
+                                                                color: "#666"
+                                                                font.pixelSize: 10
+                                                            }
+
+                                                            MouseArea {
+                                                                id: hideMa
+                                                                anchors.fill: parent
+                                                                hoverEnabled: true
+                                                                cursorShape: Qt.PointingHandCursor
+                                                                onClicked: {
+                                                                    var target = modelData.key === "hidden" ? root.getDefLocation(modelData) : "hidden"
+                                                                    root.moveButton(modelData, target)
+                                                                }
+                                                            }
+
+                                                            ToolTip.visible: hideMa.containsMouse
+                                                            ToolTip.text: modelData.key === "hidden" ? "Restaurar" : "Ocultar"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Accept drops
+                                    DropArea {
+                                        anchors.fill: parent
+                                        keys: ["essentialBtn"]
+
+                                        onEntered: (drag) => {
+                                            parent.border.color = root.colorAccent
+                                            parent.border.width = 2
+                                        }
+                                        onExited: {
+                                            parent.border.color = root.colorBorder
+                                            parent.border.width = 1
+                                        }
+                                        onDropped: (drop) => {
+                                            parent.border.color = root.colorBorder
+                                            parent.border.width = 1
+                                            var btnId = drop.source.btnId
+                                            if (btnId && preferencesManager && preferencesManager.moveButtonTo) {
+                                                preferencesManager.moveButtonTo(btnId, modelData.key)
+                                            }
+                                            drop.accept()
+                                        }
+                                    }
+                                }
+                            }
+
+                            // --- Separator ---
+                            Rectangle { Layout.fillWidth: true; height: 1; color: root.colorBorder }
+
+                            SettingsGroup {
+                                title: "Visibilidad de Bloques Completos"
+                                description: "Muestra u oculta secciones enteras de la interfaz."
+
+                                ColumnLayout { Layout.fillWidth: true; spacing: 8
+
+                                    CheckBoxOption {
+                                        text: "Mostrar informacion del proyecto (Barra superior)"
+                                        checked: root.tempShowTopProjectInfo
+                                        onCheckedChanged: root.tempShowTopProjectInfo = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar controles de pincel (Barra superior)"
+                                        checked: root.tempShowTopBrushControls
+                                        onCheckedChanged: root.tempShowTopBrushControls = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar botones de accion rapida (Barra superior)"
+                                        checked: root.tempShowTopActionButtons
+                                        onCheckedChanged: root.tempShowTopActionButtons = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar controles de simetria y deshacer/rehacer (Barra superior)"
+                                        checked: root.tempShowTopSymmetryUndoRedo
+                                        onCheckedChanged: root.tempShowTopSymmetryUndoRedo = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar selector de espacio de trabajo (Barra superior)"
+                                        checked: root.tempShowTopWorkspaceSwitcher
+                                        onCheckedChanged: root.tempShowTopWorkspaceSwitcher = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar barra de herramientas derecha (Barra lateral)"
+                                        checked: root.tempShowRightToolbar
+                                        onCheckedChanged: root.tempShowRightToolbar = checked
+                                    }
+                                    CheckBoxOption {
+                                        text: "Mostrar selector de color dual (Barra lateral)"
+                                        checked: root.tempShowRightColorSelector
+                                        onCheckedChanged: root.tempShowRightColorSelector = checked
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

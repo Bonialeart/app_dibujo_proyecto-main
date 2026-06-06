@@ -70,13 +70,13 @@ Item {
                 spacing: 10
                 Rectangle {
                     width: 32; height: 32; radius: 6
-                    color: targetCanvas ? targetCanvas.currentColor : "#ff0000"
+                    color: (typeof targetCanvas !== 'undefined' && targetCanvas && targetCanvas.currentColor) ? targetCanvas.currentColor : "#ff0000"
                     border.color: "#333"
                 }
                 ColumnLayout {
                     spacing: 2
                     Text { 
-                        text: "HEX: " + (targetCanvas ? targetCanvas.currentColor.toString().toUpperCase() : "#FF0000")
+                        text: "HEX: " + ((typeof targetCanvas !== 'undefined' && targetCanvas && targetCanvas.currentColor) ? targetCanvas.currentColor.toString().toUpperCase() : "#FF0000")
                         color: "white"; font.pixelSize: 10; font.family: "Monospace"
                     }
                     Text { 

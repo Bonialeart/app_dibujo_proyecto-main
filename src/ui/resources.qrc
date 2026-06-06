@@ -63,6 +63,9 @@
     <file>qml/components/SimpleAnimationBar.qml</file>
     <file>qml/components/AnimationTopBar.qml</file>
     <file>qml/components/AdvancedTimelineBar.qml</file>
+    <file>qml/components/AnimationCamera.qml</file>
+    <file>qml/components/CameraViewfinderOverlay.qml</file>
+    <file>qml/components/CameraPropertiesPanel.qml</file>
     <file>qml/components/LiquifyBar.qml</file>
     <file>qml/components/AssetsPage.qml</file>
     <file>qml/components/LearnCenterPage.qml</file>

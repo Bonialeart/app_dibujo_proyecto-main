@@ -577,7 +577,8 @@ Item {
                     }
 
                     // Right: View All link
-                    Row {
+                    RowLayout {
+                        id: galRow
                         spacing: 5
                         Layout.alignment: Qt.AlignVCenter
                         opacity: maGal.containsMouse ? 1.0 : 0.6
@@ -588,17 +589,17 @@ Item {
                             text: dashboardRoot.qs("go_gallery")
                             color: colorAccent
                             font.pixelSize: 13; font.weight: Font.Medium
-                            anchors.verticalCenter: parent.verticalCenter
+                            Layout.alignment: Qt.AlignVCenter
                         }
                         Text {
                             text: "→"; color: colorAccent; font.pixelSize: 13
-                            anchors.verticalCenter: parent.verticalCenter
+                            Layout.alignment: Qt.AlignVCenter
                         }
+                    }
 
-                        MouseArea {
-                            id: maGal; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                            onClicked: dashboardRoot.openGallery()
-                        }
+                    MouseArea {
+                        id: maGal; anchors.fill: galRow; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: dashboardRoot.openGallery()
                     }
                 }
 
@@ -644,22 +645,22 @@ Item {
                             scale: (dashboardRoot.targetIndex === index && dashboardRoot.draggedIndex !== index) ? 1.05 : (maProj.containsMouse ? 1.03 : 1.0)
                             Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
 
-                            // Outer glow on hover
-                            Rectangle {
-                                anchors.fill: cardVisual
-                                radius: 24; z: -1
-                                color: colorAccent; opacity: maProj.containsMouse ? 0.15 : 0.0
-                                layer.enabled: true
-                                layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
-                                Behavior on opacity { NumberAnimation { duration: 250 } }
-                            }
-
                             Column {
                                 anchors.fill: parent; spacing: 14
                                 
                                 Rectangle {
                                     id: cardVisual
                                     width: parent.width; height: 180; radius: 24
+
+                                    // Outer glow on hover
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 24; z: -1
+                                        color: colorAccent; opacity: maProj.containsMouse ? 0.15 : 0.0
+                                        layer.enabled: true
+                                        layer.effect: MultiEffect { blurEnabled: true; blur: 1.0 }
+                                        Behavior on opacity { NumberAnimation { duration: 250 } }
+                                    }
                                     
                                     color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : "#0c0c11"
                                     border.color: (model.type === "folder" || model.type === "sketchbook") ? "transparent" : (maProj.containsMouse ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4) : "#15ffffff")
@@ -1070,7 +1071,7 @@ Item {
             anchors.fill: parent
             
             // Property injected by Loader
-            property string previewUrl: title !== "" ? preview : (model.preview || "") 
+            property string previewUrl: title !== "" ? preview : ((typeof model !== 'undefined' && model && model.preview) ? model.preview : "") 
 
             // Card Container
             Rectangle {

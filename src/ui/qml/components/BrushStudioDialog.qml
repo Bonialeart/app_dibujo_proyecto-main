@@ -26,6 +26,14 @@ Rectangle {
     // Current attribute tab (0-9)
     property int activeTab: 0
     property int brushPropertySeed: 0
+    onBrushPropertySeedChanged: if (previewThrottle) previewThrottle.restart()
+
+    function setBrushProp(category, key, value) {
+        if (targetCanvas) {
+            targetCanvas.setBrushProperty(category, key, value)
+            brushPropertySeed++
+        }
+    }
 
     signal closed()
     signal applied()
@@ -33,7 +41,6 @@ Rectangle {
     function open() {
         activeTab = 0
         visible = true
-        // Begin editing: clone the active preset for modification
         if (targetCanvas) {
             targetCanvas.beginBrushEdit(brushName)
             if (padCanvasContainer.width > 0 && padCanvasContainer.height > 0) {
@@ -204,13 +211,16 @@ Rectangle {
                         anchors.centerIn: parent
                     }
                     MouseArea {
-                        id: cancelMa
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (targetCanvas) targetCanvas.cancelBrushEdit()
-                            studio.close()
+                            id: cancelMa
+                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onPressed: parent.scale = 0.96
+                            onReleased: parent.scale = 1.0
+                            onClicked: {
+                                if (targetCanvas) targetCanvas.cancelBrushEdit()
+                                studio.close()
+                            }
                         }
-                    }
+                        Behavior on scale { NumberAnimation { duration: 100 } }
                 }
 
                 // Save As Copy Button
@@ -231,12 +241,15 @@ Rectangle {
                         anchors.centerIn: parent
                     }
                     MouseArea {
-                        id: saveCopyMa
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (targetCanvas) targetCanvas.saveAsCopyBrush(studio.brushName + " Copia")
+                            id: saveCopyMa
+                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onPressed: parent.scale = 0.96
+                            onReleased: parent.scale = 1.0
+                            onClicked: {
+                                if (targetCanvas) targetCanvas.saveAsCopyBrush(studio.brushName + " Copia")
+                            }
                         }
-                    }
+                        Behavior on scale { NumberAnimation { duration: 100 } }
                 }
 
                 // Apply Button (Accent)
@@ -255,14 +268,17 @@ Rectangle {
                         anchors.centerIn: parent
                     }
                     MouseArea {
-                        id: applyMa
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (targetCanvas) targetCanvas.applyBrushEdit()
-                            studio.applied()
-                            studio.close()
+                            id: applyMa
+                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            onPressed: parent.scale = 0.96
+                            onReleased: parent.scale = 1.0
+                            onClicked: {
+                                if (targetCanvas) targetCanvas.applyBrushEdit()
+                                studio.applied()
+                                studio.close()
+                            }
                         }
-                    }
+                        Behavior on scale { NumberAnimation { duration: 100 } }
                 }
             }
         }
@@ -321,6 +337,8 @@ Rectangle {
                                 : (tabMa.containsMouse ? bgSurface : "#1a1a1c")
                             border.color: studio.activeTab === model.idx ? "transparent" : borderDim
                             border.width: 1
+                            Behavior on color { ColorAnimation { duration: 200 } }
+                            Behavior on border.color { ColorAnimation { duration: 200 } }
 
                             Row {
                                 id: tabRowContent
@@ -351,8 +369,11 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onPressed: parent.scale = 0.93
+                                onReleased: parent.scale = 1.0
                                 onClicked: studio.activeTab = model.idx
                             }
+                            Behavior on scale { NumberAnimation { duration: 120 } }
                         }
                     }
                 }
@@ -417,6 +438,8 @@ Rectangle {
                                 font.pixelSize: 13
                                 font.weight: Font.Bold
                                 anchors.verticalCenter: parent.verticalCenter
+                                rotation: resetMa.containsMouse ? 180 : 0
+                                Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
 
                                 MouseArea {
                                     id: resetMa
@@ -461,6 +484,7 @@ Rectangle {
                                 color: offsetColor ? textMuted : colorAccent
                                 radius: 2
                                 visible: !offsetColor
+                                Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
                             }
                         }
 
@@ -473,13 +497,20 @@ Rectangle {
                                 width: 14; height: 14; radius: 7
                                 color: "#fff"
                                 border.color: borderDim; border.width: 1
-                                
+                                scale: slider.pressed ? 1.25 : (slider.hovered ? 1.1 : 1.0)
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
                                 Rectangle {
-                                    z: -1; anchors.fill: parent; anchors.margins: -2
-                                    color: "black"; opacity: 0.15; radius: 9
+                                    anchors.centerIn: parent
+                                    width: 22; height: 22; radius: 11
+                                    color: colorAccent
+                                    opacity: slider.pressed ? 0.3 : (slider.hovered ? 0.12 : 0.0)
+                                    z: -1
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
                                 }
                             }
                             background: Item {}
+                            hoverEnabled: true
                         }
                     }
                 }
@@ -489,6 +520,7 @@ Rectangle {
                     property string label: "Etiqueta"
                     property alias checked: toggle.checked
                     property real leftPadding: 0
+                    signal toggled(bool checked)
                     x: leftPadding
                     width: parent.width - leftPadding
                     spacing: 12
@@ -499,6 +531,7 @@ Rectangle {
                         id: toggle
                         checked: false
                         display: AbstractButton.IconOnly
+                        onClicked: parent.toggled(toggle.checked)
                         
                         indicator: Rectangle {
                             implicitWidth: 38
@@ -536,31 +569,31 @@ Rectangle {
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
 
-                        // Preview sin parpadeo: usa un Timer + crossfade entre dos imágenes
-                        property string nextPreviewSrc: ""
+                        property int previewSeed: 0
 
                         Timer {
                             id: previewThrottle
-                            interval: 120
+                            interval: 40
                             repeat: false
                             onTriggered: {
-                                if (targetCanvas) {
-                                    var newSrc = targetCanvas.get_brush_preview(studio.brushName)
-                                    brushShapeImg2.source = newSrc
-                                    brushShapeImg2.opacity = 1
-                                    brushShapeImg.opacity = 0
+                                if (targetCanvas && studio.brushName) {
+                                    previewSeed++
+                                    var newSrc = targetCanvas.get_brush_preview(studio.brushName) + "?t=" + previewSeed
+                                    brushPreviewImg2.source = newSrc
+                                    brushPreviewImg2.opacity = 1
+                                    brushPreviewImg.opacity = 0
                                     swapTimer.start()
                                 }
                             }
                         }
                         Timer {
                             id: swapTimer
-                            interval: 180
+                            interval: 80
                             repeat: false
                             onTriggered: {
-                                brushShapeImg.source  = brushShapeImg2.source
-                                brushShapeImg.opacity = 1
-                                brushShapeImg2.opacity = 0
+                                brushPreviewImg.source  = brushPreviewImg2.source
+                                brushPreviewImg.opacity = 1
+                                brushPreviewImg2.opacity = 0
                             }
                         }
 
@@ -597,9 +630,8 @@ Rectangle {
                                 border.width: 1
                                 clip: true
 
-                                // Trazo real del pincel — imagen base
                                 Image {
-                                    id: brushShapeImg
+                                    id: brushPreviewImg
                                     anchors.fill: parent
                                     source: (targetCanvas && studio.brushName) ? targetCanvas.get_brush_preview(studio.brushName) : ""
                                     fillMode: Image.Stretch
@@ -607,9 +639,8 @@ Rectangle {
                                     Behavior on opacity { NumberAnimation { duration: 150 } }
                                 }
 
-                                // Segunda capa para crossfade suave
                                 Image {
-                                    id: brushShapeImg2
+                                    id: brushPreviewImg2
                                     anchors.fill: parent
                                     source: ""
                                     fillMode: Image.Stretch
@@ -618,16 +649,14 @@ Rectangle {
                                     Behavior on opacity { NumberAnimation { duration: 150 } }
                                 }
 
-                                // Fallback
                                 Text {
                                     text: "\uD83D\uDD8C"
                                     font.pixelSize: 24
                                     anchors.centerIn: parent
                                     opacity: 0.3
-                                    visible: brushShapeImg.status !== Image.Ready
+                                    visible: brushPreviewImg.status !== Image.Ready
                                 }
 
-                                // Label superpuesto
                                 Rectangle {
                                     anchors.bottom: parent.bottom
                                     width: parent.width; height: 18
@@ -653,15 +682,66 @@ Rectangle {
                                     font.weight: Font.Medium
                                     Layout.fillWidth: true
                                     elide: Text.ElideRight
+                                    visible: !addInput.visible
+                                }
+
+                                TextInput {
+                                    id: addInput
+                                    Layout.fillWidth: true
+                                    visible: false
+                                    text: studio.brushName + " Copia"
+                                    color: textPrimary
+                                    font.pixelSize: 12
+                                    font.weight: Font.Medium
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    selectByMouse: true
+                                    property bool isNew: true
+                                    onAccepted: {
+                                        if (targetCanvas && text.length > 0) {
+                                            targetCanvas.saveAsCopyBrush(text)
+                                            addBtn.iconText = "✓"
+                                            addBtn.doneTimer.start()
+                                        }
+                                        visible = false
+                                    }
+                                    Keys.onEscapePressed: {
+                                        text = studio.brushName + " Copia"
+                                        visible = false
+                                    }
                                 }
 
                                 Rectangle {
+                                    id: addBtn
                                     width: 24; height: 24; radius: 12
                                     color: addMa.containsMouse ? bgSurface : "transparent"
                                     border.color: borderDim; border.width: 1
+                                    property string iconText: "+"
+                                    property Timer doneTimer: Timer {
+                                        interval: 1200
+                                        onTriggered: addBtn.iconText = "+"
+                                    }
 
-                                    Text { text: "+"; color: textMuted; font.pixelSize: 14; anchors.centerIn: parent }
-                                    MouseArea { id: addMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor }
+                                    Text {
+                                        text: addBtn.iconText
+                                        color: textMuted; font.pixelSize: 14; anchors.centerIn: parent
+                                    }
+                                    MouseArea {
+                                        id: addMa
+                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                        onPressed: parent.scale = 0.85
+                                        onReleased: parent.scale = 1.0
+                                        onClicked: {
+                                            if (addInput.visible) {
+                                                addInput.accepted()
+                                            } else {
+                                                addInput.text = studio.brushName + " Copia"
+                                                addInput.visible = true
+                                                addInput.forceActiveFocus()
+                                                addInput.selectAll()
+                                            }
+                                        }
+                                    }
+                                    Behavior on scale { NumberAnimation { duration: 120 } }
                                 }
                             }
                         }
@@ -687,41 +767,41 @@ Rectangle {
                                 from: 0.01; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("stroke", "spacing") || 0.1 : 0.1
                                 suffix: "%"
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("stroke", "spacing", value)
+                                onValueChanged: studio.setBrushProp("stroke", "spacing", value)
                             }
                             
                             StudioSlider {
                                 label: "StreamLine"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("stroke", "streamline") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("stroke", "streamline", value)
+                                onValueChanged: studio.setBrushProp("stroke", "streamline", value)
                             }
 
                             StudioSlider {
                                 label: "Inicio del Trazo (Taper)"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("stroke", "taper_start") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("stroke", "taper_start", value)
+                                onValueChanged: studio.setBrushProp("stroke", "taper_start", value)
                             }
 
                             StudioSlider {
                                 label: "Fin del Trazo (Taper)"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("stroke", "taper_end") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("stroke", "taper_end", value)
+                                onValueChanged: studio.setBrushProp("stroke", "taper_end", value)
                             }
                             
                             StudioSlider {
                                 label: "Dispersión (Jitter)"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_jitter") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "size_jitter", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "size_jitter", value)
                             }
 
                             StudioToggle {
                                 label: "Anti-Sacudida (Anti-Concussion)"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("stroke", "anti_concussion") || false : false
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("stroke", "anti_concussion", checked)
+                                onCheckedChanged: studio.setBrushProp("stroke", "anti_concussion", checked)
                             }
                         }
                         
@@ -770,10 +850,13 @@ Rectangle {
                                         font.pixelSize: 12
                                         font.weight: Font.Bold
                                         anchors.centerIn: parent
+                                        rotation: tipResetMa.containsMouse ? 180 : 0
+                                        Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                                     }
 
                                     MouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        id: tipResetMa
+                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: {
                                             var textures = targetCanvas ? targetCanvas.getAvailableTipTextures() : []
                                             if (textures.length > 0) {
@@ -782,13 +865,14 @@ Rectangle {
                                         }
                                     }
                                 }
+
                             }
 
-                            // Invertir Toggle directly below card
+                                // Invertir Toggle directly below card
                             StudioToggle {
                                 label: "Invertir"
                                 checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("shape", "invert") || false : false)
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "invert", checked)
+                                onCheckedChanged: studio.setBrushProp("shape", "invert", checked)
                             }
 
                             // Expandable Tip Picker Grid
@@ -800,10 +884,19 @@ Rectangle {
                                     color: changeTipMa.containsMouse ? bgSurface : "transparent"
                                     border.color: borderDim; border.width: 1
 
-                                    Text {
-                                        text: "▼ Cambiar textura de punta..."
-                                        color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
+                                    Row {
                                         anchors.centerIn: parent
+                                        spacing: 4
+                                        Text {
+                                            text: "▼"
+                                            color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
+                                            rotation: tipSelectionGrid.visible ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                                        }
+                                        Text {
+                                            text: "Cambiar textura de punta..."
+                                            color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
+                                        }
                                     }
 
                                     MouseArea {
@@ -851,6 +944,7 @@ Rectangle {
                                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
                                                     if (targetCanvas) targetCanvas.setTipTextureForBrush(studio.brushName, modelData.path)
+                                                    tipSelectionGrid.visible = false
                                                 }
                                             }
                                         }
@@ -863,14 +957,14 @@ Rectangle {
                                 from: 0; to: 2.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("shape", "contrast") || 1.0 : 1.0
                                 suffix: ""
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "contrast", value)
+                                onValueChanged: studio.setBrushProp("shape", "contrast", value)
                             }
 
                             StudioSlider {
                                 label: "Desenfoque"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("shape", "blur") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "blur", value)
+                                onValueChanged: studio.setBrushProp("shape", "blur", value)
                             }
 
                             StudioSlider {
@@ -878,7 +972,7 @@ Rectangle {
                                 from: -180; to: 180
                                 suffix: "°"
                                 value: targetCanvas ? targetCanvas.getBrushProperty("shape", "rotation") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "rotation", value)
+                                onValueChanged: studio.setBrushProp("shape", "rotation", value)
                             }
 
                             StudioSlider {
@@ -886,44 +980,44 @@ Rectangle {
                                 from: 0.01; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("shape", "roundness") || 1.0 : 1.0
                                 suffix: ""
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "roundness", value)
+                                onValueChanged: studio.setBrushProp("shape", "roundness", value)
                             }
 
                             StudioSlider {
                                 label: "Dispersión"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("shape", "scatter") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "scatter", value)
+                                onValueChanged: studio.setBrushProp("shape", "scatter", value)
                             }
 
                             StudioSlider {
                                 label: "Caligráfico"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("shape", "calligraphic") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "calligraphic", value)
+                                onValueChanged: studio.setBrushProp("shape", "calligraphic", value)
                             }
 
                             StudioToggle {
                                 id: rotateTipToggle
                                 label: "Habilitar Rotación de Punta"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "rotate_tip") === true : false
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "rotate_tip", checked)
+                                onCheckedChanged: studio.setBrushProp("shape", "rotate_tip", checked)
                             }
 
                             StudioToggle {
                                 label: "Seguir Trazo"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "follow_stroke") || false : false
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "follow_stroke", checked)
+                                onCheckedChanged: studio.setBrushProp("shape", "follow_stroke", checked)
                             }
                             StudioToggle {
                                 label: "Voltear X"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "flip_x") || false : false
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "flip_x", checked)
+                                onCheckedChanged: studio.setBrushProp("shape", "flip_x", checked)
                             }
                             StudioToggle {
                                 label: "Voltear Y"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("shape", "flip_y") || false : false
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("shape", "flip_y", checked)
+                                onCheckedChanged: studio.setBrushProp("shape", "flip_y", checked)
                             }
                         }
 
@@ -942,14 +1036,14 @@ Rectangle {
                                 label: "Variación de Tamaño"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_jitter") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "size_jitter", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "size_jitter", value)
                             }
                             
                             StudioSlider {
                                 label: "Variación de Opacidad"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_jitter") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_jitter", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "opacity_jitter", value)
                             }
                         }
 
@@ -1006,12 +1100,15 @@ Rectangle {
                                         font.pixelSize: 12
                                         font.weight: Font.Bold
                                         anchors.centerIn: parent
+                                        rotation: grainResetMa2.containsMouse ? 180 : 0
+                                        Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                                     }
 
                                     MouseArea {
-                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        id: grainResetMa2
+                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: {
-                                            if (targetCanvas) targetCanvas.setBrushProperty("grain", "texture", "")
+                                            studio.setBrushProp("grain", "texture", "")
                                         }
                                     }
                                 }
@@ -1021,7 +1118,7 @@ Rectangle {
                             StudioToggle {
                                 label: "Invertir Grano"
                                 checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("grain", "invert") || false : false)
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "invert", checked)
+                                onCheckedChanged: studio.setBrushProp("grain", "invert", checked)
                             }
 
                             // Expandable Grain Picker Grid
@@ -1033,10 +1130,19 @@ Rectangle {
                                     color: changeGrainMa.containsMouse ? bgSurface : "transparent"
                                     border.color: borderDim; border.width: 1
 
-                                    Text {
-                                        text: "▼ Seleccionar textura de grano..."
-                                        color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
+                                    Row {
                                         anchors.centerIn: parent
+                                        spacing: 4
+                                        Text {
+                                            text: "▼"
+                                            color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
+                                            rotation: grainSelectionGrid.visible ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+                                        }
+                                        Text {
+                                            text: "Seleccionar textura de grano..."
+                                            color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
+                                        }
                                     }
 
                                     MouseArea {
@@ -1069,7 +1175,8 @@ Rectangle {
                                         MouseArea {
                                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                             onClicked: {
-                                                if (targetCanvas) targetCanvas.setBrushProperty("grain", "texture", "")
+                                                studio.setBrushProp("grain", "texture", "")
+                                                grainSelectionGrid.visible = false
                                             }
                                         }
                                     }
@@ -1101,6 +1208,7 @@ Rectangle {
                                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                                 onClicked: {
                                                     if (targetCanvas) targetCanvas.setGrainTextureForBrush(studio.brushName, modelData.path)
+                                                    grainSelectionGrid.visible = false
                                                 }
                                             }
                                         }
@@ -1113,7 +1221,7 @@ Rectangle {
                                 from: 1; to: 500
                                 value: targetCanvas ? targetCanvas.getBrushProperty("grain", "scale") || 100 : 100
                                 suffix: "%"
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "scale", value)
+                                onValueChanged: studio.setBrushProp("grain", "scale", value)
                             }
 
                             StudioSlider {
@@ -1121,14 +1229,14 @@ Rectangle {
                                 from: 0; to: 360
                                 value: targetCanvas ? targetCanvas.getBrushProperty("grain", "rotation") || 0 : 0
                                 suffix: "°"
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "rotation", value)
+                                onValueChanged: studio.setBrushProp("grain", "rotation", value)
                             }
 
                             StudioSlider {
                                 label: "Profundidad"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("grain", "intensity") || 0.5 : 0.5
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "intensity", value)
+                                onValueChanged: studio.setBrushProp("grain", "intensity", value)
                             }
 
                             StudioSlider {
@@ -1136,66 +1244,66 @@ Rectangle {
                                 from: -100; to: 100
                                 value: targetCanvas ? targetCanvas.getBrushProperty("grain", "brightness") || 0 : 0
                                 offsetColor: true
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "brightness", value)
+                                onValueChanged: studio.setBrushProp("grain", "brightness", value)
                             }
 
                             StudioSlider {
                                 label: "Contraste"
                                 from: -100; to: 100
                                 value: targetCanvas ? targetCanvas.getBrushProperty("grain", "contrast") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "contrast", value)
+                                onValueChanged: studio.setBrushProp("grain", "contrast", value)
                             }
 
                             Column {
                                 width: parent.width; spacing: 8
                                 Text { text: "Modo de Mezcla de Grano"; color: textPrimary; font.pixelSize: 12 }
-                                Row {
-                                    width: parent.width; spacing: 6
-                                    property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("grain", "blend_mode") || "multiply" : "multiply"
-
-                                    component GrainBlendButton : Rectangle {
-                                        property string modeName: "multiply"
-                                        property string displayLabel: "Multiplicar"
-                                        height: 28
-                                        width: (parent.parent.width - 12) / 3
-                                        radius: 6
-                                        color: parent.currentMode === modeName ? colorAccent : (gBlendMa.containsMouse ? bgSurface : "#1a1a1c")
-                                        border.color: parent.currentMode === modeName ? "transparent" : borderDim
-                                        border.width: 1
-
-                                        Text {
-                                            text: displayLabel
-                                            color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
-                                            font.pixelSize: 10; font.weight: Font.Medium
-                                            anchors.centerIn: parent
+                                    Row {
+                                        width: parent.width; spacing: 6
+                                        property string currentMode: {
+                                            studio.brushPropertySeed;
+                                            targetCanvas ? targetCanvas.getBrushProperty("grain", "blend_mode") || "normal" : "normal"
                                         }
 
-                                        MouseArea {
-                                            id: gBlendMa
-                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                if (targetCanvas) {
-                                                    var curr = targetCanvas.getBrushProperty("grain", "blend_mode") || "multiply"
-                                                    if (curr === modeName) {
-                                                        targetCanvas.setBrushProperty("grain", "blend_mode", "normal")
-                                                    } else {
-                                                        targetCanvas.setBrushProperty("grain", "blend_mode", modeName)
-                                                    }
+                                        component GrainBlendButton : Rectangle {
+                                            property string modeName: "normal"
+                                            property string displayLabel: "Normal"
+                                            height: 28
+                                            width: (parent.parent.width - 18) / 4
+                                            radius: 6
+                                            color: parent.currentMode === modeName ? colorAccent : (gBlendMa.containsMouse ? bgSurface : "#1a1a1c")
+                                            border.color: parent.currentMode === modeName ? "transparent" : borderDim
+                                            border.width: 1
+
+                                            Text {
+                                                text: displayLabel
+                                                color: parent.parent.currentMode === modeName ? "#ffffff" : textMuted
+                                                font.pixelSize: 10; font.weight: Font.Medium
+                                                anchors.centerIn: parent
+                                            }
+
+                                            MouseArea {
+                                                id: gBlendMa
+                                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onPressed: parent.scale = 0.94
+                                                onReleased: parent.scale = 1.0
+                                                onClicked: {
+                                                    studio.setBrushProp("grain", "blend_mode", modeName)
                                                 }
                                             }
+                                            Behavior on scale { NumberAnimation { duration: 100 } }
                                         }
-                                    }
 
-                                    GrainBlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
-                                    GrainBlendButton { modeName: "subtract"; displayLabel: "Restar" }
-                                    GrainBlendButton { modeName: "threshold"; displayLabel: "Umbral Seco" }
-                                }
+                                        GrainBlendButton { modeName: "normal"; displayLabel: "Normal" }
+                                        GrainBlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
+                                        GrainBlendButton { modeName: "subtract"; displayLabel: "Restar" }
+                                        GrainBlendButton { modeName: "threshold"; displayLabel: "Umbral Seco" }
+                                    }
                             }
 
                             StudioToggle {
                                 label: "Fijo al Lienzo (Rodante)"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("grain", "rolling") || true : true
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("grain", "rolling", checked)
+                                onCheckedChanged: studio.setBrushProp("grain", "rolling", checked)
                             }
                         }
                         
@@ -1214,13 +1322,13 @@ Rectangle {
                                 label: "Flujo"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("customize", "default_flow") || 1.0 : 1.0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("customize", "default_flow", value)
+                                onValueChanged: studio.setBrushProp("customize", "default_flow", value)
                             }
                             
                             StudioToggle {
                                 label: "Suavizado (Anti-Aliasing)"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("rendering", "anti_aliasing") || true : true
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("rendering", "anti_aliasing", checked)
+                                onCheckedChanged: studio.setBrushProp("rendering", "anti_aliasing", checked)
                             }
                         }
 
@@ -1255,9 +1363,7 @@ Rectangle {
                                     }
                                     
                                     onActivated: (index) => {
-                                        if (targetCanvas) {
-                                            targetCanvas.setBrushProperty("rendering", "blend_mode", modes[index])
-                                        }
+                                        studio.setBrushProp("rendering", "blend_mode", modes[index])
                                     }
                                     
                                     delegate: ItemDelegate {
@@ -1340,22 +1446,28 @@ Rectangle {
                             // Mezclar colores Toggle
                             StudioToggle {
                                 label: "Mezclar colores"
-                                checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_mixing") || false : false)
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "color_mixing", checked)
+                                checked: {
+                                    studio.brushPropertySeed;
+                                    targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_mixing") || false : false
+                                }
+                                onToggled: studio.setBrushProp("wetmix", "color_mixing", checked)
                             }
 
                             // Paint mixing details
                             Column {
                                 width: parent.width
                                 spacing: 20
-                                visible: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_mixing") || false : false)
+                                visible: {
+                                    studio.brushPropertySeed;
+                                    targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_mixing") || false : false
+                                }
 
                                 StudioSlider {
                                     label: "Cantidad de pintura"
                                     from: 0; to: 1.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "paint_amount") || 0.7 : 0.7
                                     suffix: "%"
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "paint_amount", value)
+                                    onValueChanged: studio.setBrushProp("wetmix", "paint_amount", value)
                                 }
 
                                 StudioSlider {
@@ -1363,7 +1475,7 @@ Rectangle {
                                     from: 0; to: 1.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_stretch") || 0.1 : 0.1
                                     suffix: "%"
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "color_stretch", value)
+                                    onValueChanged: studio.setBrushProp("wetmix", "color_stretch", value)
                                 }
                             }
                             
@@ -1371,37 +1483,37 @@ Rectangle {
                                 label: "Dilución"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "dilution") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "dilution", value)
+                                onValueChanged: studio.setBrushProp("wetmix", "dilution", value)
                             }
                             StudioSlider {
                                 label: "Carga"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "charge") || 1.0 : 1.0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "charge", value)
+                                onValueChanged: studio.setBrushProp("wetmix", "charge", value)
                             }
                             StudioSlider {
                                 label: "Pigmento"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "pigment") || 1.0 : 1.0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "pigment", value)
+                                onValueChanged: studio.setBrushProp("wetmix", "pigment", value)
                             }
                             StudioSlider {
                                 label: "Arrastre (Smudge)"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "pull") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "pull", value)
+                                onValueChanged: studio.setBrushProp("wetmix", "pull", value)
                             }
                             StudioSlider {
                                 label: "Humedad"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "wetness") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "wetness", value)
+                                onValueChanged: studio.setBrushProp("wetmix", "wetness", value)
                             }
                             StudioSlider {
                                 label: "Desenfoque"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "blur") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("wetmix", "blur", value)
+                                onValueChanged: studio.setBrushProp("wetmix", "blur", value)
                             }
                         }
 
@@ -1575,14 +1687,14 @@ Rectangle {
                                 label: "Tamaño Mínimo"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_min") || 0.1 : 0.1
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "size_min", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "size_min", value)
                             }
                             
                             StudioSlider {
                                 label: "Influencia de Inclinación"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_tilt") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "size_tilt", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "size_tilt", value)
                             }
                             
                             StudioSlider {
@@ -1590,7 +1702,7 @@ Rectangle {
                                 from: -1.0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_velocity") || 0 : 0
                                 offsetColor: true
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "size_velocity", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "size_velocity", value)
                             }
 
                             Row {
@@ -1602,7 +1714,7 @@ Rectangle {
                             StudioToggle {
                                 label: "Habilitar Opacidad por Presión"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_pressure_enabled") !== false : true
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_pressure_enabled", checked)
+                                onCheckedChanged: studio.setBrushProp("dynamics", "opacity_pressure_enabled", checked)
                             }
                             
                             StudioSlider {
@@ -1611,7 +1723,7 @@ Rectangle {
                                 enabled: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_pressure_enabled") !== false : true
                                 opacity: enabled ? 1.0 : 0.4
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_min") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_min", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "opacity_min", value)
                             }
                             
                             StudioSlider {
@@ -1620,7 +1732,7 @@ Rectangle {
                                 enabled: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_pressure_enabled") !== false : true
                                 opacity: enabled ? 1.0 : 0.4
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_tilt") || 0 : 0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_tilt", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "opacity_tilt", value)
                             }
                             
                             StudioSlider {
@@ -1630,7 +1742,7 @@ Rectangle {
                                 opacity: enabled ? 1.0 : 0.4
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_velocity") || 0 : 0
                                 offsetColor: true
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dynamics", "opacity_velocity", value)
+                                onValueChanged: studio.setBrushProp("dynamics", "opacity_velocity", value)
                             }
                         }
 
@@ -1650,21 +1762,21 @@ Rectangle {
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("color", "hue_jitter") || 0 : 0
                                 suffix: "%"
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("color", "hue_jitter", value)
+                                onValueChanged: studio.setBrushProp("color", "hue_jitter", value)
                             }
                             StudioSlider {
                                 label: "Variación de Saturación"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("color", "saturation_jitter") || 0 : 0
                                 suffix: "%"
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("color", "saturation_jitter", value)
+                                onValueChanged: studio.setBrushProp("color", "saturation_jitter", value)
                             }
                             StudioSlider {
                                 label: "Variación de Brillo"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("color", "brightness_jitter") || 0 : 0
                                 suffix: "%"
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("color", "brightness_jitter", value)
+                                onValueChanged: studio.setBrushProp("color", "brightness_jitter", value)
                             }
                         }
 
@@ -1692,7 +1804,7 @@ Rectangle {
                                         text: targetCanvas ? targetCanvas.getBrushProperty("meta", "name") || studio.brushName : studio.brushName
                                         color: textPrimary; font.pixelSize: 13
                                         verticalAlignment: TextInput.AlignVCenter
-                                        onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "name", text)
+                                        onEditingFinished: studio.setBrushProp("meta", "name", text)
                                     }
                                 }
                             }
@@ -1716,6 +1828,7 @@ Rectangle {
                                         color: parent.currentType === typeVal ? colorAccent : (typeMa.containsMouse ? bgSurface : "#1a1a1c")
                                         border.color: parent.currentType === typeVal ? "transparent" : borderDim
                                         border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 150 } }
 
                                         Text {
                                             text: labelText
@@ -1727,10 +1840,13 @@ Rectangle {
                                         MouseArea {
                                             id: typeMa
                                             anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onPressed: parent.scale = 0.94
+                                            onReleased: parent.scale = 1.0
                                             onClicked: {
-                                                if (targetCanvas) targetCanvas.setBrushProperty("meta", "type", typeVal)
+                                                studio.setBrushProp("meta", "type", typeVal)
                                             }
                                         }
+                                        Behavior on scale { NumberAnimation { duration: 100 } }
                                     }
 
                                     TypeButton { typeVal: "round"; labelText: "Estándar / Redondo" }
@@ -1749,38 +1865,38 @@ Rectangle {
                                 from: 1; to: 100
                                 value: targetCanvas ? targetCanvas.getBrushProperty("customize", "default_size") || 20 : 20
                                 suffix: "px"
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("customize", "default_size", value)
+                                onValueChanged: studio.setBrushProp("customize", "default_size", value)
                             }
                             StudioSlider {
                                 label: "Tamaño Máximo"
                                 from: 1; to: 100
                                 value: targetCanvas ? targetCanvas.getBrushProperty("customize", "max_size") || 100 : 100
                                 suffix: "px"
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("customize", "max_size", value)
+                                onValueChanged: studio.setBrushProp("customize", "max_size", value)
                             }
                             StudioSlider {
                                 label: "Opacidad por Defecto"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("customize", "default_opacity") || 1.0 : 1.0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("customize", "default_opacity", value)
+                                onValueChanged: studio.setBrushProp("customize", "default_opacity", value)
                             }
                             StudioSlider {
                                 label: "Dureza por Defecto"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("customize", "default_hardness") || 0.8 : 0.8
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("customize", "default_hardness", value)
+                                onValueChanged: studio.setBrushProp("customize", "default_hardness", value)
                             }
                             StudioSlider {
                                 label: "Flujo por Defecto"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("customize", "default_flow") || 1.0 : 1.0
-                                onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("customize", "default_flow", value)
+                                onValueChanged: studio.setBrushProp("customize", "default_flow", value)
                             }
 
                             // Reset Button
                             Rectangle {
                                 width: parent.width; height: 36; radius: 8
-                                color: resetMa.containsMouse ? bgSurface : "transparent"
+                                color: settingsResetMa.containsMouse ? bgSurface : "transparent"
                                 border.color: borderDim; border.width: 1
                                 Text {
                                     text: "↺ Reestablecer Valores Originales"
@@ -1788,7 +1904,7 @@ Rectangle {
                                     anchors.centerIn: parent
                                 }
                                 MouseArea {
-                                    id: resetMa
+                                    id: settingsResetMa
                                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         if (targetCanvas) {
@@ -1825,7 +1941,7 @@ Rectangle {
                                         text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "name") || studio.brushName) : studio.brushName
                                         color: textPrimary; font.pixelSize: 13
                                         verticalAlignment: TextInput.AlignVCenter
-                                        onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "name", text)
+                                        onEditingFinished: studio.setBrushProp("meta", "name", text)
                                     }
                                 }
                             }
@@ -1842,7 +1958,7 @@ Rectangle {
                                         text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "author") || "Kromo Studio") : "Kromo Studio"
                                         color: textPrimary; font.pixelSize: 13
                                         verticalAlignment: TextInput.AlignVCenter
-                                        onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "author", text)
+                                        onEditingFinished: studio.setBrushProp("meta", "author", text)
                                     }
                                 }
                             }
@@ -1859,7 +1975,7 @@ Rectangle {
                                         text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "category") || "Custom") : "Custom"
                                         color: textPrimary; font.pixelSize: 13
                                         verticalAlignment: TextInput.AlignVCenter
-                                        onEditingFinished: if(targetCanvas) targetCanvas.setBrushProperty("meta", "category", text)
+                                        onEditingFinished: studio.setBrushProp("meta", "category", text)
                                     }
                                 }
                             }
@@ -1906,7 +2022,7 @@ Rectangle {
                             StudioToggle {
                                 label: "Habilitar Pincel Dual"
                                 checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false)
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "enabled", checked)
+                                onCheckedChanged: studio.setBrushProp("dualbrush", "enabled", checked)
                             }
 
                             // Only show configuration if dual tip is enabled
@@ -1956,12 +2072,15 @@ Rectangle {
                                             font.pixelSize: 12
                                             font.weight: Font.Bold
                                             anchors.centerIn: parent
+                                            rotation: dualTipResetMa.containsMouse ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                                         }
 
                                         MouseArea {
-                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                            id: dualTipResetMa
+                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                             onClicked: {
-                                                if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "tip_texture", "")
+                                                studio.setBrushProp("dualbrush", "tip_texture", "")
                                             }
                                         }
                                     }
@@ -1971,23 +2090,32 @@ Rectangle {
                                 Column {
                                     width: parent.width; spacing: 8
 
-                                    Rectangle {
-                                        width: parent.width; height: 32; radius: 8
-                                        color: changeDualTipMa.containsMouse ? bgSurface : "transparent"
-                                        border.color: borderDim; border.width: 1
+                                Rectangle {
+                                    width: parent.width; height: 32; radius: 8
+                                    color: changeDualTipMa.containsMouse ? bgSurface : "transparent"
+                                    border.color: borderDim; border.width: 1
 
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 4
                                         Text {
-                                            text: "▼ Seleccionar punta secundaria..."
+                                            text: "▼"
                                             color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
-                                            anchors.centerIn: parent
+                                            rotation: dualTipSelectionGrid.visible ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                                         }
-
-                                        MouseArea {
-                                            id: changeDualTipMa
-                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                            onClicked: dualTipSelectionGrid.visible = !dualTipSelectionGrid.visible
+                                        Text {
+                                            text: "Seleccionar punta secundaria..."
+                                            color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
                                         }
                                     }
+
+                                    MouseArea {
+                                        id: changeDualTipMa
+                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: dualTipSelectionGrid.visible = !dualTipSelectionGrid.visible
+                                    }
+                                }
 
                                     Grid {
                                         id: dualTipSelectionGrid
@@ -2024,7 +2152,8 @@ Rectangle {
                                                 MouseArea {
                                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                                     onClicked: {
-                                                        if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "tip_texture", modelData.filename)
+                                                        studio.setBrushProp("dualbrush", "tip_texture", modelData.filename)
+                                                        dualTipSelectionGrid.visible = false
                                                     }
                                                 }
                                             }
@@ -2038,7 +2167,7 @@ Rectangle {
                                     from: 0.1; to: 3.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "scale") || 1.0 : 1.0
                                     suffix: "x"
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "scale", value)
+                                    onValueChanged: studio.setBrushProp("dualbrush", "scale", value)
                                 }
 
                                 StudioSlider {
@@ -2046,7 +2175,7 @@ Rectangle {
                                     from: -180; to: 180
                                     suffix: "°"
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "rotation") || 0 : 0
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "rotation", value)
+                                    onValueChanged: studio.setBrushProp("dualbrush", "rotation", value)
                                 }
 
                                 StudioSlider {
@@ -2054,7 +2183,7 @@ Rectangle {
                                     from: 0; to: 1.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "flow") || 1.0 : 1.0
                                     suffix: "%"
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "flow", value)
+                                    onValueChanged: studio.setBrushProp("dualbrush", "flow", value)
                                 }
 
                                 // Blend Mode Selector
@@ -2062,14 +2191,17 @@ Rectangle {
                                     width: parent.width; spacing: 8
                                     Text { text: "Modo de Fusión"; color: textPrimary; font.pixelSize: 12 }
                                     Row {
-                                        width: parent.width; spacing: 6
-                                        property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "blend_mode") || "multiply" : "multiply"
+                                        width: parent.width; spacing: 5
+                                        property string currentMode: {
+                                            studio.brushPropertySeed;
+                                            targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "blend_mode") || "normal" : "normal"
+                                        }
 
                                         component BlendButton : Rectangle {
-                                            property string modeName: "multiply"
-                                            property string displayLabel: "Multiplicar"
+                                            property string modeName: "normal"
+                                            property string displayLabel: "Normal"
                                             height: 28
-                                            width: (parent.parent.width - 18) / 4
+                                            width: (parent.parent.width - 20) / 5
                                             radius: 6
                                             color: parent.currentMode === modeName ? colorAccent : (blendMa.containsMouse ? bgSurface : "#1a1a1c")
                                             border.color: parent.currentMode === modeName ? "transparent" : borderDim
@@ -2085,19 +2217,16 @@ Rectangle {
                                              MouseArea {
                                                  id: blendMa
                                                  anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                 onPressed: parent.scale = 0.94
+                                                 onReleased: parent.scale = 1.0
                                                  onClicked: {
-                                                     if (targetCanvas) {
-                                                         var curr = targetCanvas.getBrushProperty("dualbrush", "blend_mode") || "multiply"
-                                                         if (curr === modeName) {
-                                                             targetCanvas.setBrushProperty("dualbrush", "blend_mode", "normal")
-                                                         } else {
-                                                             targetCanvas.setBrushProperty("dualbrush", "blend_mode", modeName)
-                                                         }
-                                                     }
+                                                     studio.setBrushProp("dualbrush", "blend_mode", modeName)
                                                  }
                                              }
+                                             Behavior on scale { NumberAnimation { duration: 100 } }
                                         }
 
+                                        BlendButton { modeName: "normal"; displayLabel: "Normal" }
                                         BlendButton { modeName: "multiply"; displayLabel: "Multiplicar" }
                                         BlendButton { modeName: "mask"; displayLabel: "Restar" }
                                         BlendButton { modeName: "add"; displayLabel: "Añadir" }
@@ -2109,7 +2238,7 @@ Rectangle {
                                 StudioToggle {
                                     label: "D- Efecto pulverizador"
                                     checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "spray_enabled") || false : false)
-                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "spray_enabled", checked)
+                                    onCheckedChanged: studio.setBrushProp("dualbrush", "spray_enabled", checked)
                                 }
 
                                 // Spray Effect Sub-Configurations
@@ -2123,14 +2252,14 @@ Rectangle {
                                         from: 1.0; to: 200.0
                                         value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "particle_size") || 50.0 : 50.0
                                         suffix: "px"
-                                        onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "particle_size", value)
+                                        onValueChanged: studio.setBrushProp("dualbrush", "particle_size", value)
                                     }
 
                                     StudioToggle {
                                         label: "D- Tamaño del pincel"
                                         leftPadding: 24
                                         checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "spray_size_by_brush") || false : false)
-                                        onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "spray_size_by_brush", checked)
+                                        onCheckedChanged: studio.setBrushProp("dualbrush", "spray_size_by_brush", checked)
                                     }
 
                                     // Particle Density Segmented Selector
@@ -2146,18 +2275,21 @@ Rectangle {
                                             spacing: 4
                                             anchors.verticalCenter: parent.verticalCenter
                                             property int currentValue: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "particle_density") || 3 : 3
-                                            Repeater {
-                                                model: 5
-                                                delegate: Rectangle {
-                                                    width: 24; height: 12; radius: 2
-                                                    color: (index + 1) <= parent.currentValue ? colorAccent : "#1a1a1c"
-                                                    border.color: borderDim; border.width: 1
-                                                    MouseArea {
-                                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                        onClicked: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "particle_density", index + 1)
+                                                Repeater {
+                                                    model: 5
+                                                    delegate: Rectangle {
+                                                        width: 24; height: 14; radius: 7
+                                                        color: (index + 1) <= parent.currentValue ? colorAccent : (densMa.containsMouse ? Qt.lighter("#1a1a1c", 1.3) : "#1a1a1c")
+                                                        border.color: parent.currentValue === (index + 1) ? colorAccent : borderDim
+                                                        border.width: 1
+                                                        MouseArea {
+                                                            id: densMa
+                                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                            onClicked: studio.setBrushProp("dualbrush", "particle_density", index + 1)
+                                                        }
+                                                        Behavior on color { ColorAnimation { duration: 150 } }
                                                     }
                                                 }
-                                            }
                                         }
                                     }
 
@@ -2177,13 +2309,16 @@ Rectangle {
                                             Repeater {
                                                 model: 5
                                                 delegate: Rectangle {
-                                                    width: 24; height: 12; radius: 2
-                                                    color: (index + 1) <= parent.currentValue ? colorAccent : "#1a1a1c"
-                                                    border.color: borderDim; border.width: 1
+                                                    width: 24; height: 14; radius: 7
+                                                    color: (index + 1) <= parent.currentValue ? colorAccent : (devMa.containsMouse ? Qt.lighter("#1a1a1c", 1.3) : "#1a1a1c")
+                                                    border.color: parent.currentValue === (index + 1) ? colorAccent : borderDim
+                                                    border.width: 1
                                                     MouseArea {
-                                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                        onClicked: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "spray_deviation", index + 1)
+                                                        id: devMa
+                                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                        onClicked: studio.setBrushProp("dualbrush", "spray_deviation", index + 1)
                                                     }
+                                                    Behavior on color { ColorAnimation { duration: 150 } }
                                                 }
                                             }
                                         }
@@ -2194,7 +2329,7 @@ Rectangle {
                                         from: 0.0; to: 360.0
                                         value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "particle_direction") || 0.0 : 0.0
                                         suffix: "°"
-                                        onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "particle_direction", value)
+                                        onValueChanged: studio.setBrushProp("dualbrush", "particle_direction", value)
                                     }
                                 }
                             }
@@ -2207,7 +2342,10 @@ Rectangle {
                             width: parent.width
                             spacing: 20
 
-                            property bool isDualBrushEnabled: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false
+                            property bool isDualBrushEnabled: {
+                                studio.brushPropertySeed;
+                                targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "enabled") || false : false
+                            }
 
                             Row {
                                 spacing: 8
@@ -2277,11 +2415,14 @@ Rectangle {
 
                                         Text {
                                             text: "↺"; color: "#ffffff"; font.pixelSize: 12; font.weight: Font.Bold; anchors.centerIn: parent
+                                            rotation: dualGrainResetMa.containsMouse ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                                         }
 
                                         MouseArea {
-                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                            onClicked: if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_texture", "")
+                                            id: dualGrainResetMa
+                                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                            onClicked: studio.setBrushProp("dualbrush", "grain_texture", "")
                                         }
                                     }
                                 }
@@ -2290,23 +2431,32 @@ Rectangle {
                                 Column {
                                     width: parent.width; spacing: 8
 
-                                    Rectangle {
-                                        width: parent.width; height: 32; radius: 8
-                                        color: changeDualGrainMaTab11.containsMouse ? bgSurface : "transparent"
-                                        border.color: borderDim; border.width: 1
+                                Rectangle {
+                                    width: parent.width; height: 32; radius: 8
+                                    color: changeDualGrainMaTab11.containsMouse ? bgSurface : "transparent"
+                                    border.color: borderDim; border.width: 1
 
+                                    Row {
+                                        anchors.centerIn: parent
+                                        spacing: 4
                                         Text {
-                                            text: "▼ Seleccionar textura de grano..."
+                                            text: "▼"
                                             color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
-                                            anchors.centerIn: parent
+                                            rotation: dualGrainSelectionGridTab11.visible ? 180 : 0
+                                            Behavior on rotation { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
                                         }
-
-                                        MouseArea {
-                                            id: changeDualGrainMaTab11
-                                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                            onClicked: dualGrainSelectionGridTab11.visible = !dualGrainSelectionGridTab11.visible
+                                        Text {
+                                            text: "Seleccionar textura de grano..."
+                                            color: textMuted; font.pixelSize: 11; font.weight: Font.Medium
                                         }
                                     }
+
+                                    MouseArea {
+                                        id: changeDualGrainMaTab11
+                                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                        onClicked: dualGrainSelectionGridTab11.visible = !dualGrainSelectionGridTab11.visible
+                                    }
+                                }
 
                                     Grid {
                                         id: dualGrainSelectionGridTab11
@@ -2327,7 +2477,10 @@ Rectangle {
                                             Text { text: "Ninguno"; color: textMuted; font.pixelSize: 10; anchors.centerIn: parent }
                                             MouseArea {
                                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                onClicked: if (targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_texture", "")
+                                                onClicked: {
+                                                    studio.setBrushProp("dualbrush", "grain_texture", "")
+                                                    dualGrainSelectionGridTab11.visible = false
+                                                }
                                             }
                                         }
 
@@ -2347,7 +2500,10 @@ Rectangle {
                                                 }
                                                 MouseArea {
                                                     anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: if (targetCanvas) targetCanvas.setDualGrainTextureForBrush(studio.brushName, modelData.path)
+                                                    onClicked: {
+                                                        if (targetCanvas) targetCanvas.setDualGrainTextureForBrush(studio.brushName, modelData.path)
+                                                        dualGrainSelectionGridTab11.visible = false
+                                                    }
                                                 }
                                             }
                                         }
@@ -2359,7 +2515,7 @@ Rectangle {
                                     label: "D- Densidad de textura del papel"
                                     from: 0; to: 1.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_intensity") || 0.5 : 0.5
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_intensity", value)
+                                    onValueChanged: studio.setBrushProp("dualbrush", "grain_intensity", value)
                                 }
 
                                 // D- Invertir textura Toggle
@@ -2367,7 +2523,7 @@ Rectangle {
                                     label: "D- Invertir textura"
                                     leftPadding: 24
                                     checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_invert") || false : false)
-                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_invert", checked)
+                                    onCheckedChanged: studio.setBrushProp("dualbrush", "grain_invert", checked)
                                 }
 
                                 // D- Enfatizar densidad Toggle
@@ -2375,7 +2531,7 @@ Rectangle {
                                     label: "D- Enfatizar densidad"
                                     leftPadding: 24
                                     checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_emphasize_density") || false : false)
-                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_emphasize_density", checked)
+                                    onCheckedChanged: studio.setBrushProp("dualbrush", "grain_emphasize_density", checked)
                                 }
 
                                 // D- Porcentaje de escala
@@ -2384,7 +2540,7 @@ Rectangle {
                                     from: 10; to: 500
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_scale") || 100 : 100
                                     suffix: "%"
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_scale", value)
+                                    onValueChanged: studio.setBrushProp("dualbrush", "grain_scale", value)
                                 }
 
                                 // D- Ángulo de rotación
@@ -2393,7 +2549,7 @@ Rectangle {
                                     from: 0; to: 360
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_rotation") || 0 : 0
                                     suffix: "°"
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_rotation", value)
+                                    onValueChanged: studio.setBrushProp("dualbrush", "grain_rotation", value)
                                 }
 
                                 // D- Brillo
@@ -2402,7 +2558,7 @@ Rectangle {
                                     from: -100; to: 100
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_brightness") || 0 : 0
                                     offsetColor: true
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_brightness", value)
+                                    onValueChanged: studio.setBrushProp("dualbrush", "grain_brightness", value)
                                 }
 
                                 // D- Contraste
@@ -2411,7 +2567,7 @@ Rectangle {
                                     from: -100; to: 100
                                     value: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_contrast") || 0 : 0
                                     offsetColor: true
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_contrast", value)
+                                    onValueChanged: studio.setBrushProp("dualbrush", "grain_contrast", value)
                                 }
 
                                 // D- Modo (segmented blend mode)
@@ -2420,13 +2576,16 @@ Rectangle {
                                     Text { text: "D- Modo"; color: textPrimary; font.pixelSize: 12 }
                                     Row {
                                         width: parent.width; spacing: 6
-                                        property string currentMode: targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_blend_mode") || "multiply" : "multiply"
+                                        property string currentMode: {
+                                            studio.brushPropertySeed;
+                                            targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_blend_mode") || "normal" : "normal"
+                                        }
 
                                         component DualGrainBlendButtonTab11 : Rectangle {
-                                            property string modeName: "multiply"
-                                            property string displayLabel: "Multiplicar"
+                                            property string modeName: "normal"
+                                            property string displayLabel: "Normal"
                                             height: 28
-                                            width: (parent.parent.width - 12) / 3
+                                            width: (parent.parent.width - 18) / 4
                                             radius: 6
                                             color: parent.currentMode === modeName ? colorAccent : (dgBlendMaTab11.containsMouse ? bgSurface : "#1a1a1c")
                                             border.color: parent.currentMode === modeName ? "transparent" : borderDim
@@ -2442,19 +2601,16 @@ Rectangle {
                                             MouseArea {
                                                 id: dgBlendMaTab11
                                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                onPressed: parent.scale = 0.94
+                                                onReleased: parent.scale = 1.0
                                                 onClicked: {
-                                                     if (targetCanvas) {
-                                                         var curr = targetCanvas.getBrushProperty("dualbrush", "grain_blend_mode") || "multiply"
-                                                         if (curr === modeName) {
-                                                             targetCanvas.setBrushProperty("dualbrush", "grain_blend_mode", "normal")
-                                                         } else {
-                                                             targetCanvas.setBrushProperty("dualbrush", "grain_blend_mode", modeName)
-                                                         }
-                                                     }
-                                                 }
+                                                    studio.setBrushProp("dualbrush", "grain_blend_mode", modeName)
+                                                }
                                             }
+                                            Behavior on scale { NumberAnimation { duration: 100 } }
                                         }
 
+                                        DualGrainBlendButtonTab11 { modeName: "normal"; displayLabel: "Normal" }
                                         DualGrainBlendButtonTab11 { modeName: "multiply"; displayLabel: "Multiplicar" }
                                         DualGrainBlendButtonTab11 { modeName: "subtract"; displayLabel: "Restar" }
                                         DualGrainBlendButtonTab11 { modeName: "threshold"; displayLabel: "Umbral" }
@@ -2465,7 +2621,7 @@ Rectangle {
                                 StudioToggle {
                                     label: "D- Aplicar a cada punta"
                                     checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("dualbrush", "grain_apply_to_tips") || false : false)
-                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("dualbrush", "grain_apply_to_tips", checked)
+                                    onCheckedChanged: studio.setBrushProp("dualbrush", "grain_apply_to_tips", checked)
                                 }
                             }
                         }
@@ -2486,7 +2642,7 @@ Rectangle {
                             StudioToggle {
                                 label: "Efecto pulverizador"
                                 checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("spray", "enabled") || false : false)
-                                onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("spray", "enabled", checked)
+                                onCheckedChanged: studio.setBrushProp("spray", "enabled", checked)
                             }
 
                             // Only show configurations if main spray is enabled
@@ -2500,14 +2656,14 @@ Rectangle {
                                     from: 1.0; to: 300.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("spray", "particle_size") || 50.0 : 50.0
                                     suffix: "px"
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("spray", "particle_size", value)
+                                    onValueChanged: studio.setBrushProp("spray", "particle_size", value)
                                 }
 
                                 StudioToggle {
                                     label: "Tamaño del pincel"
                                     leftPadding: 24
                                     checked: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("spray", "spray_size_by_brush") || false : false)
-                                    onCheckedChanged: if(targetCanvas) targetCanvas.setBrushProperty("spray", "spray_size_by_brush", checked)
+                                    onCheckedChanged: studio.setBrushProp("spray", "spray_size_by_brush", checked)
                                 }
 
                                 // Particle Density Segmented Selector
@@ -2523,18 +2679,21 @@ Rectangle {
                                         spacing: 4
                                         anchors.verticalCenter: parent.verticalCenter
                                         property int currentValue: targetCanvas ? targetCanvas.getBrushProperty("spray", "particle_density") || 3 : 3
-                                        Repeater {
-                                            model: 5
-                                            delegate: Rectangle {
-                                                width: 24; height: 12; radius: 2
-                                                color: (index + 1) <= parent.currentValue ? colorAccent : "#1a1a1c"
-                                                border.color: borderDim; border.width: 1
-                                                MouseArea {
-                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: if(targetCanvas) targetCanvas.setBrushProperty("spray", "particle_density", index + 1)
+                                            Repeater {
+                                                model: 5
+                                                delegate: Rectangle {
+                                                    width: 24; height: 14; radius: 7
+                                                    color: (index + 1) <= parent.currentValue ? colorAccent : (sprayDimMa.containsMouse ? Qt.lighter("#1a1a1c", 1.3) : "#1a1a1c")
+                                                    border.color: parent.currentValue === (index + 1) ? colorAccent : borderDim
+                                                    border.width: 1
+                                                    MouseArea {
+                                                        id: sprayDimMa
+                                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                        onClicked: studio.setBrushProp("spray", "particle_density", index + 1)
+                                                    }
+                                                    Behavior on color { ColorAnimation { duration: 150 } }
                                                 }
                                             }
-                                        }
                                     }
                                 }
 
@@ -2551,18 +2710,21 @@ Rectangle {
                                         spacing: 4
                                         anchors.verticalCenter: parent.verticalCenter
                                         property int currentValue: targetCanvas ? targetCanvas.getBrushProperty("spray", "spray_deviation") || 3 : 3
-                                        Repeater {
-                                            model: 5
-                                            delegate: Rectangle {
-                                                width: 24; height: 12; radius: 2
-                                                color: (index + 1) <= parent.currentValue ? colorAccent : "#1a1a1c"
-                                                border.color: borderDim; border.width: 1
-                                                MouseArea {
-                                                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                                    onClicked: if(targetCanvas) targetCanvas.setBrushProperty("spray", "spray_deviation", index + 1)
+                                            Repeater {
+                                                model: 5
+                                                delegate: Rectangle {
+                                                    width: 24; height: 14; radius: 7
+                                                    color: (index + 1) <= parent.currentValue ? colorAccent : (sprayDevMa.containsMouse ? Qt.lighter("#1a1a1c", 1.3) : "#1a1a1c")
+                                                    border.color: parent.currentValue === (index + 1) ? colorAccent : borderDim
+                                                    border.width: 1
+                                                    MouseArea {
+                                                        id: sprayDevMa
+                                                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                                        onClicked: studio.setBrushProp("spray", "spray_deviation", index + 1)
+                                                    }
+                                                    Behavior on color { ColorAnimation { duration: 150 } }
                                                 }
                                             }
-                                        }
                                     }
                                 }
 
@@ -2571,7 +2733,7 @@ Rectangle {
                                     from: 0.0; to: 360.0
                                     value: targetCanvas ? targetCanvas.getBrushProperty("spray", "particle_direction") || 0.0 : 0.0
                                     suffix: "°"
-                                    onValueChanged: if(targetCanvas) targetCanvas.setBrushProperty("spray", "particle_direction", value)
+                                    onValueChanged: studio.setBrushProp("spray", "particle_direction", value)
                                         }
                                     }
                                 }
@@ -2699,7 +2861,7 @@ Rectangle {
                         }
                     }
 
-                    // ── FLOATING OVERLAYS (Color circle, Clear button, vertical capsules) ──
+                    // ── FLOATING OVERLAYS (Color circle, Clear button, color popup, vertical capsules) ──
 
                     // Top-right actions: Color Circle & Clear/Eraser
                     Column {
@@ -2708,6 +2870,7 @@ Rectangle {
                         anchors.margins: 16
                         spacing: 12
                         z: 15
+                        width: 32
 
                         // Quick Color Circle Button
                         Rectangle {
@@ -2746,29 +2909,31 @@ Rectangle {
                                 onClicked: { if (targetCanvas) targetCanvas.clearPreviewPad() }
                             }
                         }
-                    }
 
-                    // Curated Quick Color Popover Grid
-                    Rectangle {
-                        id: colorPopup
-                        visible: false
-                        width: 140; height: 80
-                        radius: 12
-                        color: "#cc1c1c1e"
-                        border.color: borderDim; border.width: 1
-                        anchors.top: quickColorCircle.bottom
-                        anchors.topMargin: 42 // Align under the column nicely
-                        anchors.right: parent.right
-                        anchors.rightMargin: 16
-                        z: 16
+                        // Curated Quick Color Popover Grid
+                        Rectangle {
+                            id: colorPopup
+                            visible: false
+                            width: 140; height: 80
+                            radius: 12
+                            color: "#cc1c1c1e"
+                            border.color: borderDim; border.width: 1
+                            anchors.top: quickColorCircle.bottom
+                            anchors.topMargin: 42
+                            x: -108
+                            z: 16
+                            scale: visible ? 1 : 0.85
+                            opacity: visible ? 1 : 0
+                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                            Behavior on opacity { NumberAnimation { duration: 100 } }
 
-                        Grid {
-                            anchors.centerIn: parent
-                            columns: 4
-                            spacing: 10
-                            Repeater {
-                                model: ["#ffffff", "#000000", "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"]
-                                delegate: Rectangle {
+                            Grid {
+                                anchors.centerIn: parent
+                                columns: 4
+                                spacing: 10
+                                Repeater {
+                                    model: ["#ffffff", "#000000", "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"]
+                                    delegate: Rectangle {
                                     width: 18; height: 18; radius: 9
                                     color: modelData
                                     border.color: "#ffffff"
@@ -2979,4 +3144,5 @@ Rectangle {
             }
         }
     }
+}
 }
