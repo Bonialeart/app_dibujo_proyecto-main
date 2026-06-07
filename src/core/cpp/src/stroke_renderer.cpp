@@ -1,5 +1,6 @@
 #include "../include/stroke_renderer.h"
 #include "../include/brush_engine.h"
+#include <fstream>
 #include <QColor>
 #include <QCoreApplication>
 #include <QDebug>
@@ -525,7 +526,7 @@ void StrokeRenderer::renderStroke(
       glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
     } else if (blendMode == 2) { // Screen
       glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
-    } else { // Normal
+    } else { // Normal (alpha-lock se aplica en el shader multiplicando alpha por Dst_A)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
   }
@@ -800,11 +801,12 @@ void StrokeRenderer::renderStrokeInstanced(
     glBlendFuncSeparate(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO,
                         GL_ONE_MINUS_SRC_ALPHA);
   } else {
+    // PINTURA NORMAL
     if (blendMode == 1) { // Multiply
       glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
     } else if (blendMode == 2) { // Screen
       glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
-    } else { // Normal
+    } else { // Normal (alpha-lock se aplica en el shader multiplicando alpha por Dst_A)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
   }

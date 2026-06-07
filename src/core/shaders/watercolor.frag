@@ -135,7 +135,6 @@ float getGrainValue(vec2 coord) {
 //   • La dilución reduce la densidad del pigmento pero aumenta la humedad
 // ============================================================================
 vec4 paintDab() {
-    return vec4(1.0, 1.0, 0.0, 1.0); // DIAGNOSTIC: yellow
     vec4 canvasSample = texture(uCanvas, vTexCoord);
     vec4 wetSample    = texture(uWetMap, vTexCoord);  // R=wetness G=sec_age
     vec4 dabSample    = texture(uBrushDab, vTexCoord);
@@ -413,6 +412,7 @@ vec4 spreadWet() {
     float flowResistance = paperGrain * uGrainIntensity * 0.5;
     
     // Tasa de difusión escalada por el sangrado (uBleed) y la frescura del agua (1.0 - edad)
+    float localPaintAmount = uPaintAmount * 0.6;
     float blendModulation = clamp((1.0 - localPaintAmount) * 2.0 + uColorStretch * 2.0, 0.0, 2.0);
     float diffusionRate = uBleed * (1.0 - wetCenter.g);
     float effectiveRate = clamp(diffusionRate * blendModulation * (1.0 - flowResistance), 0.0, 1.0);

@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0.."
 echo =========================================
 echo    Lanzador de Kromo Studio (Con Consola)
 echo =========================================
@@ -20,7 +21,6 @@ echo 2. Añadiendo rutas al sistema...
 set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
 echo 3. Configurando y Compilando cambios recientes...
-cd ..
 if not exist "build_mingw\CMakeCache.txt" (
     echo [PROCESO] Configurando proyecto por primera vez...
     cmake -G "Ninja" -B build_mingw -S .
@@ -33,9 +33,8 @@ if %errorlevel% neq 0 (
 )
 
 echo 4. Verificando ejecutable...
-if exist "build_mingw\KromoStudio.exe" (
-    set EXE_PATH=build_mingw\KromoStudio.exe
-) else (
+set EXE_PATH=%CD%\build_mingw\KromoStudio.exe
+if not exist "%EXE_PATH%" (
     echo ERROR: No se encuentra build_mingw\KromoStudio.exe
     pause
     exit /b

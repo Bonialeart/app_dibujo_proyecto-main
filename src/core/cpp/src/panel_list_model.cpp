@@ -137,6 +137,16 @@ int PanelListModel::findById(const QString &panelId) const {
   return -1;
 }
 
+bool PanelListModel::removeById(const QString &panelId) {
+  int idx = findById(panelId);
+  if (idx < 0) return false;
+  beginRemoveRows(QModelIndex(), idx, idx);
+  m_panels.remove(idx);
+  endRemoveRows();
+  emitCountChanged();
+  return true;
+}
+
 bool PanelListModel::hasAnyVisible() const {
   for (const auto &p : m_panels) {
     if (p.visible)

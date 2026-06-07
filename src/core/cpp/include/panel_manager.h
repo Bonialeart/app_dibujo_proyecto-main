@@ -73,6 +73,8 @@ public:
   QStringList availableWorkspaces() const;
   QVariantMap activeGroupTabs() const;
 
+  QStringList hiddenPanels() const { return m_hiddenPanels; }
+
   // --- Q_INVOKABLE methods called from QML ---
 
   // Load a predefined or custom workspace layout
@@ -115,7 +117,25 @@ public:
   // expand)
   Q_INVOKABLE void setDockCollapsedByName(const QString &dock, bool state);
 
+  // Remove a panel from every dock (used by Ventana menu's "remove" action).
+  // The panel is added to the hiddenPanels list so the Ventana menu won't
+  // show it again. Auto-saves.
+  Q_INVOKABLE void removePanelEverywhere(const QString &panelId);
+
+  // Restore a previously hidden panel: removes it from hiddenPanels and
+  // re-adds it to the right dock of the current workspace.
+  Q_INVOKABLE void restorePanel(const QString &panelId);
+
+  // All currently hidden panel ids (Ventana menu filter).
+  Q_PROPERTY(QStringList hiddenPanels READ hiddenPanels NOTIFY hiddenPanelsChanged)
+
+  // --- Helpers exposed to QML ---
+  Q_INVOKABLE void clearHiddenPanels();
+  Q_INVOKABLE bool isPanelHidden(const QString &panelId) const;
+  Q_INVOKABLE void addHiddenPanel(const QString &panelId);
+
 signals:
+  void hiddenPanelsChanged();
   void dockStateChanged();
   void workspaceChanged();
   void workspacesChanged();
@@ -168,6 +188,7 @@ private:
   QString m_activeWorkspace;
   QStringList m_customWorkspaces;
   QMap<QString, QString> m_activeGroupTabs;
+  QStringList m_hiddenPanels;
 };
 
 } // namespace artflow

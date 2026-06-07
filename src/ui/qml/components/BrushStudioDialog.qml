@@ -1477,6 +1477,27 @@ Rectangle {
                                     suffix: "%"
                                     onValueChanged: studio.setBrushProp("wetmix", "color_stretch", value)
                                 }
+
+                                Row {
+                                    width: parent.width; spacing: 16
+                                    property real pVal: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("wetmix", "paint_amount") || 0.7 : 0.7)
+                                    property real sVal: (studio.brushPropertySeed, targetCanvas ? targetCanvas.getBrushProperty("wetmix", "color_stretch") || 0.1 : 0.1)
+                                    Rectangle {
+                                        width: (parent.width - 16) * parent.pVal; height: 4; radius: 2
+                                        color: colorAccent
+                                        Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+                                    }
+                                    Rectangle {
+                                        width: (parent.width - 16) * parent.sVal; height: 4; radius: 2
+                                        color: Qt.rgba(0.6, 0.8, 1.0, 0.8)
+                                        Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+                                    }
+                                }
+                                Row {
+                                    width: parent.width; spacing: 16
+                                    Text { text: "Pintura"; color: colorAccent; font.pixelSize: 9; font.weight: Font.Bold }
+                                    Text { text: "Extender"; color: Qt.rgba(0.6, 0.8, 1.0, 0.8); font.pixelSize: 9; font.weight: Font.Bold }
+                                }
                             }
                             
                             StudioSlider {
@@ -2863,64 +2884,80 @@ Rectangle {
 
                     // ── FLOATING OVERLAYS (Color circle, Clear button, color popup, vertical capsules) ──
 
-                    // Top-right actions: Color Circle & Clear/Eraser
+                    // Color & Clear — stacked on right side
                     Column {
-                        anchors.top: parent.top
                         anchors.right: parent.right
-                        anchors.margins: 16
-                        spacing: 12
+                        anchors.rightMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 14
                         z: 15
-                        width: 32
+                        width: 36
 
                         // Quick Color Circle Button
                         Rectangle {
                             id: quickColorCircle
-                            width: 32; height: 32; radius: 16
+                            width: 36; height: 36; radius: 18
                             color: targetCanvas ? targetCanvas.brushColor : "#ffffff"
                             border.color: "#ffffff"; border.width: 2
-                            layer.enabled: true
-                            
+
                             Rectangle {
-                                anchors.fill: parent; anchors.margins: -3
-                                radius: 20
-                                color: "transparent"; border.color: "#2a2a2c"; border.width: 1
+                                anchors.fill: parent; anchors.margins: -4
+                                radius: 22
+                                color: "transparent"; border.color: Qt.rgba(0, 0, 0, 0.25); border.width: 3
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: -7
+                                radius: 25
+                                color: "transparent"; border.color: "#1a1a1c"; border.width: 1
                             }
 
                             MouseArea {
+                                id: colorCircleMa
                                 anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
+                                onContainsMouseChanged: parent.scale = containsMouse ? 1.1 : 1.0
                                 onClicked: colorPopup.visible = !colorPopup.visible
                             }
+                            Behavior on scale { NumberAnimation { duration: 100 } }
                         }
 
-                        // Eraser / Clear Canvas Button
+                        // Clear Canvas Button
                         Rectangle {
-                            width: 32; height: 32; radius: 16
-                            color: "#cc1c1c1e"
-                            border.color: borderDim; border.width: 1
+                            id: clearPadBtn
+                            width: 36; height: 36; radius: 18
+                            color: clearMa.containsMouse ? "#cc2a2a2c" : "#cc1c1c1e"
+                            border.color: clearMa.containsMouse ? borderLit : borderDim
+                            border.width: 1
 
                             Text {
-                                text: "🧹" // Broom/eraser symbol
-                                font.pixelSize: 14
+                                text: "✕"
+                                color: "#999999"; font.pixelSize: 16
                                 anchors.centerIn: parent
                             }
 
                             MouseArea {
-                                anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                id: clearMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onContainsMouseChanged: parent.scale = containsMouse ? 1.1 : 1.0
                                 onClicked: { if (targetCanvas) targetCanvas.clearPreviewPad() }
                             }
+                            Behavior on scale { NumberAnimation { duration: 100 } }
+                            Behavior on color { ColorAnimation { duration: 100 } }
                         }
 
                         // Curated Quick Color Popover Grid
                         Rectangle {
                             id: colorPopup
                             visible: false
-                            width: 140; height: 80
-                            radius: 12
-                            color: "#cc1c1c1e"
-                            border.color: borderDim; border.width: 1
+                            width: 156; height: 88
+                            radius: 14
+                            color: "#e61c1c1e"
+                            border.color: borderLit
+                            border.width: 1
+                            anchors.right: quickColorCircle.right
                             anchors.top: quickColorCircle.bottom
-                            anchors.topMargin: 42
-                            x: -108
+                            anchors.topMargin: 10
                             z: 16
                             scale: visible ? 1 : 0.85
                             opacity: visible ? 1 : 0
@@ -2930,11 +2967,11 @@ Rectangle {
                             Grid {
                                 anchors.centerIn: parent
                                 columns: 4
-                                spacing: 10
+                                spacing: 8
                                 Repeater {
                                     model: ["#ffffff", "#000000", "#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"]
                                     delegate: Rectangle {
-                                    width: 18; height: 18; radius: 9
+                                    width: 22; height: 22; radius: 11
                                     color: modelData
                                     border.color: "#ffffff"
                                     border.width: (targetCanvas && targetCanvas.brushColor.toString().toLowerCase() === modelData.toLowerCase()) ? 2 : 0
@@ -2953,7 +2990,7 @@ Rectangle {
                     // Floating Vertical Capsules on Right Margin
                     Row {
                         anchors.right: parent.right
-                        anchors.rightMargin: 16
+                        anchors.rightMargin: 70
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 12
                         z: 15

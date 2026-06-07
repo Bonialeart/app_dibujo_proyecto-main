@@ -39,9 +39,12 @@
     <file>qml/components/SideIconBar.qml</file>
     <file>qml/components/DockContainer.qml</file>
     <file>qml/components/ColorPanel.qml</file>
+    <file>qml/components/ColorHistoryPanel.qml</file>
     <file>qml/components/LayerPanel.qml</file>
     <file>qml/components/ScreentonePanel.qml</file>
     <file>qml/components/NavigatorPanel.qml</file>
+    <file>qml/components/SymmetrySettingsPanel.qml</file>
+    <file>qml/components/TransformOptionsPanel.qml</file>
     <file>qml/components/BrushLibraryPanel.qml</file>
     <file>qml/components/StudioSlider.qml</file>
     <file>qml/components/FloatingPanel.qml</file>

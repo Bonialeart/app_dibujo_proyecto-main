@@ -55,6 +55,9 @@ public:
   // Find panel index by id, returns -1 if not found
   Q_INVOKABLE int findById(const QString &panelId) const;
 
+  // Remove a panel by its id (no-op if not found). Returns true on success.
+  Q_INVOKABLE bool removeById(const QString &panelId);
+
   // Visibility helpers
   bool hasAnyVisible() const;
   void setAllVisible(bool visible);

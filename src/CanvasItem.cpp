@@ -11141,6 +11141,8 @@ void CanvasItem::beginBrushEdit(const QString &brushName) {
   m_editingPreset = *preset; // Clone for editing
   m_resetPoint = *preset;    // Save reset point
   m_isEditingBrush = true;
+  m_editRevision = 0;
+  m_brushPreviewCache.clear();
 
   qDebug() << "beginBrushEdit: Cloned preset:" << brushName
            << "dualBrush.enabled =" << m_editingPreset.dualBrush.enabled
@@ -11914,8 +11916,8 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
   }
 
   if (changed) {
-    // Clear preview cache for this brush to force regeneration
-    m_brushPreviewCache.remove(m_editingPreset.name);
+    // Bump revision to invalidate preview cache
+    m_editRevision++;
 
     // Apply to engine for live preview
     applyEditingPresetToEngine();
@@ -12452,19 +12454,27 @@ QString CanvasItem::getStampPreview() {
 }
 
 QString CanvasItem::get_brush_preview(const QString &brushName) {
-  // Retornar de la caché inmediatamente si ya ha sido generada
-  if (m_brushPreviewCache.contains(brushName)) {
-    return m_brushPreviewCache.value(brushName);
+  // Usar el preset en edición si está activo, para reflejar cambios en vivo
+  const artflow::BrushPreset *preset = nullptr;
+  if (m_isEditingBrush) {
+    preset = &m_editingPreset;
+  } else {
+    auto *bpm = artflow::BrushPresetManager::instance();
+    preset = bpm->findByName(brushName);
+  }
+  if (!preset)
+    return "";
+
+  // Retornar de la caché inmediatamente si ya ha sido generada para este preset
+  // Usamos un cache key que incluye el nombre + un contador de revisión
+  QString cacheKey = preset->name + "_rev" + QString::number(m_editRevision);
+  if (m_brushPreviewCache.contains(cacheKey)) {
+    return m_brushPreviewCache.value(cacheKey);
   }
 
   // Aumentar resolución para un preview más nítido y "premium"
   QImage img(400, 160, QImage::Format_ARGB32);
   img.fill(Qt::transparent);
-
-  auto *bpm = artflow::BrushPresetManager::instance();
-  const artflow::BrushPreset *preset = bpm->findByName(brushName);
-  if (!preset)
-    return "";
 
   QPainter painter(&img);
   painter.setRenderHint(QPainter::Antialiasing);
@@ -12513,7 +12523,7 @@ QString CanvasItem::get_brush_preview(const QString &brushName) {
   QString base64Str = "data:image/png;base64," + ba.toBase64();
   
   // Guardar en la caché
-  m_brushPreviewCache.insert(brushName, base64Str);
+  m_brushPreviewCache.insert(cacheKey, base64Str);
 
   return base64Str;
 }

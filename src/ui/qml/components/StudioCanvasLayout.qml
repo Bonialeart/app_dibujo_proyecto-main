@@ -79,6 +79,9 @@ Item {
     property bool wsSubMenuOpen: false
     property real wsSubMenuX: 0
     property real wsSubMenuY: 0
+    property bool hiddenPanelsOpen: false
+    property real hiddenPanelsX: 0
+    property real hiddenPanelsY: 0
 
     signal switchToEssential()
     
@@ -858,6 +861,7 @@ Item {
                         studioLayout.winMenuY = pt.y
                         studioLayout.winMenuOpen = !studioLayout.winMenuOpen
                         studioLayout.wsSubMenuOpen = false
+                        studioLayout.hiddenPanelsOpen = false
                     }
                 }
             }
@@ -1208,11 +1212,13 @@ Item {
     MouseArea {
         anchors.fill: parent
         z: 9997
-        visible: studioLayout.wsMenuOpen || studioLayout.winMenuOpen || studioLayout.wsSubMenuOpen
+        visible: studioLayout.wsMenuOpen || studioLayout.winMenuOpen
+                 || studioLayout.wsSubMenuOpen || studioLayout.hiddenPanelsOpen
         onClicked: {
             studioLayout.wsMenuOpen = false
             studioLayout.winMenuOpen = false
             studioLayout.wsSubMenuOpen = false
+            studioLayout.hiddenPanelsOpen = false
         }
     }
     
@@ -1290,20 +1296,78 @@ Item {
         }
     }
 
-    // 3. The Custom "Ventana" Dropdown Menu
+    // 3. The Custom "Ventana" Dropdown Menu (with search + remove)
     Rectangle {
         id: customWinMenu
         z: 9998
         visible: studioLayout.winMenuOpen
         x: studioLayout.winMenuX
         y: studioLayout.winMenuY
-        width: 220
+        width: 280
         height: winMenuCol.height + 16
         color: "#18181c"
         border.color: "#3a3a40"
         border.width: 1
         radius: 8
-        
+
+        // Master list of panels in the Ventana menu.
+        // `id` matches the C++ panel_manager catalog id.
+        // The Repeater below filters this list by the search text AND
+        // excludes panels the user has hidden via the ✕ button.
+        readonly property var _allPanels: [
+            { id: "color",        name: "Color" },
+            { id: "colorhistory", name: "Historial de Color" },
+            { id: "layers",       name: "Capas" },
+            { id: "brushes",      name: "Pinceles" },
+            { id: "settings",     name: "Configuración de Pincel" },
+            { id: "toolsettings", name: "Propiedades de Herramienta" },
+            { id: "transform",    name: "Opciones de Transformación" },
+            { id: "navigator",    name: "Navegador" },
+            { id: "symmetry",     name: "Simetría" },
+            { id: "history",      name: "Historial" },
+            { id: "reference",    name: "Referencia" },
+            { id: "info",         name: "Info" },
+            { id: "timeline",     name: "Línea de tiempo" },
+            { id: "gradient",     name: "Editor de Degradados" }
+        ]
+
+        // List of hidden panels (from C++ panel_manager.hiddenPanels).
+        // Re-read whenever the C++ signal fires so the menu reflects changes
+        // immediately.
+        property var hiddenList: (typeof panelManager !== "undefined" && panelManager)
+                                ? panelManager.hiddenPanels : []
+        Connections {
+            target: (typeof panelManager !== "undefined") ? panelManager : null
+            function onHiddenPanelsChanged() {
+                customWinMenu.hiddenList = panelManager.hiddenPanels
+                panelListRepeater.model = customWinMenu._filteredPanels()
+            }
+        }
+
+        function _filteredPanels() {
+            var q = winSearch.text.toLowerCase().trim()
+            var hidden = customWinMenu.hiddenList || []
+            var out = []
+            for (var i = 0; i < _allPanels.length; i++) {
+                // Skip hidden panels
+                if (hidden.indexOf(_allPanels[i].id) !== -1) continue
+                if (q.length > 0 && _allPanels[i].name.toLowerCase().indexOf(q) === -1) continue
+                out.push(_allPanels[i])
+            }
+            return out
+        }
+
+        function _hiddenPanelDetails() {
+            var hidden = customWinMenu.hiddenList || []
+            var out = []
+            for (var i = 0; i < _allPanels.length; i++) {
+                if (hidden.indexOf(_allPanels[i].id) !== -1) {
+                    out.push(_allPanels[i])
+                }
+            }
+            return out
+        }
+
         layer.enabled: true
         layer.effect: MultiEffect {
             shadowEnabled: true
@@ -1311,13 +1375,13 @@ Item {
             shadowColor: "#88000000"
             shadowVerticalOffset: 4
         }
-        
+
         Column {
             id: winMenuCol
             width: parent.width - 12
             anchors.centerIn: parent
             spacing: 2
-            
+
             // Item 1: Espacio de trabajo (Workspace submenu trigger)
             Rectangle {
                 id: wsSubMenuTrigger
@@ -1327,7 +1391,7 @@ Item {
                 color: wsTriggerMa.containsMouse || studioLayout.wsSubMenuOpen ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
                 border.color: wsTriggerMa.containsMouse || studioLayout.wsSubMenuOpen ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
                 border.width: 1
-                
+
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 8
@@ -1345,7 +1409,7 @@ Item {
                         font.pixelSize: 10
                     }
                 }
-                
+
                 MouseArea {
                     id: wsTriggerMa
                     anchors.fill: parent
@@ -1353,7 +1417,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: toggleSubMenu()
                     onEntered: toggleSubMenu()
-                    
+
                     function toggleSubMenu() {
                         var pt = wsSubMenuTrigger.mapToItem(studioLayout, wsSubMenuTrigger.width + 4, -8)
                         studioLayout.wsSubMenuX = pt.x
@@ -1362,7 +1426,54 @@ Item {
                     }
                 }
             }
-            
+
+            // Search bar
+            Rectangle {
+                width: parent.width
+                height: 30
+                radius: 6
+                color: "#101015"
+                border.color: winSearch.activeFocus ? accentColor : "#2a2a2d"
+                border.width: 1
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    spacing: 6
+
+                    Text {
+                        text: "🔍"
+                        color: "#888"
+                        font.pixelSize: 11
+                    }
+                    TextField {
+                        id: winSearch
+                        Layout.fillWidth: true
+                        background: null
+                        placeholderText: "Buscar panel…"
+                        placeholderTextColor: "#666"
+                        color: "white"
+                        selectByMouse: true
+                        font.pixelSize: 11
+                        padding: 0
+                        onTextChanged: panelListRepeater.model = customWinMenu._filteredPanels()
+                        Keys.onEscapePressed: { text = ""; focus = false }
+                    }
+                    Text {
+                        text: "✕"
+                        color: winSearch.text.length > 0 ? "#aaa" : "transparent"
+                        font.pixelSize: 10
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            cursorShape: parent.parent.parent.text.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            onClicked: { if (winSearch.text.length > 0) winSearch.text = "" }
+                        }
+                    }
+                }
+            }
+
             // Separator
             Rectangle {
                 width: parent.width
@@ -1370,31 +1481,39 @@ Item {
                 color: "#2d2d34"
                 anchors.horizontalCenter: parent.horizontalCenter
             }
-            
-            // Checklist of Panels
+
+            // No results message
+            Text {
+                width: parent.width
+                height: 32
+                visible: customWinMenu._filteredPanels().length === 0
+                text: winSearch.text.length > 0
+                      ? "Sin resultados para «" + winSearch.text + "»"
+                      : (customWinMenu._hiddenPanelDetails().length > 0
+                            ? "Todos los paneles visibles están ocultos. Pulsa «Mostrar paneles ocultos» abajo para restaurarlos."
+                            : "Sin paneles")
+                color: "#666"
+                font.pixelSize: 11
+                font.italic: true
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            // Checklist of Panels (filtered)
             Repeater {
-                model: [
-                    { id: "color", name: "Color" },
-                    { id: "layers", name: "Capas" },
-                    { id: "brushes", name: "Pinceles" },
-                    { id: "settings", name: "Configuración de Pincel" },
-                    { id: "toolsettings", name: "Propiedades de Herramienta" },
-                    { id: "navigator", name: "Navegador" },
-                    { id: "history", name: "Historial" },
-                    { id: "reference", name: "Referencia" },
-                    { id: "info", name: "Info" },
-                    { id: "timeline", name: "Línea de tiempo" },
-                    { id: "gradient", name: "Editor de Degradados" }
-                ]
-                
+                id: panelListRepeater
+                model: customWinMenu._filteredPanels()
+
                 delegate: Rectangle {
+                    id: panelRow
                     width: parent.width
                     height: 30
                     radius: 6
                     color: panelToggleMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
                     border.color: panelToggleMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
                     border.width: 1
-                    
+
                     function checkIsVisible(pid) {
                         if (!panelManager) return false
                         var models = [
@@ -1415,17 +1534,17 @@ Item {
                         }
                         return false;
                     }
-                    
+
                     Text {
                         text: modelData.name
-                        color: panelToggleMa.containsMouse ? "white" : "#ddd"
+                        color: panelToggleMa.containsMouse && !removeBtnMa.containsMouse ? "white" : "#ddd"
                         font.pixelSize: 12
                         font.weight: Font.Medium
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.left: parent.left
                         anchors.leftMargin: 28
                     }
-                    
+
                     Text {
                         visible: checkIsVisible(modelData.id)
                         text: "✓"
@@ -1436,15 +1555,263 @@ Item {
                         anchors.left: parent.left
                         anchors.leftMargin: 8
                     }
-                    
+
+                    // ✕ Remove button (stops event propagation so the toggle doesn't fire)
+                    Rectangle {
+                        id: removeBtn
+                        width: 20; height: 20
+                        radius: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.right: parent.right
+                        anchors.rightMargin: 6
+                        color: removeBtnMa.containsMouse ? "#b91c1c" : "transparent"
+                        border.color: removeBtnMa.containsMouse ? "#ef4444" : "#444"
+                        border.width: 1
+                        visible: panelToggleMa.containsMouse
+                        z: 5
+                        Text {
+                            anchors.centerIn: parent
+                            text: "✕"
+                            color: removeBtnMa.containsMouse ? "white" : "#888"
+                            font.pixelSize: 9
+                            font.weight: Font.Bold
+                        }
+                        MouseArea {
+                            id: removeBtnMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                // Remove panel from every dock AND from the Ventana menu.
+                                panelManager.removePanelEverywhere(modelData.id)
+                                customWinMenu.hiddenList = panelManager.hiddenPanels
+                                panelListRepeater.model = customWinMenu._filteredPanels()
+                            }
+                            ToolTip.visible: containsMouse
+                            ToolTip.text: "Eliminar «" + modelData.name + "» del menú y de los docks"
+                            ToolTip.delay: 400
+                        }
+                    }
+
                     MouseArea {
                         id: panelToggleMa
                         anchors.fill: parent
+                        anchors.rightMargin: 28
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             panelManager.togglePanel(modelData.id)
                         }
+                    }
+                }
+            }
+
+            // Separator (only if there are hidden panels)
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: "#2d2d34"
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: customWinMenu._hiddenPanelDetails().length > 0
+            }
+
+            // "Mostrar paneles ocultos" submenu trigger (only if there are hidden)
+            Rectangle {
+                id: restoreSubMenuTrigger
+                width: parent.width
+                height: 30
+                visible: customWinMenu._hiddenPanelDetails().length > 0
+                radius: 6
+                color: restoreTriggerMa.containsMouse || studioLayout.hiddenPanelsOpen
+                       ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                border.color: restoreTriggerMa.containsMouse || studioLayout.hiddenPanelsOpen
+                              ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                border.width: 1
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    Text {
+                        text: "🔄 Mostrar paneles ocultos (" + customWinMenu._hiddenPanelDetails().length + ")"
+                        color: restoreTriggerMa.containsMouse ? "white" : "#ddd"
+                        font.pixelSize: 12
+                        font.weight: Font.Medium
+                        Layout.fillWidth: true
+                    }
+                    Text {
+                        text: "▶"
+                        color: "#888"
+                        font.pixelSize: 10
+                    }
+                }
+
+                MouseArea {
+                    id: restoreTriggerMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: toggleRestoreMenu()
+                    onEntered: toggleRestoreMenu()
+
+                    function toggleRestoreMenu() {
+                        var pt = restoreSubMenuTrigger.mapToItem(studioLayout, restoreSubMenuTrigger.width + 4, -8)
+                        studioLayout.hiddenPanelsX = pt.x
+                        studioLayout.hiddenPanelsY = pt.y
+                        studioLayout.hiddenPanelsOpen = true
+                    }
+                }
+            }
+
+            // Bottom hint
+            Text {
+                width: parent.width
+                height: 22
+                visible: customWinMenu._filteredPanels().length > 0
+                text: "Clic = abrir/cerrar · ✕ = eliminar del menú"
+                color: "#555"
+                font.pixelSize: 9
+                horizontalAlignment: Text.AlignHCenter
+            }
+        }
+
+        // Auto-focus the search field when the menu opens
+        Connections {
+            target: studioLayout
+            function onWinMenuOpenChanged() {
+                if (studioLayout.winMenuOpen) {
+                    Qt.callLater(function() { winSearch.forceActiveFocus() })
+                } else {
+                    winSearch.text = ""
+                }
+            }
+        }
+    }
+
+    // 3b. The "Hidden Panels" Restore Submenu (flyout)
+    Rectangle {
+        id: customHiddenPanelsMenu
+        z: 9999
+        visible: studioLayout.winMenuOpen && studioLayout.hiddenPanelsOpen
+        x: studioLayout.hiddenPanelsX
+        y: studioLayout.hiddenPanelsY
+        width: 260
+        height: hiddenCol.height + 16
+        color: "#18181c"
+        border.color: "#3a3a40"
+        border.width: 1
+        radius: 8
+
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowBlur: 24
+            shadowColor: "#88000000"
+            shadowVerticalOffset: 4
+        }
+
+        Column {
+            id: hiddenCol
+            width: parent.width - 12
+            anchors.centerIn: parent
+            spacing: 2
+
+            Text {
+                width: parent.width
+                height: 26
+                text: "PANELES OCULTOS"
+                color: "#888"
+                font.pixelSize: 9
+                font.letterSpacing: 1
+                font.weight: Font.Bold
+                leftPadding: 8
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: "#2d2d34"
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Repeater {
+                model: customWinMenu._hiddenPanelDetails()
+                delegate: Rectangle {
+                    width: parent.width
+                    height: 30
+                    radius: 6
+                    color: restoreItemMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.25) : "transparent"
+                    border.color: restoreItemMa.containsMouse ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.8) : "transparent"
+                    border.width: 1
+
+                    Text {
+                        text: modelData.name
+                        color: restoreItemMa.containsMouse ? "white" : "#bbb"
+                        font.pixelSize: 12
+                        font.weight: Font.Medium
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 10
+                    }
+                    Text {
+                        text: "+ Agregar"
+                        color: accentColor
+                        font.pixelSize: 10
+                        font.weight: Font.Bold
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.right: parent.right
+                        anchors.rightMargin: 12
+                        opacity: restoreItemMa.containsMouse ? 1.0 : 0.7
+                    }
+
+                    MouseArea {
+                        id: restoreItemMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            panelManager.restorePanel(modelData.id)
+                            customWinMenu.hiddenList = panelManager.hiddenPanels
+                            panelListRepeater.model = customWinMenu._filteredPanels()
+                            // Close the submenu if no more hidden panels
+                            if (customWinMenu._hiddenPanelDetails().length === 0) {
+                                studioLayout.hiddenPanelsOpen = false
+                            }
+                        }
+                        ToolTip.visible: containsMouse
+                        ToolTip.text: "Restaurar «" + modelData.name + "» al dock lateral"
+                        ToolTip.delay: 400
+                    }
+                }
+            }
+
+            // Restore-all button
+            Rectangle {
+                visible: customWinMenu._hiddenPanelDetails().length > 1
+                width: parent.width
+                height: 30
+                radius: 6
+                color: restoreAllMa.containsMouse ? "#1f1f24" : "transparent"
+                border.color: restoreAllMa.containsMouse ? "#3a3a40" : "transparent"
+                border.width: 1
+                Text {
+                    anchors.centerIn: parent
+                    text: "Restaurar todos"
+                    color: accentColor
+                    font.pixelSize: 11
+                    font.weight: Font.Medium
+                }
+                MouseArea {
+                    id: restoreAllMa
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        panelManager.clearHiddenPanels()
+                        customWinMenu.hiddenList = []
+                        panelListRepeater.model = customWinMenu._filteredPanels()
+                        studioLayout.hiddenPanelsOpen = false
                     }
                 }
             }

@@ -1009,6 +1009,7 @@ private:
 
   // Cache para las imágenes de vista previa de pinceles codificadas en base64
   QMap<QString, QString> m_brushPreviewCache;
+  int m_editRevision = 0;
 
   // Auto-save members
   QTimer *m_autoSaveTimer = nullptr;

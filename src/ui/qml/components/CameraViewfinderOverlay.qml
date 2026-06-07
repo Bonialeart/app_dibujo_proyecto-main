@@ -173,18 +173,26 @@ Item {
                 if (!overlay.camera || !overlay.camera.targetCanvas) return
                 overlay._dragging   = true
                 overlay._dragMode   = "pan"
-                overlay._startMouse = Qt.point(m.x, m.y)
-                overlay._startView  = Qt.point(
-                    overlay.camera.appliedX,
-                    overlay.camera.appliedY
-                )
+                // Use GLOBAL coordinates (root item) so the
+                // delta is unaffected by the overlay moving
+                // under the mouse.
+                overlay._startGlobal = panArea.mapToItem(null, m.x, m.y)
+                var v = overlay.camera.targetCanvas.viewOffset
+                overlay._startView   = Qt.point(v.x, v.y)
             }
             onPositionChanged: function(m) {
                 if (!overlay._dragging || overlay._dragMode !== "pan") return
                 if (!overlay.camera || !overlay.camera.targetCanvas) return
-                var z = overlay.camera.targetCanvas.zoomLevel || 1.0
-                overlay.camera.appliedX = overlay._startView.x + (m.x - overlay._startMouse.x) / z
-                overlay.camera.appliedY = overlay._startView.y + (m.y - overlay._startMouse.y) / z
+                var gp = panArea.mapToItem(null, m.x, m.y)
+                var dx = gp.x - overlay._startGlobal.x
+                var dy = gp.y - overlay._startGlobal.y
+                var z  = overlay.camera.targetCanvas.zoomLevel || 1.0
+                var newX = overlay._startView.x + dx / z
+                var newY = overlay._startView.y + dy / z
+                overlay.camera.appliedX = newX
+                overlay.camera.appliedY = newY
+                // `canvasOffset` is writable on QCanvasItem; `viewOffset` is read-only.
+                overlay.camera.targetCanvas.canvasOffset = Qt.point(newX, newY)
             }
             onReleased: {
                 if (overlay._dragMode === "pan") {

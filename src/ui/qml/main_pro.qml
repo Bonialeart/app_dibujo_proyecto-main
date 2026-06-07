@@ -104,6 +104,7 @@ Window {
                 autosaveRecoveryPopup.openWithAutosaves()
             }
         })
+        Qt.callLater(refreshLayoutConfig)
     }
 
     // === DESIGN TOKENS ===
@@ -288,30 +289,37 @@ Window {
     // property string applicationDirPath removed as it's not needed for relative paths
 
     // --- ESSENTIAL MODE LAYOUT CUSTOMIZATION HELPERS ---
-    function btnInLocation(btnId, location) {
-        if (!preferencesManager || !preferencesManager.essentialLayoutConfig) return true
-        var cfg = preferencesManager.essentialLayoutConfig
-        var list = cfg[location] || []
+    property var _layoutConfig: ({})
+    property int _layoutVersion: 0
+    function _btnInLocation(btnId, location) {
+        var list = _layoutConfig[location] || []
         return list.indexOf(btnId) >= 0
     }
-    function toolBtnInLocation(toolName) {
-        return btnInLocation("tool_" + toolName, "side")
-    }
     function isSideToolVisible(toolName) {
-        if (!preferencesManager || !preferencesManager.essentialLayoutConfig) {
+        if (Object.keys(_layoutConfig).length === 0) {
             return toolName !== "pencil" && toolName !== "brush" && toolName !== "airbrush"
         }
-        return btnInLocation("tool_" + toolName, "side")
+        return _btnInLocation("tool_" + toolName, "side")
     }
-    function isInTopLeft(btnId) { return btnInLocation(btnId, "topLeft") }
-    function isInTopRight(btnId) { return btnInLocation(btnId, "topRight") }
-    function isInRightColor(btnId) { return btnInLocation(btnId, "rightColor") }
-    function isInSliders(btnId) { return btnInLocation(btnId, "sliders") }
+    function isInTopLeft(btnId) { return _btnInLocation(btnId, "topLeft") }
+    function isInTopRight(btnId) { return _btnInLocation(btnId, "topRight") }
+    function isInRightColor(btnId) { return _btnInLocation(btnId, "rightColor") }
+    function isInSliders(btnId) { return _btnInLocation(btnId, "sliders") }
     function hasButtonsInLocation(location) {
-        if (!preferencesManager || !preferencesManager.essentialLayoutConfig) return true
-        var cfg = preferencesManager.essentialLayoutConfig
-        var list = cfg[location] || []
+        if (Object.keys(_layoutConfig).length === 0) return true
+        var list = _layoutConfig[location] || []
         return list.length > 0
+    }
+    function refreshLayoutConfig() {
+        var cfg = preferencesManager && preferencesManager.essentialLayoutConfig ? preferencesManager.essentialLayoutConfig : ({})
+        if (JSON.stringify(cfg) !== JSON.stringify(_layoutConfig)) {
+            _layoutConfig = cfg
+            _layoutVersion++
+        }
+    }
+    Connections {
+        target: preferencesManager
+        onLayoutConfigChanged: refreshLayoutConfig()
     }
 
     // === CUSTOM COMPONENT: SLIDER ===
@@ -2465,7 +2473,7 @@ Window {
                     radius: 26 * uiScale
                     border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4)
                     border.width: 1.5
-                    visible: isProjectActive && !isZenMode && !isStudioMode && !(showAnimationBar && useAdvancedTimeline) && mainWindow.showRightToolbar
+                    visible: isProjectActive && !isZenMode && !isStudioMode && !(showAnimationBar && useAdvancedTimeline) && mainWindow.showRightToolbar && mainWindow.hasButtonsInLocation("side")
                     z: 1100
 
                     // Inner highlight for 3D feel
@@ -3320,7 +3328,7 @@ Window {
                     id: sliderToolbox
                     x: 20
                     y: 150 // Static initial Y to avoid startup loops
-                    visible: isProjectActive && !isZenMode && !isStudioMode
+                    visible: isProjectActive && !isZenMode && !isStudioMode && (mainWindow.isInSliders("slider_size") || mainWindow.isInSliders("slider_opacity"))
                     opacity: visible ? 0.98 : 0.0
                     Behavior on opacity { NumberAnimation { duration: 300 } }
                     

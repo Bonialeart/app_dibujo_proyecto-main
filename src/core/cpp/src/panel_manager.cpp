@@ -19,6 +19,7 @@ PanelManager::PanelManager(QObject *parent)
   QSettings settings(dataPath + "/workspaces.ini", QSettings::IniFormat);
 
   m_customWorkspaces = settings.value("General/customWorkspaces").toStringList();
+  m_hiddenPanels = settings.value("General/hiddenPanels").toStringList();
   QString activeWs = settings.value("General/activeWorkspace", QStringLiteral("Ilustración")).toString();
   m_activeWorkspace = activeWs;
 
@@ -72,6 +73,9 @@ QMap<QString, PanelInfo> PanelManager::createCatalog() const {
   catalog["reference"] = makePanel("reference", "Reference", "image.svg", "ReferencePanel.qml");
   catalog["timeline"] = makePanel("timeline", "Timeline", "video.svg", "TimelinePanel.qml");
   catalog["gradient"] = makePanel("gradient", "Editor de Degradados", "palette.svg", "GradientSettingsPanel.qml");
+  catalog["colorhistory"] = makePanel("colorhistory", "Color History", "palette.svg", "ColorHistoryPanel.qml");
+  catalog["symmetry"] = makePanel("symmetry", "Simetría", "sliders.svg", "SymmetrySettingsPanel.qml");
+  catalog["transform"] = makePanel("transform", "Opciones de Transformación", "sliders.svg", "TransformOptionsPanel.qml");
   return catalog;
 }
 
@@ -513,6 +517,7 @@ void PanelManager::autoSave() {
 
   settings.setValue("General/activeWorkspace", m_activeWorkspace);
   settings.setValue("General/customWorkspaces", m_customWorkspaces);
+  settings.setValue("General/hiddenPanels", m_hiddenPanels);
 
   auto saveLayoutHelper = [&](const QString &groupName) {
     settings.beginGroup(groupName);
@@ -666,6 +671,71 @@ bool PanelManager::loadLayoutHelper(const QString &groupName, QSettings &setting
   emit dockStateChanged();
   emit activeTabChanged();
   return true;
+}
+
+// --- Panel Removal & Hidden List ---
+
+void PanelManager::removePanelEverywhere(const QString &panelId) {
+  bool removed = false;
+  if (m_leftDock)   removed |= m_leftDock->removeById(panelId);
+  if (m_leftDock2)  removed |= m_leftDock2->removeById(panelId);
+  if (m_rightDock)  removed |= m_rightDock->removeById(panelId);
+  if (m_rightDock2) removed |= m_rightDock2->removeById(panelId);
+  if (m_bottomDock) removed |= m_bottomDock->removeById(panelId);
+  if (m_floating)   removed |= m_floating->removeById(panelId);
+  if (removed) {
+    addHiddenPanel(panelId);
+    cleanDocks();
+    autoSave();
+  }
+}
+
+void PanelManager::restorePanel(const QString &panelId) {
+  // Remove from hidden list
+  m_hiddenPanels.removeAll(panelId);
+  emit hiddenPanelsChanged();
+
+  // Look up the panel info in the catalog and re-add to a default dock
+  // based on the current workspace layout. For simplicity we always
+  // restore to the right dock (most common location for tool panels).
+  auto catalog = createCatalog();
+  if (!catalog.contains(panelId)) return;
+  PanelInfo p = catalog[panelId];
+  p.visible = true;
+
+  if (m_activeWorkspace == QStringLiteral("Manga/Comic")) {
+    if (panelId == "color" || panelId == "reference") {
+      p.x = 200; p.y = 100;
+      m_floating->appendPanel(p);
+    } else {
+      m_rightDock->appendPanel(p);
+    }
+  } else {
+    m_rightDock->appendPanel(p);
+  }
+
+  cleanDocks();
+  autoSave();
+}
+
+void PanelManager::addHiddenPanel(const QString &panelId) {
+  if (panelId.isEmpty()) return;
+  if (!m_hiddenPanels.contains(panelId)) {
+    m_hiddenPanels.append(panelId);
+    emit hiddenPanelsChanged();
+    autoSave();
+  }
+}
+
+void PanelManager::clearHiddenPanels() {
+  if (m_hiddenPanels.isEmpty()) return;
+  m_hiddenPanels.clear();
+  emit hiddenPanelsChanged();
+  autoSave();
+}
+
+bool PanelManager::isPanelHidden(const QString &panelId) const {
+  return m_hiddenPanels.contains(panelId);
 }
 
 } // namespace artflow

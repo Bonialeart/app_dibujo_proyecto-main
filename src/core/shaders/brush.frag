@@ -698,10 +698,22 @@ void main() {
         }
     }
 
+    // === CANTIDAD DE PINTURA — modulación final universal ===
+    baseAlpha *= uPaintAmount;
+
+    // === EXTENDER COLOR — mezcla con canvas siempre (antes de final output) ===
+    if (uColorStretch > 0.01 && canvasSize.x > 1.0) {
+        vec2 screenPos = gl_FragCoord.xy / canvasSize;
+        vec4 canvasColor = texture(canvasTexture, screenPos);
+        float stretch = uColorStretch * 0.6;
+        vec3 canvasRGB = canvasColor.a > 0.001 ? canvasColor.rgb / canvasColor.a : vec3(1.0);
+        finalRGB = mix(finalRGB, canvasRGB, clamp(stretch, 0.0, 0.85));
+        baseAlpha *= (1.0 - stretch * 0.4);
+    }
 
     // === FINAL OUTPUT (Premultiplied Alpha) ===
     float finalAlpha = clamp(baseAlpha, 0.0, 1.0);
-    
+
     // Apply grain color modulation when emphasize density is disabled
     // For watercolor brushes, skip per-dab grain — it's applied once at canvas
     // level in watercolor.frag to avoid noisy grain stacking from spray particles
@@ -709,7 +721,7 @@ void main() {
     if (brushType != 7 && !skipDabGrain) {
         finalRGB *= grainColorMod;
     }
-    
+
     // For erasers, force black output to ensure blend mode (Dest * (1-Alpha)) works perfectly
     if (brushType == 7) finalRGB = vec3(0.0);
 
@@ -719,6 +731,7 @@ void main() {
         heightAlpha *= impastoDepth * 0.5;
     }
 
-    // Premultiplied output
-    FragColor = vec4(finalRGB * finalAlpha, heightAlpha);
+    // DIAGNOSTIC: forzar alpha igual a uPaintAmount para probar
+    float diagAlpha = uPaintAmount;
+    FragColor = vec4(finalRGB * diagAlpha, diagAlpha);
 }
