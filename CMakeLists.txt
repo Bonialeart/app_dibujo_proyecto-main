@@ -136,9 +136,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders
 )
 
-# Configuración de despliegue para Windows (Copia DLLs automáticamente)
-# if(WIN32)
-#    set_target_properties(${PROJECT_NAME} PROPERTIES
-#        WIN32_EXECUTABLE TRUE
-#    )
-# endif()
+# Configuración de despliegue para Windows — SIN CONSOLA
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+    )
+endif()

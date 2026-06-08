@@ -35,9 +35,9 @@ extern "C" {
 int main(int argc, char *argv[]) {
   qInstallMessageHandler(myMessageOutput);
 
-  // Probar la integración de Rust
+  // Verificar integración Rust en release builds
   int32_t rust_sum = test_rust_integration(10, 32);
-  std::cout << "[Rust Integration] Sum of 10 and 32 is: " << rust_sum << std::endl;
+  Q_UNUSED(rust_sum)
 
   // Forza al motor de estilos de Qt Quick Controls 2 a usar el estilo "Basic",
   // lo cual permite la personalización de propiedades como "background" e "indicator"

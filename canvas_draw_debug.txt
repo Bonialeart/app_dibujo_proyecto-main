@@ -1,0 +1,273 @@
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 1 | activePreset: Oil Sketch
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Script
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons

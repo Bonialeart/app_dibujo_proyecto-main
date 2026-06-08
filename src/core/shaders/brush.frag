@@ -691,6 +691,34 @@ void main() {
             
             // Calcular el alfa resultante
             baseAlpha = max(canvasColor.a, shapeAlpha * effPaintLoad) * effColor.a * flow;
+            
+            // --- ARRASTRE DE PASTA (PAINT DRAGGING) ---
+            // Cuando hay smudge activo, la pasta existente se arrastra
+            // físicamente: la altura se redistribuye en lugar de solo acumularse
+            if (smudge > 0.01 && canvasColor.a > 0.01) {
+                // Muestrear vecinos en la dirección del arrastre para simular
+                // que la pintura se "pega" al pincel y se arrastra
+                vec2 px = 1.0 / canvasSize;
+                float dragRadius = effDabSize * smudge * 0.15;
+                
+                // Promedio de altura en un pequeño radio alrededor
+                float neighHeight = 0.0;
+                int neighCount = 0;
+                for (int sy = -1; sy <= 1; sy++) {
+                    for (int sx = -1; sx <= 1; sx++) {
+                        vec4 nc = texture(canvasTexture, screenPos + vec2(sx, sy) * px * dragRadius);
+                        neighHeight += nc.a;
+                        neighCount++;
+                    }
+                }
+                neighHeight /= float(neighCount);
+                
+                // La altura nueva es una mezcla entre la altura arrastrada (vecinos)
+                // y la depositada por el pincel
+                float dragFactor = smudge * 0.4;
+                baseAlpha = mix(max(canvasColor.a, shapeAlpha * effPaintLoad) * effColor.a * flow,
+                               neighHeight * (1.0 - localPaintAmount * 0.5), dragFactor);
+            }
         } else {
             // Safe fallback when no canvas is present or color mixing is disabled
             finalRGB = effColor.rgb;
@@ -725,13 +753,39 @@ void main() {
     // For erasers, force black output to ensure blend mode (Dest * (1-Alpha)) works perfectly
     if (brushType == 7) finalRGB = vec3(0.0);
 
-    // Impasto Volume Accumulation
-    float heightAlpha = finalAlpha;
-    if (impastoEnabled == 1 && brushType != 7) {
-        heightAlpha *= impastoDepth * 0.5;
+    // Impasto Volume Accumulation — altura persistente en el canal alpha
+    float outAlpha = finalAlpha;
+    if (impastoEnabled == 1 && brushType != 7 && canvasSize.x > 1.0) {
+        vec2 impPos = gl_FragCoord.xy / canvasSize;
+        float existingH = texture(canvasTexture, impPos).a;
+
+        // Depósito de pintura basado en cobertura y profundidad impasto
+        float paintDeposit = finalAlpha * impastoDepth * 0.5;
+
+        // Acumulación en bordes: la pasta se amontona en los filos del pincel
+        float edgeFact = smoothstep(0.3, 0.5, dist);
+        paintDeposit *= (1.0 + edgeFact * impastoEdgeBuildup);
+
+        // Crestas direccionales de las cerdas
+        if (impastoDirectionalRidges == 1 && bristlesEnabled == 1) {
+            float freq = float(bristleCount) * 0.5;
+            float ridge = abs(sin(TexCoords.x * freq * 3.14159));
+            paintDeposit *= (1.0 + ridge * 0.4);
+        }
+
+        // Acumular altura: para arrastre (smudge) conservamos altura existente
+        if (blendOnly == 1 || smudge > 0.5) {
+            // Modo espátula/blender: redistribuir en lugar de acumular
+            outAlpha = mix(existingH, max(existingH, paintDeposit), 0.3);
+        } else if (impastoPreserveExisting == 1) {
+            // Conservar picos existentes
+            outAlpha = max(existingH, paintDeposit);
+        } else {
+            // Acumulación aditiva con saturación
+            outAlpha = existingH + paintDeposit * (1.0 - existingH);
+        }
+        outAlpha = clamp(outAlpha, 0.0, 1.0);
     }
 
-    // DIAGNOSTIC: forzar alpha igual a uPaintAmount para probar
-    float diagAlpha = uPaintAmount;
-    FragColor = vec4(finalRGB * diagAlpha, diagAlpha);
+    FragColor = vec4(finalRGB * outAlpha, outAlpha);
 }

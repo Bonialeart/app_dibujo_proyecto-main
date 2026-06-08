@@ -526,6 +526,11 @@ void StrokeRenderer::renderStroke(
       glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
     } else if (blendMode == 2) { // Screen
       glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
+    } else if (impastoEnabled && type == 5) {
+      // IMPASTO: RGB usa composición alfa estándar, pero ALPHA (altura)
+      // se acumula aditivamente para que la pasta se construya capa sobre capa
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                          GL_ONE, GL_ONE);
     } else { // Normal (alpha-lock se aplica en el shader multiplicando alpha por Dst_A)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
@@ -806,6 +811,10 @@ void StrokeRenderer::renderStrokeInstanced(
       glBlendFunc(GL_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
     } else if (blendMode == 2) { // Screen
       glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
+    } else if (impastoEnabled && type == 5) {
+      // IMPASTO: RGB composición estándar, ALPHA acumulación aditiva
+      glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                          GL_ONE, GL_ONE);
     } else { // Normal (alpha-lock se aplica en el shader multiplicando alpha por Dst_A)
       glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
