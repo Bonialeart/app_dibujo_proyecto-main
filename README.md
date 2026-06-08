@@ -103,10 +103,13 @@ cmake --build build_mingw --target KromoStudio
 build_mingw\KromoStudio.exe
 ```
 
-Or use the provided batch scripts:
-- `auto_build.bat` -- compile the project
-- `run_app.bat` -- launch the application
-- `repair_build.bat` -- clean rebuild from scratch
+Or use the provided convenience scripts:
+- `build` -- compile the project
+- `build check` -- compile and pause
+- `build clean` -- clean rebuild
+- `build repair` -- full CMake reconfigure from scratch
+- `run` -- launch KromoStudio
+- `run debug` -- launch with log redirection
 
 ## License
 
