@@ -1,5 +1,0 @@
-Screentone Shader Object Created: 1
-Vert Path: E:/Programacion/Rescate_Proyecto/build_mingw/shaders/composition.vert (exists: 1)
-Frag Path: E:/Programacion/Rescate_Proyecto/build_mingw/shaders/screentone.frag (exists: 1)
-Linked: 1
-Log: 
