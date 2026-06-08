@@ -1,11 +1,11 @@
-# Entornos virtuales de Python
+# ─── Python ───────────────────────────────────────
 .venv/
 venv/
 env/
 __pycache__/
 *.pyc
 
-# Compilados de C++ y Binarios
+# ─── C++ / Rust Build Artifacts ───────────────────
 *.obj
 *.o
 *.a
@@ -14,46 +14,45 @@ __pycache__/
 *.dll
 *.so
 *.dylib
+*.pdb
+*.exp
+*.def
+*.ilk
 
-# Archivos de Qt instalados localmente, cachés y proyectos
+# ─── Qt ───────────────────────────────────────────
 Qt/
 .qmake.stash
 .qtcreator/
 *.user
 
-# Carpetas de Compilación Local
+# ─── Build Directories ────────────────────────────
 build/
 build*/
 build_mingw/
 cmake-build-*/
+target/
 
-# Archivos y carpetas de configuración de IDEs
+# ─── IDEs ─────────────────────────────────────────
 .vscode/
 .idea/
 .vs/
 
-# Logs y Archivos Temporales (.txt / .log / .tmp)
+# ─── Logs, Debug & Temp Files ─────────────────────
 *.log
 *.tmp
+*.bak
+*.swp
+*~
+debug_*.txt
 *_log.txt
 *_err.txt
 *_out.txt
-*log.txt
-*err.txt
-*out.txt
-out.txt
-debug_*.txt
-debug-*.txt
-diff.txt
-app_err.txt
-app_out.txt
-debug_curve.txt
-debug_err.txt
-debug_out.txt
-debug_output.txt
-launch_err.txt
-launch_out.txt
-qml_log.txt
-run_log.txt
 
-
+# ─── OS-Specific ──────────────────────────────────
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride

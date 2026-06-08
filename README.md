@@ -1,139 +1,113 @@
-# 🎨 ArtFlow Studio
+# KromoStudio
 
-## Premium Illustration & Learning Platform for Artists
+Professional-grade digital art application for illustrators, concept artists, and 2D animators. Built with C++ and Qt6 QML with a high-performance OpenGL rendering engine.
 
-ArtFlow Studio is a professional-grade digital art application designed for illustrators, concept artists, and 2D animators. It combines powerful drawing tools with curated learning resources, brush libraries, and community features.
+## Features
 
----
+### Drawing Engine
+- OpenGL-accelerated canvas with real-time rendering
+- Pressure-sensitive brush system (Wintab support)
+- Multi-layer architecture with blend modes
+- Advanced brush engines: watercolor, oil, charcoal, airbrush
+- Liquify engine for real-time fluid transformations
+- ABR brush import (Photoshop-compatible)
+- Unlimited undo/redo via command pattern
+- Stroke stabilization and smoothing
+- Symmetry tool and perspective rulers
+- Gradient maps and color harmony tools
 
-## 🌟 Key Features
+### Animation
+- Timeline-based 2D animation
+- Onion skinning for frame interpolation
+- Animation tracks with keyframe management
 
-### 🖌️ Drawing Engine (C++)
-- High-performance canvas rendering with OpenGL
-- Pressure-sensitive brush system
-- Multi-layer support with blend modes
-- Real-time brush preview
-- ABR brush file import
-- Unlimited undo/redo
+### Comic & Manga Tools
+- Panel layout system
+- Speech balloon tool
+- Screentone shader effects
 
-### 📚 Learning Hub
-- Curated YouTube playlists for:
-  - Digital Illustration
-  - Concept Art
-  - 2D Animation
-  - Character Design
-- Progress tracking
-- Bookmarking system
+### Professional Output
+- Multi-layer PSD export
+- Timelapse recording of drawing sessions
+- Color range selection and edge detection
 
-### 🎨 Brush Library
-- Free & Premium brush packs
-- ABR file support (Photoshop compatible)
-- Brush preview and testing
-- One-click download and install
-- Custom brush creation
+### Extensibility
+- Lua 5.4.6 scripting for automation
+- Rust core module for parallel computing (Rayon)
+- Dockable panel system with customizable layouts
 
-### 🔗 Resources Hub
-- Curated useful websites for artists
-- Artist of the Week spotlight
-- Color palette collections
-- Reference image library
-- Storyboard templates
-
----
-
-## 📁 Project Structure
-
-```
-ArtFlow-Studio/
-├── src/
-│   ├── core/                 # C++ Core Engine
-│   │   ├── canvas/           # Canvas rendering
-│   │   ├── brushes/          # Brush engine
-│   │   ├── layers/           # Layer management
-│   │   └── tools/            # Drawing tools
-│   │
-│   ├── ui/                   # Python UI Layer
-│   │   ├── main_window.py    # Main application window
-│   │   ├── panels/           # UI panels
-│   │   ├── dialogs/          # Dialog windows
-│   │   └── widgets/          # Custom widgets
-│   │
-│   ├── resources/            # Resource management
-│   │   ├── brush_manager.py  # Brush pack handling
-│   │   ├── video_manager.py  # YouTube integration
-│   │   └── data_manager.py   # Data persistence
-│   │
-│   └── utils/                # Utilities
-│       ├── config.py         # Configuration
-│       └── constants.py      # App constants
-│
-├── assets/                   # Static assets
-│   ├── icons/                # UI icons
-│   ├── brushes/              # Default brushes
-│   └── themes/               # UI themes
-│
-├── data/                     # App data
-│   ├── playlists.json        # YouTube playlists
-│   ├── brushes.json          # Brush catalog
-│   └── resources.json        # Useful links
-│
-└── tests/                    # Unit tests
-```
-
----
-
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Component | Technology |
 |-----------|------------|
-| Drawing Engine | C++ with OpenGL |
-| UI Framework | Python + PyQt6 |
-| Brush Rendering | C++ (via pybind11) |
-| Data Storage | SQLite + JSON |
-| Video Integration | YouTube Data API |
-| Styling | QSS (Qt Style Sheets) |
+| Language | C++17/20 |
+| UI Framework | Qt 6.11.1 (QML + C++) |
+| Graphics | OpenGL with custom shaders |
+| Build System | CMake 3.16+ with Ninja |
+| Toolchain | MinGW 13.10 (64-bit) |
+| Parallel Computing | Rust (via Corrosion/pybind11) |
+| Scripting | Lua 5.4.6 |
+| Data Storage | JSON |
 
----
+## Project Structure
 
-## 🚀 Getting Started
-
-### Prerequisites
-- Python 3.10+
-- C++ Compiler (MSVC/GCC)
-- CMake 3.20+
-- Qt6
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/yourname/artflow-studio.git
-cd artflow-studio
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Build C++ core
-mkdir build && cd build
-cmake ..
-cmake --build . --config Release
-
-# Run the application
-python src/main.py
+```
+KromoStudio/
+├── src/
+│   ├── core/
+│   │   ├── canvas/          # Canvas rendering
+│   │   ├── brushes/         # Brush engine + ABR parser
+│   │   ├── layers/          # Layer management
+│   │   ├── cpp/             # Core C++ engine (app logic)
+│   │   ├── shaders/         # GLSL shaders
+│   │   └── rust_core/       # Rust module (parallel compute)
+│   ├── ui/
+│   │   ├── qml/             # QML UI components
+│   │   │   ├── components/  # Reusable UI widgets
+│   │   │   └── views/       # Application views
+│   │   └── styles/          # QSS theme stylesheets
+│   └── third_party/
+│       └── lua-5.4.6/       # Embedded Lua interpreter
+├── assets/
+│   ├── icons/               # UI icons (SVG/PNG)
+│   ├── brushes/             # Default brush presets
+│   └── textures/            # Canvas textures and brush tips
+├── data/                    # JSON catalogs (brushes, resources)
+├── scripts/                 # Utility scripts
+└── docs/                    # Documentation
 ```
 
----
+## Getting Started
 
-## 📜 License
+### Prerequisites
+- Qt 6.11.1 (MinGW 13.10 64-bit)
+- CMake 3.16 or later
+- Ninja build system
+- Rust toolchain (for rust_core module)
+- Windows (current primary target)
 
-MIT License - See LICENSE file for details.
+### Build and Run
 
----
+```bash
+# Configure CMake
+cmake -G Ninja -B build_mingw -S . ^
+    -DCMAKE_PREFIX_PATH="C:\Qt\6.11.1\mingw_64" ^
+    -DCMAKE_C_COMPILER="C:\Qt\Tools\mingw1310_64\bin\gcc.exe" ^
+    -DCMAKE_CXX_COMPILER="C:\Qt\Tools\mingw1310_64\bin\g++.exe" ^
+    -DCMAKE_MAKE_PROGRAM="C:\Qt\Tools\Ninja\ninja.exe"
 
-## 🤝 Contributing
+# Build
+cmake --build build_mingw --target KromoStudio
 
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+# Run
+build_mingw\KromoStudio.exe
+```
 
----
+Or use the provided batch scripts:
+- `auto_build.bat` -- compile the project
+- `run_app.bat` -- launch the application
+- `repair_build.bat` -- clean rebuild from scratch
 
-Made with ❤️ for artists everywhere
+## License
+
+MIT License -- see LICENSE file for details.
