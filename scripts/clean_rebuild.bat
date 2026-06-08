@@ -5,7 +5,16 @@ set NINJA_DIR=C:\Qt\Tools\Ninja
 set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin
 set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
+set "BUILD_DIR=%~dp0..\build_mingw"
+
+if not exist "%BUILD_DIR%" (
+    echo [ERROR] No existe el directorio build_mingw.
+    echo.
+    echo Ejecuta primero: build repair
+    pause
+    exit /b 1
+)
+
 echo Running Clean Rebuild...
-cd build_mingw
-cmake --build . --target KromoStudio --clean-first
+cmake --build "%BUILD_DIR%" --target KromoStudio --clean-first
 pause

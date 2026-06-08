@@ -5,15 +5,17 @@ set NINJA_DIR=C:\Qt\Tools\Ninja
 set CMAKE_DIR=C:\Qt\Tools\CMake_64\bin
 set PATH=%CMAKE_DIR%;%QT_DIR%\bin;%MINGW_DIR%\bin;%NINJA_DIR%;%PATH%
 
+set "PROJECT_DIR=%~dp0.."
+set "BUILD_DIR=%PROJECT_DIR%\build_mingw"
+
 echo [1/3] Eliminando build folder corrupto...
-if exist build_mingw rmdir /s /q build_mingw
+if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 
 echo [2/3] Creando nuevo build folder...
-mkdir build_mingw
+mkdir "%BUILD_DIR%"
 
 echo [3/3] Reconfigurando CMake con nuevas rutas...
-cd build_mingw
-cmake -G Ninja -S .. -B . ^
+cmake -G Ninja -S "%PROJECT_DIR%" -B "%BUILD_DIR%" ^
     -DCMAKE_PREFIX_PATH="%QT_DIR%" ^
     -DCMAKE_C_COMPILER="%MINGW_DIR%\bin\gcc.exe" ^
     -DCMAKE_CXX_COMPILER="%MINGW_DIR%\bin\g++.exe" ^
@@ -23,7 +25,7 @@ if %ERRORLEVEL% EQU 0 (
     echo.
     echo ==========================================
     echo EXITO: El entorno se ha reparado.
-    echo Ahora puedes ejecutar auto_build.bat o run_app.bat
+    echo Ahora puedes ejecutar build o run
     echo ==========================================
 ) else (
     echo.

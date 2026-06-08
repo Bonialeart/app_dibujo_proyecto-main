@@ -7085,7 +7085,7 @@ Window {
             currentColor = newProjectDialog.bgFill
         }
         
-        onColorSelected: (newColor) => {
+        onColorSelected: {
             mainCanvas.setBackgroundColor(newColor)
             newProjectDialog.bgFill = newColor
         }
