@@ -21,7 +21,7 @@ import "../components"
     property bool transformBilinear: true
     property bool transformAdvancedMesh: false
     property bool showScreentonePanel: mainWindow ? mainWindow.showScreentonePanel : false
-                Rectangle { anchors.fill: parent; color: "#121214" }
+                Rectangle { anchors.fill: parent; color: mainWindow ? mainWindow.colorBg : "#121214" }
 
                 // DRAWING CANVAS
                 Flickable {

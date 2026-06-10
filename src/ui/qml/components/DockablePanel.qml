@@ -47,8 +47,8 @@ Rectangle {
     width: isDocked ? parent.width : preferredWidth
     height: isCollapsed ? panelHeader.height : (isDocked ? preferredHeight : preferredHeight)
     
-    color: "#0e0e11"
-    border.color: "#1a1a1e"
+    color: mainWindow ? mainWindow.colorPanel : "#0e0e11"
+    border.color: mainWindow ? mainWindow.colorBorder : "#1a1a1e"
     border.width: 0
     radius: isDocked ? 0 : 10
     clip: true
@@ -63,13 +63,13 @@ Rectangle {
         id: panelHeader
         width: parent.width
         height: 30
-        color: headerMouse.containsMouse ? "#18181c" : "#121215"
+        color: headerMouse.containsMouse ? (mainWindow ? Qt.lighter(mainWindow.colorCard, 1.05) : "#18181c") : (mainWindow ? mainWindow.colorCard : "#121215")
         z: 10
         
         // Subtle top border
         Rectangle {
             width: parent.width; height: 1
-            color: "#1e1e22"
+            color: mainWindow ? mainWindow.colorBorder : "#1e1e22"
         }
         
         RowLayout {
@@ -88,7 +88,7 @@ Rectangle {
             // Panel Title
             Text {
                 text: panelTitle
-                color: "#999"
+                color: mainWindow ? mainWindow.colorText : "#999"
                 font.pixelSize: 11
                 font.weight: Font.Medium
                 font.letterSpacing: 0.3
@@ -100,12 +100,12 @@ Rectangle {
             // Collapse button
             Rectangle {
                 width: 18; height: 18; radius: 4
-                color: collapseMouse.containsMouse ? "#2a2a2e" : "transparent"
+                color: collapseMouse.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e5e7eb" : "#2a2a2e") : "transparent"
                 Layout.alignment: Qt.AlignVCenter
                 Behavior on color { ColorAnimation { duration: 150 } }
                 
                 Image {
-                    source: isCollapsed ? "image://icons/chevron-right.svg" : "image://icons/chevron-down.svg"
+                    source: isCollapsed ? (mainWindow ? mainWindow.iconPath("chevron-right.svg") : "image://icons/chevron-right.svg") : (mainWindow ? mainWindow.iconPath("chevron-down.svg") : "image://icons/chevron-down.svg")
                     width: 11; height: 11
                     anchors.centerIn: parent
                     opacity: collapseMouse.containsMouse ? 0.9 : 0.5
@@ -124,12 +124,12 @@ Rectangle {
             // Float/Dock toggle
             Rectangle {
                 width: 18; height: 18; radius: 4
-                color: floatMouse.containsMouse ? "#2a2a2e" : "transparent"
+                color: floatMouse.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e5e7eb" : "#2a2a2e") : "transparent"
                 Layout.alignment: Qt.AlignVCenter
                 Behavior on color { ColorAnimation { duration: 150 } }
                 
                 Image {
-                    source: isDocked ? "image://icons/float-window.svg" : "image://icons/dock-window.svg"
+                    source: isDocked ? (mainWindow ? mainWindow.iconPath("float-window.svg") : "image://icons/float-window.svg") : (mainWindow ? mainWindow.iconPath("dock-window.svg") : "image://icons/dock-window.svg")
                     width: 11; height: 11
                     anchors.centerIn: parent
                     opacity: floatMouse.containsMouse ? 0.9 : 0.5
@@ -156,7 +156,7 @@ Rectangle {
                 Behavior on color { ColorAnimation { duration: 150 } }
                 
                 Image {
-                    source: "image://icons/close.svg"
+                    source: mainWindow ? mainWindow.iconPath("close.svg") : "image://icons/close.svg"
                     width: 10; height: 10
                     anchors.centerIn: parent
                     opacity: closeMouse.containsMouse ? 1.0 : 0.5

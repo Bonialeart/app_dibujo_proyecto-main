@@ -19,6 +19,10 @@ public:
   QPixmap requestPixmap(const QString &id, QSize *size,
                         const QSize &requestedSize) override {
     QString fileName = id;
+    int queryIdx = fileName.indexOf('?');
+    if (queryIdx != -1) {
+      fileName = fileName.left(queryIdx);
+    }
     if (!fileName.endsWith(".svg") && !fileName.endsWith(".png")) {
       fileName += ".svg";
     }

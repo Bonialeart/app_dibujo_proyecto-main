@@ -19,7 +19,7 @@ Window {
     visible: true
     width: 1440; height: 900
     title: "Kromo Studio Pro"
-    color: "#050507"
+    color: colorBg
     property alias comicOverlayManager: comicOverlay
     property alias simpleAnimationBar: simpleAnimationBar
     property alias animationCamera: animationCamera
@@ -138,16 +138,16 @@ Window {
     readonly property bool showRightToolbar: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showRightToolbar : true
     readonly property bool showRightColorSelector: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showRightColorSelector : true
     
-    readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey"
+    readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey" || themeMode === "Studio-Grey"
     
     // Global Colors
-    readonly property color colorBg: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#1e293b" : "#050507")) : "#ffffff"
-    readonly property color colorPanel: isDark ? (themeMode === "Midnight" ? "#ee1e293b" : (themeMode === "Blue-Grey" ? "#ee334155" : "#ee161619")) : "#f9fafb"
+    readonly property color colorBg: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#334155" : (themeMode === "Studio-Grey" ? "#3e3e3e" : "#0a0a0c"))) : "#f3f4f6"
+    readonly property color colorPanel: isDark ? (themeMode === "Midnight" ? "#ee1e293b" : (themeMode === "Blue-Grey" ? "#ee1e293b" : (themeMode === "Studio-Grey" ? "#ee2b2b2b" : "#ee141417"))) : "#ffffff"
     readonly property color colorAccent: themeAccent
     readonly property color colorText: isDark ? "#ffffff" : "#111827"
-    readonly property color colorTextMuted: isDark ? "#8e8e93" : "#6b7280"
-    readonly property color colorCard: isDark ? (themeMode === "Midnight" ? "#1e293b" : (themeMode === "Blue-Grey" ? "#334155" : "#1c1c1e")) : "#ffffff"
-    readonly property color colorBorder: isDark ? "#1affffff" : "#e5e7eb"
+    readonly property color colorTextMuted: isDark ? (themeMode === "Studio-Grey" ? "#bbbbbb" : "#8e8e93") : "#4b5563"
+    readonly property color colorCard: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#273549" : (themeMode === "Studio-Grey" ? "#333333" : "#1c1c1e"))) : "#f9fafb"
+    readonly property color colorBorder: isDark ? (themeMode === "Midnight" ? "#334155" : (themeMode === "Blue-Grey" ? "#2a3549" : (themeMode === "Studio-Grey" ? "#1e1e1e" : "#2a2a2f"))) : "#e5e7eb"
     
     property int currentPage: 0
     property bool isProjectActive: false
@@ -305,7 +305,13 @@ Window {
     property bool isStudioMode: canvasMode === "studio"
 
     function iconPath(name) { 
-        return "image://icons/" + name; 
+        if (!name) return "";
+        var base = name.indexOf("image://") === 0 ? name : "image://icons/" + name;
+        var qIdx = base.indexOf("?");
+        if (qIdx !== -1) {
+            base = base.substring(0, qIdx);
+        }
+        return base + "?t=" + themeMode; 
     }
     // property string applicationDirPath removed as it's not needed for relative paths
 
@@ -655,7 +661,7 @@ Window {
         // NAVBAR DE MENÚ SUPERIOR (PREMIUM)
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 38 * uiScale
-            color: "#cc0c0c0f" // Translucent for premium feel
+            color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.8) // Translucent for premium feel
             radius: 10 // Rounded bottom corners for floating feel? No, standard bar.
             
             // Blur effect simulation (requieres separate layer or shader, keeping simple for now but premium color)
@@ -1012,8 +1018,8 @@ Window {
             Rectangle {
                 anchors.fill: parent
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#0d0d13" }
-                    GradientStop { position: 1.0; color: "#08080c" }
+                    GradientStop { position: 0.0; color: Qt.darker(colorPanel, 1.1) }
+                    GradientStop { position: 1.0; color: Qt.darker(colorPanel, 1.25) }
                 }
             }
 
@@ -1021,9 +1027,9 @@ Window {
             Rectangle {
                 width: 1; height: parent.height; anchors.right: parent.right
                 gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#15151d" }
+                    GradientStop { position: 0.0; color: colorBorder }
                     GradientStop { position: 0.5; color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.12) }
-                    GradientStop { position: 1.0; color: "#15151d" }
+                    GradientStop { position: 1.0; color: colorBorder }
                 }
             }
 
@@ -1965,8 +1971,8 @@ Window {
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: comicBarRow.width + 20
                     height: 38; radius: 19
-                    color: "#e61a1a1e"
-                    border.color: "#333"; border.width: 1
+                    color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.9)
+                    border.color: colorBorder; border.width: 1
                     z: 500
                     
                     opacity: visible ? 1 : 0
@@ -1980,8 +1986,8 @@ Window {
                         // Info badge
                         Rectangle {
                             width: infoRow.width + 16; height: 26; radius: 13
-                            color: "#1e1e24"
-                            border.color: "#2c2c35"; border.width: 1
+                            color: colorCard
+                            border.color: colorBorder; border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
                             Row {
                                 id: infoRow
@@ -2103,8 +2109,8 @@ Window {
                     // Glassmorphic styling
                     width: panelCutRow.width + 24
                     height: 44; radius: 22
-                    color: "#e61a1a1e"
-                    border.color: "#3e3e42"
+                    color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.9)
+                    border.color: colorBorder
                     border.width: 1
                     z: 500
                     
@@ -2189,7 +2195,7 @@ Window {
                                 background: Rectangle {
                                     y: (parent.height - height) / 2
                                     width: parent.width; height: 4; radius: 2
-                                    color: "#252528"
+                                    color: colorCard
                                     Rectangle {
                                         width: gutterSlider.visualPosition * parent.width
                                         height: parent.height; radius: 2
@@ -2201,13 +2207,13 @@ Window {
                                     y: (gutterSlider.height - height) / 2
                                     width: 10; height: 10; radius: 5
                                     color: gutterSlider.pressed ? "#fff" : "#eee"
-                                    border.color: "#1a1a1c"; border.width: 1.5
+                                    border.color: colorBorder; border.width: 1.5
                                 }
                             }
                             
                             Text {
                                 text: Math.round(mainCanvas.panelGutterSize) + "px"
-                                color: "#888"; font.pixelSize: 10; font.bold: true
+                                color: colorTextMuted; font.pixelSize: 10; font.bold: true
                                 width: 28
                                 anchors.verticalCenter: parent.verticalCenter
                             }
@@ -2247,7 +2253,7 @@ Window {
                                 background: Rectangle {
                                     y: (parent.height - height) / 2
                                     width: parent.width; height: 4; radius: 2
-                                    color: "#252528"
+                                    color: colorCard
                                     Rectangle {
                                         width: borderWidthSlider.visualPosition * parent.width
                                         height: parent.height; radius: 2
@@ -2259,13 +2265,13 @@ Window {
                                     y: (borderWidthSlider.height - height) / 2
                                     width: 10; height: 10; radius: 5
                                     color: borderWidthSlider.pressed ? "#fff" : "#eee"
-                                    border.color: "#1a1a1c"; border.width: 1.5
+                                    border.color: colorBorder; border.width: 1.5
                                 }
                             }
                             
                             Text {
                                 text: Math.round(mainCanvas.panelBorderWidth) + "px"
-                                color: "#888"; font.pixelSize: 10; font.bold: true
+                                color: colorTextMuted; font.pixelSize: 10; font.bold: true
                                 width: 24
                                 anchors.verticalCenter: parent.verticalCenter
                             }
@@ -2281,7 +2287,7 @@ Window {
                             }
                         }
                         
-                        Rectangle { width: 1; height: 20; color: "#3e3e42"; Layout.alignment: Qt.AlignVCenter }
+                        Rectangle { width: 1; height: 20; color: colorBorder; Layout.alignment: Qt.AlignVCenter }
                         
                         // Style Picker
                         Row {
@@ -2297,8 +2303,8 @@ Window {
                                 model: 6
                                 Rectangle {
                                     width: 28; height: 28; radius: 14
-                                    color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? colorAccent : (styleMa.containsMouse ? "#252528" : "transparent")
-                                    border.color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? "transparent" : "#3e3e42"
+                                    color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? colorAccent : (styleMa.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent")
+                                    border.color: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? "transparent" : colorBorder
                                     border.width: (mainCanvas.panelBorderStyle === styleRow.styles[index]) ? 0 : 1
                                     anchors.verticalCenter: parent.verticalCenter
                                     
@@ -2323,14 +2329,14 @@ Window {
                             }
                         }
                         
-                        Rectangle { width: 1; height: 20; color: "#3e3e42"; Layout.alignment: Qt.AlignVCenter }
+                        Rectangle { width: 1; height: 20; color: colorBorder; Layout.alignment: Qt.AlignVCenter }
                         
                         // 3D Panel Breaker Toggle
                         Rectangle {
                             id: breakerBtn
                             width: 32; height: 32; radius: 16
-                            color: panelCutBar.is3DOverflowActive ? colorAccent : (breakerMa.containsMouse ? "#252528" : "transparent")
-                            border.color: panelCutBar.is3DOverflowActive ? "transparent" : "#3e3e42"
+                            color: panelCutBar.is3DOverflowActive ? colorAccent : (breakerMa.containsMouse ? Qt.rgba(1,1,1,0.08) : "transparent")
+                            border.color: panelCutBar.is3DOverflowActive ? "transparent" : colorBorder
                             border.width: panelCutBar.is3DOverflowActive ? 0 : 1
                             Layout.alignment: Qt.AlignVCenter
                             
@@ -2609,8 +2615,8 @@ Window {
                     
                     // Premium glassmorphism with subtle gradient
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#f51a1a1e" }
-                        GradientStop { position: 1.0; color: "#f0161619" }
+                        GradientStop { position: 0.0; color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.96) }
+                        GradientStop { position: 1.0; color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.94) }
                     }
                     radius: 26 * uiScale
                     border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.4)
@@ -2691,7 +2697,7 @@ Window {
                                 height: _hidden ? -toolsColumn.spacing : 42 * uiScale
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 radius: 14 * uiScale
-                                color: (index === canvasPage.activeToolIdx) ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (toolHover.containsMouse ? "#1affffff" : "transparent")
+                                color: (index === canvasPage.activeToolIdx) ? Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.3) : (toolHover.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent")
                                 border.color: (index === canvasPage.activeToolIdx) ? colorAccent : "transparent"
                                 border.width: 1
                                 
@@ -2856,7 +2862,7 @@ Window {
                             spacing: 0
                             
                             Item { width: 1; height: 8 * uiScale } // Spacer
-                            Rectangle { width: 32 * uiScale; height: 1; color: "#333"; anchors.horizontalCenter: parent.horizontalCenter }
+                            Rectangle { width: 32 * uiScale; height: 1; color: colorBorder; anchors.horizontalCenter: parent.horizontalCenter }
                             Item { width: 1; height: 12 * uiScale } // Spacer
 
                             Item {
@@ -2874,7 +2880,7 @@ Window {
                                         width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
                                         anchors.right: parent.right; anchors.bottom: parent.bottom
                                         color: colorStudioDialog.slot1Color
-                                        border.color: "#333"
+                                        border.color: colorBorder
                                         border.width: 1
                                         z: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 5 : 1
                                         scale: (colorStudioDialog.activeSlot === 1 && !colorStudioDialog.isTransparent) ? 1.2 : 1.0
@@ -2909,7 +2915,7 @@ Window {
                                         width: 26 * uiScale; height: 26 * uiScale; radius: 13 * uiScale
                                         anchors.left: parent.left; anchors.top: parent.top
                                         color: colorStudioDialog.slot0Color
-                                        border.color: "#333"
+                                        border.color: colorBorder
                                         border.width: 1
                                         z: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 5 : 2
                                         scale: (colorStudioDialog.activeSlot === 0 && !colorStudioDialog.isTransparent) ? 1.2 : 1.0
@@ -2948,7 +2954,7 @@ Window {
                                     anchors.bottomMargin: 4 * uiScale
                                     clip: true
                                     
-                                    color: "#252528"
+                                    color: colorCard
                                     border.color: colorStudioDialog.isTransparent ? colorAccent : Qt.rgba(1, 1, 1, 0.2)
                                     border.width: colorStudioDialog.isTransparent ? 1.5 : 1
                                     
@@ -3075,8 +3081,8 @@ Window {
                     width: subToolRow.implicitWidth + 24
                     height: 48
                     radius: 24
-                    color: "#f21c1c1e" // OLED Dark
-                    border.color: Qt.rgba(1, 1, 1, 0.15)
+                    color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.95) // OLED Dark
+                    border.color: colorBorder
                     border.width: 1
                     visible: isProjectActive && canvasPage.showSubTools && toolsModel.get(canvasPage.activeToolIdx).subTools.count > 0
                     z: 6000
@@ -3306,8 +3312,8 @@ Window {
                     z: 5002
                     
                     // Premium Glassmorphism
-                    color: "#f51c1c22"
-                    border.color: Qt.rgba(1, 1, 1, 0.08)
+                    color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.96)
+                    border.color: colorBorder
                     border.width: 1
                     
                     // Soft Shadow
@@ -3534,8 +3540,8 @@ Window {
                     clip: false
                     
                     // Unified Pure Premium Dark Capsule (Image 2 style)
-                    color: "#252528"
-                    border.color: Qt.rgba(1, 1, 1, 0.03)
+                    color: colorPanel
+                    border.color: colorBorder
                     border.width: 0.5
                     z: 90
                     
@@ -3768,8 +3774,8 @@ Window {
                         radius: 24
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        color: "#eb121216"
-                        border.color: "#3a3a40"
+                        color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.92)
+                        border.color: colorBorder
                         border.width: 1
 
                         Text {
@@ -3807,8 +3813,8 @@ Window {
                         height: parent.height
                         radius: 24
                         anchors.horizontalCenter: parent.horizontalCenter
-                        color: "#eb121216"
-                        border.color: "#3a3a40"
+                        color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.92)
+                        border.color: colorBorder
                         border.width: 1
 
                         Rectangle {
@@ -3830,7 +3836,7 @@ Window {
                                 width: 380
                                 height: 32
                                 radius: 16
-                                color: "#15ffffff"
+                                color: colorCard
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 clip: true
 
@@ -4082,8 +4088,8 @@ Window {
                         radius: 24
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        color: "#eb121216"
-                        border.color: "#3a3a40"
+                        color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.92)
+                        border.color: colorBorder
                         border.width: 1
 
                         Text {
@@ -4145,7 +4151,7 @@ Window {
                     width: 36 * uiScale; height: 36 * uiScale; radius: 12 * uiScale
                     color: {
                         if (active) return Qt.rgba(activeColor.r, activeColor.g, activeColor.b, 0.18)
-                        if (_tbbMa.containsMouse) return Qt.rgba(1, 1, 1, 0.08)
+                        if (_tbbMa.containsMouse) return Qt.rgba(colorText.r, colorText.g, colorText.b, 0.08)
                         return "transparent"
                     }
                     border.color: active ? Qt.rgba(activeColor.r, activeColor.g, activeColor.b, 0.5) : "transparent"
@@ -4283,8 +4289,8 @@ Window {
                         width: leftLayout.implicitWidth + 28 * uiScale
                         anchors.left: parent.left
                         radius: height / 2
-                        color: "#e81a1a1e"
-                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                        color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.9)
+                        border.color: colorBorder
                         border.width: 1
                         visible: mainWindow.hasButtonsInLocation("topLeft")
 
@@ -4352,8 +4358,8 @@ Window {
                             }
                             
                             background: Rectangle {
-                                color: "#141416"
-                                border.color: Qt.rgba(1, 1, 1, 0.08)
+                                color: colorPanel
+                                border.color: colorBorder
                                 border.width: 1
                                 radius: 20 * uiScale
 
@@ -4872,8 +4878,8 @@ Window {
                         width: rightLayout.implicitWidth + 28 * uiScale
                         anchors.right: parent.right
                         radius: height / 2
-                        color: "#e81a1a1e"
-                        border.color: Qt.rgba(1, 1, 1, 0.06)
+                        color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.9)
+                        border.color: colorBorder
                         border.width: 1
                         visible: mainWindow.hasButtonsInLocation("topRight")
 

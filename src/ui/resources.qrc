@@ -43,8 +43,6 @@
     <file>qml/components/LayerPanel.qml</file>
     <file>qml/components/ScreentonePanel.qml</file>
     <file>qml/components/NavigatorPanel.qml</file>
-    <file>qml/components/SymmetrySettingsPanel.qml</file>
-    <file>qml/components/TransformOptionsPanel.qml</file>
     <file>qml/components/BrushLibraryPanel.qml</file>
     <file>qml/components/StudioSlider.qml</file>
     <file>qml/components/FloatingPanel.qml</file>
@@ -56,7 +54,6 @@
     <file>qml/components/ComicOverlayManager.qml</file>
     <file>qml/components/ShapeLibrary.qml</file>
     <file>qml/components/SelectionToolbar.qml</file>
-    <file>qml/components/ToolSettingsPanel.qml</file>
     <file>qml/components/ColorRangeDialog.qml</file>
     <file>qml/components/BubbleSettingsPanel.qml</file>
     <file>qml/components/HistoryPanel.qml</file>

@@ -43,7 +43,7 @@ Popup {
     property string themeMode: (preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeMode : "Dark"
     property color themeAccent: (preferencesManager && typeof preferencesManager !== "undefined") ? preferencesManager.themeAccent : "#6366f1"
     
-    readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey"
+    readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey" || themeMode === "Studio-Grey"
     
     readonly property color colorBg: "#141416"
     readonly property color colorPanel: "#1a1a1c"

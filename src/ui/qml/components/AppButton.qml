@@ -27,7 +27,7 @@ Button {
         Image {
             id: iconImage
             visible: root.iconSource !== ""
-            source: (root.iconSource && (root.iconSource.startsWith("image://") ? root.iconSource : "image://icons/" + root.iconSource)) || ""
+            source: root.iconSource ? (mainWindow ? mainWindow.iconPath(root.iconSource) : (root.iconSource.startsWith("image://") ? root.iconSource : "image://icons/" + root.iconSource)) : ""
             Layout.preferredWidth: 24; Layout.preferredHeight: 24
             sourceSize.width: 48; sourceSize.height: 48
             opacity: root.active ? 1.0 : 0.6

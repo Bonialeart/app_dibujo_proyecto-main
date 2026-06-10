@@ -63,19 +63,15 @@ PanelInfo PanelManager::makePanel(const QString &id, const QString &name,
 QMap<QString, PanelInfo> PanelManager::createCatalog() const {
   QMap<QString, PanelInfo> catalog;
   catalog["brushes"] = makePanel("brushes", "Brushes", "brush.svg", "BrushLibraryPanel.qml");
-  catalog["settings"] = makePanel("settings", "StudioConfig", "sliders.svg", "BrushSettingsPanel.qml");
+  catalog["settings"] = makePanel("settings", "Ajuste de herramienta", "sliders.svg", "BrushSettingsPanel.qml");
   catalog["color"] = makePanel("color", "Color", "palette.svg", "ColorPanel.qml");
   catalog["layers"] = makePanel("layers", "Layers", "layers.svg", "LayerPanel.qml");
   catalog["navigator"] = makePanel("navigator", "Navigator", "compass.svg", "NavigatorPanel.qml");
   catalog["history"] = makePanel("history", "History", "undo.svg", "HistoryPanel.qml");
   catalog["info"] = makePanel("info", "Info", "sliders.svg", "InfoPanel.qml");
-  catalog["toolsettings"] = makePanel("toolsettings", "Tool Settings", "tool.svg", "ToolSettingsPanel.qml");
   catalog["reference"] = makePanel("reference", "Reference", "image.svg", "ReferencePanel.qml");
   catalog["timeline"] = makePanel("timeline", "Timeline", "video.svg", "TimelinePanel.qml");
-  catalog["gradient"] = makePanel("gradient", "Editor de Degradados", "palette.svg", "GradientSettingsPanel.qml");
   catalog["colorhistory"] = makePanel("colorhistory", "Color History", "palette.svg", "ColorHistoryPanel.qml");
-  catalog["symmetry"] = makePanel("symmetry", "Simetría", "sliders.svg", "SymmetrySettingsPanel.qml");
-  catalog["transform"] = makePanel("transform", "Opciones de Transformación", "sliders.svg", "TransformOptionsPanel.qml");
   return catalog;
 }
 
@@ -112,23 +108,19 @@ void PanelManager::loadWorkspace(const QString &name) {
   auto pNavigator = catalog["navigator"];
   auto pHistory = catalog["history"];
   auto pInfo = catalog["info"];
-  auto pToolSettings = catalog["toolsettings"];
   auto pReference = catalog["reference"];
   auto pTimeline = catalog["timeline"];
-  auto pGradient = catalog["gradient"];
 
   if (name == QStringLiteral("Manga/Comic")) {
     // Manga workspace
     pBrushes.visible = true;
     m_leftDock->appendPanel(pBrushes);
     m_leftDock->appendPanel(pSettings);
-    m_leftDock->appendPanel(pToolSettings);
 
     pLayers.visible = true;
     m_rightDock->appendPanel(pLayers);
     m_rightDock->appendPanel(pNavigator);
     m_rightDock->appendPanel(pHistory);
-    m_rightDock->appendPanel(pGradient);
 
     pColor.visible = true;
     pColor.x = 200;
@@ -144,7 +136,6 @@ void PanelManager::loadWorkspace(const QString &name) {
     pBrushes.visible = true;
     m_leftDock->appendPanel(pBrushes);
     m_leftDock->appendPanel(pSettings);
-    m_leftDock->appendPanel(pToolSettings);
 
     pLayers.visible = true;
     m_rightDock->appendPanel(pLayers);
@@ -153,7 +144,6 @@ void PanelManager::loadWorkspace(const QString &name) {
     m_rightDock->appendPanel(pNavigator);
     m_rightDock->appendPanel(pReference);
     m_rightDock->appendPanel(pHistory);
-    m_rightDock->appendPanel(pGradient);
     m_rightDock->appendPanel(pInfo);
 
     pTimeline.visible = true;
@@ -164,7 +154,6 @@ void PanelManager::loadWorkspace(const QString &name) {
     pBrushes.visible = true;
     m_leftDock->appendPanel(pBrushes);
     m_leftDock->appendPanel(pSettings);
-    m_leftDock->appendPanel(pToolSettings);
 
     pColor.visible = true;
     m_rightDock->appendPanel(pColor);
@@ -173,7 +162,6 @@ void PanelManager::loadWorkspace(const QString &name) {
     m_rightDock->appendPanel(pNavigator);
     m_rightDock->appendPanel(pHistory);
     m_rightDock->appendPanel(pReference);
-    m_rightDock->appendPanel(pGradient);
 
     m_rightDock->appendPanel(pInfo);
     m_bottomDock->appendPanel(pTimeline);
@@ -626,6 +614,8 @@ bool PanelManager::loadLayoutHelper(const QString &groupName, QSettings &setting
     settings.beginGroup("Panels");
     for (const QString &panelId : panelIds) {
       if (!catalog.contains(panelId)) continue;
+      // Skip redundant / legacy panels that have been merged into the unified settings panel
+      if (panelId == "toolsettings" || panelId == "gradient" || panelId == "transform") continue;
       PanelInfo p = catalog[panelId];
       settings.beginGroup(panelId);
       p.visible = settings.value("visible", p.visible).toBool();

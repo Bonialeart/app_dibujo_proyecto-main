@@ -31,15 +31,13 @@ Rectangle {
     
     readonly property var allPanelsList: [
         { id: "brushes", name: "Pinceles" },
-        { id: "settings", name: "Configuración de Pincel" },
-        { id: "toolsettings", name: "Ajustes de Herramienta" },
+        { id: "settings", name: "Ajuste de herramienta" },
         { id: "color", name: "Color" },
         { id: "layers", name: "Capas" },
         { id: "navigator", name: "Navegador" },
         { id: "history", name: "Historial" },
         { id: "reference", name: "Referencia" },
-        { id: "timeline", name: "Línea de Tiempo" },
-        { id: "gradient", name: "Editor de Degradados" }
+        { id: "timeline", name: "Línea de Tiempo" }
     ]
     
     function isPanelActiveAnywhere(pId) {
@@ -83,8 +81,8 @@ Rectangle {
     Layout.preferredHeight: isBottom ? height : -1
     
     property int expandedHeight: 250
-    color: "#0a0a0d"
-    border.color: isCollapsed && !isBottom ? "transparent" : "#2a2a2d"
+    color: mainWindow ? mainWindow.colorPanel : "#0a0a0d"
+    border.color: isCollapsed && !isBottom ? "transparent" : (mainWindow ? mainWindow.colorBorder : "#2a2a2d")
     border.width: isCollapsed && isBottom ? 0 : 1
     
     Behavior on width { 
@@ -99,7 +97,7 @@ Rectangle {
     visible: isBottom ? true : width > 0
     clip: true
     
-    Rectangle { anchors.fill: parent; color: "transparent"; border.color: "#1affffff"; border.width: 1; visible: !isCollapsed || !isBottom }
+    Rectangle { anchors.fill: parent; color: "transparent"; border.color: mainWindow ? mainWindow.colorBorder : "#1affffff"; border.width: 1; visible: !isCollapsed || !isBottom }
     
     // Drag Hover Indicator
     Rectangle {
@@ -191,12 +189,12 @@ Rectangle {
         // Dock Header (Collapse All Button)
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 32
-            color: "#0d0d10"
+            color: mainWindow ? mainWindow.colorBg : "#0d0d10"
             visible: !root.isCollapsed
             
             Rectangle {
                 width: 28; height: 28; radius: 14
-                color: collAllMa.containsMouse ? "#252528" : "transparent"
+                color: collAllMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e5e7eb" : "#252528") : "transparent"
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.right: isBottom ? undefined : ((root.dockSide.indexOf("left") !== -1) ? parent.right : undefined)
                 anchors.left: isBottom ? parent.left : ((root.dockSide.indexOf("right") !== -1) ? parent.left : undefined)
@@ -204,7 +202,7 @@ Rectangle {
                 anchors.rightMargin: 4; anchors.leftMargin: 4
                 
                 Image {
-                    source: "image://icons/chevron-left.svg"
+                    source: mainWindow ? mainWindow.iconPath("chevron-left.svg") : "image://icons/chevron-left.svg"
                     width: 16; height: 16; anchors.centerIn: parent
                     opacity: 0.6; smooth: true; mipmap: true
                     rotation: isBottom ? 90 : ((root.dockSide.indexOf("left") !== -1) ? 0 : 180)
@@ -216,7 +214,7 @@ Rectangle {
                 }
             }
             
-            Rectangle { width: parent.width; height: 1; color: "#1c1c1f"; anchors.bottom: parent.bottom }
+            Rectangle { width: parent.width; height: 1; color: mainWindow ? mainWindow.colorBorder : "#1c1c1f"; anchors.bottom: parent.bottom }
         }
 
         SplitView {
@@ -347,7 +345,7 @@ Rectangle {
                                             opacity: isActiveTab ? 1.0 : (tabMa.containsMouse ? 0.85 : 0.6)
                                             
                                             Image {
-                                                source: (root.tabDisplayMode !== "text" && modelData.icon !== "") ? "image://icons/" + modelData.icon : ""
+                                                source: (root.tabDisplayMode !== "text" && modelData.icon !== "") ? (mainWindow ? mainWindow.iconPath(modelData.icon) : "image://icons/" + modelData.icon) : ""
                                                 width: 13 * root.uiScale; height: 13 * root.uiScale
                                                 sourceSize: Qt.size(32, 32); smooth: true; mipmap: true; anchors.verticalCenter: parent.verticalCenter
                                                 visible: root.tabDisplayMode !== "text" && modelData.icon !== ""
@@ -369,12 +367,12 @@ Rectangle {
                                                 id: closeTabBtn
                                                 width: 12 * root.uiScale; height: 12 * root.uiScale
                                                 radius: 3
-                                                color: closeTabMa.containsMouse ? "#2d2d32" : "transparent"
+                                                color: closeTabMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e5e7eb" : "#2d2d32") : "transparent"
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 visible: isActiveTab || tabMa.containsMouse
                                                 
                                                 Image {
-                                                    source: "image://icons/close.svg"
+                                                    source: mainWindow ? mainWindow.iconPath("close.svg") : "image://icons/close.svg"
                                                     width: 7 * root.uiScale; height: 7 * root.uiScale
                                                     anchors.centerIn: parent
                                                     opacity: closeTabMa.containsMouse ? 0.95 : 0.4
@@ -387,7 +385,7 @@ Rectangle {
                                                     hoverEnabled: true
                                                     cursorShape: Qt.PointingHandCursor
                                                     onClicked: {
-                                                        root.manager.togglePanel(modelData.pId)
+                                                        root.manager.removePanelEverywhere(modelData.pId)
                                                     }
                                                 }
                                             }
@@ -450,8 +448,8 @@ Rectangle {
                                 
                                 Rectangle {
                                     width: 24; height: 24; radius: 6
-                                    color: popoutMa.containsMouse ? "#252528" : "transparent"
-                                    Image { source: "image://icons/float-window.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
+                                    color: popoutMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e5e7eb" : "#252528") : "transparent"
+                                    Image { source: mainWindow ? mainWindow.iconPath("float-window.svg") : "image://icons/float-window.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
                                     MouseArea {
                                         id: popoutMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: root.manager.movePanelToFloat(activeTabId, parent.mapToGlobal(0,0).x - 200, parent.mapToGlobal(0,0).y)
@@ -460,8 +458,8 @@ Rectangle {
                                 
                                 Rectangle {
                                     width: 24; height: 24; radius: 6
-                                    color: collapseMa.containsMouse ? "#252528" : "transparent"
-                                    Image { source: "image://icons/grip.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
+                                    color: collapseMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e5e7eb" : "#252528") : "transparent"
+                                    Image { source: mainWindow ? mainWindow.iconPath("grip.svg") : "image://icons/grip.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
                                     MouseArea {
                                         id: collapseMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: root.toggleCollapse(activeTabId)
@@ -470,8 +468,8 @@ Rectangle {
                                 
                                 Rectangle {
                                     width: 24; height: 24; radius: 6
-                                    color: optionsMa.containsMouse ? "#252528" : "transparent"
-                                    Image { source: "image://icons/dots-vertical.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
+                                    color: optionsMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e5e7eb" : "#252528") : "transparent"
+                                    Image { source: mainWindow ? mainWindow.iconPath("dots-vertical.svg") : "image://icons/dots-vertical.svg"; anchors.centerIn: parent; width: 14; height: 14; opacity: 0.6 }
                                     MouseArea {
                                         id: optionsMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                         onClicked: {
@@ -709,7 +707,7 @@ Rectangle {
                     menuText: "Cerrar pestaña"
                     menuEmoji: "✕"
                     isDanger: true
-                    onItemClicked: { root.manager.togglePanel(optionsPopup.menuActiveTabId); optionsPopup.close() }
+                    onItemClicked: { root.manager.removePanelEverywhere(optionsPopup.menuActiveTabId); optionsPopup.close() }
                 }
 
                 PopupDivider {}

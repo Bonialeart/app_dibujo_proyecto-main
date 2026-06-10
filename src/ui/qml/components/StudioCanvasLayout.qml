@@ -305,7 +305,7 @@ Item {
     Rectangle {
         id: studioInfoBar
         width: parent.width; height: 42
-        color: "#0a0a0d"
+        color: mainWindow ? mainWindow.colorPanel : "#0a0a0d"
         z: 950
         
         transform: Translate {
@@ -314,7 +314,7 @@ Item {
         }
         opacity: 1.0
         
-        Rectangle { width: parent.width; height: 1; anchors.bottom: parent.bottom; color: "#1a1a1e" }
+        Rectangle { width: parent.width; height: 1; anchors.bottom: parent.bottom; color: mainWindow ? mainWindow.colorBorder : "#1a1a1e" }
         
         RowLayout {
             anchors.fill: parent; anchors.leftMargin: 12; anchors.rightMargin: 12
@@ -326,19 +326,19 @@ Item {
                 spacing: 12
                 Text {
                     text: mainCanvas ? (mainCanvas.currentProjectName || "Untitled") : "Untitled"
-                    color: "#999"; font.pixelSize: 13; font.weight: Font.DemiBold
+                    color: mainWindow ? mainWindow.colorText : "#999"; font.pixelSize: 13; font.weight: Font.DemiBold
                 }
                 Item { width: 4 }
-                Rectangle { width: 1; height: 16; color: "#333" }
+                Rectangle { width: 1; height: 16; color: mainWindow ? mainWindow.colorBorder : "#333" }
                 Item { width: 4 }
                 
                 Text {
                     text: mainCanvas ? Math.round((mainCanvas.zoomLevel || 1.0) * 100) + "%" : "100%"
-                    color: "#777"; font.pixelSize: 11; font.family: "Monospace"
+                    color: mainWindow ? mainWindow.colorTextMuted : "#777"; font.pixelSize: 11; font.family: "Monospace"
                 }
                 Text {
                     text: mainCanvas ? (mainCanvas.canvasWidth || 1920) + " × " + (mainCanvas.canvasHeight || 1080) : "1920 × 1080"
-                    color: "#777"; font.pixelSize: 11; font.family: "Monospace"
+                    color: mainWindow ? mainWindow.colorTextMuted : "#777"; font.pixelSize: 11; font.family: "Monospace"
                 }
             }
             
@@ -359,8 +359,8 @@ Item {
                         anchors.fill: parent
                         radius: 14
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#111114" }
-                            GradientStop { position: 1.0; color: "#1c1c20" }
+                            GradientStop { position: 0.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.1) : "#111114" }
+                            GradientStop { position: 1.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.05) : "#1c1c20" }
                         }
                         
                         // Fill Container (clips correctly without squishing radius)
@@ -411,7 +411,7 @@ Item {
                             spacing: 4
                             Text {
                                 text: "SIZE"
-                                color: sizeMouse.containsMouse ? "white" : "#999"
+                                color: sizeMouse.containsMouse ? (mainWindow ? mainWindow.colorText : "white") : (mainWindow ? mainWindow.colorTextMuted : "#999")
                                 font.pixelSize: 10
                                 font.weight: Font.DemiBold
                                 font.letterSpacing: 0.5
@@ -420,7 +420,7 @@ Item {
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: mainCanvas ? Math.round(mainCanvas.brushSize) + " px" : "0 px"
-                                color: "white"
+                                color: mainWindow ? mainWindow.colorText : "white"
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold
                             }
@@ -430,7 +430,7 @@ Item {
                             anchors.fill: parent
                             radius: 14
                             color: "transparent"
-                            border.color: sizeMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : "#3a3a40"
+                            border.color: sizeMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : (mainWindow ? mainWindow.colorBorder : "#3a3a40")
                             border.width: 1
                             Behavior on border.color { ColorAnimation { duration: 150 } }
                         }
@@ -471,8 +471,8 @@ Item {
                         anchors.fill: parent
                         radius: 14
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#111114" }
-                            GradientStop { position: 1.0; color: "#1c1c20" }
+                            GradientStop { position: 0.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.1) : "#111114" }
+                            GradientStop { position: 1.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.05) : "#1c1c20" }
                         }
                         
                         // Fill Container (clips correctly without squishing radius)
@@ -523,7 +523,7 @@ Item {
                             spacing: 4
                             Text {
                                 text: "OPAC"
-                                color: opacMouse.containsMouse ? "white" : "#999"
+                                color: opacMouse.containsMouse ? (mainWindow ? mainWindow.colorText : "white") : (mainWindow ? mainWindow.colorTextMuted : "#999")
                                 font.pixelSize: 10
                                 font.weight: Font.DemiBold
                                 font.letterSpacing: 0.5
@@ -532,7 +532,7 @@ Item {
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: mainCanvas ? Math.round(mainCanvas.brushOpacity * 100) + "%" : "100%"
-                                color: "white"
+                                color: mainWindow ? mainWindow.colorText : "white"
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold
                             }
@@ -542,7 +542,7 @@ Item {
                             anchors.fill: parent
                             radius: 14
                             color: "transparent"
-                            border.color: opacMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : "#3a3a40"
+                            border.color: opacMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : (mainWindow ? mainWindow.colorBorder : "#3a3a40")
                             border.width: 1
                             Behavior on border.color { ColorAnimation { duration: 150 } }
                         }
@@ -583,8 +583,8 @@ Item {
                         anchors.fill: parent
                         radius: 14
                         gradient: Gradient {
-                            GradientStop { position: 0.0; color: "#111114" }
-                            GradientStop { position: 1.0; color: "#1c1c20" }
+                            GradientStop { position: 0.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.1) : "#111114" }
+                            GradientStop { position: 1.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.05) : "#1c1c20" }
                         }
                         
                         // Fill Container (clips correctly without squishing radius)
@@ -635,7 +635,7 @@ Item {
                             spacing: 4
                             Text {
                                 text: "STAB"
-                                color: stabMouse.containsMouse ? "white" : "#999"
+                                color: stabMouse.containsMouse ? (mainWindow ? mainWindow.colorText : "white") : (mainWindow ? mainWindow.colorTextMuted : "#999")
                                 font.pixelSize: 10
                                 font.weight: Font.DemiBold
                                 font.letterSpacing: 0.5
@@ -644,7 +644,7 @@ Item {
                             Item { Layout.fillWidth: true }
                             Text {
                                 text: mainCanvas ? Math.round(mainCanvas.brushStabilization * 100) + "%" : "0%"
-                                color: "white"
+                                color: mainWindow ? mainWindow.colorText : "white"
                                 font.pixelSize: 11
                                 font.weight: Font.DemiBold
                             }
@@ -654,7 +654,7 @@ Item {
                             anchors.fill: parent
                             radius: 14
                             color: "transparent"
-                            border.color: stabMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : "#3a3a40"
+                            border.color: stabMouse.containsMouse ? Qt.lighter(accentColor, 1.2) : (mainWindow ? mainWindow.colorBorder : "#3a3a40")
                             border.width: 1
                             Behavior on border.color { ColorAnimation { duration: 150 } }
                         }
@@ -693,10 +693,10 @@ Item {
                 
                 Rectangle {
                     width: 60; height: 26; radius: 6
-                    color: saveBtn.containsMouse ? accentColor : "#1a1a1f"
-                    border.color: saveBtn.containsMouse ? Qt.lighter(accentColor, 1.2) : "#333"
+                    color: saveBtn.containsMouse ? accentColor : (mainWindow ? mainWindow.colorCard : "#1a1a1f")
+                    border.color: saveBtn.containsMouse ? Qt.lighter(accentColor, 1.2) : (mainWindow ? mainWindow.colorBorder : "#333")
                     border.width: 1
-                    Text { text: "Save"; color: "white"; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent }
+                    Text { text: "Save"; color: saveBtn.containsMouse ? "white" : (mainWindow ? mainWindow.colorText : "white"); font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent }
                     MouseArea {
                         id: saveBtn
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -708,10 +708,10 @@ Item {
                 
                 Rectangle {
                     width: 65; height: 26; radius: 6
-                    color: exportBtn.containsMouse ? accentColor : "#1a1a1f"
-                    border.color: exportBtn.containsMouse ? Qt.lighter(accentColor, 1.2) : "#333"
+                    color: exportBtn.containsMouse ? accentColor : (mainWindow ? mainWindow.colorCard : "#1a1a1f")
+                    border.color: exportBtn.containsMouse ? Qt.lighter(accentColor, 1.2) : (mainWindow ? mainWindow.colorBorder : "#333")
                     border.width: 1
-                    Text { text: "Export"; color: "white"; font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent }
+                    Text { text: "Export"; color: exportBtn.containsMouse ? "white" : (mainWindow ? mainWindow.colorText : "white"); font.pixelSize: 11; font.weight: Font.DemiBold; anchors.centerIn: parent }
                     MouseArea {
                         id: exportBtn
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -786,8 +786,8 @@ Item {
                 id: workspaceBtn
                 visible: studioLayout.showTopWorkspaceSwitcher
                 width: 140; height: 26; radius: 6
-                color: wsMa.containsMouse || studioLayout.wsMenuOpen ? "#2a2a30" : "#1a1a1f"
-                border.color: wsMa.containsMouse || studioLayout.wsMenuOpen ? Qt.lighter(accentColor, 1.2) : "#333"
+                color: wsMa.containsMouse || studioLayout.wsMenuOpen ? (mainWindow ? Qt.lighter(mainWindow.colorCard, 1.05) : "#2a2a30") : (mainWindow ? mainWindow.colorCard : "#1a1a1f")
+                border.color: wsMa.containsMouse || studioLayout.wsMenuOpen ? Qt.lighter(accentColor, 1.2) : (mainWindow ? mainWindow.colorBorder : "#333")
                 border.width: 1
                 
                 RowLayout {
@@ -796,16 +796,16 @@ Item {
                     anchors.rightMargin: 8
                     spacing: 4
                     
-                    Text { text: "◫"; color: "#aaa"; font.pixelSize: 12 }
+                    Text { text: "◫"; color: mainWindow ? mainWindow.colorTextMuted : "#aaa"; font.pixelSize: 12 }
                     Text {
                         text: panelManager ? panelManager.activeWorkspace : ""
-                        color: "white"
+                        color: mainWindow ? mainWindow.colorText : "white"
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
                         Layout.fillWidth: true
                         elide: Text.ElideRight
                     }
-                    Text { text: "▾"; color: "#aaa"; font.pixelSize: 12 }
+                    Text { text: "▾"; color: mainWindow ? mainWindow.colorTextMuted : "#aaa"; font.pixelSize: 12 }
                 }
                 
                 MouseArea {
@@ -828,8 +828,8 @@ Item {
             Rectangle {
                 id: ventanaBtn
                 width: 90; height: 26; radius: 6
-                color: ventMa.containsMouse || studioLayout.winMenuOpen ? "#2a2a30" : "#1a1a1f"
-                border.color: ventMa.containsMouse || studioLayout.winMenuOpen ? Qt.lighter(accentColor, 1.2) : "#333"
+                color: ventMa.containsMouse || studioLayout.winMenuOpen ? (mainWindow ? Qt.lighter(mainWindow.colorCard, 1.05) : "#2a2a30") : (mainWindow ? mainWindow.colorCard : "#1a1a1f")
+                border.color: ventMa.containsMouse || studioLayout.winMenuOpen ? Qt.lighter(accentColor, 1.2) : (mainWindow ? mainWindow.colorBorder : "#333")
                 border.width: 1
                 
                 RowLayout {
@@ -838,16 +838,16 @@ Item {
                     anchors.rightMargin: 8
                     spacing: 4
                     
-                    Text { text: "🗔"; color: "#aaa"; font.pixelSize: 12 }
+                    Text { text: "🗔"; color: mainWindow ? mainWindow.colorTextMuted : "#aaa"; font.pixelSize: 12 }
                     Text {
                         text: "Ventana"
-                        color: "white"
+                        color: ventMa.containsMouse || studioLayout.winMenuOpen ? "white" : (mainWindow ? mainWindow.colorText : "white")
                         font.pixelSize: 11
                         font.weight: Font.DemiBold
                         Layout.fillWidth: true
                         horizontalAlignment: Text.AlignHCenter
                     }
-                    Text { text: "▾"; color: "#aaa"; font.pixelSize: 12 }
+                    Text { text: "▾"; color: mainWindow ? mainWindow.colorTextMuted : "#aaa"; font.pixelSize: 12 }
                 }
                 
                 MouseArea {
@@ -868,15 +868,14 @@ Item {
 
             Item { width: 8; visible: true }
             
-            // Mode switch
             Rectangle {
                 width: 80; height: 26; radius: 13
-                color: essMa.containsMouse ? accentColor : "#1c1c20"
+                color: essMa.containsMouse ? accentColor : (mainWindow ? mainWindow.colorCard : "#1c1c20")
                 border.color: accentColor; border.width: 1
                 Text {
                     text: "Essential"
                     anchors.centerIn: parent
-                    color: essMa.containsMouse ? "#fff" : "#aaa"
+                    color: essMa.containsMouse ? "#fff" : (mainWindow ? mainWindow.colorTextMuted : "#aaa")
                     font.pixelSize: 11; font.weight: Font.Bold
                 }
                 MouseArea {
@@ -973,9 +972,9 @@ Item {
         id: toolsToolbar
         width: 44
         height: toolsCol.height + 24
-        color: "#0c0c0f"
+        color: mainWindow ? mainWindow.colorPanel : "#0c0c0f"
         radius: isToolbarFloating ? 8 : 0
-        border.color: isToolbarFloating ? "#333" : "transparent"
+        border.color: isToolbarFloating ? (mainWindow ? mainWindow.colorBorder : "#333") : "transparent"
         border.width: isToolbarFloating ? 1 : 0
         z: 2500
         
@@ -1043,11 +1042,11 @@ Item {
                     Layout.preferredWidth: 36; Layout.preferredHeight: 36
                     Layout.alignment: Qt.AlignHCenter
                     radius: 10
-                    color: (canvasPage && index === canvasPage.activeToolIdx) ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.3) : (hoverMa.containsMouse ? "#1c1c20" : "transparent")
+                    color: (canvasPage && index === canvasPage.activeToolIdx) ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.3) : (hoverMa.containsMouse ? (mainWindow ? mainWindow.colorCard : "#1c1c20") : "transparent")
                     border.color: (canvasPage && index === canvasPage.activeToolIdx) ? accentColor : "transparent"
                     
                     Image {
-                        source: "image://icons/" + model.icon
+                        source: mainWindow ? mainWindow.iconPath(model.icon) : ("image://icons/" + model.icon)
                         width: 20; height: 20; anchors.centerIn: parent
                         opacity: (canvasPage && index === canvasPage.activeToolIdx) ? 1.0 : 0.6
                     }
@@ -1319,16 +1318,12 @@ Item {
             { id: "colorhistory", name: "Historial de Color" },
             { id: "layers",       name: "Capas" },
             { id: "brushes",      name: "Pinceles" },
-            { id: "settings",     name: "Configuración de Pincel" },
-            { id: "toolsettings", name: "Propiedades de Herramienta" },
-            { id: "transform",    name: "Opciones de Transformación" },
+            { id: "settings",     name: "Ajuste de herramienta" },
             { id: "navigator",    name: "Navegador" },
-            { id: "symmetry",     name: "Simetría" },
             { id: "history",      name: "Historial" },
             { id: "reference",    name: "Referencia" },
             { id: "info",         name: "Info" },
-            { id: "timeline",     name: "Línea de tiempo" },
-            { id: "gradient",     name: "Editor de Degradados" }
+            { id: "timeline",     name: "Línea de tiempo" }
         ]
 
         // List of hidden panels (from C++ panel_manager.hiddenPanels).

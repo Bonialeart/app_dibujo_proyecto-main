@@ -434,6 +434,8 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_workspaceColor = QColor("#000000"); // Pitch Black
     else if (theme == "Blue-Grey")
       m_workspaceColor = QColor("#263238"); // Material Blue Grey 900
+    else if (theme == "Studio-Grey")
+      m_workspaceColor = QColor("#2e2e2e"); // Clip Studio Paint style gray
     else
       m_workspaceColor = QColor("#1e1e1e"); // Fallback
 
@@ -5973,7 +5975,56 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
   } else if (event->type() == QEvent::TouchUpdate) {
     m_lastTouchPos = event->points().first().position();
 
-    // ── Single-finger: live eyedropper while dragging ──
+    // ── Transition to 3 fingers: brush size gesture ──
+    if (points == 3 && prevPointCount < 3 && !m_isThreeFingerGesture) {
+      float avgY = 0;
+      for (int i = 0; i < points; i++)
+        avgY += event->points()[i].position().y();
+      m_threeFingerStartPos = QPointF(event->points()[0].position().x(), avgY / points);
+      m_threeFingerStartSize = m_brushSize;
+      m_isThreeFingerGesture = true;
+      m_threeFingerMoved = false;
+
+      if (m_touchTimer)
+        m_touchTimer->stop();
+
+      // Cancel drawing if it was active
+      if (m_isDrawing) {
+        Layer *layer = m_layerManager->getActiveLayer();
+        if (layer && layer->buffer && m_strokeBeforeBuffer) {
+          layer->buffer->copyFrom(*m_strokeBeforeBuffer);
+          layer->dirty = true;
+          layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+          if (layer->buffer)
+            layer->buffer->clearDirtyFlags();
+          m_cachedCanvasImage = QImage();
+
+          if (m_pingFBO && layer->buffer) {
+            QImage fboImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                          QImage::Format_RGBA8888_Premultiplied);
+            m_pingFBO->bind();
+            QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+            QPainter fboPainter(&device);
+            fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+            fboPainter.drawImage(0, 0, fboImg);
+            fboPainter.end();
+            m_pingFBO->release();
+            QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+          }
+        }
+        m_isDrawing = false;
+        m_isHoldingForShape = false;
+        m_quickShapeType = QuickShapeType::None;
+        m_quickShapeTimer->stop();
+        m_hasPrediction = false;
+        m_smudgeColorValid = false;
+        m_strokeCancelledByGesture = true;
+        m_strokeBeforeBuffer.reset();
+        update();
+      }
+    }
+
+    // ── Single-finger: eyedropper while dragging ──
     if (points == 1 && m_touchIsEyedropper) {
       m_touchEyedropperColor = QColor(
           sampleColor(m_lastTouchPos.x(), m_lastTouchPos.y(), 0));
@@ -6053,42 +6104,75 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
       }
     }
 
-    // ── Two-finger gesture: Pan + Zoom + Rotation ──
+    // ── Transition from 3→2 fingers: reset references to avoid jump ──
+    if (points == 2 && prevPointCount == 3 && m_isTwoFingerGesture &&
+        PreferencesManager::instance()->touchGesturesEnabled()) {
+      QPointF p1 = event->points()[0].position();
+      QPointF p2 = event->points()[1].position();
+      QPointF center = (p1 + p2) / 2.0;
+      m_lastTouchCenter = center;
+      m_lastPinchScale = QLineF(p1, p2).length();
+      m_lastPinchAngle = std::atan2(p2.y() - p1.y(), p2.x() - p1.x());
+    }
+
+    // ── Two-finger gesture: Pan + Zoom + Rotation (Unified rotation-aware focal-point) ──
     if (points == 2 && m_isTwoFingerGesture &&
         PreferencesManager::instance()->touchGesturesEnabled()) {
       QPointF p1 = event->points()[0].position();
       QPointF p2 = event->points()[1].position();
       QPointF center = (p1 + p2) / 2.0;
 
-      // ── Pan ──
-      QPointF panDelta = center - m_lastTouchCenter;
-      setViewOffset(m_viewOffset - (panDelta / m_zoomLevel));
-      m_lastTouchCenter = center;
-
-      // ── Zoom ──
-      float currentDist = QLineF(p1, p2).length();
-      if (m_lastPinchScale > 1.0f) { // Minimum distance to avoid jitter
-        float scaleFactor = currentDist / m_lastPinchScale;
-        setZoomLevel(
-            std::clamp((float)(m_zoomLevel * scaleFactor), 0.1f, 30.0f));
+      // Calculate the canvas focal point corresponding to the previous frame's screen center
+      QPointF canvasFocalPt = screenToCanvas(m_lastTouchCenter);
+      QPointF flippedCanvasFocal = canvasFocalPt;
+      if (m_isFlippedH) {
+        flippedCanvasFocal.setX(m_canvasWidth - flippedCanvasFocal.x());
       }
-      m_lastPinchScale = currentDist;
+      if (m_isFlippedV) {
+        flippedCanvasFocal.setY(m_canvasHeight - flippedCanvasFocal.y());
+      }
 
-      // ── Rotation ──
+      // ── Zoom calculation ──
+      float currentDist = QLineF(p1, p2).length();
+      float newZoom = m_zoomLevel;
+      if (m_lastPinchScale > 30.0f && currentDist > 30.0f) {
+        float scaleFactor = currentDist / m_lastPinchScale;
+        if (std::abs(scaleFactor - 1.0f) > 0.005f) {
+          newZoom = std::clamp((float)(m_zoomLevel * scaleFactor), 0.05f, 64.0f);
+        }
+      }
+
+      // ── Rotation calculation ──
       float currentAngle = std::atan2(p2.y() - p1.y(), p2.x() - p1.x());
       float angleDelta = currentAngle - m_lastPinchAngle;
-
-      // Normalize angle delta to avoid jumps at ±π boundary
       if (angleDelta > M_PI) angleDelta -= 2.0f * M_PI;
       if (angleDelta < -M_PI) angleDelta += 2.0f * M_PI;
-
-      // Apply rotation (convert radians to degrees)
       float angleDeltaDeg = qRadiansToDegrees(angleDelta);
-      // Dead-zone filter: ignore tiny rotations to prevent jitter during
-      // pure zoom/pan
+      float newRotation = m_canvasRotation;
       if (std::abs(angleDeltaDeg) > 0.3f) {
-        setCanvasRotation(m_canvasRotation + angleDeltaDeg);
+        newRotation = m_canvasRotation + angleDeltaDeg;
       }
+
+      // ── Calculate the new ViewOffset to anchor focal point under the new screen 'center' ──
+      QPointF viewCenter(width() / 2.0, height() / 2.0);
+      float rad = qDegreesToRadians(-newRotation);
+      float cosA = std::cos(rad);
+      float sinA = std::sin(rad);
+      QPointF p = center - viewCenter;
+      QPointF unrotated(p.x() * cosA - p.y() * sinA,
+                        p.x() * sinA + p.y() * cosA);
+      QPointF S_unrot = unrotated + viewCenter;
+
+      QPointF newViewOffset = S_unrot / newZoom - flippedCanvasFocal;
+
+      // Apply transformations
+      setZoomLevel(newZoom);
+      setCanvasRotation(newRotation);
+      setViewOffset(newViewOffset);
+
+      // Update tracking variables for the next event
+      m_lastTouchCenter = center;
+      m_lastPinchScale = currentDist;
       m_lastPinchAngle = currentAngle;
 
       event->accept();
@@ -6126,12 +6210,57 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
 void CanvasItem::nativeGestureEvent(QNativeGestureEvent *event) {
   if (event->gestureType() == Qt::ZoomNativeGesture) {
     float scaleDelta = event->value();
-    setZoomLevel(
-        std::clamp(m_zoomLevel + (scaleDelta * m_zoomLevel), 0.1f, 30.0f));
+    float newZoom = std::clamp(m_zoomLevel * (1.0f + scaleDelta), 0.05f, 64.0f);
+
+    QPointF screenFocalPt = event->position();
+    QPointF canvasFocalPt = screenToCanvas(screenFocalPt);
+    QPointF flippedCanvasFocal = canvasFocalPt;
+    if (m_isFlippedH) {
+      flippedCanvasFocal.setX(m_canvasWidth - flippedCanvasFocal.x());
+    }
+    if (m_isFlippedV) {
+      flippedCanvasFocal.setY(m_canvasHeight - flippedCanvasFocal.y());
+    }
+
+    QPointF viewCenter(width() / 2.0, height() / 2.0);
+    float rad = qDegreesToRadians(-m_canvasRotation);
+    float cosA = std::cos(rad);
+    float sinA = std::sin(rad);
+    QPointF p = screenFocalPt - viewCenter;
+    QPointF unrotated(p.x() * cosA - p.y() * sinA,
+                      p.x() * sinA + p.y() * cosA);
+    QPointF S_unrot = unrotated + viewCenter;
+
+    QPointF newViewOffset = S_unrot / newZoom - flippedCanvasFocal;
+    setZoomLevel(newZoom);
+    setViewOffset(newViewOffset);
   } else if (event->gestureType() == Qt::RotateNativeGesture) {
     // Native trackpad rotation (macOS / Windows Precision Touchpad)
     float rotDelta = event->value();
-    setCanvasRotation(m_canvasRotation + rotDelta);
+    float newRotation = m_canvasRotation + rotDelta;
+
+    QPointF screenFocalPt = event->position();
+    QPointF canvasFocalPt = screenToCanvas(screenFocalPt);
+    QPointF flippedCanvasFocal = canvasFocalPt;
+    if (m_isFlippedH) {
+      flippedCanvasFocal.setX(m_canvasWidth - flippedCanvasFocal.x());
+    }
+    if (m_isFlippedV) {
+      flippedCanvasFocal.setY(m_canvasHeight - flippedCanvasFocal.y());
+    }
+
+    QPointF viewCenter(width() / 2.0, height() / 2.0);
+    float rad = qDegreesToRadians(-newRotation);
+    float cosA = std::cos(rad);
+    float sinA = std::sin(rad);
+    QPointF p = screenFocalPt - viewCenter;
+    QPointF unrotated(p.x() * cosA - p.y() * sinA,
+                      p.x() * sinA + p.y() * cosA);
+    QPointF S_unrot = unrotated + viewCenter;
+
+    QPointF newViewOffset = S_unrot / m_zoomLevel - flippedCanvasFocal;
+    setCanvasRotation(newRotation);
+    setViewOffset(newViewOffset);
   }
 }
 

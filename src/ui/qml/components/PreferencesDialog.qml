@@ -25,15 +25,15 @@ Popup {
     property color themeAccent: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.themeAccent : "#6366f1"
     
     // Computed based on Mode
-    readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey"
+    readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey" || themeMode === "Studio-Grey"
     
-    readonly property color colorBg: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#1e293b" : "#1e1e20")) : "#f3f4f6"
-    readonly property color colorPanel: isDark ? (themeMode === "Midnight" ? "#1e293b" : (themeMode === "Blue-Grey" ? "#334155" : "#252526")) : "#ffffff"
+    readonly property color colorBg: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#334155" : (themeMode === "Studio-Grey" ? "#3e3e3e" : "#0a0a0c"))) : "#f3f4f6"
+    readonly property color colorPanel: isDark ? (themeMode === "Midnight" ? "#1e293b" : (themeMode === "Blue-Grey" ? "#1e293b" : (themeMode === "Studio-Grey" ? "#2b2b2b" : "#141417"))) : "#ffffff"
     readonly property color colorAccent: themeAccent
-    readonly property color colorText: isDark ? "#ffffff" : "#1f2937"
-    readonly property color colorTextMuted: isDark ? "#a1a1aa" : "#6b7280"
-    readonly property color colorBorder: isDark ? "#3f3f46" : "#e5e7eb"
-    readonly property color colorInput: isDark ? "#18181b" : "#f9fafb"
+    readonly property color colorText: isDark ? "#ffffff" : "#111827"
+    readonly property color colorTextMuted: isDark ? (themeMode === "Studio-Grey" ? "#bbbbbb" : "#8e8e93") : "#4b5563"
+    readonly property color colorBorder: isDark ? (themeMode === "Midnight" ? "#334155" : (themeMode === "Blue-Grey" ? "#2a3549" : (themeMode === "Studio-Grey" ? "#1e1e1e" : "#2a2a2f"))) : "#e5e7eb"
+    readonly property color colorInput: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#273549" : (themeMode === "Studio-Grey" ? "#333333" : "#1c1c1e"))) : "#f9fafb"
     
     property int currentCategoryIndex: 0
     property string shortcutSearchQuery: ""
@@ -358,7 +358,7 @@ Popup {
                                 
                                 Image { 
                                     anchors.fill: parent
-                                    source: (modelData && modelData.icon) ? "image://icons/" + modelData.icon : ""
+                                    source: (modelData && modelData.icon) ? (mainWindow ? mainWindow.iconPath(modelData.icon) : "image://icons/" + modelData.icon) : ""
                                     visible: status === Image.Ready
                                     sourceSize.width: 16; sourceSize.height: 16
                                     opacity: index === root.currentCategoryIndex ? 1.0 : 0.6
@@ -419,7 +419,7 @@ Popup {
                                     spacing: 12
                                     
                                     Repeater {
-                                        model: ["Dark", "Light", "Midnight", "Blue-Grey"]
+                                        model: ["Dark", "Light", "Midnight", "Blue-Grey", "Studio-Grey"]
                                         delegate: Rectangle {
                                             width: 100; height: 60
                                             color: (preferencesManager && preferencesManager.themeMode === modelData) ? colorAccent : colorPanel

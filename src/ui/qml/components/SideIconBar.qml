@@ -16,14 +16,14 @@ Rectangle {
     signal reorder(int sourceIdx, int targetIdx, string mode)
     
     width: 34
-    color: "#0c0c0f" // Ultra-dark
+    color: mainWindow ? mainWindow.colorPanel : "#0c0c0f" // Ultra-dark
     
     // Border
     Rectangle {
         width: 1; height: parent.height
         anchors.left: root.dockSide.indexOf("right") !== -1 ? parent.left : undefined
         anchors.right: root.dockSide.indexOf("left") !== -1 ? parent.right : undefined
-        color: "#1c1c1e"
+        color: mainWindow ? mainWindow.colorBorder : "#1c1c1e"
     }
 
     ColumnLayout {
@@ -61,7 +61,7 @@ Rectangle {
                     Rectangle {
                         anchors.fill: parent
                         radius: 6
-                        color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (isHovered ? Qt.rgba(255, 255, 255, 0.08) : "transparent")
+                        color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (isHovered ? (mainWindow && !mainWindow.isDark ? Qt.rgba(0, 0, 0, 0.05) : Qt.rgba(255, 255, 255, 0.08)) : "transparent")
                         border.color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.4) : "transparent"
                         border.width: 1
                         
@@ -83,7 +83,7 @@ Rectangle {
                     
                     // Icon
                     Image {
-                        source: "image://icons/" + model.icon
+                        source: mainWindow ? mainWindow.iconPath(model.icon) : ("image://icons/" + model.icon)
                         width: root.iconSize; height: root.iconSize
                         anchors.centerIn: parent
                         opacity: customDragging ? 0.3 : (isActive ? 1.0 : (isHovered ? 0.95 : 0.65))
@@ -165,7 +165,7 @@ Rectangle {
                     radius: 10; opacity: 0.9 // Floating above
                     x: customDragging ? (ma.mouseX - width/2) : 0
                     y: customDragging ? (ma.mouseY - height/2) : 0
-                    Image { source: "image://icons/" + model.icon; width: root.iconSize; height: root.iconSize; anchors.centerIn: parent; mipmap: true; smooth: true; opacity: 1.0; sourceSize: Qt.size(48, 48) }
+                    Image { source: mainWindow ? mainWindow.iconPath(model.icon) : ("image://icons/" + model.icon); width: root.iconSize; height: root.iconSize; anchors.centerIn: parent; mipmap: true; smooth: true; opacity: 1.0; sourceSize: Qt.size(48, 48) }
                     
                     // Expose properties for DropArea's onDropped
                     property int modelIndex: index

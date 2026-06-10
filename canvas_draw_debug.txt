@@ -1806,3 +1806,392 @@
 [HANDLE-DRAW] useTexture: 1 | textureName: grain_paper_standard.png | grainTextureID: 0 | isWc: 0 | activePreset: Chalk Lettering
 [HANDLE-DRAW] useTexture: 1 | textureName: grain_paper_standard.png | grainTextureID: 0 | isWc: 0 | activePreset: Chalk Lettering
 [HANDLE-DRAW] useTexture: 1 | textureName: grain_paper_standard.png | grainTextureID: 0 | isWc: 0 | activePreset: Chalk Lettering
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Pencil HB
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Pencil HB
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Pencil HB
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Pencil HB
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Pencil HB
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Pencil HB
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Fat Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Skinny Cap
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Flicks
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: stencil_mesh.png | grainTextureID: 0 | isWc: 0 | activePreset: Stencil Spray
+[HANDLE-DRAW] useTexture: 1 | textureName: grid.png | grainTextureID: 0 | isWc: 0 | activePreset: Grid
+[HANDLE-DRAW] useTexture: 1 | textureName: grid.png | grainTextureID: 0 | isWc: 0 | activePreset: Grid
+[HANDLE-DRAW] useTexture: 1 | textureName: grid.png | grainTextureID: 0 | isWc: 0 | activePreset: Grid
+[HANDLE-DRAW] useTexture: 1 | textureName: grid.png | grainTextureID: 0 | isWc: 0 | activePreset: Grid
+[HANDLE-DRAW] useTexture: 1 | textureName: grid.png | grainTextureID: 0 | isWc: 0 | activePreset: Grid
+[HANDLE-DRAW] useTexture: 1 | textureName: grid.png | grainTextureID: 0 | isWc: 0 | activePreset: Grid
+[HANDLE-DRAW] useTexture: 1 | textureName: grid.png | grainTextureID: 0 | isWc: 0 | activePreset: Grid
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Watercolor Paper
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: wood_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Wood
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: victorian.png | grainTextureID: 0 | isWc: 0 | activePreset: Victorian
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: acuarela_aguada.sut.1.layer.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela aguada
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 1 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 1 | activePreset: Acuarela pincel seco
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
