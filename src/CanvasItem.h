@@ -830,7 +830,7 @@ private:
   QOpenGLTexture *m_transformStaticTex = nullptr;
   QOpenGLTexture *m_selectionTex = nullptr;
   int m_selectionAddMode = 0; // 0=New, 1=Add, 2=Subtract
-  float m_selectionThreshold = 0.5f;
+  float m_selectionThreshold = 0.15f;
   bool m_isSelectionModeActive = false;
   bool m_isImporting = false;
   float m_importProgress = 0.0f;
@@ -852,6 +852,7 @@ private:
   artflow::EdgeDetector *m_edgeDetector = nullptr;
   bool m_gradientMapDirty = true;
   QPainterPath m_magneticPreviewPath;
+  QPointF m_lastTraceTarget;
 
   // Panel Cut State
   QPointF m_panelCutStartPos;
@@ -968,11 +969,18 @@ private:
   // Touch Gestures State
   QTimer *m_touchTimer = nullptr;
   QPointF m_touchStartPos;
+  QPointF m_lastTouchPos;
   bool m_touchIsEyedropper = false;
+  QColor m_touchEyedropperColor;
+  QColor m_touchEyedropperOldColor;
   int m_touchPointCount = 0;
   float m_lastPinchScale = 1.0f;
   float m_lastPinchAngle = 0.0f;          // Angle between two touch points (radians)
   bool m_isTwoFingerGesture = false;       // True while a 2-finger gesture is active
+  bool m_isThreeFingerGesture = false;     // True while a 3-finger gesture is active
+  QPointF m_threeFingerStartPos;           // Start position of 3-finger swipe
+  float m_threeFingerStartSize = 0.0f;     // Brush size at gesture start
+  bool m_threeFingerMoved = false;
   bool m_strokeCancelledByGesture = false; // True if a stroke was cancelled by a multi-touch gesture
   QPointF m_lastTouchCenter;               // Center of two touch points (for smooth pan)
 

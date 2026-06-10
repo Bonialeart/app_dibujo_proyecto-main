@@ -35,6 +35,8 @@ struct Layer {
   bool locked = false;
   bool alphaLock = false;
   bool clipped = false;
+  int offsetX = 0; // Horizontal display offset (canvas-space pixels)
+  int offsetY = 0; // Vertical display offset (canvas-space pixels)
   mutable bool dirty = true;
   mutable QRect dirtyRect; // Region that needs texture re-upload
   bool isPrivate = false;

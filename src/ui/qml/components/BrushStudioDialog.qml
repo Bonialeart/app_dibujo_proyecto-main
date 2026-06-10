@@ -26,7 +26,11 @@ Rectangle {
     // Current attribute tab (0-9)
     property int activeTab: 0
     property int brushPropertySeed: 0
-    onBrushPropertySeedChanged: if (previewThrottle) previewThrottle.restart()
+    onBrushPropertySeedChanged: {
+        if (settingsLoader.item && typeof settingsLoader.item.restartPreview === "function") {
+            settingsLoader.item.restartPreview()
+        }
+    }
 
     function setBrushProp(category, key, value) {
         if (targetCanvas) {
@@ -568,6 +572,10 @@ Rectangle {
                         contentHeight: contentCol.height + 40
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
+
+                        function restartPreview() {
+                            previewThrottle.restart()
+                        }
 
                         property int previewSeed: 0
 

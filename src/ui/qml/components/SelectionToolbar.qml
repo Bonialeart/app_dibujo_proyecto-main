@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Effects
 import Kromo 1.0
 
 // ColorRangeDialog is loaded on demand
@@ -22,28 +23,54 @@ Item {
 
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.bottom: parent.bottom
-    anchors.bottomMargin: 40 * uiScale
 
-    visible: canvas ? (canvas.isSelectionModeActive ||
-                       canvas.currentTool === "lasso" ||
-                       canvas.currentTool === "magnetic_lasso" ||
-                       canvas.currentTool === "select_rect" ||
-                       canvas.currentTool === "select_ellipse" ||
-                       canvas.currentTool === "select_wand") : false
+    property bool isActive: canvas ? (canvas.isSelectionModeActive ||
+                                     canvas.currentTool === "lasso" ||
+                                     canvas.currentTool === "magnetic_lasso" ||
+                                     canvas.currentTool === "select_rect" ||
+                                     canvas.currentTool === "select_ellipse" ||
+                                     canvas.currentTool === "select_wand") : false
+
+    opacity: isActive ? 1.0 : 0.0
+    visible: opacity > 0.0
+    scale: isActive ? 1.0 : 0.92
+
+    anchors.bottomMargin: (isActive ? 40 : 20) * uiScale
+
+    Behavior on opacity {
+        NumberAnimation {
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+    }
+    Behavior on scale {
+        NumberAnimation {
+            duration: 280
+            easing.type: Easing.OutBack
+        }
+    }
+    Behavior on anchors.bottomMargin {
+        NumberAnimation {
+            duration: 280
+            easing.type: Easing.OutCubic
+        }
+    }
 
     // Glassmorphism background
     Rectangle {
         anchors.fill: parent
         radius: 31 * uiScale
-        color: "#dd17171a"
-        border.color: "#40ffffff"
+        color: "#ee0b0b0e"
+        border.color: "#25ffffff"
         border.width: 1 * uiScale
 
-        Rectangle {
-            anchors { top: parent.top; left: parent.left; right: parent.right }
-            height: parent.height * 0.5
-            radius: parent.radius
-            color: "#12ffffff"
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowBlur: 25 * root.uiScale
+            shadowColor: "#aa000000"
+            shadowVerticalOffset: 8 * root.uiScale
+            shadowOpacity: 0.55
         }
     }
 
@@ -83,12 +110,58 @@ Item {
         RowLayout {
             spacing: 6 * uiScale
 
+            // Lasso Group
             ToolBtn {
                 icon: "lasso.svg"
                 tip: "Freehand Lasso (L)"
-                active: canvas && canvas.currentTool === "lasso"
-                onClicked: canvas.currentTool = "lasso"
+                active: canvas && canvas.currentTool === "lasso" && canvas.lassoMode === 0
+                onClicked: {
+                    canvas.currentTool = "lasso"
+                    canvas.lassoMode = 0
+                }
             }
+            ToolBtn {
+                icon: "polygonal-lasso.svg"
+                tip: "Polygonal Lasso (P)"
+                active: canvas && canvas.currentTool === "lasso" && canvas.lassoMode === 1
+                onClicked: {
+                    canvas.currentTool = "lasso"
+                    canvas.lassoMode = 1
+                }
+            }
+            ToolBtn {
+                icon: "magnet.svg"
+                tip: "Magnetic Lasso (M)"
+                active: canvas && canvas.currentTool === "magnetic_lasso"
+                onClicked: canvas.currentTool = "magnetic_lasso"
+            }
+
+            // Small vertical separator inside the row
+            Rectangle {
+                width: 1; height: 16 * uiScale; color: "#25ffffff"
+            }
+
+            // Magic Selector Group
+            ToolBtn {
+                icon: "wand.svg"
+                tip: "Magic Wand (W)"
+                active: canvas && canvas.currentTool === "select_wand"
+                onClicked: canvas.currentTool = "select_wand"
+            }
+            ToolBtn {
+                id: colorRangeBtn
+                icon: "eyedropper.svg"
+                tip: "Select by Color Range..."
+                active: false
+                onClicked: colorRangeDialog.open()
+            }
+
+            // Small vertical separator inside the row
+            Rectangle {
+                width: 1; height: 16 * uiScale; color: "#25ffffff"
+            }
+
+            // Shape Select Group
             ToolBtn {
                 icon: "shapes.svg"
                 tip: "Rectangle Select (R)"
@@ -101,51 +174,18 @@ Item {
                 active: canvas && canvas.currentTool === "select_ellipse"
                 onClicked: canvas.currentTool = "select_ellipse"
             }
-            ToolBtn {
-                icon: "magnet.svg"
-                tip: "Polygonal Lasso (P)"
-                active: canvas && canvas.currentTool === "magnetic_lasso"
-                onClicked: canvas.currentTool = "magnetic_lasso"
+
+            // Small vertical separator inside the row
+            Rectangle {
+                width: 1; height: 16 * uiScale; color: "#25ffffff"
             }
+
+            // Select All
             ToolBtn {
                 icon: "selection.svg"
                 tip: "Select All (Ctrl+A)"
                 active: false
                 onClicked: canvas.selectAll()
-            }
-        }
-
-        // ─── DIVIDER ───
-        Divider {}
-
-        // ─── COLOR RANGE BUTTON ───
-        ToolBtn {
-            id: colorRangeBtn
-            icon: "dropper.svg"
-            tip: "Select by Color Range..."
-            active: false
-            onClicked: colorRangeDialog.open()
-        }
-
-        // ─── DIVIDER ───
-        Divider {}
-
-        // ─── LASSO SUB-MODE (only when lasso is active) ───
-        Row {
-            spacing: 4 * uiScale
-            visible: canvas && canvas.currentTool === "lasso"
-
-            ModeBtn {
-                icon: "lasso.svg"
-                tooltip: "Freehand Lasso"
-                active: canvas && canvas.lassoMode === 0
-                onClicked: canvas.lassoMode = 0
-            }
-            ModeBtn {
-                icon: "magnet.svg"
-                tooltip: "Polygonal Lasso (click to add vertices, double-click or click start to close)"
-                active: canvas && canvas.lassoMode === 1
-                onClicked: canvas.lassoMode = 1
             }
         }
 
@@ -181,7 +221,8 @@ Item {
                             y: (parent.height - height) / 2
                             width: parent.width; height: 4 * uiScale
                             radius: 2 * uiScale
-                            color: "#22ffffff"
+                            color: sensitivitySlider.hovered ? "#33ffffff" : "#1affffff"
+                            Behavior on color { ColorAnimation { duration: 150 } }
                             Rectangle {
                                 width: sensitivitySlider.visualPosition * parent.width
                                 height: parent.height
@@ -197,6 +238,8 @@ Item {
                             color: "white"
                             border.color: root.accentColor
                             border.width: 2 * uiScale
+                            scale: sensitivitySlider.pressed ? 1.25 : (sensitivitySlider.hovered ? 1.12 : 1.0)
+                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                         }
                     }
 
@@ -237,7 +280,8 @@ Item {
                             y: (parent.height - height) / 2
                             width: parent.width; height: 4 * uiScale
                             radius: 2 * uiScale
-                            color: "#22ffffff"
+                            color: radiusSlider.hovered ? "#33ffffff" : "#1affffff"
+                            Behavior on color { ColorAnimation { duration: 150 } }
                             Rectangle {
                                 width: radiusSlider.visualPosition * parent.width
                                 height: parent.height
@@ -253,6 +297,8 @@ Item {
                             color: "white"
                             border.color: root.accentColor
                             border.width: 2 * uiScale
+                            scale: radiusSlider.pressed ? 1.25 : (radiusSlider.hovered ? 1.12 : 1.0)
+                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                         }
                     }
 
@@ -280,22 +326,46 @@ Item {
                 width: 32 * uiScale
                 height: 32 * uiScale
                 radius: 16 * uiScale
-                color: closeArea.containsMouse ? Qt.rgba(1,1,1,0.15) : Qt.rgba(1,1,1,0.07)
-                border.color: root.accentColor
+                color: closeArea.containsMouse ? "#1affffff" : "transparent"
+                border.color: closeArea.containsMouse ? root.accentColor : "#1affffff"
                 border.width: 1 * uiScale
 
-                ToolTip.visible: closeArea.containsMouse
-                ToolTip.text: "Apply / Close Path (Enter)"
-                ToolTip.delay: 300
+                scale: closeArea.pressed ? 0.92 : (closeArea.containsMouse ? 1.08 : 1.0)
+                Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                ToolTip {
+                    id: closeTipComp
+                    visible: closeArea.containsMouse
+                    text: "Apply / Close Path (Enter)"
+                    delay: 300
+                    background: Rectangle {
+                        color: "#1e1e24"
+                        border.color: "#3a3a3d"
+                        radius: 6 * root.uiScale
+                    }
+                    contentItem: Text {
+                        text: closeTipComp.text
+                        color: "#f0f0f5"
+                        font.pixelSize: 11 * root.uiScale
+                        font.weight: Font.Medium
+                    }
+                }
 
                 Image {
+                    id: closeImg
                     anchors.fill: parent
                     anchors.margins: 7 * uiScale
                     source: "../../../../assets/icons/arrow-down-left.svg"
                     sourceSize: Qt.size(18 * uiScale, 18 * uiScale)
-                    opacity: closeArea.containsMouse ? 1.0 : 0.7
+                    opacity: closeArea.containsMouse ? 1.0 : 0.65
+                    scale: closeArea.containsMouse ? 1.05 : 1.0
                     smooth: true
                     mipmap: true
+
+                    Behavior on opacity { NumberAnimation { duration: 150 } }
+                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                 }
 
                 MouseArea {
@@ -305,8 +375,6 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: canvas.closeLasso()
                 }
-
-                Behavior on color { ColorAnimation { duration: 120 } }
             }
         }
 
@@ -331,8 +399,13 @@ Item {
     // ─────────────────────────────────────────────────────
     component Divider : Rectangle {
         width: 1
-        height: 28 * uiScale
-        color: "#33ffffff"
+        height: 24 * uiScale
+        color: "transparent"
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "transparent" }
+            GradientStop { position: 0.5; color: "#25ffffff" }
+            GradientStop { position: 1.0; color: "transparent" }
+        }
     }
 
     component ModeBtn : Rectangle {
@@ -345,22 +418,47 @@ Item {
         width: 32 * uiScale
         height: 32 * uiScale
         radius: 16 * uiScale
-        color: active ? root.accentColor : (modeMa.containsMouse ? "#22ffffff" : "transparent")
-        border.color: active ? root.accentColor : "#22ffffff"
+
+        color: active ? root.accentColor : (modeMa.containsMouse ? "#1affffff" : "transparent")
+        border.color: active ? root.accentColor : (modeMa.containsMouse ? "#40ffffff" : "#1affffff")
         border.width: 1 * uiScale
 
-        ToolTip.visible: modeMa.containsMouse && tooltip !== ""
-        ToolTip.text: tooltip
-        ToolTip.delay: 300
+        scale: modeMa.pressed ? 0.92 : (modeMa.containsMouse ? 1.08 : 1.0)
+        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+        ToolTip {
+            id: modeTipComp
+            visible: modeMa.containsMouse && tooltip !== ""
+            text: tooltip
+            delay: 300
+            background: Rectangle {
+                color: "#1e1e24"
+                border.color: "#3a3a3d"
+                radius: 6 * root.uiScale
+            }
+            contentItem: Text {
+                text: modeTipComp.text
+                color: "#f0f0f5"
+                font.pixelSize: 11 * root.uiScale
+                font.weight: Font.Medium
+            }
+        }
 
         Image {
+            id: modeImg
             anchors.fill: parent
             anchors.margins: 7 * uiScale
             source: "../../../../assets/icons/" + parent.icon
             sourceSize: Qt.size(18 * uiScale, 18 * uiScale)
-            opacity: parent.active ? 1.0 : 0.7
+            opacity: parent.active ? 1.0 : (modeMa.containsMouse ? 0.95 : 0.65)
+            scale: modeMa.containsMouse ? 1.05 : 1.0
             smooth: true
             mipmap: true
+
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
         }
 
         MouseArea {
@@ -370,8 +468,6 @@ Item {
             cursorShape: Qt.PointingHandCursor
             onClicked: parent.clicked()
         }
-
-        Behavior on color { ColorAnimation { duration: 120 } }
     }
 
     component ToolBtn : Rectangle {
@@ -384,20 +480,47 @@ Item {
         width: 36 * uiScale
         height: 36 * uiScale
         radius: 10 * uiScale
-        color: active ? root.accentColor : (toolMa.containsMouse ? "#22ffffff" : "transparent")
 
-        ToolTip.visible: toolMa.containsMouse && tip !== ""
-        ToolTip.text: tip
-        ToolTip.delay: 300
+        color: active ? root.accentColor : (toolMa.containsMouse ? "#1affffff" : "transparent")
+        border.color: active ? root.accentColor : (toolMa.containsMouse ? "#40ffffff" : "#1affffff")
+        border.width: 1 * uiScale
+
+        scale: toolMa.pressed ? 0.92 : (toolMa.containsMouse ? 1.08 : 1.0)
+        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+        ToolTip {
+            id: toolTipComp
+            visible: toolMa.containsMouse && tip !== ""
+            text: tip
+            delay: 300
+            background: Rectangle {
+                color: "#1e1e24"
+                border.color: "#3a3a3d"
+                radius: 6 * root.uiScale
+            }
+            contentItem: Text {
+                text: toolTipComp.text
+                color: "#f0f0f5"
+                font.pixelSize: 11 * root.uiScale
+                font.weight: Font.Medium
+            }
+        }
 
         Image {
+            id: toolImg
             anchors.fill: parent
             anchors.margins: 7 * uiScale
             source: "../../../../assets/icons/" + parent.icon
             sourceSize: Qt.size(22 * uiScale, 22 * uiScale)
-            opacity: parent.active ? 1.0 : 0.7
+            opacity: parent.active ? 1.0 : (toolMa.containsMouse ? 0.95 : 0.65)
+            scale: toolMa.containsMouse ? 1.05 : 1.0
             smooth: true
             mipmap: true
+
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
         }
 
         MouseArea {
@@ -407,8 +530,6 @@ Item {
             cursorShape: Qt.PointingHandCursor
             onClicked: parent.clicked()
         }
-
-        Behavior on color { ColorAnimation { duration: 120 } }
     }
 
     component ActionBtn : Rectangle {
@@ -420,20 +541,47 @@ Item {
         width: 32 * uiScale
         height: 32 * uiScale
         radius: 16 * uiScale
-        color: actionMa.containsMouse ? "#22ffffff" : "transparent"
 
-        ToolTip.visible: actionMa.containsMouse && tip !== ""
-        ToolTip.text: tip
-        ToolTip.delay: 300
+        color: actionMa.containsMouse ? "#1affffff" : "transparent"
+        border.color: actionMa.containsMouse ? "#40ffffff" : "#1affffff"
+        border.width: 1 * uiScale
+
+        scale: actionMa.pressed ? 0.92 : (actionMa.containsMouse ? 1.08 : 1.0)
+        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+        ToolTip {
+            id: actionTipComp
+            visible: actionMa.containsMouse && tip !== ""
+            text: tip
+            delay: 300
+            background: Rectangle {
+                color: "#1e1e24"
+                border.color: "#3a3a3d"
+                radius: 6 * root.uiScale
+            }
+            contentItem: Text {
+                text: actionTipComp.text
+                color: "#f0f0f5"
+                font.pixelSize: 11 * root.uiScale
+                font.weight: Font.Medium
+            }
+        }
 
         Image {
+            id: actionImg
             anchors.fill: parent
             anchors.margins: 7 * uiScale
             source: "../../../../assets/icons/" + parent.icon
             sourceSize: Qt.size(18 * uiScale, 18 * uiScale)
-            opacity: actionMa.containsMouse ? 1.0 : 0.7
+            opacity: actionMa.containsMouse ? 1.0 : 0.65
+            scale: actionMa.containsMouse ? 1.05 : 1.0
             smooth: true
             mipmap: true
+
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
         }
 
         MouseArea {
@@ -443,7 +591,5 @@ Item {
             cursorShape: Qt.PointingHandCursor
             onClicked: parent.clicked()
         }
-
-        Behavior on color { ColorAnimation { duration: 120 } }
     }
 }

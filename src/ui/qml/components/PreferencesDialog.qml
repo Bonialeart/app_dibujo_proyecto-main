@@ -88,9 +88,7 @@ Popup {
     }
 
     function getLocationButtons(location) {
-        if (!_layoutCache || Object.keys(_layoutCache).length === 0)
-            refreshLayoutCache()
-        return _layoutCache[location] || []
+        return (_layoutCache && _layoutCache[location]) ? _layoutCache[location] : []
     }
 
     function getButtonLabel(btnId) {
@@ -147,6 +145,53 @@ Popup {
         }
     }
 
+    function shiftButton(btnId, direction) {
+        var loc = getButtonCurrentLocation(btnId)
+        if (loc === "hidden") return
+        var list = root.getLocationButtons(loc)
+        var idx = list.indexOf(btnId)
+        if (idx === -1) return
+        
+        var targetIdx = idx + direction
+        if (targetIdx < 0 || targetIdx >= list.length) return
+        
+        var newList = list.slice()
+        var temp = newList[idx]
+        newList[idx] = newList[targetIdx]
+        newList[targetIdx] = temp
+        
+        var currentLayout = Object.assign({}, root._layoutCache)
+        currentLayout[loc] = newList
+        preferencesManager.setEssentialLayoutConfig(currentLayout)
+        refreshLayoutCache()
+    }
+
+    function resetLocationToDefault(location) {
+        if (preferencesManager && preferencesManager.defaultEssentialLayout) {
+            var def = preferencesManager.defaultEssentialLayout()
+            var defButtons = def[location] || []
+            var currentLayout = Object.assign({}, root._layoutCache)
+            var keys = ["topLeft","topRight","side","rightColor","sliders","hidden"]
+            
+            for (var i = 0; i < defButtons.length; i++) {
+                var btnId = defButtons[i]
+                for (var k = 0; k < keys.length; k++) {
+                    var list = currentLayout[keys[k]] || []
+                    var idx = list.indexOf(btnId)
+                    if (idx >= 0) {
+                        var newList = list.slice()
+                        newList.splice(idx, 1)
+                        currentLayout[keys[k]] = newList
+                    }
+                }
+            }
+            
+            currentLayout[location] = defButtons.slice()
+            preferencesManager.setEssentialLayoutConfig(currentLayout)
+            refreshLayoutCache()
+        }
+    }
+
     Connections {
         target: preferencesManager
         function onLayoutConfigChanged() {
@@ -155,6 +200,7 @@ Popup {
     }
     
     onOpened: {
+        root.refreshLayoutCache()
         if (preferencesManager && preferencesManager && typeof preferencesManager !== "undefined") {
             tempGpuEnabled = preferencesManager.gpuAcceleration
             tempUndoLevels = preferencesManager.undoLevels
@@ -971,7 +1017,7 @@ Popup {
                             // ── HEADER CARD ──
                             Rectangle {
                                 Layout.fillWidth: true
-                                implicitHeight: headerCol.height + 32
+                                implicitHeight: headerCol.implicitHeight + 32
                                 color: root.isDark ? "#1a1a24" : "#f0f4ff"
                                 radius: 10
                                 border.color: Qt.rgba(root.colorAccent.r, root.colorAccent.g, root.colorAccent.b, 0.2)
@@ -979,7 +1025,7 @@ Popup {
 
                                 ColumnLayout {
                                     id: headerCol
-                                    anchors.fill: parent; anchors.margins: 16
+                                    anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 16
                                     spacing: 8
 
                                     RowLayout {
@@ -1030,14 +1076,14 @@ Popup {
                             // ── SECTION VISIBILITY ──
                             Rectangle {
                                 Layout.fillWidth: true
-                                implicitHeight: sectionCol.height + 28
+                                implicitHeight: sectionCol.implicitHeight + 28
                                 color: root.isDark ? "#1a1a1e" : "#f4f4f5"
                                 radius: 10
                                 border.color: root.colorBorder; border.width: 1
 
                                 ColumnLayout {
                                     id: sectionCol
-                                    anchors.fill: parent; anchors.margins: 14
+                                    anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 14
                                     spacing: 10
 
                                     Text {
@@ -1235,7 +1281,7 @@ Popup {
         property color zoneColor: root.colorAccent
         property int count: (root._layoutCache && root._layoutCache[layoutGroupRoot.btnLocation] ? root._layoutCache[layoutGroupRoot.btnLocation].length : 0)
 
-        implicitHeight: groupCol.height + 24
+        implicitHeight: groupCol.implicitHeight + 24
         color: root.isDark ? "#1a1a1e" : "#fafafa"
         radius: 10
         border.color: Qt.rgba(layoutGroupRoot.zoneColor.r, layoutGroupRoot.zoneColor.g, layoutGroupRoot.zoneColor.b, 0.25)
@@ -1243,7 +1289,7 @@ Popup {
 
         ColumnLayout {
             id: groupCol
-            anchors.fill: parent; anchors.margins: 12
+            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 12
             spacing: 10
 
             // Zone header
@@ -1274,6 +1320,65 @@ Popup {
                         color: layoutGroupRoot.zoneColor; font.pixelSize: 10; font.bold: true
                     }
                 }
+
+                // Reset specific bar button
+                Rectangle {
+                    id: singleResetBtn
+                    width: 24; height: 24; radius: 12
+                    color: singleResetBtnMA.containsMouse ? (root.isDark ? "#2a2a35" : "#e5e7eb") : "transparent"
+                    border.color: singleResetBtnMA.containsMouse ? (root.isDark ? "#4f4f56" : "#cbd5e1") : "transparent"
+                    border.width: 1
+                    visible: layoutGroupRoot.btnLocation !== "hidden"
+
+                    Text {
+                        text: "↺"
+                        font.pixelSize: 12
+                        color: singleResetBtnMA.containsMouse ? root.colorText : root.colorTextMuted
+                        anchors.centerIn: parent
+                    }
+
+                    MouseArea {
+                        id: singleResetBtnMA
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.resetLocationToDefault(layoutGroupRoot.btnLocation)
+                            toastManager.show("Barra restablecida a valores por defecto", "info")
+                        }
+                    }
+                }
+
+                // Clear/Delete entire bar button
+                Rectangle {
+                    id: singleClearBtn
+                    width: 24; height: 24; radius: 12
+                    color: singleClearBtnMA.containsMouse ? "rgba(239, 68, 68, 0.15)" : "transparent"
+                    border.color: singleClearBtnMA.containsMouse ? "#ef4444" : "transparent"
+                    border.width: 1
+                    visible: layoutGroupRoot.btnLocation !== "hidden" && layoutGroupRoot.count > 0
+
+                    Text {
+                        text: "🗑"
+                        font.pixelSize: 11
+                        color: singleClearBtnMA.containsMouse ? "#ef4444" : root.colorTextMuted
+                        anchors.centerIn: parent
+                    }
+
+                    MouseArea {
+                        id: singleClearBtnMA
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            var buttons = root.getLocationButtons(layoutGroupRoot.btnLocation)
+                            for (var i = 0; i < buttons.length; i++) {
+                                root.moveButton(buttons[i], "hidden")
+                            }
+                            toastManager.show("Barra vaciada", "warning")
+                        }
+                    }
+                }
             }
 
             // Separator
@@ -1284,7 +1389,10 @@ Popup {
 
             // Chip area
             Flow {
-                Layout.fillWidth: true; spacing: 8
+                width: parent.width
+                Layout.fillWidth: true
+                Layout.preferredHeight: childrenRect.height
+                spacing: 8
 
                 Repeater {
                     model: {
@@ -1294,42 +1402,115 @@ Popup {
 
                     delegate: Rectangle {
                         id: chip
-                        width: chipRow.width + 16; height: 32
-                        color: root.isDark ? "#2a2a2e" : "#ffffff"
-                        radius: 8
-                        border.color: root.colorBorder; border.width: 1
+                        width: chipRow.implicitWidth + 20; height: 34
+                        color: root.isDark ? "#25252b" : "#ffffff"
+                        radius: 6
+                        border.color: root.isDark ? "#3f3f46" : "#e5e7eb"
+                        border.width: 1
 
                         RowLayout {
-                            id: chipRow; spacing: 6
-                            anchors.centerIn: parent
+                            id: chipRow
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 6
+                            spacing: 6
 
                             Text {
                                 text: root.getButtonLabel(modelData)
                                 color: root.colorText; font.pixelSize: 12
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+                                verticalAlignment: Text.AlignVCenter
                             }
 
-                            Rectangle { width: 1; height: 14; color: root.colorBorder; opacity: 0.4 }
+                            Rectangle {
+                                width: 1
+                                Layout.preferredHeight: 14
+                                color: root.isDark ? "#3f3f46" : "#e5e7eb"
+                                Layout.alignment: Qt.AlignVCenter
+                            }
 
-                            Text {
-                                text: "▾"; font.pixelSize: 11; font.bold: true
-                                color: locMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                            Rectangle {
+                                id: shiftLeftArea
+                                width: 22; height: 22; radius: 4
+                                visible: layoutGroupRoot.btnLocation !== "hidden" && index > 0
+                                color: leftMA.containsMouse ? Qt.rgba(layoutGroupRoot.zoneColor.r, layoutGroupRoot.zoneColor.g, layoutGroupRoot.zoneColor.b, 0.15) : "transparent"
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: "◀"
+                                    font.pixelSize: 10
+                                    color: leftMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    id: leftMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.shiftButton(modelData, -1)
+                                }
+                            }
+
+                            Rectangle {
+                                id: shiftRightArea
+                                width: 22; height: 22; radius: 4
+                                visible: layoutGroupRoot.btnLocation !== "hidden" && index < layoutGroupRoot.count - 1
+                                color: rightMA.containsMouse ? Qt.rgba(layoutGroupRoot.zoneColor.r, layoutGroupRoot.zoneColor.g, layoutGroupRoot.zoneColor.b, 0.15) : "transparent"
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: "▶"
+                                    font.pixelSize: 10
+                                    color: rightMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                    anchors.centerIn: parent
+                                }
+
+                                MouseArea {
+                                    id: rightMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.shiftButton(modelData, 1)
+                                }
+                            }
+
+                            Rectangle {
+                                id: moveButtonArea
+                                width: 22; height: 22; radius: 4
+                                color: locMA.containsMouse ? Qt.rgba(layoutGroupRoot.zoneColor.r, layoutGroupRoot.zoneColor.g, layoutGroupRoot.zoneColor.b, 0.15) : "transparent"
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: "▾"
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                    color: locMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                    anchors.centerIn: parent
+                                }
+
                                 MouseArea {
                                     id: locMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
                                         var menu = locationMenuComp.createObject(root, {
                                             btnId: modelData,
-                                            x: chip.mapToItem(root, 0, chip.height + 4).x,
-                                            y: chip.mapToItem(root, 0, chip.height + 4).y
+                                            x: chip.mapToItem(null, 0, chip.height + 4).x,
+                                            y: chip.mapToItem(null, 0, chip.height + 4).y
                                         })
                                         menu.open()
                                     }
                                 }
                             }
 
-                            Text {
-                                text: layoutGroupRoot.btnLocation === "hidden" ? "↩" : "✕"
-                                font.pixelSize: 11; font.bold: true
-                                color: hideMA.containsMouse ? (layoutGroupRoot.btnLocation === "hidden" ? "#4ade80" : "#ef4444") : root.colorTextMuted
+                            Rectangle {
+                                id: deleteButtonArea
+                                width: 22; height: 22; radius: 4
+                                color: hideMA.containsMouse ? (layoutGroupRoot.btnLocation === "hidden" ? "rgba(74, 222, 128, 0.15)" : "rgba(239, 68, 68, 0.15)") : "transparent"
+                                Layout.alignment: Qt.AlignVCenter
+
+                                Text {
+                                    text: layoutGroupRoot.btnLocation === "hidden" ? "↩" : "✕"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    color: hideMA.containsMouse ? (layoutGroupRoot.btnLocation === "hidden" ? "#4ade80" : "#ef4444") : root.colorTextMuted
+                                    anchors.centerIn: parent
+                                }
+
                                 MouseArea {
                                     id: hideMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
@@ -1358,14 +1539,24 @@ Popup {
     component LocationMenu : Popup {
         id: locMenuRoot
         property string btnId: ""
-        width: 200; height: locCol.height + 16
+        width: 220; height: locCol.height + 16
         padding: 8
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         background: Rectangle {
-            color: root.isDark ? "#252526" : "#ffffff"
+            id: menuBg
+            color: root.isDark ? "#202026" : "#ffffff"
             radius: 8
-            border.color: root.colorBorder; border.width: 1
+            border.color: root.isDark ? "#3f3f46" : "#e5e7eb"
+            border.width: 1
+
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                shadowEnabled: true
+                shadowBlur: 8
+                shadowColor: Qt.rgba(0, 0, 0, 0.35)
+                shadowVerticalOffset: 2
+            }
         }
 
         contentItem: ColumnLayout {
@@ -1380,15 +1571,42 @@ Popup {
                     { key: "hidden", label: "Oculto" }
                 ]
                 delegate: Rectangle {
-                    Layout.fillWidth: true; height: 28; radius: 4
+                    Layout.fillWidth: true; height: 32; radius: 6
                     color: optMa.containsMouse ? Qt.rgba(root.colorAccent.r, root.colorAccent.g, root.colorAccent.b, 0.15) : "transparent"
                     required property var modelData
-                    Text {
-                        text: modelData.label
-                        anchors.verticalCenter: parent.verticalCenter; x: 8
-                        color: root.colorText; font.pixelSize: 12
-                        font.weight: (locMenuRoot.btnId && root.getDefLocation(locMenuRoot.btnId) === modelData.key) ? Font.Bold : Font.Normal
+
+                    readonly property bool isActive: (locMenuRoot.btnId && root.getButtonCurrentLocation(locMenuRoot.btnId) === modelData.key)
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        spacing: 8
+
+                        Text {
+                            text: "✓"
+                            font.pixelSize: 12
+                            font.bold: true
+                            color: root.colorAccent
+                            visible: parent.parent.isActive
+                            Layout.preferredWidth: 12
+                        }
+
+                        Item {
+                            visible: !parent.parent.isActive
+                            Layout.preferredWidth: 12
+                        }
+
+                        Text {
+                            text: modelData.label
+                            color: parent.parent.isActive ? root.colorAccent : root.colorText
+                            font.pixelSize: 12
+                            font.bold: parent.parent.isActive
+                            Layout.fillWidth: true
+                            verticalAlignment: Text.AlignVCenter
+                        }
                     }
+
                     MouseArea {
                         id: optMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                         onClicked: {

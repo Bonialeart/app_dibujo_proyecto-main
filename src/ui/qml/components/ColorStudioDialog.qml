@@ -766,24 +766,24 @@ Popup {
                                 anchors.fill: parent; anchors.margins: 12; spacing: 4
                                 property var cmyk: root.getCMYK()
                                 ImprovedColorSlider {
-                                    Layout.fillWidth: true; label: "C"; value: parent.cmyk.c; maxValue: 1.0; unit: "%"
+                                    Layout.fillWidth: true; label: "C"; value: parent.cmyk ? parent.cmyk.c : 0.0; maxValue: 1.0; unit: "%"
                                     currentH: root.h; currentS: root.s; currentV: root.v
-                                    onSliderMoved: (val) => root.setCMYK(val, parent.cmyk.m, parent.cmyk.y, parent.cmyk.k)
+                                    onSliderMoved: (val) => { if (parent.cmyk) root.setCMYK(val, parent.cmyk.m, parent.cmyk.y, parent.cmyk.k) }
                                 }
                                 ImprovedColorSlider {
-                                    Layout.fillWidth: true; label: "M"; value: parent.cmyk.m; maxValue: 1.0; unit: "%"
+                                    Layout.fillWidth: true; label: "M"; value: parent.cmyk ? parent.cmyk.m : 0.0; maxValue: 1.0; unit: "%"
                                     currentH: root.h; currentS: root.s; currentV: root.v
-                                    onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, val, parent.cmyk.y, parent.cmyk.k)
+                                    onSliderMoved: (val) => { if (parent.cmyk) root.setCMYK(parent.cmyk.c, val, parent.cmyk.y, parent.cmyk.k) }
                                 }
                                 ImprovedColorSlider {
-                                    Layout.fillWidth: true; label: "Y"; value: parent.cmyk.y; maxValue: 1.0; unit: "%"
+                                    Layout.fillWidth: true; label: "Y"; value: parent.cmyk ? parent.cmyk.y : 0.0; maxValue: 1.0; unit: "%"
                                     currentH: root.h; currentS: root.s; currentV: root.v
-                                    onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, parent.cmyk.m, val, parent.cmyk.k)
+                                    onSliderMoved: (val) => { if (parent.cmyk) root.setCMYK(parent.cmyk.c, parent.cmyk.m, val, parent.cmyk.k) }
                                 }
                                 ImprovedColorSlider {
-                                    Layout.fillWidth: true; label: "K"; value: parent.cmyk.k; maxValue: 1.0; unit: "%"
+                                    Layout.fillWidth: true; label: "K"; value: parent.cmyk ? parent.cmyk.k : 0.0; maxValue: 1.0; unit: "%"
                                     currentH: root.h; currentS: root.s; currentV: root.v
-                                    onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, parent.cmyk.m, parent.cmyk.y, val)
+                                    onSliderMoved: (val) => { if (parent.cmyk) root.setCMYK(parent.cmyk.c, parent.cmyk.m, parent.cmyk.y, val) }
                                 }
                             }
                         }

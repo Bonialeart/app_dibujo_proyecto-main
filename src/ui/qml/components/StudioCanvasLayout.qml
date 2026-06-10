@@ -1345,7 +1345,7 @@ Item {
         }
 
         function _filteredPanels() {
-            var q = winSearch.text.toLowerCase().trim()
+            var q = (typeof winSearch !== "undefined" && winSearch) ? winSearch.text.toLowerCase().trim() : ""
             var hidden = customWinMenu.hiddenList || []
             var out = []
             for (var i = 0; i < _allPanels.length; i++) {
@@ -1467,7 +1467,7 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             anchors.margins: -4
-                            cursorShape: parent.parent.parent.text.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            cursorShape: winSearch.text.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
                             onClicked: { if (winSearch.text.length > 0) winSearch.text = "" }
                         }
                     }

@@ -1,8 +1,10 @@
 #include "color_range_selector.h"
-#include <QRegion>
-#include <QRect>
 #include <cmath>
 #include <algorithm>
+#include <vector>
+#include <functional>
+#include <unordered_map>
+#include <utility>
 
 namespace artflow {
 
@@ -106,33 +108,218 @@ QImage ColorRangeSelector::selectByColor(const QImage &image, const QColor &targ
 }
 
 QPainterPath ColorRangeSelector::maskToPath(const QImage &mask) const {
-    QPainterPath path;
-    QRegion region;
     int W = mask.width();
     int H = mask.height();
+    QPainterPath path;
+    if (W <= 0 || H <= 0) return path;
 
-    // Optimize: merge contiguous spans of pixels horizontally
+    // 1. Build a binary grid from the mask (threshold at 50%)
+    std::vector<uint8_t> grid(W * H, 0);
     for (int y = 0; y < H; ++y) {
         const uint8_t *line = mask.constScanLine(y);
-        int startX = -1;
         for (int x = 0; x < W; ++x) {
-            if (line[x] > 127) { // 50% threshold
-                if (startX == -1) {
-                    startX = x;
-                }
-            } else {
-                if (startX != -1) {
-                    region = region.united(QRect(startX, y, x - startX, 1));
-                    startX = -1;
-                }
-            }
-        }
-        if (startX != -1) {
-            region = region.united(QRect(startX, y, W - startX, 1));
+            if (line[x] > 127) grid[y * W + x] = 1;
         }
     }
 
-    path.addRegion(region);
+    // Helper: is pixel inside the selection?
+    auto inside = [&](int x, int y) -> bool {
+        if (x < 0 || x >= W || y < 0 || y >= H) return false;
+        return grid[y * W + x] != 0;
+    };
+
+    // 2. Quick check: is there any selected pixel?
+    bool anySelected = false;
+    for (int i = 0; i < W * H && !anySelected; ++i) {
+        if (grid[i]) anySelected = true;
+    }
+    if (!anySelected) return path;
+
+    // 3. Marching Squares contour tracing
+    //    Pad the grid by 1 pixel on each side to handle border contours cleanly.
+    int PW = W + 2;
+    int PH = H + 2;
+    auto paddedInside = [&](int px, int py) -> bool {
+        int x = px - 1;
+        int y = py - 1;
+        return inside(x, y);
+    };
+
+    // Direction tables for marching squares
+    // Cell corners:  TL(x,y)  TR(x+1,y)
+    //                BL(x,y+1) BR(x+1,y+1)
+    // Case index = TL*8 + TR*4 + BR*2 + BL*1
+
+    struct Edge { float x1, y1, x2, y2; };
+
+    // Collect all boundary edges
+    std::vector<Edge> edges;
+    edges.reserve(W * 4); // rough estimate
+
+    for (int cy = 0; cy < PH - 1; ++cy) {
+        for (int cx = 0; cx < PW - 1; ++cx) {
+            bool tl = paddedInside(cx, cy);
+            bool tr = paddedInside(cx + 1, cy);
+            bool br = paddedInside(cx + 1, cy + 1);
+            bool bl = paddedInside(cx, cy + 1);
+
+            int caseIdx = (tl ? 8 : 0) | (tr ? 4 : 0) | (br ? 2 : 0) | (bl ? 1 : 0);
+            if (caseIdx == 0 || caseIdx == 15) continue; // No boundary
+
+            // Map back to original coordinates (subtract 1 for padding offset)
+            float ox = cx - 1.0f;
+            float oy = cy - 1.0f;
+
+
+            // Edge midpoints in (x,y):
+            float tmx = ox + 0.5f, tmy = oy;        // top edge midpoint
+            float bmx = ox + 0.5f, bmy = oy + 1.0f;  // bottom edge midpoint
+            float lmx = ox,        lmy = oy + 0.5f;  // left edge midpoint
+            float rmx = ox + 1.0f, rmy = oy + 0.5f;  // right edge midpoint
+
+            switch (caseIdx) {
+                case 1:  edges.push_back({lmx, lmy, bmx, bmy}); break;
+                case 2:  edges.push_back({bmx, bmy, rmx, rmy}); break;
+                case 3:  edges.push_back({lmx, lmy, rmx, rmy}); break;
+                case 4:  edges.push_back({tmx, tmy, rmx, rmy}); break;
+                case 5:  edges.push_back({lmx, lmy, tmx, tmy}); edges.push_back({bmx, bmy, rmx, rmy}); break;
+                case 6:  edges.push_back({tmx, tmy, bmx, bmy}); break;
+                case 7:  edges.push_back({lmx, lmy, tmx, tmy}); break;
+                case 8:  edges.push_back({tmx, tmy, lmx, lmy}); break;
+                case 9:  edges.push_back({tmx, tmy, bmx, bmy}); break;
+                case 10: edges.push_back({tmx, tmy, rmx, rmy}); edges.push_back({lmx, lmy, bmx, bmy}); break;
+                case 11: edges.push_back({tmx, tmy, rmx, rmy}); break;
+                case 12: edges.push_back({lmx, lmy, rmx, rmy}); break;
+                case 13: edges.push_back({bmx, bmy, rmx, rmy}); break;
+                case 14: edges.push_back({lmx, lmy, bmx, bmy}); break;
+                default: break;
+            }
+        }
+    }
+
+    if (edges.empty()) return path;
+
+    // 4. Chain edges into contours by matching endpoints
+    //    Use a spatial hash to quickly find matching endpoints
+    struct PtHash {
+        size_t operator()(const std::pair<int,int> &p) const {
+            return std::hash<long long>()(((long long)p.first << 32) | (unsigned int)p.second);
+        }
+    };
+
+    // Quantize float coords to int keys (multiply by 2 to handle 0.5 increments)
+    auto toKey = [](float x, float y) -> std::pair<int,int> {
+        return {(int)std::round(x * 2.0f), (int)std::round(y * 2.0f)};
+    };
+
+    // Build adjacency: for each endpoint, list of (edge_index, which_end: 0=start, 1=end)
+    std::unordered_multimap<std::pair<int,int>, std::pair<int,int>, PtHash> endpointMap;
+    for (int i = 0; i < (int)edges.size(); ++i) {
+        auto k1 = toKey(edges[i].x1, edges[i].y1);
+        auto k2 = toKey(edges[i].x2, edges[i].y2);
+        endpointMap.insert({k1, {i, 0}});
+        endpointMap.insert({k2, {i, 1}});
+    }
+
+    std::vector<bool> usedEdge(edges.size(), false);
+
+    // Trace contours
+    std::vector<std::vector<QPointF>> contours;
+    for (int startIdx = 0; startIdx < (int)edges.size(); ++startIdx) {
+        if (usedEdge[startIdx]) continue;
+
+        std::vector<QPointF> contour;
+        int curIdx = startIdx;
+        usedEdge[curIdx] = true;
+        contour.push_back(QPointF(edges[curIdx].x1, edges[curIdx].y1));
+        contour.push_back(QPointF(edges[curIdx].x2, edges[curIdx].y2));
+
+        // Follow the chain from the end
+        bool progress = true;
+        while (progress) {
+            progress = false;
+            QPointF lastPt = contour.back();
+            auto key = toKey(lastPt.x(), lastPt.y());
+            auto range = endpointMap.equal_range(key);
+            for (auto it = range.first; it != range.second; ++it) {
+                int eIdx = it->second.first;
+                int eEnd = it->second.second;
+                if (usedEdge[eIdx]) continue;
+
+                usedEdge[eIdx] = true;
+                // Add the other endpoint
+                if (eEnd == 0) {
+                    contour.push_back(QPointF(edges[eIdx].x2, edges[eIdx].y2));
+                } else {
+                    contour.push_back(QPointF(edges[eIdx].x1, edges[eIdx].y1));
+                }
+                progress = true;
+                break;
+            }
+        }
+
+        if (contour.size() >= 3) {
+            contours.push_back(std::move(contour));
+        }
+    }
+
+    // 5. Simplify contours using Ramer-Douglas-Peucker and build the QPainterPath
+    std::function<void(const std::vector<QPointF>&, int, int, float, std::vector<bool>&)> rdp;
+    rdp = [&rdp](const std::vector<QPointF>& pts, int start, int end, float epsilon, std::vector<bool>& keep) {
+        if (end - start < 2) return;
+        float maxDist = 0;
+        int maxIdx = start;
+        QPointF a = pts[start], b = pts[end];
+        float dx = b.x() - a.x(), dy = b.y() - a.y();
+        float lenSq = dx * dx + dy * dy;
+
+        for (int i = start + 1; i < end; ++i) {
+            float dist;
+            if (lenSq < 1e-10f) {
+                float ex = pts[i].x() - a.x(), ey = pts[i].y() - a.y();
+                dist = std::sqrt(ex * ex + ey * ey);
+            } else {
+                float t = ((pts[i].x() - a.x()) * dx + (pts[i].y() - a.y()) * dy) / lenSq;
+                t = std::max(0.0f, std::min(1.0f, t));
+                float px = a.x() + t * dx - pts[i].x();
+                float py = a.y() + t * dy - pts[i].y();
+                dist = std::sqrt(px * px + py * py);
+            }
+            if (dist > maxDist) { maxDist = dist; maxIdx = i; }
+        }
+        if (maxDist > epsilon) {
+            keep[maxIdx] = true;
+            rdp(pts, start, maxIdx, epsilon, keep);
+            rdp(pts, maxIdx, end, epsilon, keep);
+        }
+    };
+
+    float epsilon = 1.0f; // Simplification tolerance in pixels
+
+    for (auto &contour : contours) {
+        if (contour.size() < 3) continue;
+
+        // Simplify
+        std::vector<bool> keep(contour.size(), false);
+        keep[0] = true;
+        keep[contour.size() - 1] = true;
+        rdp(contour, 0, (int)contour.size() - 1, epsilon, keep);
+
+        std::vector<QPointF> simplified;
+        for (int i = 0; i < (int)contour.size(); ++i) {
+            if (keep[i]) simplified.push_back(contour[i]);
+        }
+
+        if (simplified.size() < 3) simplified = contour; // Keep original if too few points
+
+        // Add to path
+        path.moveTo(simplified[0]);
+        for (size_t i = 1; i < simplified.size(); ++i) {
+            path.lineTo(simplified[i]);
+        }
+        path.closeSubpath();
+    }
+
     return path;
 }
 

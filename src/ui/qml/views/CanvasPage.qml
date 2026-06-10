@@ -403,6 +403,50 @@ import "../components"
                             }
                     } 
                 }
+
+                // Drag & Drop para importar imagenes como capas
+                DropArea {
+                    anchors.fill: parent
+                    enabled: isProjectActive
+                    z: 800
+
+                    onEntered: (drag) => {
+                        if (drag.urls.length > 0) {
+                            var ext = drag.urls[0].toString().split('.').pop().toLowerCase()
+                            if (["png", "jpg", "jpeg", "bmp", "tiff", "tif", "gif", "webp"].indexOf(ext) >= 0) {
+                                drag.accepted = true
+                                dropOverlay.visible = true
+                            }
+                        }
+                    }
+                    onExited: { dropOverlay.visible = false }
+                    onDropped: (drop) => {
+                        dropOverlay.visible = false
+                        if (drop.urls.length > 0) {
+                            var path = drop.urls[0].toString()
+                            mainCanvas.importImageAsLayer(path)
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: dropOverlay
+                    anchors.fill: parent
+                    color: Qt.rgba(0.1, 0.1, 0.2, 0.6)
+                    visible: false
+                    z: 900
+                    border.color: "#4488ff"
+                    border.width: 3
+                    radius: 12
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Suelta la imagen para importarla como capa"
+                        color: "#ffffff"
+                        font.pixelSize: 18
+                        font.bold: true
+                    }
+                }
             }
                 // --- CONTEXT BAR REMOVED AND CONSOLIDATED IN TRANSFORM OPTIONS HUD ---
                 
@@ -418,8 +462,12 @@ import "../components"
                         ListElement { name: "ellipse"; label: "Ellipse"; icon: "shapes.svg" },
                         ListElement { name: "line"; label: "Line"; icon: "shapes.svg" }
                     ]}
-                    ListElement { name: "lasso"; icon: "lasso.svg"; label: "Lasso"; subTools: [] }
-                    ListElement { name: "magnetic_lasso"; icon: "magnet.svg"; label: "Magnetic Lasso"; subTools: [] }
+                    ListElement { name: "lasso"; icon: "lasso.svg"; label: "Lasso"; subTools: [
+                        ListElement { name: "lasso_free"; label: "Freehand Lasso"; icon: "lasso.svg" },
+                        ListElement { name: "lasso_poly"; label: "Polygonal Lasso"; icon: "polygonal-lasso.svg" },
+                        ListElement { name: "magnetic_lasso"; label: "Magnetic Lasso"; icon: "magnet.svg" },
+                        ListElement { name: "select_wand"; label: "Magic Wand"; icon: "wand.svg" }
+                    ]}
                     ListElement { name: "move"; icon: "move.svg"; label: "Transform & Move"; subTools: [] }
                     ListElement { name: "pen"; icon: "pen.svg"; label: "Pen"; subTools: [
                         ListElement { name: "INK"; label: "Ink Pen"; icon: "pen.svg" },
@@ -454,7 +502,7 @@ import "../components"
                     ListElement { name: "hand"; icon: "hand.svg"; label: "Hand"; subTools: [] }
                 }
 
-                property int activeToolIdx: 5 // Default to Pen
+                property int activeToolIdx: 4 // Default to Pen (was 5)
                 
                 onActiveToolIdxChanged: {
                     if (canvasPage.altPressed) return // Don't reset if switching via ALT
@@ -462,7 +510,7 @@ import "../components"
                     var toolData = toolsModel.get(activeToolIdx)
                     if (toolData) {
                         // ALWAYS update backend currentTool first to ensure C++ registers the correct tool mode!
-                        if (toolData.name !== "shapes" && toolData.name !== "selection" && toolData.name !== "fill") {
+                        if (toolData.name !== "shapes" && toolData.name !== "selection" && toolData.name !== "fill" && toolData.name !== "lasso") {
                             mainCanvas.currentTool = toolData.name;
                         }
                         
@@ -471,10 +519,18 @@ import "../components"
                             if (subIdx >= toolData.subTools.count) subIdx = 0
                             
                             // SPECIAL HANDLING FOR NON-BRUSH TOOLS
-                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill") {
+                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill" || toolData.name === "lasso") {
                                 var subName = toolData.subTools.get(subIdx).name
                                 console.log("Switching Tool: " + subName)
-                                mainCanvas.currentTool = subName
+                                if (subName === "lasso_free") {
+                                    mainCanvas.currentTool = "lasso"
+                                    mainCanvas.lassoMode = 0
+                                } else if (subName === "lasso_poly") {
+                                    mainCanvas.currentTool = "lasso"
+                                    mainCanvas.lassoMode = 1
+                                } else {
+                                    mainCanvas.currentTool = subName
+                                }
                             } else {
                                 // Standard Presets (Pen, Pencil, Brush, Airbrush, Eraser)
                                 var presetName = toolData.subTools.get(subIdx).label
@@ -485,14 +541,12 @@ import "../components"
                             // Handlers for tools without subtools
                             if (toolData.name === "eraser") mainCanvas.usePreset("Eraser Soft")
                             if (toolData.name === "lasso") mainCanvas.currentTool = "lasso"
-                            if (toolData.name === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
                             if (toolData.name === "selection") mainCanvas.currentTool = "selection"
                             if (toolData.name === "move") mainCanvas.currentTool = "move"
                         }
                     }
                     
                     // UX IMPROVEMENT: Close panels when picking a tool
-                    // showBrush = false // Removed to allow library to stay open or open automatically
                     showColor = false
                     showLayers = false
                     

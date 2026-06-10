@@ -111,13 +111,14 @@ QPointF EdgeDetector::findEdgePoint(const QPointF &point, int searchRadius) cons
 
     int bestX = px;
     int bestY = py;
-    float maxGrad = -1.0f;
+    float maxGrad = m_gradientMap[py * m_width + px]; // Start with the gradient at the center/clicked point
 
     for (int dy = -searchRadius; dy <= searchRadius; ++dy) {
         int ny = py + dy;
         if (ny < 0 || ny >= m_height) continue;
         int idx = ny * m_width;
         for (int dx = -searchRadius; dx <= searchRadius; ++dx) {
+            if (dx == 0 && dy == 0) continue; // Skip center pixel since it is the default
             int nx = px + dx;
             if (nx < 0 || nx >= m_width) continue;
 
@@ -128,6 +129,11 @@ QPointF EdgeDetector::findEdgePoint(const QPointF &point, int searchRadius) cons
                 bestY = ny;
             }
         }
+    }
+
+    // Only snap if we found a significant edge gradient
+    if (maxGrad < 0.01f) {
+        return point;
     }
 
     return QPointF(bestX, bestY);

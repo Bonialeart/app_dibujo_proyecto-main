@@ -288,6 +288,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_lastCanvasHeight(0), m_hasActiveSpeechBalloon(false),
       m_draggingBalloonHandle(0),
       m_gradientShape("linear") {
+  m_lastTraceTarget = QPointF(-9999.0f, -9999.0f);
   m_customOpenHandCursor = loadCustomSvgCursor("hand-open.svg");
   m_customClosedHandCursor = loadCustomSvgCursor("hand-closed.svg");
 
@@ -889,12 +890,13 @@ void CanvasItem::renderGpuComposition(QOpenGLFramebufferObject *target, int w,
     m_compositionShader->setUniformValue("uMode", (int)layer->blendMode);
     m_compositionShader->setUniformValue("uDrawPanelBorderOnly", 0);
 
-    // Identity-like transforms for FBO-to-FBO composition
+    // Per-layer display offset for FBO-to-FBO composition
     m_compositionShader->setUniformValue(
         "uScreenSize", QVector2D(m_canvasWidth, m_canvasHeight));
     m_compositionShader->setUniformValue(
         "uLayerSize", QVector2D(m_canvasWidth, m_canvasHeight));
-    m_compositionShader->setUniformValue("uViewOffset", QVector2D(0, 0));
+    m_compositionShader->setUniformValue(
+        "uViewOffset", QVector2D(layer->offsetX, layer->offsetY));
     m_compositionShader->setUniformValue("uZoom", 1.0f);
     m_compositionShader->setUniformValue("uIsPreview", 0.0f);
 
@@ -2108,6 +2110,8 @@ void CanvasItem::paint(QPainter *painter) {
             if (isAnimated) {
               painter.setTransform(animTransform, true);
             }
+            // Apply per-layer display offset for CPU fallback path
+            painter.translate(lyr->offsetX, lyr->offsetY);
 
             // Use software blender for all non-Normal modes to ensure mathematically correct W3C alpha compositing
             if (lyr->blendMode != artflow::BlendMode::Normal) {
@@ -2557,7 +2561,7 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // 5.1 In-progress lasso path (while drawing / polygonal)
-  if (!m_activeLassoPath.isEmpty()) {
+  if (m_activeLassoPath.elementCount() > 0) {
     painter->save();
     painter->translate(m_viewOffset.x() * m_zoomLevel,
                        m_viewOffset.y() * m_zoomLevel);
@@ -2946,10 +2950,68 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // 🎯 TOUCH EYEDROPPER — Color preview circle
+  // ══════════════════════════════════════════════════════════════
+
+  if (m_touchIsEyedropper && m_touchPointCount == 1) {
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    QPointF pos = m_lastTouchPos;
+    float outerR = 65.0f;
+    float ringR = 62.0f;
+    float innerR = 57.0f;
+
+    // Outer shadow ring
+    painter->setPen(QPen(QColor(0, 0, 0, 160), 3.0f));
+    painter->setBrush(Qt::NoBrush);
+    painter->drawEllipse(pos, outerR, outerR);
+
+    // White contrast ring
+    painter->setPen(QPen(Qt::white, 2.5f));
+    painter->drawEllipse(pos, ringR, ringR);
+
+    // Split circle: bottom half = old brush color, top half = sampled color
+    QRectF splitRect(pos.x() - innerR, pos.y() - innerR, innerR * 2, innerR * 2);
+
+    // Top half (sampled color)
+    QPainterPath topHalf;
+    topHalf.arcMoveTo(splitRect, 0);
+    topHalf.arcTo(splitRect, 0, 180);
+    topHalf.lineTo(pos.x(), pos.y());
+    topHalf.closeSubpath();
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(m_touchEyedropperColor);
+    painter->drawPath(topHalf);
+
+    // Bottom half (old brush color)
+    QPainterPath bottomHalf;
+    bottomHalf.arcMoveTo(splitRect, 180);
+    bottomHalf.arcTo(splitRect, 180, 180);
+    bottomHalf.lineTo(pos.x(), pos.y());
+    bottomHalf.closeSubpath();
+    painter->setBrush(m_touchEyedropperOldColor);
+    painter->drawPath(bottomHalf);
+
+    // Divider line
+    painter->setPen(QPen(Qt::white, 2.0f));
+    painter->drawLine(QPointF(pos.x() - innerR, pos.y()),
+                      QPointF(pos.x() + innerR, pos.y()));
+
+    // Center dot
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(255, 255, 255, 220));
+    painter->drawEllipse(pos, 2.5f, 2.5f);
+
+    painter->restore();
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // 🎯 CURSOR PERSONALIZADO AL FINAL (ENCIMA DE TODO)
   // ══════════════════════════════════════════════════════════════
 
-  if (m_cursorVisible && !m_spacePressed && !m_isRotatingCanvas &&
+  if (!m_touchIsEyedropper && m_cursorVisible && !m_spacePressed &&
+      !m_isRotatingCanvas &&
       (m_tool == ToolType::Pen || m_tool == ToolType::Eraser)) {
 
     // Obtener valores actuales del pincel
@@ -3017,8 +3079,8 @@ void CanvasItem::paint(QPainter *painter) {
   }
 
   // Cursores para otras herramientas (opcionales)
-  else if (m_cursorVisible && !m_spacePressed && m_tool != ToolType::Hand &&
-           m_tool != ToolType::Transform) {
+  else if (!m_touchIsEyedropper && m_cursorVisible && !m_spacePressed &&
+           m_tool != ToolType::Hand && m_tool != ToolType::Transform) {
     // 🎯 Professional Precision Cursor (Crosshair with Circle) para
     // eyedropper, lasso, fill, etc.
     painter->save();
@@ -4273,13 +4335,13 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       } else {
         // ── POLYGONAL mode: add vertices on each click ──
         const float snapRadius = 12.0f / m_zoomLevel;
-        if (!m_activeLassoPath.isEmpty() &&
+        if (m_activeLassoPath.elementCount() >= 3 &&
             QLineF(canvasPos, m_activeLassoPath.elementAt(0)).length() < snapRadius) {
           // Clicked near the first point → close and commit
           m_activeLassoPath.closeSubpath();
           _commitLassoPath();
         } else {
-          if (m_activeLassoPath.isEmpty())
+          if (m_activeLassoPath.elementCount() == 0)
             m_activeLassoPath.moveTo(canvasPos);
           else
             m_activeLassoPath.lineTo(canvasPos);
@@ -4288,7 +4350,7 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
     } else if (m_tool == ToolType::MagneticLasso) {
       // Magnetic: snap vertex to nearest edge, trace edge path
       const float snapRadius = 12.0f / m_zoomLevel;
-      if (!m_activeLassoPath.isEmpty() &&
+      if (m_activeLassoPath.elementCount() >= 3 &&
           QLineF(canvasPos, m_activeLassoPath.elementAt(0)).length() < snapRadius) {
         QPointF startPt = m_activeLassoPath.elementAt(0);
         auto edgePath = m_edgeDetector->traceEdgePath(m_activeLassoPath.currentPosition(), startPt);
@@ -4309,9 +4371,12 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
           }
         }
         
+        // Reset last trace target for new session
+        m_lastTraceTarget = QPointF(-9999.0f, -9999.0f);
+        
         // Snap clicked coordinate to nearest edge point
         QPointF snapped = m_edgeDetector->findEdgePoint(canvasPos, m_magneticSearchRadius);
-        if (m_activeLassoPath.isEmpty()) {
+        if (m_activeLassoPath.elementCount() == 0) {
           m_activeLassoPath.moveTo(snapped);
         } else {
           // Trace optimal edge path between last node and snapped point
@@ -4338,16 +4403,117 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
   if (m_tool == ToolType::MagicWand) {
     QPointF canvasPos = screenToCanvas(event->position());
-    // In a real app, we'd start the circular threshold UI here if held,
-    // or just pick color on click.
-    emit notificationRequested("Auto Select at " +
-                                   QString::number(canvasPos.x()) + "," +
-                                   QString::number(canvasPos.y()),
-                               "info");
-    // Placeholder: select the whole layer for now
-    m_hasSelection = true;
-    m_selectionPath.addRect(0, 0, m_canvasWidth, m_canvasHeight);
-    update();
+    int ix = static_cast<int>(std::round(canvasPos.x()));
+    int iy = static_cast<int>(std::round(canvasPos.y()));
+
+    if (ix >= 0 && ix < m_canvasWidth && iy >= 0 && iy < m_canvasHeight) {
+      Layer *layer = m_layerManager->getActiveLayer();
+      if (layer && layer->buffer) {
+        int W = m_canvasWidth;
+        int H = m_canvasHeight;
+        QImage layerImg(layer->buffer->data(), W, H, QImage::Format_RGBA8888);
+        QRgb startCol = layerImg.pixel(ix, iy);
+
+        int startR = qRed(startCol);
+        int startG = qGreen(startCol);
+        int startB = qBlue(startCol);
+        int startA = qAlpha(startCol);
+
+        QImage mask(W, H, QImage::Format_Grayscale8);
+        mask.fill(0);
+
+        std::vector<bool> visited(W * H, false);
+        std::vector<QPoint> queue;
+        queue.reserve(W * H / 8);
+        queue.push_back(QPoint(ix, iy));
+        visited[iy * W + ix] = true;
+
+        // selectionThreshold is [0.0 - 1.0].
+        // Scale to Euclidean distance in RGBA space (Max = sqrt(255^2 * 4) = 510.0f)
+        float maxDist = 510.0f * m_selectionThreshold;
+        float maxDistSq = maxDist * maxDist;
+
+        size_t head = 0;
+        while (head < queue.size()) {
+          QPoint curr = queue[head++];
+          int cx = curr.x();
+          int cy = curr.y();
+
+          mask.scanLine(cy)[cx] = 255;
+
+          int dx[] = {0, 0, 1, -1};
+          int dy[] = {1, -1, 0, 0};
+
+          for (int i = 0; i < 4; ++i) {
+            int nx = cx + dx[i];
+            int ny = cy + dy[i];
+
+            if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+              int vIdx = ny * W + nx;
+              if (!visited[vIdx]) {
+                visited[vIdx] = true;
+                QRgb pix = layerImg.pixel(nx, ny);
+                int pr = qRed(pix);
+                int pg = qGreen(pix);
+                int pb = qBlue(pix);
+                int pa = qAlpha(pix);
+
+                float dr = pr - startR;
+                float dg = pg - startG;
+                float db = pb - startB;
+                float da = pa - startA;
+                float distSq = dr * dr + dg * dg + db * db + da * da;
+
+                if (distSq <= maxDistSq) {
+                  queue.push_back(QPoint(nx, ny));
+                }
+              }
+            }
+          }
+        }
+
+        ColorRangeSelector selector;
+        QPainterPath wandPath = selector.maskToPath(mask);
+
+        QPainterPath beforePath = m_selectionPath;
+        bool beforeHasSel = m_hasSelection;
+
+        if (m_selectionAddMode == 0) {
+          m_selectionPath = wandPath;
+        } else if (m_selectionAddMode == 1) {
+          m_selectionPath = m_selectionPath.united(wandPath);
+        } else if (m_selectionAddMode == 2) {
+          m_selectionPath = m_selectionPath.subtracted(wandPath);
+        }
+
+        m_hasSelection = !m_selectionPath.isEmpty();
+        emit hasSelectionChanged();
+
+        if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+          m_marchingAntsTimer->start();
+        else if (!m_hasSelection && m_marchingAntsTimer)
+          m_marchingAntsTimer->stop();
+
+        update();
+
+        auto updateSelCb = [this](const QPainterPath &path, bool hasSel) {
+          m_selectionPath = path;
+          m_hasSelection = hasSel;
+          emit hasSelectionChanged();
+          if (m_hasSelection && m_marchingAntsTimer && !m_marchingAntsTimer->isActive())
+            m_marchingAntsTimer->start();
+          else if (!m_hasSelection && m_marchingAntsTimer)
+            m_marchingAntsTimer->stop();
+          update();
+        };
+
+        if (m_undoManager) {
+          m_undoManager->pushCommand(std::make_unique<artflow::SelectionUndoCommand>(
+              updateSelCb, beforePath, beforeHasSel, m_selectionPath, m_hasSelection));
+        }
+      }
+    }
+    event->accept();
     return;
   }
 
@@ -4877,14 +5043,13 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   }
 
   // Update cursor pos for all lasso tools even without button held (rubber-band)
-  if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive && !m_activeLassoPath.isEmpty()) {
+  if (m_tool == ToolType::MagneticLasso && m_isMagneticLassoActive && m_activeLassoPath.elementCount() > 0) {
     m_lassoCursorPos = screenToCanvas(event->position());
     
-    static QPointF lastTraceTarget(-9999.0f, -9999.0f);
-    if (QLineF(m_lassoCursorPos, lastTraceTarget).length() < 4.0f) {
+    if (QLineF(m_lassoCursorPos, m_lastTraceTarget).length() < 4.0f) {
       return; // Skip heavy Dijkstra on micro-movements to eliminate lag!
     }
-    lastTraceTarget = m_lassoCursorPos;
+    m_lastTraceTarget = m_lassoCursorPos;
 
     // Precompute gradient map if dirty
     if (m_gradientMapDirty) {
@@ -4912,7 +5077,7 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     update();
   } else if (m_tool == ToolType::Lasso || m_tool == ToolType::MagneticLasso) {
     m_lassoCursorPos = screenToCanvas(event->position());
-    if (!m_activeLassoPath.isEmpty()) update();
+    if (m_activeLassoPath.elementCount() > 0) update();
   }
 
   if (m_isDrawing) {
@@ -5307,7 +5472,7 @@ void CanvasItem::mouseDoubleClickEvent(QMouseEvent *event) {
     // Snap the final double-click point and trace path to it before closing!
     QPointF canvasPos = screenToCanvas(event->position());
     QPointF snapped = m_edgeDetector->findEdgePoint(canvasPos, m_magneticSearchRadius);
-    if (!m_activeLassoPath.isEmpty()) {
+    if (m_activeLassoPath.elementCount() > 0) {
       auto edgePath = m_edgeDetector->traceEdgePath(m_activeLassoPath.currentPosition(), snapped);
       for (auto &pt : edgePath) {
         m_activeLassoPath.lineTo(pt);
@@ -5716,7 +5881,9 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
     if (points == 1 &&
         PreferencesManager::instance()->touchEyedropperEnabled()) {
       m_touchStartPos = event->points().first().position();
+      m_lastTouchPos = m_touchStartPos;
       m_touchIsEyedropper = false;
+      m_touchEyedropperOldColor = m_brushColor;
       m_isTwoFingerGesture = false;
       m_strokeCancelledByGesture = false;
       if (!m_touchTimer) {
@@ -5725,15 +5892,30 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
         connect(m_touchTimer, &QTimer::timeout, this, [this]() {
           if (m_touchPointCount == 1 && !m_isDrawing) {
             m_touchIsEyedropper = true;
-            QColor sampled = QColor(
-                sampleColor(m_touchStartPos.x(), m_touchStartPos.y(), 0));
-            setBrushColor(sampled);
+            m_touchEyedropperColor = QColor(
+                sampleColor(m_lastTouchPos.x(), m_lastTouchPos.y(), 0));
+            setBrushColor(m_touchEyedropperColor);
             emit notificationRequested("Color Picked", "info");
+            update();
           }
         });
       }
       m_touchTimer->start(500); // 500ms long press
     } else if (points > 1) {
+      if (m_touchTimer)
+        m_touchTimer->stop();
+    }
+
+    // ── Three-finger gesture initialization ──
+    if (points == 3) {
+      float avgY = 0;
+      for (int i = 0; i < points; i++)
+        avgY += event->points()[i].position().y();
+      m_threeFingerStartPos = QPointF(event->points()[0].position().x(), avgY / points);
+      m_threeFingerStartSize = m_brushSize;
+      m_isThreeFingerGesture = true;
+      m_threeFingerMoved = false;
+
       if (m_touchTimer)
         m_touchTimer->stop();
     }
@@ -5789,13 +5971,35 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
     event->accept();
 
   } else if (event->type() == QEvent::TouchUpdate) {
-    // ── Single-finger: cancel eyedropper if moved too far ──
-    if (points == 1 && m_touchTimer && m_touchTimer->isActive()) {
-      float dist = QPointF(event->points().first().position() - m_touchStartPos)
-                       .manhattanLength();
-      if (dist > 15.0f) {
-        m_touchTimer->stop();
+    m_lastTouchPos = event->points().first().position();
+
+    // ── Single-finger: live eyedropper while dragging ──
+    if (points == 1 && m_touchIsEyedropper) {
+      m_touchEyedropperColor = QColor(
+          sampleColor(m_lastTouchPos.x(), m_lastTouchPos.y(), 0));
+      setBrushColor(m_touchEyedropperColor);
+      update();
+      event->accept();
+      return;
+    }
+
+    // ── Three-finger gesture: brush size ──
+    if (points == 3 && m_isThreeFingerGesture) {
+      float avgY = 0;
+      for (int i = 0; i < points; i++)
+        avgY += event->points()[i].position().y();
+      avgY /= points;
+
+      float deltaY = m_threeFingerStartPos.y() - avgY;
+      float newSize = std::clamp(m_threeFingerStartSize + deltaY * 0.3f, 1.0f, 1000.0f);
+      int intSize = static_cast<int>(newSize);
+      if (intSize != m_brushSize) {
+        setBrushSize(intSize);
+        m_threeFingerMoved = true;
+        emit notificationRequested("Brush Size: " + QString::number(intSize), "info");
       }
+      event->accept();
+      return;
     }
 
     // ── Transition from 1→2 fingers during drawing ──
@@ -5900,11 +6104,11 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
     // ── Multi-touch Undo/Redo ──
     if (PreferencesManager::instance()->multitouchUndoRedoEnabled()) {
       // Only trigger undo/redo if we weren't in a pan/zoom/rotate gesture
-      // and the stroke wasn't just cancelled
+      // and the stroke wasn't just cancelled and wasn't a 3-finger swipe
       if (!m_strokeCancelledByGesture && !m_isDrawing) {
         if (points == 2) {
           undo();
-        } else if (points == 3) {
+        } else if (points == 3 && !m_threeFingerMoved) {
           redo();
         }
       }
@@ -5912,6 +6116,8 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
 
     // Reset gesture state
     m_isTwoFingerGesture = false;
+    m_isThreeFingerGesture = false;
+    m_threeFingerMoved = false;
     m_strokeCancelledByGesture = false;
     m_touchPointCount = 0;
   }
@@ -6831,27 +7037,27 @@ void CanvasItem::setCurrentTool(const QString &tool) {
     emit requestToolIdx(0);
   else if (tool == "shapes")
     emit requestToolIdx(1);
-  else if (tool == "lasso")
+  else if (tool == "lasso" || tool == "magnetic_lasso")
     emit requestToolIdx(2);
-  else if (tool == "magnetic_lasso")
-    emit requestToolIdx(3);
   else if (tool == "move")
-    emit requestToolIdx(4);
+    emit requestToolIdx(3);
   else if (tool == "pen")
-    emit requestToolIdx(5);
+    emit requestToolIdx(4);
   else if (tool == "pencil")
-    emit requestToolIdx(6);
+    emit requestToolIdx(5);
   else if (tool == "brush")
-    emit requestToolIdx(7);
+    emit requestToolIdx(6);
   else if (tool == "airbrush")
-    emit requestToolIdx(8);
+    emit requestToolIdx(7);
   else if (tool == "eraser")
-    emit requestToolIdx(9);
+    emit requestToolIdx(8);
   else if (tool == "fill")
-    emit requestToolIdx(10);
+    emit requestToolIdx(9);
   else if (tool == "eyedropper" || tool == "picker")
-    emit requestToolIdx(11);
+    emit requestToolIdx(10);
   else if (tool == "hand")
+    emit requestToolIdx(11);
+  else if (tool == "panel_cut")
     emit requestToolIdx(12);
 
   if (tool == "brush" || tool == "pen" || tool == "pencil" ||
@@ -9759,12 +9965,18 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
 }
 
 bool CanvasItem::importImageAsLayer(const QString &path) {
-  if (!m_layerManager)
+  qDebug() << "[importImageAsLayer] ENTER path=" << path;
+
+  if (!m_layerManager) {
+    qDebug() << "[importImageAsLayer] FAIL - no layer manager";
     return false;
+  }
 
   int canvasW = m_canvasWidth;
   int canvasH = m_canvasHeight;
+  qDebug() << "[importImageAsLayer] canvas size =" << canvasW << "x" << canvasH;
   if (canvasW <= 0 || canvasH <= 0) {
+    qDebug() << "[importImageAsLayer] FAIL - invalid canvas size";
     emit notificationRequested("Canvas sin tamaño válido", "error");
     return false;
   }
@@ -9774,6 +9986,8 @@ bool CanvasItem::importImageAsLayer(const QString &path) {
   if (localPath.startsWith("file:", Qt::CaseInsensitive))
     localPath = QUrl(path).toLocalFile();
 
+  qDebug() << "[importImageAsLayer] resolved localPath =" << localPath;
+
   // ── Load the image (PNG, JPG, BMP, TIFF, WebP …) ─────────────────────────
   QImage src;
   if (!src.load(localPath)) {
@@ -9781,6 +9995,7 @@ bool CanvasItem::importImageAsLayer(const QString &path) {
     emit notificationRequested("No se pudo cargar la imagen", "error");
     return false;
   }
+  qDebug() << "[importImageAsLayer] loaded image" << src.size();
 
   // ── Build a canvas-sized RGBA8888_Premultiplied image (transparent background) ──
   // The source image is scaled to fit inside the canvas keeping aspect ratio,
@@ -9829,19 +10044,24 @@ bool CanvasItem::importImageAsLayer(const QString &path) {
 
   // ── Add the new layer and load its pixel data ──────────────────────────────
   int addedIdx = m_layerManager->addLayer("Imported Image");
+  qDebug() << "[importImageAsLayer] addLayer returned index" << addedIdx;
   Layer *layer = m_layerManager->getLayer(addedIdx);
   if (!layer || !layer->buffer) {
+    qDebug() << "[importImageAsLayer] FAIL - layer or buffer is null";
     emit notificationRequested("Error al crear la capa", "error");
     return false;
   }
 
   // loadRawData is a single memcpy-style bulk load
+  qDebug() << "[importImageAsLayer] loading raw data...";
   layer->buffer->loadRawData(canvas.constBits());
   layer->clipped = shouldClip;
   layer->markDirty();
+  qDebug() << "[importImageAsLayer] raw data loaded, dirty marked";
 
   // Move layer to the correct contextual stacking position
   if (addedIdx != targetIdx) {
+    qDebug() << "[importImageAsLayer] moving layer from" << addedIdx << "to" << targetIdx;
     m_layerManager->moveLayer(addedIdx, targetIdx);
   }
 
@@ -9849,10 +10069,12 @@ bool CanvasItem::importImageAsLayer(const QString &path) {
   setActiveLayer(targetIdx);
 
   QString baseName = QFileInfo(localPath).fileName();
-  emit notificationRequested("✓ Imagen importada: " + baseName, "success");
   qDebug() << "[importImageAsLayer] OK -" << localPath
            << "→ layer" << targetIdx
            << "(" << canvasW << "x" << canvasH << ") | clipped:" << shouldClip;
+
+  requestUpdate();
+  emit notificationRequested("✓ Imagen importada: " + baseName, "success");
   return true;
 }
 
@@ -10804,6 +11026,10 @@ void CanvasItem::setLayerBlendMode(int index, const QString &mode) {
 void CanvasItem::setActiveLayer(int index) {
   if (m_layerManager && index >= 0 && index < m_layerManager->getLayerCount()) {
     if (m_isTransforming) {
+      // CRITICAL: addLayer() may have changed the manager's active index;
+      // restore it to CanvasItem's tracking so applyTransform affects the
+      // correct layer (the one the user was actually transforming).
+      m_layerManager->setActiveLayer(m_activeLayerIndex);
       applyTransform();
     }
     // SYNC CURRENT LAYER BEFORE SWITCHING
@@ -10834,6 +11060,7 @@ void CanvasItem::setActiveLayer(int index) {
       m_pongFBO = nullptr;
     }
   }
+  requestUpdate();
 }
 
 void CanvasItem::setLayerPrivate(int index, bool isPrivate) {

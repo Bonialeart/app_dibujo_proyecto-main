@@ -88,6 +88,7 @@ Item {
         }
 
         ShapePath {
+            id: bridgePath
             fillColor: root.dropColor
             strokeWidth: 0
             
@@ -100,17 +101,17 @@ Item {
             
             // Lado izquierdo estirándose hacia el origen
             PathCubic { 
-                x: -_w; y: -_d 
-                control1X: -16; control1Y: _controlY 
-                control2X: -_w; control2Y: _controlY 
+                x: -bridgePath._w; y: -bridgePath._d 
+                control1X: -16; control1Y: bridgePath._controlY 
+                control2X: -bridgePath._w; control2Y: bridgePath._controlY 
             }
             // Línea en el origen
-            PathLine { x: _w; y: -_d }
+            PathLine { x: bridgePath._w; y: -bridgePath._d }
             // Lado derecho volviendo al orbe
             PathCubic { 
                 x: 16; y: 0 
-                control1X: _w; control1Y: _controlY 
-                control2X: 16; control2Y: _controlY 
+                control1X: bridgePath._w; control1Y: bridgePath._controlY 
+                control2X: 16; control2Y: bridgePath._controlY 
             }
         }
     }

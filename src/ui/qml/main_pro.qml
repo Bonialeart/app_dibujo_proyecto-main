@@ -98,6 +98,27 @@ Window {
 
 
     Component.onCompleted: {
+        // Corregir coordenadas fuera de pantalla (ej. debido a monitor desconectado)
+        var screenFound = false
+        var screens = Qt.application.screens
+        for (var i = 0; i < screens.length; i++) {
+            var scr = screens[i]
+            if (mainWindow.x < scr.virtualX + scr.width && mainWindow.x + mainWindow.width > scr.virtualX &&
+                mainWindow.y < scr.virtualY + scr.height && mainWindow.y + mainWindow.height > scr.virtualY) {
+                screenFound = true
+                break
+            }
+        }
+        if (!screenFound) {
+            if (screens && screens.length > 0) {
+                mainWindow.x = screens[0].virtualX + (screens[0].width - mainWindow.width) / 2
+                mainWindow.y = screens[0].virtualY + (screens[0].height - mainWindow.height) / 2
+            } else {
+                mainWindow.x = 100
+                mainWindow.y = 100
+            }
+        }
+
         Qt.callLater(loadRecentProjects)
         Qt.callLater(function() {
             if (mainCanvas.checkForAutosave()) {
@@ -291,6 +312,108 @@ Window {
     // --- ESSENTIAL MODE LAYOUT CUSTOMIZATION HELPERS ---
     property var _layoutConfig: ({})
     property int _layoutVersion: 0
+    property var activeDropdownTriggerButton: null
+
+    function getButtonLabel(btnId) {
+        var catalog = preferencesManager && preferencesManager.essentialButtonCatalog ? preferencesManager.essentialButtonCatalog : ({})
+        var info = catalog[btnId]
+        return info ? info.label : btnId
+    }
+
+    function getButtonIcon(btnId) {
+        var catalog = preferencesManager && preferencesManager.essentialButtonCatalog ? preferencesManager.essentialButtonCatalog : ({})
+        var info = catalog[btnId]
+        return info ? info.icon : ""
+    }
+
+    function handleTopBarButtonPress(btnId) {
+        if (btnId === "backButton") {
+            currentPage = 0
+        } else if (btnId === "sidebarToggle") {
+            showSidebar = !showSidebar
+        } else if (btnId === "settingsButton") {
+            if (settingsMenu.visible) settingsMenu.close()
+            else settingsMenu.open()
+        } else if (btnId === "cubeToolsBtn") {
+            // handled via trigger reference directly on the button delegate click
+        } else if (btnId === "galleryBtn") {
+            toastManager.show("Galería de Diseños", "info")
+        } else if (btnId === "effectsBtn") {
+            showScreentonePanel = !showScreentonePanel
+            showLayers = false; showColor = false; showBrush = false; showBrushSettings = false
+        } else if (btnId === "studioModeBtn") {
+            modeChangeConfirmDialog.targetMode = "studio"
+            modeChangeConfirmDialog.open()
+        } else if (btnId === "undoBtn") {
+            mainCanvas.undo()
+        } else if (btnId === "redoBtn") {
+            mainCanvas.redo()
+        } else if (btnId === "brushConfigBtn") {
+            brushStudioDialog.open()
+            showBrush = false; showLayers = false; showColor = false
+        } else if (btnId === "layersBtn") {
+            showLayers = !showLayers
+            showColor = false; showBrush = false; showBrushSettings = false; showScreentonePanel = false
+        } else if (btnId === "storyBtn") {
+            showStoryPanel = !showStoryPanel
+        } else if (btnId.startsWith("tool_")) {
+            var toolName = btnId.substring(5)
+            var idxMap = {
+                "selection": 0, "shapes": 1, "lasso": 2, "magnetic_lasso": 3,
+                "move": 4, "pen": 5, "pencil": 6, "brush": 7, "airbrush": 8,
+                "eraser": 9, "fill": 10, "picker": 11, "hand": 12, "panel_cut": 13
+            }
+            var targetIdx = idxMap[toolName]
+            if (targetIdx !== undefined) {
+                if (canvasPage.activeToolIdx === targetIdx) {
+                    if (targetIdx >= 5 && targetIdx <= 9) {
+                        mainWindow.showBrush = !mainWindow.showBrush
+                        if (mainWindow.showBrush) {
+                            brushLibrary.autoSelectCategory(toolName)
+                        }
+                        canvasPage.showToolSettings = false
+                        mainWindow.showBrushSettings = false
+                        mainWindow.showShapes = false
+                    } else if (toolName === "shapes") {
+                        mainWindow.showShapes = !mainWindow.showShapes
+                        mainWindow.showBrush = false
+                        mainWindow.showBrushSettings = false
+                        canvasPage.showToolSettings = false
+                    } else {
+                        canvasPage.showToolSettings = !canvasPage.showToolSettings
+                    }
+                } else {
+                    canvasPage.activeToolIdx = targetIdx
+                    canvasPage.activeSubToolIdx = 0
+                    canvasPage.showToolSettings = false
+                    canvasPage.showSubTools = false
+                    mainWindow.showBrush = false
+                    mainWindow.showBrushSettings = false
+                    mainWindow.showShapes = false
+                }
+            }
+        }
+    }
+
+    function isTopBarButtonActive(btnId) {
+        if (btnId === "sidebarToggle") return showSidebar
+        if (btnId === "settingsButton") return settingsMenu.visible
+        if (btnId === "cubeToolsBtn") return toolsDropdown.visible
+        if (btnId === "effectsBtn") return showScreentonePanel
+        if (btnId === "storyBtn") return showStoryPanel
+        if (btnId === "layersBtn") return showLayers
+        if (btnId.startsWith("tool_")) {
+            var toolName = btnId.substring(5)
+            var idxMap = {
+                "selection": 0, "shapes": 1, "lasso": 2, "magnetic_lasso": 3,
+                "move": 4, "pen": 5, "pencil": 6, "brush": 7, "airbrush": 8,
+                "eraser": 9, "fill": 10, "picker": 11, "hand": 12, "panel_cut": 13
+            }
+            return idxMap[toolName] !== undefined && canvasPage.activeToolIdx === idxMap[toolName]
+        }
+        return false
+    }
+
     function _btnInLocation(btnId, location) {
         var list = _layoutConfig[location] || []
         return list.indexOf(btnId) >= 0
@@ -2267,8 +2390,12 @@ Window {
                         ListElement { name: "bubble_shout"; label: "Shout Bubble"; icon: "bubble_shout.svg" },
                         ListElement { name: "bubble_narration"; label: "Narration Box"; icon: "bubble_narration.svg" }
                     ]}
-                    ListElement { name: "lasso"; icon: "lasso.svg"; label: "Lasso Selection"; subTools: [] }
-                    ListElement { name: "magnetic_lasso"; icon: "magnet.svg"; label: "Magnetic Lasso"; subTools: [] }
+                    ListElement { name: "lasso"; icon: "lasso.svg"; label: "Lasso Selection"; subTools: [
+                        ListElement { name: "lasso_free"; label: "Freehand Lasso"; icon: "lasso.svg" },
+                        ListElement { name: "lasso_poly"; label: "Polygonal Lasso"; icon: "polygonal-lasso.svg" },
+                        ListElement { name: "magnetic_lasso"; label: "Magnetic Lasso"; icon: "magnet.svg" },
+                        ListElement { name: "select_wand"; label: "Magic Wand"; icon: "wand.svg" }
+                    ]}
                     ListElement { name: "move"; icon: "move.svg"; label: "Transform & Move"; subTools: [] }
                     ListElement { name: "pen"; icon: "pen.svg"; label: "Pen"; subTools: [
                         ListElement { name: "INK"; label: "Ink Pen"; icon: "pen.svg" },
@@ -2304,7 +2431,7 @@ Window {
                     ListElement { name: "panel_cut"; icon: "panel_cut.svg"; label: "Cuchilla Escisión"; subTools: [] }
                 }
 
-                property int activeToolIdx: 7 // Default to Brush (was 4/Move)
+                property int activeToolIdx: 6 // Default to Brush (was 7)
                 
                 onActiveToolIdxChanged: {
                     if (canvasPage.altPressed) return // Don't reset if switching via ALT
@@ -2316,7 +2443,7 @@ Window {
                     var toolData = toolsModel.get(activeToolIdx)
                     if (toolData) {
                         // ALWAYS update backend currentTool first to ensure C++ registers the correct tool mode!
-                        if (toolData.name !== "shapes" && toolData.name !== "selection" && toolData.name !== "fill") {
+                        if (toolData.name !== "shapes" && toolData.name !== "selection" && toolData.name !== "fill" && toolData.name !== "lasso") {
                             mainCanvas.currentTool = toolData.name;
                         }
                         
@@ -2325,10 +2452,18 @@ Window {
                             if (subIdx >= toolData.subTools.count) subIdx = 0
                             
                             // SPECIAL HANDLING FOR NON-BRUSH TOOLS
-                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill") {
+                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill" || toolData.name === "lasso") {
                                 var subName = toolData.subTools.get(subIdx).name
                                 console.log("Switching Tool: " + subName)
-                                mainCanvas.currentTool = subName
+                                if (subName === "lasso_free") {
+                                    mainCanvas.currentTool = "lasso"
+                                    mainCanvas.lassoMode = 0
+                                } else if (subName === "lasso_poly") {
+                                    mainCanvas.currentTool = "lasso"
+                                    mainCanvas.lassoMode = 1
+                                } else {
+                                    mainCanvas.currentTool = subName
+                                }
                             } else {
                                 // Standard Presets (Pen, Pencil, Brush, Airbrush, Eraser)
                                 var presetName = toolData.subTools.get(subIdx).label
@@ -2339,7 +2474,6 @@ Window {
                             // Handlers for tools without subtools
                             if (toolData.name === "eraser") mainCanvas.usePreset("Eraser Soft")
                             if (toolData.name === "lasso") mainCanvas.currentTool = "lasso"
-                            if (toolData.name === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
                             if (toolData.name === "selection") {
                                 mainCanvas.isSelectionModeActive = !mainCanvas.isSelectionModeActive
                                 if (mainCanvas.isSelectionModeActive) mainCanvas.currentTool = "lasso"
@@ -2366,10 +2500,18 @@ Window {
                     if (toolData && toolData.subTools && toolData.subTools.count > 0) {
                         var subIdx = activeSubToolIdx
                         if (subIdx >= 0 && subIdx < toolData.subTools.count) {
-                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill") {
+                            if (toolData.name === "shapes" || toolData.name === "selection" || toolData.name === "fill" || toolData.name === "lasso") {
                                 var subName = toolData.subTools.get(subIdx).name
                                 console.log("Switching Subtool: " + subName)
-                                mainCanvas.currentTool = subName
+                                if (subName === "lasso_free") {
+                                    mainCanvas.currentTool = "lasso"
+                                    mainCanvas.lassoMode = 0
+                                } else if (subName === "lasso_poly") {
+                                    mainCanvas.currentTool = "lasso"
+                                    mainCanvas.lassoMode = 1
+                                } else {
+                                    mainCanvas.currentTool = subName
+                                }
                             } else {
                                 var presetName = toolData.subTools.get(subIdx).label
                                 console.log("Auto-applying Subtool Preset: " + presetName)
@@ -2672,8 +2814,21 @@ Window {
                                                     if (selSubIdx < 0 || selSubIdx >= selToolData.subTools.count) selSubIdx = 0
                                                     mainCanvas.currentTool = selToolData.subTools.get(selSubIdx).name
                                                 }
-                                                else if (toolName === "lasso") mainCanvas.currentTool = "lasso"
-                                                else if (toolName === "magnetic_lasso") mainCanvas.currentTool = "magnetic_lasso"
+                                                else if (toolName === "lasso") {
+                                                    var lassoToolData = toolsModel.get(index)
+                                                    var lassoSubIdx = canvasPage.activeSubToolIdx
+                                                    if (lassoSubIdx < 0 || lassoSubIdx >= lassoToolData.subTools.count) lassoSubIdx = 0
+                                                    var subName = lassoToolData.subTools.get(lassoSubIdx).name
+                                                    if (subName === "lasso_free") {
+                                                        mainCanvas.currentTool = "lasso"
+                                                        mainCanvas.lassoMode = 0
+                                                    } else if (subName === "lasso_poly") {
+                                                        mainCanvas.currentTool = "lasso"
+                                                        mainCanvas.lassoMode = 1
+                                                    } else {
+                                                        mainCanvas.currentTool = subName
+                                                    }
+                                                }
                                                 else if (toolName === "move") mainCanvas.currentTool = "move"
                                                 else if (toolName === "shapes") {
                                                     mainCanvas.currentTool = "shape"
@@ -2993,20 +3148,36 @@ Window {
                                             return
                                         }
                                         
+                                        // Update Selection / Lasso Tool Mode
+                                        if (model.name === "lasso_free") {
+                                            mainCanvas.currentTool = "lasso"
+                                            mainCanvas.lassoMode = 0
+                                            mainCanvas.fillMode = "none"
+                                        } else if (model.name === "lasso_poly") {
+                                            mainCanvas.currentTool = "lasso"
+                                            mainCanvas.lassoMode = 1
+                                            mainCanvas.fillMode = "none"
+                                        } else if (model.name === "magnetic_lasso") {
+                                            mainCanvas.currentTool = "magnetic_lasso"
+                                            mainCanvas.fillMode = "none"
+                                        } else if (model.name === "select_wand") {
+                                            mainCanvas.currentTool = "select_wand"
+                                            mainCanvas.fillMode = "none"
+                                        } else if (model.name === "select_rect") {
+                                            mainCanvas.currentTool = "select_rect"
+                                            mainCanvas.fillMode = "none"
+                                        } else if (model.name === "select_ellipse") {
+                                            mainCanvas.currentTool = "select_ellipse"
+                                            mainCanvas.fillMode = "none"
+                                        } else if (model.name === "LASSO_FILL") {
+                                            mainCanvas.fillMode = "lasso"
+                                        } else if (model.name === "BUCKET") {
+                                            mainCanvas.fillMode = "bucket"
+                                        }
+                                        
                                         // Auto-apply preset if it exists in backend
                                         mainCanvas.usePreset(model.label)
                                         
-                                        // Update Selection Mode
-                                        if (model.name === "LASSO") {
-                                            mainCanvas.currentTool = "selection"
-                                            mainCanvas.fillMode = "none" // Ensure not in lasso fill
-                                        } else if (model.name === "MAGNETIC") {
-                                            mainCanvas.currentTool = "magnetic_lasso"
-                                        }
-                                        
-                                        // Update Fill Mode
-                                        if (model.name === "LASSO_FILL") mainCanvas.fillMode = "lasso"
-                                        else if (model.name === "BUCKET") mainCanvas.fillMode = "bucket"
                                     }
 
                                 }
@@ -4015,6 +4186,96 @@ Window {
                     visible: isProjectActive && !isZenMode && !isStudioMode
                     z: 950
 
+                    // Components for dynamic buttons
+                    Component {
+                        id: standardBtnComponent
+                        TopBarButton {
+                            property string bId: parent.btnId
+                            visible: bId !== "storyBtn" || isStoryProject
+                            iconSource: iconPath(mainWindow.getButtonIcon(bId))
+                            tooltip: mainWindow.getButtonLabel(bId)
+                            active: mainWindow.isTopBarButtonActive(bId)
+                            onClicked: {
+                                if (bId === "cubeToolsBtn") {
+                                    mainWindow.activeDropdownTriggerButton = parent // Set to Loader parent for correct coordinates
+                                    if (toolsDropdown.visible) toolsDropdown.close()
+                                    else toolsDropdown.open()
+                                } else {
+                                    mainWindow.handleTopBarButtonPress(bId)
+                                }
+                            }
+                            radius: (bId === "backButton") ? 18 * uiScale : 4 * uiScale
+                            border.color: (bId === "backButton") ? Qt.rgba(1, 1, 1, 0.25) : "transparent"
+                            border.width: (bId === "backButton") ? 1.5 : 0
+                        }
+                    }
+
+                    Component {
+                        id: colorSwatchComponent
+                        Rectangle {
+                            width: 32 * uiScale; height: 32 * uiScale; radius: 10 * uiScale
+                            color: mainCanvas.brushColor
+                            border.color: showColor ? "white" : Qt.rgba(1,1,1,0.25)
+                            border.width: showColor ? 2.5 * uiScale : 1.5 * uiScale
+                            scale: colorBtnArea.pressed ? 0.88 : (colorBtnArea.containsMouse ? 1.08 : 1.0)
+                            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+                            Behavior on border.width { NumberAnimation { duration: 100 } }
+
+                            // Inner shadow for depth
+                            Rectangle {
+                                anchors.fill: parent; anchors.margins: 2
+                                radius: parent.radius - 2; color: "transparent"
+                                border.color: Qt.rgba(0,0,0,0.25); border.width: 1
+                            }
+
+                            MouseArea {
+                                id: colorBtnArea; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                hoverEnabled: true
+                                property bool isDragging: false
+                                property point startPos
+
+                                onPressed: (mouse) => {
+                                    startPos = Qt.point(mouse.x, mouse.y)
+                                    isDragging = false
+                                    dropOrb.dropColor = mainCanvas.brushColor
+                                }
+
+                                onPositionChanged: (mouse) => {
+                                    if (!pressed) return
+                                    var dist = Math.sqrt(Math.pow(mouse.x - startPos.x, 2) + Math.pow(mouse.y - startPos.y, 2))
+                                    if (dist > 8 && !isDragging) {
+                                        isDragging = true
+                                        var startGlobal = mapToItem(canvasPage, startPos.x, startPos.y)
+                                        dropOrb.startX = startGlobal.x
+                                        dropOrb.startY = startGlobal.y
+                                        dropOrb.active = true
+                                    }
+                                    if (isDragging) {
+                                        var globalPos = mapToItem(canvasPage, mouse.x, mouse.y)
+                                        dropOrb.x = globalPos.x
+                                        dropOrb.y = globalPos.y
+                                    }
+                                }
+
+                                onReleased: (mouse) => {
+                                    if (isDragging) {
+                                        dropOrb.active = false
+                                        var canvasPos = mapToItem(mainCanvas, mouse.x, mouse.y)
+                                        mainCanvas.apply_color_drop(canvasPos.x, canvasPos.y, mainCanvas.brushColor)
+                                    } else {
+                                        showColor = !showColor; showLayers = false; showBrush = false; showBrushSettings = false
+                                    }
+                                    isDragging = false
+                                }
+                            }
+
+                            ToolTip.visible: colorBtnArea.containsMouse && !colorBtnArea.isDragging
+                            ToolTip.text: "Color del pincel"
+                            ToolTip.delay: 500
+                        }
+                    }
+
                     // --- LEFT CAPSULE: NAVIGATION & PROJECT ---
                     Rectangle {
                         id: topBarLeft
@@ -4025,6 +4286,7 @@ Window {
                         color: "#e81a1a1e"
                         border.color: Qt.rgba(1, 1, 1, 0.06)
                         border.width: 1
+                        visible: mainWindow.hasButtonsInLocation("topLeft")
 
                         // Deep shadow
                         Rectangle {
@@ -4054,80 +4316,13 @@ Window {
                             anchors.centerIn: parent
                             spacing: 4 * uiScale
 
-                            // 1. Circular Back Button
-                            TopBarButton {
-                                visible: mainWindow.isInTopLeft("backButton")
-                                iconSource: iconPath("chevron-left.svg")
-                                tooltip: "Volver al inicio"
-                                radius: 18 * uiScale
-                                border.color: Qt.rgba(1, 1, 1, 0.25)
-                                border.width: 1.5
-                                onClicked: currentPage = 0
-                            }
-
-                            // 2. Sidebar Toggle
-                            TopBarButton {
-                                visible: mainWindow.isInTopLeft("sidebarToggle")
-                                iconSource: iconPath("sidebar.svg")
-                                tooltip: showSidebar ? "Ocultar panel lateral" : "Mostrar panel lateral"
-                                active: showSidebar
-                                onClicked: showSidebar = !showSidebar
-                            }
-
-                            // Separator
-                            Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
-
-                            // 3. Settings Button
-                            TopBarButton {
-                                visible: mainWindow.isInTopLeft("settingsButton")
-                                iconSource: iconPath("settings.svg")
-                                tooltip: "Ajustes y Opciones"
-                                active: settingsMenu.visible
-                                onClicked: {
-                                    if (settingsMenu.visible) settingsMenu.close()
-                                    else settingsMenu.open()
-                                }
-                            }
-
-                            // 4. Cube Tools Button (Herramientas)
-                            TopBarButton {
-                                id: cubeToolsBtn
-                                visible: mainWindow.isInTopLeft("cubeToolsBtn")
-                                iconSource: iconPath("tools-cube.svg")
-                                tooltip: "Herramientas"
-                                active: toolsDropdown.visible
-                                onClicked: {
-                                    if (toolsDropdown.visible) toolsDropdown.close()
-                                    else toolsDropdown.open()
-                                }
-                            }
-
-                            // 5. Gallery/Launcher Button
-                            TopBarButton {
-                                visible: mainWindow.isInTopLeft("galleryBtn")
-                                iconSource: iconPath("layout.svg")
-                                tooltip: "Galería / Diseños"
-                                onClicked: toastManager.show("Galería de Diseños", "info")
-                            }
-
-                            // 6. Sparkle/Effects Button
-                            TopBarButton {
-                                id: effectsBtn
-                                visible: mainWindow.isInTopLeft("effectsBtn")
-                                iconSource: iconPath("star.svg")
-                                tooltip: "Efectos y Ajustes"
-                                active: showScreentonePanel
-                                onClicked: { showScreentonePanel = !showScreentonePanel; showLayers = false; showColor = false; showBrush = false; showBrushSettings = false }
-                            }
-
-                            // 7. Studio Mode Button
-                            TopBarButton {
-                                visible: mainWindow.isInTopLeft("studioModeBtn")
-                                iconSource: iconPath("studio.svg")
-                                tooltip: "Cambiar a Modo Studio"
-                                onClicked: {
-                                    modeChangeConfirmDialog.targetMode = "studio"
-                                    modeChangeConfirmDialog.open()
+                            Repeater {
+                                model: (mainWindow._layoutVersion, mainWindow._layoutConfig["topLeft"] || [])
+                                delegate: Loader {
+                                    id: leftBtnLoader
+                                    Layout.alignment: Qt.AlignVCenter
+                                    sourceComponent: (modelData === "colorSwatchBtn") ? colorSwatchComponent : standardBtnComponent
+                                    property string btnId: modelData
                                 }
                             }
                         }
@@ -4135,8 +4330,8 @@ Window {
                         // --- CUBE TOOLS DROPDOWN (Settings-style redesigned) ---
                         Popup {
                             id: toolsDropdown
-                            x: Math.max(-10 * uiScale, leftLayout.x + cubeToolsBtn.x + (cubeToolsBtn.width - width) / 2)
-                            y: leftLayout.y + cubeToolsBtn.y + cubeToolsBtn.height + 10 * uiScale
+                            x: mainWindow.activeDropdownTriggerButton ? Math.max(-10 * uiScale, leftLayout.x + mainWindow.activeDropdownTriggerButton.x + (mainWindow.activeDropdownTriggerButton.width - width) / 2) : 0
+                            y: mainWindow.activeDropdownTriggerButton ? leftLayout.y + mainWindow.activeDropdownTriggerButton.y + mainWindow.activeDropdownTriggerButton.height + 10 * uiScale : 0
                             width: 500 * uiScale
                             height: 350 * uiScale
                             padding: 0
@@ -4680,6 +4875,7 @@ Window {
                         color: "#e81a1a1e"
                         border.color: Qt.rgba(1, 1, 1, 0.06)
                         border.width: 1
+                        visible: mainWindow.hasButtonsInLocation("topRight")
 
                         // Deep shadow
                         Rectangle {
@@ -4709,25 +4905,6 @@ Window {
                             anchors.centerIn: parent
                             spacing: 4 * uiScale
 
-                            // Undo
-                            TopBarButton {
-                                visible: mainWindow.isInTopRight("undoBtn")
-                                iconSource: iconPath("undo.svg")
-                                tooltip: "Deshacer (Ctrl+Z)"
-                                onClicked: mainCanvas.undo()
-                            }
-
-                            // Redo
-                            TopBarButton {
-                                visible: mainWindow.isInTopRight("redoBtn")
-                                iconSource: iconPath("redo.svg")
-                                tooltip: "Rehacer (Ctrl+Y)"
-                                onClicked: mainCanvas.redo()
-                            }
-
-                            // Separator
-                            Rectangle { width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
-
                             // Brush Tools (Only visible in Pro Animation Mode)
                             TopBarButton {
                                 iconSource: iconPath("brush.svg")
@@ -4752,97 +4929,14 @@ Window {
                             }
                             Rectangle { visible: showAnimationBar && useAdvancedTimeline; width: 1; height: 20 * uiScale; color: Qt.rgba(1,1,1,0.08); Layout.leftMargin: 4 * uiScale; Layout.rightMargin: 4 * uiScale }
 
-                            // Brush Config
-                            TopBarButton {
-                                visible: mainWindow.isInTopRight("brushConfigBtn")
-                                iconSource: iconPath("sliders.svg")
-                                tooltip: "Configuración de pincel"
-                                active: showBrushSettings
-                                onClicked: { brushStudioDialog.open(); showBrush = false; showLayers = false; showColor = false }
-                            }
-
-                            // Layers
-                            TopBarButton {
-                                visible: mainWindow.isInTopRight("layersBtn")
-                                iconSource: iconPath("layers.svg")
-                                tooltip: "Capas"
-                                active: showLayers
-                                onClicked: { showLayers = !showLayers; showColor = false; showBrush = false; showBrushSettings = false; showScreentonePanel = false }
-                            }
-
-                            // Story Manager Toggle
-                            TopBarButton {
-                                visible: mainWindow.isInTopRight("storyBtn") && isStoryProject
-                                iconSource: iconPath("comic.svg")
-                                tooltip: showStoryPanel ? "Ocultar Story Manager" : "Abrir Story Manager"
-                                active: showStoryPanel
-                                activeColor: colorAccent
-                                onClicked: showStoryPanel = !showStoryPanel
-                            }
-
-                            // Color Swatch (special — not TopBarButton)
-                            Rectangle {
-                                visible: mainWindow.isInTopRight("colorSwatchBtn")
-                                width: 32 * uiScale; height: 32 * uiScale; radius: 10 * uiScale
-                                color: mainCanvas.brushColor
-                                border.color: showColor ? "white" : Qt.rgba(1,1,1,0.25)
-                                border.width: showColor ? 2.5 * uiScale : 1.5 * uiScale
-                                scale: colorBtnArea.pressed ? 0.88 : (colorBtnArea.containsMouse ? 1.08 : 1.0)
-                                Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
-                                Behavior on border.color { ColorAnimation { duration: 150 } }
-                                Behavior on border.width { NumberAnimation { duration: 100 } }
-
-                                // Inner shadow for depth
-                                Rectangle {
-                                    anchors.fill: parent; anchors.margins: 2
-                                    radius: parent.radius - 2; color: "transparent"
-                                    border.color: Qt.rgba(0,0,0,0.25); border.width: 1
+                            Repeater {
+                                model: (mainWindow._layoutVersion, mainWindow._layoutConfig["topRight"] || [])
+                                delegate: Loader {
+                                    id: rightBtnLoader
+                                    Layout.alignment: Qt.AlignVCenter
+                                    sourceComponent: (modelData === "colorSwatchBtn") ? colorSwatchComponent : standardBtnComponent
+                                    property string btnId: modelData
                                 }
-
-                                MouseArea {
-                                    id: colorBtnArea; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                                    hoverEnabled: true
-                                    property bool isDragging: false
-                                    property point startPos
-
-                                    onPressed: (mouse) => {
-                                        startPos = Qt.point(mouse.x, mouse.y)
-                                        isDragging = false
-                                        dropOrb.dropColor = mainCanvas.brushColor
-                                    }
-
-                                    onPositionChanged: (mouse) => {
-                                        if (!pressed) return
-                                        var dist = Math.sqrt(Math.pow(mouse.x - startPos.x, 2) + Math.pow(mouse.y - startPos.y, 2))
-                                        if (dist > 8 && !isDragging) {
-                                            isDragging = true
-                                            var startGlobal = mapToItem(canvasPage, startPos.x, startPos.y)
-                                            dropOrb.startX = startGlobal.x
-                                            dropOrb.startY = startGlobal.y
-                                            dropOrb.active = true
-                                        }
-                                        if (isDragging) {
-                                            var globalPos = mapToItem(canvasPage, mouse.x, mouse.y)
-                                            dropOrb.x = globalPos.x
-                                            dropOrb.y = globalPos.y
-                                        }
-                                    }
-
-                                    onReleased: (mouse) => {
-                                        if (isDragging) {
-                                            dropOrb.active = false
-                                            var canvasPos = mapToItem(mainCanvas, mouse.x, mouse.y)
-                                            mainCanvas.apply_color_drop(canvasPos.x, canvasPos.y, mainCanvas.brushColor)
-                                        } else {
-                                            showColor = !showColor; showLayers = false; showBrush = false; showBrushSettings = false
-                                        }
-                                        isDragging = false
-                                    }
-                                }
-
-                                ToolTip.visible: colorBtnArea.containsMouse && !colorBtnArea.isDragging
-                                ToolTip.text: "Color del pincel"
-                                ToolTip.delay: 500
                             }
                         }
                     }
@@ -6880,6 +6974,49 @@ Window {
                     dropColor: mainCanvas.brushColor
                     active: false
                 }
+            // Drag & Drop para importar imagenes como capas
+            DropArea {
+                anchors.fill: parent
+                enabled: isProjectActive
+                z: 800
+
+                onEntered: (drag) => {
+                    if (drag.urls.length > 0) {
+                        var ext = drag.urls[0].toString().split('.').pop().toLowerCase()
+                        if (["png", "jpg", "jpeg", "bmp", "tiff", "tif", "gif", "webp"].indexOf(ext) >= 0) {
+                            drag.accepted = true
+                            dropOverlay.visible = true
+                        }
+                    }
+                }
+                onExited: { dropOverlay.visible = false }
+                onDropped: (drop) => {
+                    dropOverlay.visible = false
+                    if (drop.urls.length > 0) {
+                        var path = drop.urls[0].toString()
+                        mainCanvas.importImageAsLayer(path)
+                    }
+                }
+            }
+
+            Rectangle {
+                id: dropOverlay
+                anchors.fill: parent
+                color: Qt.rgba(0.1, 0.1, 0.2, 0.6)
+                visible: false
+                z: 900
+                border.color: "#4488ff"
+                border.width: 3
+                radius: 12
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "Suelta la imagen para importarla como capa"
+                    color: "#ffffff"
+                    font.pixelSize: 18
+                    font.bold: true
+                }
+            }
             } // Fin Item (Canvas Page)
             
             // Placeholders
@@ -8874,7 +9011,7 @@ Window {
         title: "Open Project"
         nameFilters: ["Kromo Projects (*.kromo *.kstudio *.aflow *.artflow *.stxf)", "Photoshop Document (*.psd)", "All Files (*)"]
         onAccepted: {
-            if (mainCanvas.loadProject(selectedFile)) {
+            if (mainCanvas.loadProject(file.toString())) {
                 isProjectActive = true
                 currentPage = 1
                 mainCanvas.fitToView()
@@ -8894,7 +9031,7 @@ Window {
         nameFilters: ["Kromo Projects (*.kromo)", "Kromo Studio Legacy (*.kstudio)", "Legacy ArtFlow (*.aflow)", "Legacy ArtFlow Studio (*.artflow)", "Photoshop Document (*.psd)"]
         // defaultSuffix: "aflow" // Removed to allow extension switching based on filter
         onAccepted: {
-            if (mainCanvas.saveProjectAs(selectedFile)) {
+            if (mainCanvas.saveProjectAs(file)) {
                 // If it was a full save (aflow), we reload. PSD export doesn't change current project usually.
                 loadRecentProjects()
                 toastManager.show("Project saved", "success")
@@ -8912,14 +9049,14 @@ Window {
         defaultSuffix: "png"
         onAccepted: {
             // Determine format from extension
-            var pathStr = selectedFile.toString()
+            var pathStr = file.toString()
             var format = "PNG"
             if (pathStr.toLowerCase().endsWith(".jpg") || pathStr.toLowerCase().endsWith(".jpeg")) {
                 format = "JPG"
             } else if (pathStr.toLowerCase().endsWith(".psd")) {
                 format = "PSD"
             }
-            if (mainCanvas.exportImage(selectedFile, format)) {
+            if (mainCanvas.exportImage(file, format)) {
                 toastManager.show("Image exported: " + format, "success")
             } else {
                 toastManager.show("Export failed", "error")
@@ -8932,7 +9069,7 @@ Window {
         title: "Import Photoshop Brushes"
         nameFilters: ["Photoshop Brushes (*.abr)", "All Files (*)"]
         onAccepted: {
-            if (mainCanvas.importABR(selectedFile.toString())) {
+            if (mainCanvas.importABR(file.toString())) {
                 toastManager.show("Brushes imported successfully", "success")
             } else {
                 toastManager.show("Import failed or no brushes found", "error")
@@ -8951,16 +9088,23 @@ Window {
             "All Files (*)"
         ]
         onAccepted: {
+            console.log("[importDialog] onAccepted fired")
+            console.log("[importDialog] isProjectActive:", isProjectActive)
+            console.log("[importDialog] file:", file)
             // Need an active project so the canvas has a valid size
             if (!isProjectActive) {
                 toastManager.show("Abre o crea un proyecto antes de importar", "warning")
+                console.log("[importDialog] FAIL - project not active")
                 return
             }
             // Make sure we are on the drawing page
             currentPage = 1
-            if (mainCanvas.importImageAsLayer(selectedFile.toString())) {
-                // success — toast is shown by C++
+            var fileStr = file.toString()
+            console.log("[importDialog] calling importImageAsLayer with:", fileStr)
+            if (mainCanvas.importImageAsLayer(fileStr)) {
+                console.log("[importDialog] SUCCESS")
             } else {
+                console.log("[importDialog] FAIL - importImageAsLayer returned false")
                 toastManager.show("Import failed – formato no soportado o archivo no encontrado", "error")
             }
         }
@@ -8987,7 +9131,7 @@ Window {
                  var s = mainWindow.pendingExportSettings || {durationSec:0, aspectMode:0, qualityMode:1}
                  timelapseController.exportVideo(
                      mainCanvas.currentProjectPath, 
-                     selectedFile,
+                     file,
                      s.durationSec, s.aspectMode, s.qualityMode
                  )
                  toastManager.show("Exporting video...", "info")
@@ -9002,7 +9146,7 @@ Window {
         title: "Open Reference Image"
         nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp)", "All Files (*)"]
         onAccepted: {
-            refWindow.refSource = selectedFile
+            refWindow.refSource = file
         }
     }
 
