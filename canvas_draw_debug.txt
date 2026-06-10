@@ -2195,3 +2195,65 @@
 [HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
 [HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
 [HANDLE-DRAW] useTexture: 0 | textureName: grain_watercolor_paper.png | grainTextureID: 0 | isWc: 0 | activePreset: Thick Oil Paint
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 0 | textureName:  | grainTextureID: 0 | isWc: 0 | activePreset: Polygons
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood
+[HANDLE-DRAW] useTexture: 1 | textureName: leather_grain.png | grainTextureID: 0 | isWc: 0 | activePreset: Leatherwood

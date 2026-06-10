@@ -84,6 +84,20 @@ Item {
     property real hiddenPanelsY: 0
 
     signal switchToEssential()
+    signal tabActivated(int index)
+    signal tabClosed(int index)
+
+    // Multi-project model passed from main_pro.qml
+    property var openProjectsModel: null
+    property int activeProjectIndex: 0
+
+    // Color state (bound to colorStudioDialog in main_pro.qml)
+    property color primaryColor: "#ffffff"
+    property color secondaryColor: "#000000"
+    property int activeColorSlot: 0
+    property bool isTransparentMode: false
+    signal colorOrbClicked(int slot)
+    signal transparencyOrbClicked()
     
     function loadWorkspace(name) { if (panelManager) panelManager.loadWorkspace(name) }
 
@@ -888,9 +902,138 @@ Item {
         }
     }
 
+    // --- STUDIO PROJECT TAB BAR (visible when ≥2 projects open) ---
+    Rectangle {
+        id: studioTabBar
+        anchors.top: studioInfoBar.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: (openProjectsModel && openProjectsModel.count >= 2) ? 30 : 0
+        visible: openProjectsModel && openProjectsModel.count >= 2
+        color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.08) : "#0d0d10"
+        z: 940
+        clip: true
+
+        Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+
+        // Bottom border line
+        Rectangle {
+            width: parent.width; height: 1
+            anchors.bottom: parent.bottom
+            color: mainWindow ? mainWindow.colorBorder : "#222"
+        }
+
+        ScrollView {
+            anchors.fill: parent
+            ScrollBar.horizontal.policy: ScrollBar.AsNeeded
+            ScrollBar.vertical.policy: ScrollBar.AlwaysOff
+
+            Row {
+                id: studioTabRow
+                height: parent.height
+                spacing: 0
+
+                Repeater {
+                    model: openProjectsModel
+                    delegate: Rectangle {
+                        id: studioTab
+                        width: Math.min(200, Math.max(90, studioTabLabel.implicitWidth + 40))
+                        height: studioTabBar.height
+                        color: index === activeProjectIndex
+                            ? (mainWindow ? mainWindow.colorPanel : "#16161a")
+                            : (studioTabHover.containsMouse ? Qt.rgba(1,1,1,0.03) : "transparent")
+
+                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                        // Active top indicator line
+                        Rectangle {
+                            width: parent.width
+                            height: 2
+                            anchors.top: parent.top
+                            color: index === activeProjectIndex ? accentColor : "transparent"
+                            Behavior on color { ColorAnimation { duration: 150 } }
+                        }
+
+                        // Right separator
+                        Rectangle {
+                            width: 1; height: parent.height * 0.6
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: mainWindow ? mainWindow.colorBorder : "#222"
+                        }
+
+                        Row {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 6
+                            spacing: 6
+
+                            // Unsaved dot
+                            Rectangle {
+                                width: 5; height: 5; radius: 3
+                                color: accentColor
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: model.dirty === true
+                            }
+
+                            Text {
+                                id: studioTabLabel
+                                text: model.name || "Sin Título"
+                                color: index === activeProjectIndex
+                                    ? (mainWindow ? mainWindow.colorText : "white")
+                                    : (mainWindow ? mainWindow.colorTextMuted : "#888")
+                                font.pixelSize: 11
+                                font.weight: index === activeProjectIndex ? Font.DemiBold : Font.Normal
+                                elide: Text.ElideRight
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 36
+                                Behavior on color { ColorAnimation { duration: 120 } }
+                            }
+
+                            // Close X
+                            Item {
+                                width: 16; height: 16
+                                anchors.verticalCenter: parent.verticalCenter
+                                Text {
+                                    text: "×"
+                                    font.pixelSize: 13
+                                    color: studioCloseHover.containsMouse ? "#ef4444"
+                                        : (mainWindow ? mainWindow.colorTextMuted : "#666")
+                                    anchors.centerIn: parent
+                                    Behavior on color { ColorAnimation { duration: 80 } }
+                                }
+                                MouseArea {
+                                    id: studioCloseHover
+                                    anchors.fill: parent; hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: (mouse) => {
+                                        mouse.accepted = true
+                                        studioLayout.tabClosed(index)
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: studioTabHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            propagateComposedEvents: true
+                            onClicked: (mouse) => {
+                                studioLayout.tabActivated(index)
+                                mouse.accepted = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // --- MAIN CONTENT AREA ---
     ColumnLayout {
-        anchors.top: studioInfoBar.bottom
+        anchors.top: studioTabBar.visible ? studioTabBar.bottom : studioInfoBar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
@@ -967,19 +1110,29 @@ Item {
             }
         }
         
-    // --- TOOLBAR (Canvas Tools) Movable ---
+    // --- TOOLBAR (Canvas Tools) Full-height docked ---
     Rectangle {
         id: toolsToolbar
-        width: 44
-        height: toolsCol.height + 24
+        width: 48
+        property bool isToolbarFloating: false
+        // Full height when docked; compact when floating
+        height: isToolbarFloating
+            ? Math.min(toolsCol.implicitHeight + 120, studioLayout.height * 0.8)
+            : (studioLayout.height - (studioTabBar.visible ? studioTabBar.height : 0) - studioInfoBar.height)
         color: mainWindow ? mainWindow.colorPanel : "#0c0c0f"
         radius: isToolbarFloating ? 8 : 0
         border.color: isToolbarFloating ? (mainWindow ? mainWindow.colorBorder : "#333") : "transparent"
         border.width: isToolbarFloating ? 1 : 0
         z: 2500
         
-        property bool isToolbarFloating: false
-        
+        // Right-side border line when docked
+        Rectangle {
+            visible: !toolsToolbar.isToolbarFloating
+            width: 1; height: parent.height
+            anchors.right: parent.right
+            color: mainWindow ? mainWindow.colorBorder : "#1a1a1e"
+        }
+
         transform: Translate {
             id: toolsTranslate
             x: 0
@@ -988,18 +1141,19 @@ Item {
         
         // Initial / Docked positioning
         x: isToolbarFloating ? x : ((leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0))
-        y: isToolbarFloating ? y : studioInfoBar.height
+        y: isToolbarFloating ? y : (studioInfoBar.height + (studioTabBar.visible ? studioTabBar.height : 0))
         
         // Shadow when floating
         layer.enabled: isToolbarFloating
         layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 15; shadowColor: "#80000000"; shadowVerticalOffset: 4 }
         
-        // Grip area
+        // Grip area (only shown when floating)
         Rectangle {
             id: toolbarGrip
-            width: parent.width; height: 16
+            width: parent.width; height: isToolbarFloating ? 16 : 0
             color: "transparent"
             anchors.top: parent.top
+            visible: isToolbarFloating
             
             Row {
                 spacing: 2; anchors.centerIn: parent
@@ -1008,10 +1162,10 @@ Item {
             
             MouseArea {
                 id: hoverGrip
-                anchors.fill: parent; hoverEnabled: true;                 cursorShape: (typeof dragGrip !== 'undefined' && dragGrip && dragGrip.active) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                anchors.fill: parent; hoverEnabled: true
+                cursorShape: (typeof dragGrip !== 'undefined' && dragGrip && dragGrip.active) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                 drag.target: toolsToolbar
                 drag.axis: Drag.XAndYAxis
-                // drag constraints
                 drag.minimumX: 0
                 drag.maximumX: studioLayout.width - toolsToolbar.width
                 drag.minimumY: 0
@@ -1019,83 +1173,212 @@ Item {
                 
                 onPressed: toolsToolbar.isToolbarFloating = true
                 onReleased: {
-                    // Smart snap back to dock if dragged to the left edge
                     var lSnap = (leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0)
                     if (toolsToolbar.x < lSnap + 20) {
                         toolsToolbar.isToolbarFloating = false
                         toolsToolbar.x = Qt.binding(function() { return (leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0) })
-                        toolsToolbar.y = Qt.binding(function() { return studioInfoBar.height })
+                        toolsToolbar.y = Qt.binding(function() { return studioInfoBar.height + (studioTabBar.visible ? studioTabBar.height : 0) })
                     }
                 }
             }
         }
         
-        ColumnLayout {
-            id: toolsCol
-            anchors.top: toolbarGrip.bottom; anchors.left: parent.left; anchors.right: parent.right
-            anchors.margins: 4; anchors.topMargin: 0
-            spacing: 4
-            
-            Repeater {
-                model: studioLayout.toolsModel
-                delegate: Rectangle {
-                    Layout.preferredWidth: 36; Layout.preferredHeight: 36
-                    Layout.alignment: Qt.AlignHCenter
-                    radius: 10
-                    color: (canvasPage && index === canvasPage.activeToolIdx) ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.3) : (hoverMa.containsMouse ? (mainWindow ? mainWindow.colorCard : "#1c1c20") : "transparent")
-                    border.color: (canvasPage && index === canvasPage.activeToolIdx) ? accentColor : "transparent"
-                    
-                    Image {
-                        source: mainWindow ? mainWindow.iconPath(model.icon) : ("image://icons/" + model.icon)
-                        width: 20; height: 20; anchors.centerIn: parent
-                        opacity: (canvasPage && index === canvasPage.activeToolIdx) ? 1.0 : 0.6
-                    }
-                    
-                    MouseArea {
-                        id: hoverMa
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        
-                        Timer {
-                            id: longPressTimer
-                            interval: 500
-                            onTriggered: {
-                                if (canvasPage) {
-                                    canvasPage.activeToolIdx = index
-                                    canvasPage.showSubTools = true
-                                    // Position subtool bar next to this button
-                                    if (typeof subToolBar !== "undefined") {
-                                        subToolBar.yLevel = parent.mapToItem(canvasPage, 0, 0).y
-                                        subToolBar.isFromStudio = true
-                                        subToolBar.studioToolX = toolsToolbar.x
-                                    }
-                                }
-                            }
-                        }
+        // Drag handle when docked (subtle top area)
+        MouseArea {
+            visible: !toolsToolbar.isToolbarFloating
+            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+            height: 20
+            hoverEnabled: true
+            cursorShape: Qt.OpenHandCursor
+            onPressed: toolsToolbar.isToolbarFloating = true
+        }
 
-                        onPressed: longPressTimer.start()
-                        onReleased: {
-                            if (longPressTimer.running) {
-                                longPressTimer.stop()
-                                if (canvasPage) {
-                                    if (canvasPage.activeToolIdx === index) {
-                                        // If already active, toggle subtools or settings
-                                        canvasPage.showSubTools = !canvasPage.showSubTools
-                                        if (canvasPage.showSubTools && typeof subToolBar !== "undefined") {
+        // ── SINGLE COLUMN LAYOUT: tools centered, orbs pinned at bottom ──
+        ColumnLayout {
+            id: toolbarInnerLayout
+            anchors.fill: parent
+            anchors.topMargin: toolsToolbar.isToolbarFloating ? 20 : 8
+            anchors.bottomMargin: 8
+            spacing: 0
+
+            // Flexible top spacer
+            Item { Layout.fillWidth: true; Layout.fillHeight: true }
+
+            // ── TOOLS ──
+            ColumnLayout {
+                id: toolsCol
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 3
+
+                Repeater {
+                    model: studioLayout.toolsModel
+                    delegate: Rectangle {
+                        Layout.preferredWidth: 36; Layout.preferredHeight: 36
+                        Layout.alignment: Qt.AlignHCenter
+                        radius: 10
+                        color: (canvasPage && index === canvasPage.activeToolIdx)
+                            ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.28)
+                            : (hoverMa.containsMouse ? (mainWindow ? mainWindow.colorCard : "#1c1c20") : "transparent")
+                        border.color: (canvasPage && index === canvasPage.activeToolIdx) ? accentColor : "transparent"
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 100 } }
+
+                        Rectangle {
+                            visible: canvasPage && index === canvasPage.activeToolIdx
+                            width: 3; height: 3; radius: 1.5; color: accentColor
+                            anchors.left: parent.left; anchors.leftMargin: 2
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Image {
+                            source: mainWindow ? mainWindow.iconPath(model.icon) : ("image://icons/" + model.icon)
+                            width: 20; height: 20; anchors.centerIn: parent
+                            opacity: (canvasPage && index === canvasPage.activeToolIdx) ? 1.0 : 0.6
+                        }
+                        ToolTip.visible: hoverMa.containsMouse
+                        ToolTip.text: model.label || ""
+                        ToolTip.delay: 700
+                        MouseArea {
+                            id: hoverMa
+                            anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            Timer {
+                                id: longPressTimer
+                                interval: 500
+                                onTriggered: {
+                                    if (canvasPage) {
+                                        canvasPage.activeToolIdx = index
+                                        canvasPage.showSubTools = true
+                                        if (typeof subToolBar !== "undefined") {
                                             subToolBar.yLevel = parent.mapToItem(canvasPage, 0, 0).y
                                             subToolBar.isFromStudio = true
                                             subToolBar.studioToolX = toolsToolbar.x
                                         }
-                                    } else {
-                                        canvasPage.activeToolIdx = index
-                                        canvasPage.activeSubToolIdx = 0
-                                        if(mainCanvas) mainCanvas.currentTool = model.name
-                                        canvasPage.showSubTools = false
                                     }
                                 }
                             }
+                            onPressed: longPressTimer.start()
+                            onReleased: {
+                                if (longPressTimer.running) {
+                                    longPressTimer.stop()
+                                    if (canvasPage) {
+                                        if (canvasPage.activeToolIdx === index) {
+                                            canvasPage.showSubTools = !canvasPage.showSubTools
+                                            if (canvasPage.showSubTools && typeof subToolBar !== "undefined") {
+                                                subToolBar.yLevel = parent.mapToItem(canvasPage, 0, 0).y
+                                                subToolBar.isFromStudio = true
+                                                subToolBar.studioToolX = toolsToolbar.x
+                                            }
+                                        } else {
+                                            canvasPage.activeToolIdx = index
+                                            canvasPage.activeSubToolIdx = 0
+                                            if (mainCanvas) mainCanvas.currentTool = model.name
+                                            canvasPage.showSubTools = false
+                                        }
+                                    }
+                                }
+                            }
+                            onCanceled: longPressTimer.stop()
                         }
-                        onCanceled: longPressTimer.stop()
                     }
+                }
+            }
+
+            // Flexible bottom spacer
+            Item { Layout.fillWidth: true; Layout.fillHeight: true }
+
+            // Divider
+            Rectangle {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 28; Layout.preferredHeight: 1
+                color: mainWindow ? mainWindow.colorBorder : "#333"
+            }
+            Item { Layout.preferredWidth: 1; Layout.preferredHeight: 8 }
+
+            // ── COLOR ORBS (always at bottom) ──
+            Item {
+                id: colorOrbsSection
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 46
+                Layout.preferredHeight: 58
+
+                // Secondary color (back/bottom-right)
+                Rectangle {
+                    id: studioBarWell1
+                    width: 24; height: 24; radius: 12
+                    anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.bottomMargin: 2
+                    color: studioLayout.secondaryColor
+                    border.color: mainWindow ? mainWindow.colorBorder : "#555"
+                    border.width: 1
+                    z: studioLayout.activeColorSlot === 1 ? 5 : 1
+                    scale: studioLayout.activeColorSlot === 1 ? 1.15 : 1.0
+                    opacity: studioLayout.activeColorSlot === 1 ? 1.0 : 0.72
+                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on opacity { NumberAnimation { duration: 180 } }
+                    Rectangle {
+                        anchors.fill: parent; radius: parent.radius
+                        border.color: accentColor; border.width: 2; color: "transparent"
+                        visible: studioLayout.activeColorSlot === 1 && mainWindow && mainWindow.showColor
+                    }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: studioLayout.colorOrbClicked(1) }
+                    ToolTip.visible: studioWell1Hover.containsMouse; ToolTip.text: "Color Secundario"
+                    MouseArea { id: studioWell1Hover; anchors.fill: parent; hoverEnabled: true; enabled: false }
+                }
+
+                // Primary color (front/top-left)
+                Rectangle {
+                    id: studioBarWell0
+                    width: 24; height: 24; radius: 12
+                    anchors.left: parent.left; anchors.top: parent.top
+                    color: studioLayout.primaryColor
+                    border.color: mainWindow ? mainWindow.colorBorder : "#555"
+                    border.width: 1
+                    z: studioLayout.activeColorSlot === 0 ? 5 : 2
+                    scale: studioLayout.activeColorSlot === 0 ? 1.15 : 1.0
+                    opacity: studioLayout.activeColorSlot === 0 ? 1.0 : 0.72
+                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                    Behavior on opacity { NumberAnimation { duration: 180 } }
+                    Rectangle {
+                        anchors.fill: parent; radius: parent.radius
+                        border.color: accentColor; border.width: 2; color: "transparent"
+                        visible: studioLayout.activeColorSlot === 0 && mainWindow && mainWindow.showColor
+                    }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: studioLayout.colorOrbClicked(0) }
+                    ToolTip.visible: studioWell0Hover.containsMouse; ToolTip.text: "Color Primario"
+                    MouseArea { id: studioWell0Hover; anchors.fill: parent; hoverEnabled: true; enabled: false }
+                }
+
+                // Transparency orb (small, bottom-right)
+                Rectangle {
+                    id: studioTransWell
+                    width: 18; height: 18; radius: 9
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom; anchors.bottomMargin: 26
+                    clip: true
+                    color: mainWindow ? mainWindow.colorCard : "#1a1a1f"
+                    border.color: studioLayout.isTransparentMode ? accentColor : (mainWindow ? Qt.rgba(1,1,1,0.2) : "#555")
+                    border.width: studioLayout.isTransparentMode ? 1.5 : 1
+                    scale: studioLayout.isTransparentMode ? 1.15 : 1.0
+                    z: 3
+                    Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                    Canvas {
+                        anchors.fill: parent
+                        opacity: studioLayout.isTransparentMode ? 1.0 : 0.45
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.clearRect(0, 0, width, height)
+                            ctx.beginPath()
+                            ctx.arc(width/2, height/2, width/2, 0, 2*Math.PI)
+                            ctx.clip()
+                            var sz = 3
+                            ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,width,height)
+                            ctx.fillStyle = "#cccccc"
+                            for (var cy=0; cy<height; cy+=sz)
+                                for (var cx=0; cx<width; cx+=sz)
+                                    if (((cx+cy)/sz)%2===0) ctx.fillRect(cx,cy,sz,sz)
+                        }
+                    }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: studioLayout.transparencyOrbClicked() }
+                    ToolTip.visible: studioTransHover.containsMouse; ToolTip.text: "Transparencia"
+                    MouseArea { id: studioTransHover; anchors.fill: parent; hoverEnabled: true; enabled: false }
                 }
             }
         }

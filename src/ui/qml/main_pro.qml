@@ -152,16 +152,57 @@ Window {
     property int currentPage: 0
     property bool isProjectActive: false
 
+    ListModel {
+        id: openProjectsModel
+    }
+    property int activeProjectIndex: -1
+    property var mainCanvas: (activeProjectIndex >= 0 && activeProjectIndex < canvasRepeater.count) ? canvasRepeater.itemAt(activeProjectIndex) : null
+    property int pendingCloseIndex: -1
+
+    onActiveProjectIndexChanged: {
+        if (activeProjectIndex >= 0 && activeProjectIndex < openProjectsModel.count) {
+            var item = openProjectsModel.get(activeProjectIndex);
+            mainWindow.isStoryProject = item.isStoryProject || false;
+            mainWindow.currentStoryPath = item.currentStoryPath || "";
+            mainWindow.showStoryPanel = item.showStoryPanel || false;
+            mainWindow.comicMode = item.comicMode || "single";
+            mainWindow.showAnimationBar = item.showAnimationBar || false;
+            isProjectActive = true;
+            currentPage = 1;
+            
+            // Restore animation bar settings if project specifies them
+            if (item.showAnimationBar && item.projectFPS !== undefined) {
+                simpleAnimationBar.projectFPS = item.projectFPS;
+                simpleAnimationBar.fps = item.projectFPS;
+            }
+            
+            Qt.callLater(function() {
+                if (mainCanvas) {
+                    mainCanvas.forceActiveFocus();
+                    mainCanvas.fitToView();
+                }
+            });
+        } else {
+            isProjectActive = false;
+            mainWindow.isStoryProject = false;
+            mainWindow.currentStoryPath = "";
+            mainWindow.showStoryPanel = false;
+            mainWindow.comicMode = "single";
+            mainWindow.showAnimationBar = false;
+            currentPage = 0;
+        }
+    }
+
     readonly property bool shortcutsEnabled: isProjectActive && currentPage === 1 &&
         (!mainWindow.activeFocusItem || (mainWindow.activeFocusItem.echoMode === undefined && mainWindow.activeFocusItem.cursorPosition === undefined))
 
     onCurrentPageChanged: {
-        if (currentPage === 1) {
+        if (currentPage === 1 && mainCanvas) {
             mainCanvas.forceActiveFocus()
         }
     }
     onIsProjectActiveChanged: {
-        if (isProjectActive && currentPage === 1) {
+        if (isProjectActive && currentPage === 1 && mainCanvas) {
             mainCanvas.forceActiveFocus()
         }
     }
@@ -547,29 +588,158 @@ Window {
 
     ListModel { id: recentProjectsModel }
     
+    // === MULTI-PROJECT TAB MANAGEMENT HELPERS ===
+    function openProjectTab(path) {
+        if (!path || path === "") return;
+        var normalizedPath = path.toString();
+        
+        // Check if already open
+        for (var i = 0; i < openProjectsModel.count; ++i) {
+            if (openProjectsModel.get(i).path === normalizedPath) {
+                activeProjectIndex = i;
+                currentPage = 1;
+                isProjectActive = true;
+                return;
+            }
+        }
+        
+        // Extract filename
+        var filename = normalizedPath.substring(normalizedPath.lastIndexOf("/") + 1);
+        if (filename === "") {
+            filename = normalizedPath.substring(normalizedPath.lastIndexOf("\\") + 1);
+        }
+        if (filename === "") {
+            filename = "Dibujo";
+        }
+        
+        openProjectsModel.append({
+            path: normalizedPath,
+            name: filename,
+            isStoryProject: false,
+            currentStoryPath: "",
+            showStoryPanel: false,
+            comicMode: "single",
+            showAnimationBar: false
+        });
+        
+        activeProjectIndex = openProjectsModel.count - 1;
+        currentPage = 1;
+        isProjectActive = true;
+    }
+    
+    function createNewProjectTab(isStory, isAnimation) {
+        var name = "Sin Título " + (openProjectsModel.count + 1);
+        
+        openProjectsModel.append({
+            path: "",
+            name: name,
+            isStoryProject: isStory,
+            currentStoryPath: "",
+            showStoryPanel: isStory,
+            comicMode: isStory ? "webtoon" : "single",
+            showAnimationBar: isAnimation,
+            projectFPS: newProjectDialog.inputFPS
+        });
+        
+        activeProjectIndex = openProjectsModel.count - 1;
+        currentPage = 1;
+        isProjectActive = true;
+        
+        Qt.callLater(function() {
+            var canvas = canvasRepeater.itemAt(activeProjectIndex);
+            if (canvas) {
+                canvas.clearProjectPath();
+                canvas.resizeCanvas(newProjectDialog.inputW, newProjectDialog.inputH);
+                canvas.setBackgroundColor(newProjectDialog.bgFill);
+                canvas.setProjectDpi(newProjectDialog.inputDPI);
+                
+                if (isStory) {
+                    var ts = new Date().getTime();
+                    var folderName = newProjectDialog.categories[newProjectDialog.selectedCategoryIndex].name + "_" + ts;
+                    var folderPath = canvas.create_new_sketchbook(folderName, "#1c1c1e");
+                    if (folderPath !== "") {
+                        openProjectsModel.setProperty(activeProjectIndex, "currentStoryPath", folderPath);
+                        mainWindow.currentStoryPath = folderPath;
+                        var pagePath = canvas.create_new_page(folderPath, "Page 1");
+                        if (pagePath !== "") {
+                            canvas.load_file_path(pagePath);
+                            openProjectsModel.setProperty(activeProjectIndex, "path", pagePath);
+                        }
+                    }
+                }
+                
+                if (isAnimation) {
+                    simpleAnimationBar.projectFPS  = newProjectDialog.inputFPS;
+                    simpleAnimationBar.projectLoop = true;
+                    simpleAnimationBar.fps         = newProjectDialog.inputFPS;
+                }
+                
+                canvas.fitToView();
+            }
+        });
+    }
+    
+    function closeProjectAtIndex(idx, saveFirst) {
+        if (idx < 0 || idx >= openProjectsModel.count) return;
+        
+        var project = openProjectsModel.get(idx);
+        var canvas = canvasRepeater.itemAt(idx);
+        
+        if (saveFirst && canvas) {
+            var path = project.path;
+            if (path && path !== "") {
+                if (!canvas.saveProject(path)) {
+                    toastManager.show("Error al guardar el proyecto", "error");
+                    return;
+                }
+            } else {
+                activeProjectIndex = idx;
+                mainWindow.pendingCloseIndex = idx;
+                saveProjectDialog.open();
+                return;
+            }
+        }
+        
+        removeProjectTab(idx);
+    }
+    
+    function removeProjectTab(idx) {
+        openProjectsModel.remove(idx);
+        
+        if (openProjectsModel.count === 0) {
+            activeProjectIndex = -1;
+        } else {
+            if (idx === activeProjectIndex) {
+                activeProjectIndex = Math.min(idx, openProjectsModel.count - 1);
+            } else if (idx < activeProjectIndex) {
+                activeProjectIndex = activeProjectIndex - 1;
+            }
+        }
+        toastManager.show("Proyecto cerrado", "info");
+    }
+
     // Auto-refresh when saving
     function saveProjectAndRefresh(name) {
-        // If no name provided (e.g. Ctrl+S)
+        if (!mainCanvas) return;
+
+        // If it's a new project with no file path yet, open save file dialog
+        if ((!mainCanvas.currentProjectPath || mainCanvas.currentProjectPath === "") && (!name || !name.includes("/"))) {
+            saveProjectDialog.open();
+            return;
+        }
+
         if (!name) {
-            // First Priority: Use Full Loaded Path if available
             if (mainCanvas.currentProjectPath && mainCanvas.currentProjectPath !== "") {
-                name = mainCanvas.currentProjectPath
-            }
-            // Second Priority: Use Name
-            else if (mainCanvas.currentProjectName && mainCanvas.currentProjectName !== "Untitled") {
-                name = mainCanvas.currentProjectName
-            }
-            // Fallback: New Project with timestamp
-            else {
-                name = "Project_" + Date.now()
+                name = mainCanvas.currentProjectPath;
+            } else if (mainCanvas.currentProjectName && mainCanvas.currentProjectName !== "Untitled") {
+                name = mainCanvas.currentProjectName;
+            } else {
+                name = "Project_" + Date.now();
             }
         }
 
-        // C++ saveProject already emits projectListChanged which triggers
-        // onProjectListChanged -> loadRecentProjects() automatically.
-        // We only show an error toast if it fails; success is handled by C++.
         if (!mainCanvas.saveProject(name)) {
-            toastManager.show("Failed to save project", "error")
+            toastManager.show("Failed to save project", "error");
         }
     }
 
@@ -991,7 +1161,7 @@ Window {
                 
                 // Title display
                 Text { 
-                    text: (currentPage == 0 ? "Dashboard" : "Untitled-1") + " @ " + Math.round(mainCanvas.zoomLevel * 100) + "%"
+                    text: (currentPage === 0 ? "Dashboard" : (activeProjectIndex >= 0 && activeProjectIndex < openProjectsModel.count ? openProjectsModel.get(activeProjectIndex).name : "Sin Título")) + (mainCanvas ? " @ " + Math.round(mainCanvas.zoomLevel * 100) + "%" : "")
                     color: "#666" 
                     font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter 
@@ -1118,9 +1288,7 @@ Window {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 projectsModel: recentProjectsModel
                 onOpenDrawing: (path) => {
-                    mainCanvas.load_file_path(path)
-                    currentPage = 1
-                    isProjectActive = true
+                    mainWindow.openProjectTab(path)
                 }
                 onOpenSketchbook: (path, title) => homeNavigator.pushSketchbook(path, title)
                 onCreateNewProject: newProjectDialog.open()
@@ -1132,7 +1300,16 @@ Window {
             // 1. CANVAS (ESTILO PROCREATE)
             Item {
                 id: canvasPage
+
                 Rectangle { anchors.fill: parent; color: "#121214" }
+
+                Item {
+                    id: canvasViewportContainer
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+
 
                 // --- MULTI-PAGE VIEWPORT OVERLAYS (Webtoon & Doble Página) ---
                 Repeater {
@@ -1378,19 +1555,31 @@ Window {
                     }
                 }
 
-                // DRAWING CANVAS
-                QCanvasItem {
-                    id: mainCanvas
-                    anchors.fill: parent
-                    focus: true
-
-                    visible: isProjectActive
-                    onVisibleChanged: if (visible) Qt.callLater(fitToView)
-                    
-                    onRequestToolIdx: (idx) => { canvasPage.activeToolIdx = idx }
-                    onIsEraserChanged: { 
-                        colorStudioDialog.isTransparent = mainCanvas.isEraser 
-                    }
+                // DRAWING CANVAS REPEATER
+                Repeater {
+                    id: canvasRepeater
+                    model: openProjectsModel
+                    delegate: QCanvasItem {
+                        id: canvasInstance
+                        readonly property var mainCanvas: canvasInstance
+                        anchors.fill: parent
+                        focus: index === activeProjectIndex
+                        visible: isProjectActive && index === activeProjectIndex
+                        onVisibleChanged: if (visible) Qt.callLater(fitToView)
+                        
+                        onRequestToolIdx: (idx) => { canvasPage.activeToolIdx = idx }
+                        onIsEraserChanged: { 
+                            if (index === activeProjectIndex) {
+                                colorStudioDialog.isTransparent = canvasInstance.isEraser 
+                            }
+                        }
+                        
+                        Component.onCompleted: {
+                            if (model.path && model.path !== "") {
+                                load_file_path(model.path);
+                            }
+                            fitToView();
+                        }
                     
                     // Sombra Dinámica que sigue al papel (y se escala)
                     Rectangle { 
@@ -1952,7 +2141,8 @@ Window {
                         target: advancedAnimationBar
                         function onCameraEditRequested() { cameraPropertiesPanel.open() }
                     }
-                }
+                } // delegate
+                } // Repeater
 
                 // ═══════════════ COMIC OVERLAY ═══════════════
                 ComicOverlayManager {
@@ -2368,6 +2558,7 @@ Window {
                         }
                     }
                 }
+                } // Fin canvasViewportContainer
 
 
                 // --- CONTEXT BAR REMOVED AND CONSOLIDATED IN TRANSFORM OPTIONS HUD ---
@@ -3027,7 +3218,7 @@ Window {
                     x: parent.width - width - 12
                     y: 70 * uiScale
                     
-                    visible: isProjectActive && mainWindow.showColor && !isStudioMode
+                    visible: isProjectActive && mainWindow.showColor
                     z: 1800
                     
                     targetCanvas: mainCanvas
@@ -3222,7 +3413,40 @@ Window {
                     accentColor: colorAccent
                     isProjectActive: mainWindow.isProjectActive
                     isZenMode: mainWindow.isZenMode
-                    
+                    openProjectsModel: openProjectsModel
+                    activeProjectIndex: activeProjectIndex
+
+                    // Color state bindings
+                    primaryColor: colorStudioDialog ? colorStudioDialog.slot0Color : "#ffffff"
+                    secondaryColor: colorStudioDialog ? colorStudioDialog.slot1Color : "#000000"
+                    activeColorSlot: colorStudioDialog ? colorStudioDialog.activeSlot : 0
+                    isTransparentMode: mainCanvas ? mainCanvas.isEraser : false
+
+                    onColorOrbClicked: (slot) => {
+                        if (!colorStudioDialog) return
+                        if (mainCanvas) mainCanvas.isEraser = false
+                        if (colorStudioDialog.activeSlot !== slot) {
+                            colorStudioDialog.activeSlot = slot
+                            if (mainCanvas) mainCanvas.brushColor = (slot === 0 ? colorStudioDialog.slot0Color : colorStudioDialog.slot1Color)
+                        } else {
+                            mainWindow.showColor = !mainWindow.showColor
+                        }
+                    }
+                    onTransparencyOrbClicked: {
+                        if (mainCanvas) mainCanvas.isEraser = !mainCanvas.isEraser
+                    }
+
+                    onTabActivated: (idx) => { activeProjectIndex = idx }
+                    onTabClosed: (idx) => {
+                        var canvas = canvasRepeater.itemAt(idx);
+                        if (canvas && canvas.projectDirty) {
+                            closeProjectConfirmDialog.indexToClose = idx;
+                            closeProjectConfirmDialog.open();
+                        } else {
+                            closeProjectAtIndex(idx, false);
+                        }
+                    }
+
                     visible: isStudioMode && isProjectActive
                     z: 900
 
@@ -4190,7 +4414,141 @@ Window {
                     anchors.topMargin: 12 * uiScale
                     anchors.horizontalCenter: parent.horizontalCenter
                     visible: isProjectActive && !isZenMode && !isStudioMode
-                    z: 950
+                    z: 960
+
+                    // ── CÁPSULA CENTRAL DE PESTAÑAS (solo cuando hay ≥2 proyectos) ──
+                    Rectangle {
+                        id: essentialTabCapsule
+                        visible: openProjectsModel.count >= 2
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 32 * uiScale
+                        width: Math.min(tabCapsuleRow.implicitWidth + 16 * uiScale, parent.width * 0.55)
+                        radius: height / 2
+                        color: Qt.rgba(colorPanel.r, colorPanel.g, colorPanel.b, 0.88)
+                        border.color: colorBorder
+                        border.width: 1
+                        z: 10
+                        clip: true
+
+                        // Shadow below capsule
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: -5
+                            z: -1; radius: parent.radius + 5
+                            color: "black"; opacity: 0.30
+                        }
+                        // Top-edge shimmer
+                        Rectangle {
+                            width: parent.width * 0.5; height: 1
+                            anchors.top: parent.top; anchors.horizontalCenter: parent.horizontalCenter
+                            gradient: Gradient { orientation: Gradient.Horizontal
+                                GradientStop { position: 0; color: "transparent" }
+                                GradientStop { position: 0.5; color: Qt.rgba(1,1,1,0.10) }
+                                GradientStop { position: 1; color: "transparent" }
+                            }
+                        }
+
+                        Behavior on width { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+                        Row {
+                            id: tabCapsuleRow
+                            anchors.centerIn: parent
+                            spacing: 2 * uiScale
+                            leftPadding: 6 * uiScale
+                            rightPadding: 6 * uiScale
+
+                            Repeater {
+                                id: essentialTabRepeater
+                                model: openProjectsModel
+                                delegate: Item {
+                                    id: essTabDelegate
+                                    width: essTabInner.implicitWidth + 24 * uiScale
+                                    height: 28 * uiScale
+
+                                    // Active pill highlight
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: height / 2
+                                        color: index === activeProjectIndex
+                                            ? Qt.rgba(colorText.r, colorText.g, colorText.b, 0.12)
+                                            : (essTabMa.containsMouse ? Qt.rgba(colorText.r, colorText.g, colorText.b, 0.06) : "transparent")
+                                        border.color: index === activeProjectIndex ? colorBorder : "transparent"
+                                        border.width: 1
+                                        Behavior on color { ColorAnimation { duration: 120 } }
+                                    }
+
+                                    Row {
+                                        id: essTabInner
+                                        anchors.centerIn: parent
+                                        spacing: 5 * uiScale
+
+                                        // Unsaved dot
+                                        Rectangle {
+                                            width: 5; height: 5; radius: 3
+                                            color: colorAccent
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            visible: {
+                                                var c = canvasRepeater.itemAt(index);
+                                                return c ? c.projectDirty : false;
+                                            }
+                                        }
+
+                                        Text {
+                                            text: model.name || "Sin Título"
+                                            color: index === activeProjectIndex ? colorText : colorTextMuted
+                                            font.pixelSize: 11 * uiScale
+                                            font.weight: index === activeProjectIndex ? Font.SemiBold : Font.Normal
+                                            elide: Text.ElideRight
+                                            maximumLineCount: 1
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            Behavior on color { ColorAnimation { duration: 120 } }
+                                        }
+
+                                        // Close button
+                                        Item {
+                                            width: 14 * uiScale; height: 14 * uiScale
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            Text {
+                                                text: "×"
+                                                font.pixelSize: 13 * uiScale
+                                                color: essCloseMa.containsMouse ? "#ef4444" : colorTextMuted
+                                                anchors.centerIn: parent
+                                                Behavior on color { ColorAnimation { duration: 100 } }
+                                            }
+                                            MouseArea {
+                                                id: essCloseMa
+                                                anchors.fill: parent; hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: (mouse) => {
+                                                    mouse.accepted = true
+                                                    var canvas = canvasRepeater.itemAt(index);
+                                                    if (canvas && canvas.projectDirty) {
+                                                        closeProjectConfirmDialog.indexToClose = index;
+                                                        closeProjectConfirmDialog.open();
+                                                    } else {
+                                                        closeProjectAtIndex(index, false);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        id: essTabMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        propagateComposedEvents: true
+                                        onClicked: (mouse) => {
+                                            activeProjectIndex = index;
+                                            mouse.accepted = false
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // ── FIN CÁPSULA CENTRAL ──
 
                     // Components for dynamic buttons
                     Component {
@@ -8633,61 +8991,19 @@ Window {
                                     id: createBtnMouse
                                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                                     onClicked: {
-                                        if (newProjectDialog.isMultiPage) {
-                                            // Handle Story Project (Folder based)
-                                            var ts = new Date().getTime()
-                                            var folderName = newProjectDialog.categories[newProjectDialog.selectedCategoryIndex].name + "_" + ts
-                                            var folderPath = mainCanvas.create_new_sketchbook(folderName, "#1c1c1e")
-                                            
-                                            if (folderPath !== "") {
-                                                // Prepare Canvas Settings
-                                                mainCanvas.resizeCanvas(newProjectDialog.inputW, newProjectDialog.inputH)
-                                                mainCanvas.setBackgroundColor(newProjectDialog.bgFill)
-                                                mainCanvas.setProjectDpi(newProjectDialog.inputDPI)
-                                                
-                                                // Create Page 1
-                                                var pagePath = mainCanvas.create_new_page(folderPath, "Page 1")
-                                                if (pagePath !== "") {
-                                                    mainCanvas.load_file_path(pagePath)
-                                                    mainWindow.isStoryProject = true
-                                                    mainWindow.currentStoryPath = folderPath
-                                                    mainWindow.showStoryPanel = true
-                                                }
-                                            }
-                                        } else {
-                                            // Standard Project
-                                            mainCanvas.clearProjectPath()
-                                            mainCanvas.resizeCanvas(newProjectDialog.inputW, newProjectDialog.inputH)
-                                            mainCanvas.setBackgroundColor(newProjectDialog.bgFill)
-                                            mainCanvas.setProjectDpi(newProjectDialog.inputDPI)
-                                            mainWindow.isStoryProject = false
-                                            mainWindow.showStoryPanel = false
-                                        }
+                                        var isStory = newProjectDialog.isMultiPage;
+                                        var isAnimation = (newProjectDialog.selectedCategoryIndex === 3);
                                         
-                                        isProjectActive = true
-                                        currentPage = 1
-                                        mainCanvas.fitToView()
-
-                                        // Clear camera keyframes — they belong to the previous project
-                                        if (animationCamera) animationCamera.clearKeyframes()
-
-                                        // Auto-activate animation mode if Animation category selected
-                                        if (newProjectDialog.selectedCategoryIndex === 3) {
-                                            showAnimationBar = true
-                                            // Apply settings — frames are user-created one by one, not pre-populated
-                                            simpleAnimationBar.projectFPS  = newProjectDialog.inputFPS
-                                            simpleAnimationBar.projectLoop = true
-                                            simpleAnimationBar.fps         = newProjectDialog.inputFPS
-                                            simpleAnimationBar.loopEnabled = true
-                                            simpleAnimationBar.onionEnabled = false
+                                        mainWindow.createNewProjectTab(isStory, isAnimation);
+                                        
+                                        if (isAnimation) {
                                             if (isStudioMode) {
                                                 studioCanvasLayout.loadWorkspace("Animación")
                                             }
-                                        } else {
-                                            showAnimationBar = false
                                         }
                                         
-                                        newProjectDialog.close()
+                                        if (animationCamera) animationCamera.clearKeyframes();
+                                        newProjectDialog.close();
                                     }
                                     onPressed: parent.scale = 0.97
                                     onReleased: parent.scale = 1.0
@@ -8999,14 +9315,8 @@ Window {
     function startHeroTransition(startRect, imgSource, projectPath) {
         // Use the Refactored Component
         heroTransition.start(startRect, imgSource, projectPath, function(path) {
-            var success = mainCanvas.loadProject(path)
-            if (success) {
-                isProjectActive = true
-                currentPage = 1
-                mainCanvas.fitToView()
-                if (animationCamera) animationCamera.clearKeyframes()
-            }
-            return success
+            mainWindow.openProjectTab(path)
+            return true
         })
     }
 
@@ -9017,16 +9327,8 @@ Window {
         title: "Open Project"
         nameFilters: ["Kromo Projects (*.kromo *.kstudio *.aflow *.artflow *.stxf)", "Photoshop Document (*.psd)", "All Files (*)"]
         onAccepted: {
-            if (mainCanvas.loadProject(file.toString())) {
-                isProjectActive = true
-                currentPage = 1
-                mainCanvas.fitToView()
-                if (animationCamera) animationCamera.clearKeyframes()
-                loadRecentProjects()
-                toastManager.show("Project loaded", "success")
-            } else {
-                toastManager.show("Failed to load project", "error")
-            }
+            mainWindow.openProjectTab(file.toString())
+            toastManager.show("Proyecto abierto", "success")
         }
     }
 
@@ -9037,13 +9339,32 @@ Window {
         nameFilters: ["Kromo Projects (*.kromo)", "Kromo Studio Legacy (*.kstudio)", "Legacy ArtFlow (*.aflow)", "Legacy ArtFlow Studio (*.artflow)", "Photoshop Document (*.psd)"]
         // defaultSuffix: "aflow" // Removed to allow extension switching based on filter
         onAccepted: {
-            if (mainCanvas.saveProjectAs(file)) {
-                // If it was a full save (aflow), we reload. PSD export doesn't change current project usually.
+            var filePath = file.toString()
+            var idx = (mainWindow.pendingCloseIndex >= 0) ? mainWindow.pendingCloseIndex : mainWindow.activeProjectIndex
+            var canvas = canvasRepeater.itemAt(idx)
+            
+            if (canvas && canvas.saveProjectAs(filePath)) {
+                var filename = filePath.substring(filePath.lastIndexOf("/") + 1)
+                if (filename === "") {
+                    filename = filePath.substring(filePath.lastIndexOf("\\") + 1)
+                }
+                openProjectsModel.setProperty(idx, "path", filePath)
+                openProjectsModel.setProperty(idx, "name", filename)
+                
                 loadRecentProjects()
-                toastManager.show("Project saved", "success")
+                toastManager.show("Proyecto guardado", "success")
+                
+                if (mainWindow.pendingCloseIndex >= 0) {
+                    mainWindow.removeProjectTab(mainWindow.pendingCloseIndex)
+                    mainWindow.pendingCloseIndex = -1
+                }
             } else {
-                toastManager.show("Save failed", "error")
+                toastManager.show("Error al guardar el proyecto", "error")
+                mainWindow.pendingCloseIndex = -1
             }
+        }
+        onRejected: {
+            mainWindow.pendingCloseIndex = -1
         }
     }
 
@@ -9153,6 +9474,92 @@ Window {
         nameFilters: ["Images (*.png *.jpg *.jpeg *.bmp)", "All Files (*)"]
         onAccepted: {
             refWindow.refSource = file
+        }
+    }
+
+    Popup {
+        id: closeProjectConfirmDialog
+        width: 400 * uiScale
+        height: 200 * uiScale
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+
+        property int indexToClose: -1
+
+        background: Rectangle {
+            color: colorCard
+            radius: 16 * uiScale
+            border.color: colorBorder
+            border.width: 1
+        }
+
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20 * uiScale
+            spacing: 12 * uiScale
+
+            Text {
+                text: "¿Guardar cambios?"
+                color: colorText
+                font.pixelSize: 16 * uiScale; font.bold: true
+                Layout.fillWidth: true
+            }
+
+            Text {
+                text: "El proyecto tiene cambios sin guardar. ¿Quieres guardarlos antes de cerrar?"
+                color: colorTextMuted
+                font.pixelSize: 12 * uiScale
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12 * uiScale
+
+                Button {
+                    Layout.fillWidth: true; Layout.preferredHeight: 36 * uiScale
+                    contentItem: Text { text: "No Guardar"; color: "#ef4444"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.bold: true; font.pixelSize: 12 * uiScale }
+                    background: Rectangle { color: noSaveMa.containsMouse ? Qt.rgba(1, 0, 0, 0.08) : "transparent"; border.color: "#ef4444"; border.width: 1; radius: 8 * uiScale }
+                    MouseArea {
+                        id: noSaveMa
+                        anchors.fill: parent; hoverEnabled: true
+                        onClicked: {
+                            closeProjectConfirmDialog.close()
+                            closeProjectAtIndex(closeProjectConfirmDialog.indexToClose, false)
+                        }
+                    }
+                }
+
+                Button {
+                    Layout.fillWidth: true; Layout.preferredHeight: 36 * uiScale
+                    contentItem: Text { text: "Cancelar"; color: colorText; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.pixelSize: 12 * uiScale }
+                    background: Rectangle { color: cancelConfirmMa.containsMouse ? Qt.rgba(colorText.r, colorText.g, colorText.b, 0.08) : "transparent"; border.color: colorBorder; border.width: 1; radius: 8 * uiScale }
+                    MouseArea {
+                        id: cancelConfirmMa
+                        anchors.fill: parent; hoverEnabled: true
+                        onClicked: closeProjectConfirmDialog.close()
+                    }
+                }
+
+                Button {
+                    Layout.fillWidth: true; Layout.preferredHeight: 36 * uiScale
+                    contentItem: Text { text: "Guardar"; color: "white"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; font.bold: true; font.pixelSize: 12 * uiScale }
+                    background: Rectangle { color: saveConfirmMa.containsMouse ? Qt.lighter(colorAccent, 1.1) : colorAccent; radius: 8 * uiScale }
+                    MouseArea {
+                        id: saveConfirmMa
+                        anchors.fill: parent; hoverEnabled: true
+                        onClicked: {
+                            closeProjectConfirmDialog.close()
+                            closeProjectAtIndex(closeProjectConfirmDialog.indexToClose, true)
+                        }
+                    }
+                }
+            }
         }
     }
 
