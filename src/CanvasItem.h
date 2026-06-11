@@ -733,6 +733,7 @@ private:
   bool m_wintabActive = false;
   qint64 m_lastWintabTime = 0;
   bool m_wintabInitAttempted = false;
+  qint64 m_lastStylusTime = 0;
   QString m_brushTip;
   QVariantList m_availableBrushes;
   QString m_activeBrushName;

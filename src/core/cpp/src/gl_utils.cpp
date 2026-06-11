@@ -1,6 +1,7 @@
 #include "gl_utils.h"
 #include <iostream>
 
+#ifdef _WIN32
 // Define global function pointers
 PFNGLGENFRAMEBUFFERSPROC glGenFramebuffers = nullptr;
 PFNGLDELETEFRAMEBUFFERSPROC glDeleteFramebuffers = nullptr;
@@ -106,3 +107,4 @@ bool initGLFunctions() {
 
     return glGenFramebuffers != nullptr;
 }
+#endif

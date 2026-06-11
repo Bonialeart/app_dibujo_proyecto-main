@@ -5,7 +5,6 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
-#endif
 #include <GL/gl.h>
 
 // Define necessary GL constants not in GL 1.1
@@ -172,3 +171,4 @@ extern PFNGLACTIVETEXTUREPROC glActiveTexture;
 
 // Initialization function
 bool initGLFunctions();
+#endif

@@ -23,6 +23,11 @@ include_directories(
 )
 
 # 2.5 Integración de Rust usando Corrosion
+# Apuntamos directamente a los binarios reales de Rust (sin pasar por el proxy de rustup)
+# para evitar fallos silenciosos dentro del entorno restringido de Qt Creator.
+set(Rust_COMPILER "C:/Users/bonia/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/rustc.exe" CACHE FILEPATH "Rust compiler" FORCE)
+set(Rust_CARGO "C:/Users/bonia/.rustup/toolchains/stable-x86_64-pc-windows-msvc/bin/cargo.exe" CACHE FILEPATH "Rust Cargo" FORCE)
+
 include(FetchContent)
 FetchContent_Declare(
     Corrosion
@@ -88,9 +93,14 @@ set(UI_SOURCES
     src/CanvasItem.cpp
     src/ProjectModel.cpp
     src/PreferencesManager.cpp
-    src/WintabManager.cpp
-    src/WintabManager.h
 )
+
+if(WIN32)
+    list(APPEND UI_SOURCES
+        src/WintabManager.cpp
+        src/WintabManager.h
+    )
+endif()
 
 # 5. Recursos QML
 # En Qt6, lo ideal es usar qt_add_qml_module, pero para simplificar la migración
@@ -118,9 +128,14 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Widgets
     Qt6::QuickEffects
     Qt6::ShaderTools
-    opengl32
     rust_core
 )
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE opengl32)
+elseif(ANDROID)
+    target_link_libraries(${PROJECT_NAME} PRIVATE GLESv3)
+endif()
 
 # Copiar assets al directorio de build
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

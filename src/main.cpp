@@ -18,13 +18,22 @@
 #include <QWindow>
 #include <QQuickWindow>
 #include <QQuickStyle>
+#ifdef Q_OS_WIN
 #include <windows.h>
 #include "WintabManager.h"
+#endif
 
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context,
                      const QString &msg) {
   QByteArray localMsg = msg.toLocal8Bit();
-  std::ofstream os("qml_errors.log", std::ios_base::app);
+#ifdef Q_OS_ANDROID
+  QString logDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+  QDir().mkpath(logDir);
+  std::string logPath = (logDir + "/qml_errors.log").toStdString();
+#else
+  std::string logPath = "qml_errors.log";
+#endif
+  std::ofstream os(logPath, std::ios_base::app);
   os << localMsg.constData() << std::endl;
 }
 
@@ -98,6 +107,7 @@ int main(int argc, char *argv[]) {
         } else if (obj) {
           qDebug() << "QQmlApplicationEngine::objectCreated emitted. obj:" << obj 
                    << "className:" << (obj ? obj->metaObject()->className() : "null");
+#ifdef Q_OS_WIN
           QWindow *window = qobject_cast<QWindow *>(obj);
           if (window) {
             HWND hwnd = (HWND)window->winId();
@@ -114,6 +124,7 @@ int main(int argc, char *argv[]) {
               qDebug() << "No topLevelWindows found either!";
             }
           }
+#endif
         }
       });
 

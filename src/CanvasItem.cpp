@@ -1,7 +1,9 @@
 // Re-verify includes
 #include "CanvasItem.h"
 #include "PreferencesManager.h"
+#ifdef Q_OS_WIN
 #include "WintabManager.h"
+#endif
 #include <fstream>
 #include "core/cpp/include/brush_preset_manager.h"
 #include "core/brushes/abr_parser.h"
@@ -306,6 +308,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 
 
 
+#ifdef Q_OS_WIN
   // Wintab integration
   connect(WintabManager::instance(), &WintabManager::wintabEvent, this, &CanvasItem::onWintabEvent);
   connect(this, &QQuickItem::windowChanged, this, [this](QQuickWindow *win) {
@@ -315,6 +318,7 @@ CanvasItem::CanvasItem(QQuickItem *parent)
         WintabManager::instance()->init(hwnd);
     }
   });
+#endif
   // ---------------------------------
 
   setAcceptHoverEvents(true);
@@ -4663,6 +4667,22 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       return;
     }
 
+    // Palm Rejection: If stylus was active recently, ignore touch/mouse drawing press
+    bool isStylus = false;
+    if (event->device()) {
+        if (event->device()->type() == QInputDevice::DeviceType::Stylus ||
+            event->device()->type() == QInputDevice::DeviceType::Airbrush) {
+            isStylus = true;
+        }
+    }
+    if (!isStylus) {
+        qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (now - m_lastStylusTime < 1000) {
+            event->accept();
+            return;
+        }
+    }
+
     // Evitar que herramientas de NO DIBUJO pinten accidentalmente
     if (m_tool != ToolType::Pen && m_tool != ToolType::Eraser &&
         m_tool != ToolType::Fill && m_tool != ToolType::Shape &&
@@ -4698,10 +4718,12 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
       return;
     }
 
+#ifdef Q_OS_WIN
     if (PreferencesManager::instance()->tabletInputMode() == "Wintab" && !m_wintabInitAttempted && window()) {
       m_wintabInitAttempted = true;
       WintabManager::instance()->init((HWND)window()->winId());
     }
+#endif
 
     m_isDrawing = true;
     m_lastPos = canvasPos;
@@ -5083,10 +5105,12 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   }
 
   if (m_isDrawing) {
+#ifdef Q_OS_WIN
     if (PreferencesManager::instance()->tabletInputMode() == "Wintab" && !m_wintabInitAttempted && window()) {
       m_wintabInitAttempted = true;
       WintabManager::instance()->init((HWND)window()->winId());
     }
+#endif
 
     float pressure = 1.0f;
     float tiltFactor = 0.0f;
@@ -5096,6 +5120,24 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     qint64 now = QDateTime::currentMSecsSinceEpoch();
     bool wintabRecentlyActive = useWintab && (now - m_lastWintabTime < 250); // Wintab was active within the last 250ms
     
+    bool isStylus = false;
+    if (event->device()) {
+        if (event->device()->type() == QInputDevice::DeviceType::Stylus ||
+            event->device()->type() == QInputDevice::DeviceType::Airbrush) {
+            isStylus = true;
+        }
+    }
+
+    if (isStylus) {
+        m_lastStylusTime = now;
+    } else {
+        // Palm Rejection: If stylus was active in the last 1000ms, ignore touch/mouse move drawing
+        if (now - m_lastStylusTime < 1000) {
+            event->accept();
+            return;
+        }
+    }
+
     if (wintabRecentlyActive) {
       m_wintabActive = true;
       pressure = m_wintabPressure;
@@ -5104,18 +5146,12 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
       tiltFactor = std::min(1.0f, tiltDist / 60.0f); 
     } else {
       m_wintabActive = false;
-      bool isStylus = false;
-      if (event->device()) {
-          if (event->device()->type() == QInputDevice::DeviceType::Stylus ||
-              event->device()->type() == QInputDevice::DeviceType::Airbrush) {
-              isStylus = true;
-          }
-      }
-      
-      if (!event->points().isEmpty()) {
+      if (isStylus && !event->points().isEmpty()) {
         float p = event->points().first().pressure();
         if (p > 0.0f)
           pressure = p;
+      } else {
+        pressure = 1.0f;
       }
     }
 
@@ -5488,6 +5524,7 @@ void CanvasItem::mouseDoubleClickEvent(QMouseEvent *event) {
 }
 
 void CanvasItem::onWintabEvent(float x, float y, float pressure, float tiltX, float tiltY) {
+#ifdef Q_OS_WIN
     if (PreferencesManager::instance()->tabletInputMode() != "Wintab") {
         m_wintabActive = false;
         return;
@@ -5497,6 +5534,7 @@ void CanvasItem::onWintabEvent(float x, float y, float pressure, float tiltX, fl
     m_wintabTiltY = tiltY;
     m_wintabActive = true;
     m_lastWintabTime = QDateTime::currentMSecsSinceEpoch();
+#endif
 }
 
 void CanvasItem::tabletEvent(QTabletEvent *event) {
@@ -5561,10 +5599,14 @@ void CanvasItem::tabletEvent(QTabletEvent *event) {
     }
   }
 
+  m_lastStylusTime = QDateTime::currentMSecsSinceEpoch();
+
+#ifdef Q_OS_WIN
   if (PreferencesManager::instance()->tabletInputMode() == "Wintab" && !m_wintabInitAttempted && window()) {
     m_wintabInitAttempted = true;
     WintabManager::instance()->init((HWND)window()->winId());
   }
+#endif
 
   float pressure = event->pressure();
   // Normalizar presión
@@ -5874,6 +5916,12 @@ bool CanvasItem::event(QEvent *event) {
 }
 
 void CanvasItem::touchEventOverride(QTouchEvent *event) {
+  qint64 now = QDateTime::currentMSecsSinceEpoch();
+  if (now - m_lastStylusTime < 1000) {
+    event->accept();
+    return;
+  }
+
   int points = event->points().count();
   int prevPointCount = m_touchPointCount;
   m_touchPointCount = points;

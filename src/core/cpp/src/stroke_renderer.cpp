@@ -95,10 +95,15 @@ void StrokeRenderer::setBrushTip(const unsigned char *data, int width,
   // GL_CLAMP_TO_BORDER con borde TRANSPARENTE:
   // Cuando el tip rota y la UV sale de [0,1] el GPU devuelve alpha=0
   // automaticamente, sin artefactos ni descarte manual en el shader.
+#ifdef GL_CLAMP_TO_BORDER
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
   float zeroBorder[] = {0.0f, 0.0f, 0.0f, 0.0f};
   glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, zeroBorder);
+#else
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+#endif
 
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
                GL_UNSIGNED_BYTE, data);
