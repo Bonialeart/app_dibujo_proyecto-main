@@ -2982,50 +2982,70 @@ void CanvasItem::paint(QPainter *painter) {
     painter->setRenderHint(QPainter::Antialiasing);
 
     QPointF pos = m_lastTouchPos;
-    float outerR = 65.0f;
-    float ringR = 62.0f;
-    float innerR = 57.0f;
+    float outerR = 60.0f;
+    float innerR = 50.0f;
 
-    // Outer shadow ring
-    painter->setPen(QPen(QColor(0, 0, 0, 160), 3.0f));
+    // Drop shadow
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(0, 0, 0, 64));
+    painter->drawEllipse(pos.x() + 1.5f, pos.y() + 2.5f, outerR, outerR);
+
+    QRectF outerRect(pos.x() - outerR, pos.y() - outerR, outerR * 2, outerR * 2);
+    QRectF innerRect(pos.x() - innerR, pos.y() - innerR, innerR * 2, innerR * 2);
+
+    // 1. Top Half Ring (Sampleed Color)
+    QPainterPath topRing;
+    topRing.arcTo(outerRect, 0, 180);
+    topRing.arcTo(innerRect, 180, -180);
+    topRing.closeSubpath();
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(m_touchEyedropperColor);
+    painter->drawPath(topRing);
+
+    // 2. Bottom Half Ring (Old Color)
+    QPainterPath bottomRing;
+    bottomRing.arcTo(outerRect, 180, 180);
+    bottomRing.arcTo(innerRect, 0, -180);
+    bottomRing.closeSubpath();
+    painter->setBrush(m_touchEyedropperOldColor);
+    painter->drawPath(bottomRing);
+
+    // 3. Divider lines
+    painter->setPen(QPen(Qt::white, 1.5f));
+    painter->drawLine(QPointF(pos.x() - outerR, pos.y()), QPointF(pos.x() - innerR, pos.y()));
+    painter->drawLine(QPointF(pos.x() + innerR, pos.y()), QPointF(pos.x() + outerR, pos.y()));
+
+    // 4. White Inner Circle with outline
+    painter->setPen(QPen(QColor(161, 161, 170), 1.0f)); // #a1a1aa grey outline
+    painter->setBrush(Qt::white);
+    painter->drawEllipse(pos, innerR, innerR);
+
+    // 5. Thin outer outline
+    painter->setPen(QPen(QColor(113, 113, 122), 1.0f)); // #71717a grey outline
     painter->setBrush(Qt::NoBrush);
     painter->drawEllipse(pos, outerR, outerR);
 
-    // White contrast ring
-    painter->setPen(QPen(Qt::white, 2.5f));
-    painter->drawEllipse(pos, ringR, ringR);
+    // 6. Draw Center Pipette Icon pointing exactly to 'pos'
+    painter->save();
+    painter->translate(pos);
+    painter->rotate(-135.0); // Rotate so it points to center (0,0) from top-left direction
+    
+    QPainterPath pipette;
+    pipette.moveTo(0, 0); // Tip
+    pipette.lineTo(1.5f, 3.0f);
+    pipette.lineTo(1.5f, 10.0f);
+    pipette.lineTo(3.5f, 10.0f);
+    pipette.lineTo(3.5f, 16.0f);
+    pipette.lineTo(-3.5f, 16.0f);
+    pipette.lineTo(-3.5f, 10.0f);
+    pipette.lineTo(-1.5f, 10.0f);
+    pipette.lineTo(-1.5f, 3.0f);
+    pipette.closeSubpath();
 
-    // Split circle: bottom half = old brush color, top half = sampled color
-    QRectF splitRect(pos.x() - innerR, pos.y() - innerR, innerR * 2, innerR * 2);
-
-    // Top half (sampled color)
-    QPainterPath topHalf;
-    topHalf.arcMoveTo(splitRect, 0);
-    topHalf.arcTo(splitRect, 0, 180);
-    topHalf.lineTo(pos.x(), pos.y());
-    topHalf.closeSubpath();
     painter->setPen(Qt::NoPen);
-    painter->setBrush(m_touchEyedropperColor);
-    painter->drawPath(topHalf);
-
-    // Bottom half (old brush color)
-    QPainterPath bottomHalf;
-    bottomHalf.arcMoveTo(splitRect, 180);
-    bottomHalf.arcTo(splitRect, 180, 180);
-    bottomHalf.lineTo(pos.x(), pos.y());
-    bottomHalf.closeSubpath();
-    painter->setBrush(m_touchEyedropperOldColor);
-    painter->drawPath(bottomHalf);
-
-    // Divider line
-    painter->setPen(QPen(Qt::white, 2.0f));
-    painter->drawLine(QPointF(pos.x() - innerR, pos.y()),
-                      QPointF(pos.x() + innerR, pos.y()));
-
-    // Center dot
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(QColor(255, 255, 255, 220));
-    painter->drawEllipse(pos, 2.5f, 2.5f);
+    painter->setBrush(QColor(39, 39, 42)); // #27272a dark charcoal
+    painter->drawPath(pipette);
+    painter->restore();
 
     painter->restore();
   }
@@ -6281,6 +6301,9 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
     m_touchStartTime = 0;
     m_touchMovedThisSession = false;
   }
+
+  // Consume touch events to prevent Qt from synthesizing mouse events (disables finger drawing)
+  event->accept();
 }
 
 void CanvasItem::nativeGestureEvent(QNativeGestureEvent *event) {
@@ -7295,7 +7318,7 @@ void CanvasItem::setCurrentTool(const QString &tool) {
     m_tool = ToolType::Transform;
     setCursor(getModernCursor());
     beginTransform();
-  } else if (tool == "eyedropper") {
+  } else if (tool == "eyedropper" || tool == "picker") {
     m_tool = ToolType::Eyedropper;
     setCursor(QCursor(Qt::BlankCursor));
   } else if (tool == "hand") {

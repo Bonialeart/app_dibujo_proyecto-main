@@ -68,10 +68,10 @@ QMap<QString, PanelInfo> PanelManager::createCatalog() const {
   catalog["layers"] = makePanel("layers", "Layers", "layers.svg", "LayerPanel.qml");
   catalog["navigator"] = makePanel("navigator", "Navigator", "compass.svg", "NavigatorPanel.qml");
   catalog["history"] = makePanel("history", "History", "undo.svg", "HistoryPanel.qml");
-  catalog["info"] = makePanel("info", "Info", "sliders.svg", "InfoPanel.qml");
+  catalog["info"] = makePanel("info", "Info", "info.svg", "InfoPanel.qml");
   catalog["reference"] = makePanel("reference", "Reference", "image.svg", "ReferencePanel.qml");
   catalog["timeline"] = makePanel("timeline", "Timeline", "video.svg", "TimelinePanel.qml");
-  catalog["colorhistory"] = makePanel("colorhistory", "Color History", "palette.svg", "ColorHistoryPanel.qml");
+  catalog["colorhistory"] = makePanel("colorhistory", "Color History", "colorhistory.svg", "ColorHistoryPanel.qml");
   return catalog;
 }
 

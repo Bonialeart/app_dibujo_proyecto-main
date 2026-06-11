@@ -71,7 +71,7 @@ Window {
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Eraser Tool"] ? mainWindow.sm["Eraser Tool"] : "E"; onActivated: canvasPage.activeToolIdx = 9 }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Lasso Tool"] ? mainWindow.sm["Lasso Tool"] : "L"; onActivated: canvasPage.activeToolIdx = 2 }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Hand Tool"] ? mainWindow.sm["Hand Tool"] : "H"; onActivated: canvasPage.activeToolIdx = 12 }
-    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: canvasPage.activeToolIdx = 11 }
+    Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Eyedropper Tool"] ? mainWindow.sm["Eyedropper Tool"] : "I"; onActivated: canvasPage.activeToolIdx = 10 }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Move Tool"] ? mainWindow.sm["Move Tool"] : "V"; onActivated: canvasPage.activeToolIdx = 4 }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Transform"] ? mainWindow.sm["Transform"] : "Ctrl+T"; onActivated: { mainCanvas.isFreeTransformActive = true; canvasPage.activeToolIdx = 4; } }
     Shortcut { enabled: mainWindow.shortcutsEnabled; sequence: mainWindow.sm && mainWindow.sm["Select None"] ? mainWindow.sm["Select None"] : "Ctrl+D"; onActivated: { mainCanvas.deselect(); mainCanvas.update() } }
@@ -156,7 +156,8 @@ Window {
         id: openProjectsModel
     }
     property int activeProjectIndex: -1
-    property var mainCanvas: (activeProjectIndex >= 0 && activeProjectIndex < canvasRepeater.count) ? canvasRepeater.itemAt(activeProjectIndex) : null
+    property var activeCanvasInstance: null
+    property var mainCanvas: activeCanvasInstance
     property int pendingCloseIndex: -1
 
     onActiveProjectIndexChanged: {
@@ -1580,7 +1581,12 @@ Window {
                         anchors.fill: parent
                         focus: index === activeProjectIndex
                         visible: isProjectActive && index === activeProjectIndex
-                        onVisibleChanged: if (visible) Qt.callLater(fitToView)
+                        onVisibleChanged: {
+                             if (visible) {
+                                 mainWindow.activeCanvasInstance = canvasInstance;
+                                 Qt.callLater(fitToView);
+                             }
+                         }
                         
                         onRequestToolIdx: (idx) => { canvasPage.activeToolIdx = idx }
                         onIsEraserChanged: { 
@@ -1590,6 +1596,9 @@ Window {
                         }
                         
                         Component.onCompleted: {
+                            if (visible) {
+                                mainWindow.activeCanvasInstance = canvasInstance;
+                            }
                             if (model.path && model.path !== "") {
                                 load_file_path(model.path);
                             }
@@ -1979,41 +1988,31 @@ Window {
                     Item {
                         id: loupe
                         visible: canvasPage.isSampling
-                        // Float near the finger
+                        // Center exactly on the sample position for absolute precision
                         x: canvasPage.samplePos.x - width/2
-                        y: canvasPage.samplePos.y - height - 50 
-                        width: 110; height: 110
+                        y: canvasPage.samplePos.y - height/2
+                        width: 120; height: 120
                         z: 1000
     
                         scale: visible ? 1.0 : 0.4
                         opacity: visible ? 1.0 : 0.0
-                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                        Behavior on opacity { NumberAnimation { duration: 150 } }
+                        Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
+                        Behavior on opacity { NumberAnimation { duration: 120 } }
     
                         // Drop Shadow
                         Rectangle {
-                            anchors.fill: parent; anchors.margins: 4
+                            anchors.fill: parent; anchors.margins: 2
                             radius: width/2
-                            color: "black"; opacity: 0.3
-                            anchors.verticalCenterOffset: 4
+                            color: "black"; opacity: 0.25
+                            anchors.verticalCenterOffset: 3
                         }
     
-                        // Outer Ring (Dark)
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: width/2
-                            color: "transparent"
-                            border.color: "#2c2c2e"
-                            border.width: 6 
-                        }
-    
-                        // Inner Content (Canvas for perfect circular masking)
+                        // Outer Ring (Canvas for split colors and outlines)
                         Canvas {
                             id: loupeCanvas
                             anchors.fill: parent
-                            anchors.margins: 6 // Inside the outer ring
                             property color topColor: canvasPage.samplingColor
-                            property color bottomColor: mainCanvas.brushColor
+                            property color bottomColor: mainCanvas ? mainCanvas.brushColor : "#ffffff"
     
                             onTopColorChanged: requestPaint()
                             onBottomColorChanged: requestPaint()
@@ -2024,95 +2023,141 @@ Window {
                                 var h = height;
                                 var cx = w/2;
                                 var cy = h/2;
-                                var r = w/2;
-    
+                                var outerR = w/2 - 3;
+                                var innerR = outerR - 10; // Ring thickness of 10px
+
                                 ctx.reset();
                                 ctx.clearRect(0,0,w,h);
-    
-                                // Create Circular Clip
+
+                                // 1. Top Half (New Color)
                                 ctx.beginPath();
-                                ctx.arc(cx, cy, r, 0, 2*Math.PI);
+                                ctx.arc(cx, cy, outerR, Math.PI, 0, false);
+                                ctx.arc(cx, cy, innerR, 0, Math.PI, true);
                                 ctx.closePath();
-                                ctx.clip();
-    
-                                // Draw Checkerboard (Transparency)
-                                ctx.fillStyle = "#dddddd";
-                                ctx.fillRect(0,0,w,h);
-                                ctx.fillStyle = "#ffffff";
-                                var box = 10;
-                                for(var y=0; y<h; y+=box) {
-                                    for(var x=0; x<w; x+=box) {
-                                        if (((x+y)/box)%2 == 0) ctx.fillRect(x,y,box,box);
-                                    }
-                                }
-    
-                                // Top Half (New Color)
                                 ctx.fillStyle = topColor;
-                                ctx.fillRect(0, 0, w, h/2);
-    
-                                // Bottom Half (Old Color)
-                                ctx.fillStyle = bottomColor;
-                                ctx.fillRect(0, h/2, w, h/2);
-    
-                                // Divider Line
+                                ctx.fill();
+
+                                // 2. Bottom Half (Old Color)
                                 ctx.beginPath();
-                                ctx.moveTo(0, h/2);
-                                ctx.lineTo(w, h/2);
+                                ctx.arc(cx, cy, outerR, 0, Math.PI, false);
+                                ctx.arc(cx, cy, innerR, Math.PI, 0, true);
+                                ctx.closePath();
+                                ctx.fillStyle = bottomColor;
+                                ctx.fill();
+
+                                // 3. Divider lines
+                                ctx.beginPath();
+                                ctx.moveTo(cx - outerR, cy);
+                                ctx.lineTo(cx - innerR, cy);
+                                ctx.moveTo(cx + innerR, cy);
+                                ctx.lineTo(cx + outerR, cy);
+                                ctx.lineWidth = 1.5;
+                                ctx.strokeStyle = "#ffffff";
+                                ctx.stroke();
+
+                                // 4. White Inner Circle
+                                ctx.beginPath();
+                                ctx.arc(cx, cy, innerR, 0, 2*Math.PI);
+                                ctx.closePath();
+                                ctx.fillStyle = "#ffffff";
+                                ctx.fill();
+                                
+                                // Thin outline for inner circle
                                 ctx.lineWidth = 1;
-                                ctx.strokeStyle = "white";
+                                ctx.strokeStyle = "#a1a1aa";
+                                ctx.stroke();
+                                
+                                // Thin outline for outer ring
+                                ctx.beginPath();
+                                ctx.arc(cx, cy, outerR, 0, 2*Math.PI);
+                                ctx.closePath();
+                                ctx.lineWidth = 1;
+                                ctx.strokeStyle = "#71717a";
                                 ctx.stroke();
                             }
                         }
     
-                        // Inner Ring (White - High Contrast)
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            radius: width/2
-                            color: "transparent"
-                            border.color: "white"
-                            border.width: 2
-                            z: 2
-                        }
-    
-                        // Central Reticle (Crosshair)
-                        Item {
-                            anchors.centerIn: parent
-                            width: 14; height: 14
-                            z: 5
-    
-                            // White box
-                            Rectangle {
-                                anchors.fill: parent; color: "transparent"
-                                border.color: "white"; border.width: 2
+                        // Center Pipette Icon
+                        Image {
+                            source: iconPath("picker.svg")
+                            width: 24; height: 24
+                            // Tip is at (3.368, 4.368) relative to top-left of the icon image.
+                            // Align the tip exactly at the center of the loupe.
+                            x: parent.width/2 - 3.368
+                            y: parent.height/2 - 4.368
+                            smooth: true
+                            mipmap: true
+                            z: 10
+                            
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                colorizationColor: "#27272a" // Dark charcoal for contrast on white background
+                                colorization: 1.0
                             }
-                            // Black inner stroke
-                            Rectangle {
-                                anchors.fill: parent; anchors.margins: 2
-                                color: "transparent"
-                                border.color: "black"; border.width: 1
-                                opacity: 0.5
+                        }
+                    }
+
+                    // Custom Eyedropper Hover Cursor
+                    Item {
+                        id: customEyedropperCursor
+                        width: 24
+                        height: 24
+                        visible: isProjectActive && canvasPage.activeToolIdx === 10 && !canvasPage.isSampling && pickerMouseArea.containsMouse
+                        // Position so the tip is exactly under the cursor
+                        x: pickerMouseArea.mouseX - 3.368
+                        y: pickerMouseArea.mouseY - 4.368
+                        z: 2100
+                        
+                        property color sampledColor: canvasPage.samplingColor
+                        property bool isDarkBg: {
+                            var r = sampledColor.r
+                            var g = sampledColor.g
+                            var b = sampledColor.b
+                            var luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                            return luminance < 0.5
+                        }
+
+                        Image {
+                            source: iconPath("picker.svg")
+                            width: 24
+                            height: 24
+                            smooth: true
+                            mipmap: true
+                            
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                colorizationColor: customEyedropperCursor.isDarkBg ? "#ffffff" : "#000000"
+                                colorization: 1.0
+                                shadowEnabled: true
+                                shadowColor: customEyedropperCursor.isDarkBg ? "#000000" : "#ffffff"
+                                shadowBlur: 4
+                                shadowOpacity: 0.95
                             }
                         }
                     }
                     
                     // Picker Mouse Interaction Overlay
                     MouseArea {
+                        id: pickerMouseArea
                         anchors.fill: parent
-                        enabled: isProjectActive && canvasPage.activeToolIdx === 11 // FIXED: Picker is index 11
+                        enabled: isProjectActive && canvasPage.activeToolIdx === 10
                         z: 900 // Over canvas
-                        cursorShape: Qt.CrossCursor
+                        hoverEnabled: true
+                        cursorShape: Qt.BlankCursor // Hide native cursor to show custom one
                         
-                        onPressed: {
+                        onPressed: (mouse) => {
                             canvasPage.isSampling = true
-                            canvasPage.samplePos = Qt.point(mouseX, mouseY)
-                            canvasPage.samplingColor = mainCanvas.sampleColor(mouseX, mouseY, canvasPage.samplingMode)
+                            canvasPage.samplePos = Qt.point(mouse.x, mouse.y)
+                            canvasPage.samplingColor = mainCanvas.sampleColor(mouse.x, mouse.y, canvasPage.samplingMode)
                         }
-                        onPositionChanged: {
-                            canvasPage.samplePos = Qt.point(mouseX, mouseY)
-                            canvasPage.samplingColor = mainCanvas.sampleColor(mouseX, mouseY, canvasPage.samplingMode)
+                        onPositionChanged: (mouse) => {
+                            var col = mainCanvas.sampleColor(mouse.x, mouse.y, canvasPage.samplingMode)
+                            canvasPage.samplingColor = col
+                            if (canvasPage.isSampling) {
+                                canvasPage.samplePos = Qt.point(mouse.x, mouse.y)
+                            }
                         }
-                        onReleased: {
+                        onReleased: (mouse) => {
                             canvasPage.isSampling = false
                             mainCanvas.brushColor = canvasPage.samplingColor
                             
@@ -2761,9 +2806,9 @@ Window {
                     }
 
                     if (event.key === Qt.Key_Alt) {
-                        if (!altPressed && activeToolIdx !== 11) { // FIXED: Picker is 11
+                        if (!altPressed && activeToolIdx !== 10) { // FIXED: Picker is 10
                             lastToolIdx = activeToolIdx
-                            activeToolIdx = 11 // FIXED: Picker is 11
+                            activeToolIdx = 10 // FIXED: Picker is 10
                             altPressed = true
                         }
                         event.accepted = true
@@ -3421,7 +3466,7 @@ Window {
                     id: studioCanvasLayout
                     anchors.fill: parent
                     
-                    mainCanvas: mainCanvas
+                    mainCanvas: mainWindow.mainCanvas
                     canvasPage: canvasPage
                     toolsModel: toolsModel
                     subToolBar: subToolBar
@@ -4374,6 +4419,15 @@ Window {
                     onCancelRequested: {
                         if (mainCanvas) mainCanvas.cancelLiquify()
                     }
+                }
+
+                SelectionToolbar {
+                    id: selectionToolbar
+                    canvas: mainCanvas
+                    canvasPageRef: canvasPage
+                    uiScale: mainWindow.uiScale
+                    accentColor: colorAccent
+                    z: 5000
                 }
 
                 // === TOP BAR REDESIGN: PREMIUM ICON-ONLY FLOATING CAPSULES ===
@@ -7650,7 +7704,7 @@ Window {
             { name: "Redes",       icon: "share.svg",  desc: "Redes sociales y plataformas" }
         ]
         
-        property var catIcons: ["🎨", "📖", "📱", "🎤", "📢"]
+        property var catIcons: []
         
         // --- STORY SETTINGS ---
         property bool isMultiPage: (selectedCategoryIndex === 1 || selectedCategoryIndex === 2)
@@ -7967,10 +8021,11 @@ Window {
                                                 
                                                 Behavior on color { ColorAnimation { duration: 140 } }
                                                 
-                                                Text {
+                                                Image {
                                                     anchors.centerIn: parent
-                                                    text: newProjectDialog.catIcons[index] || ""
-                                                    font.pixelSize: 15
+                                                    source: "image://icons/" + modelData.icon
+                                                    width: 16; height: 16
+                                                    opacity: newProjectDialog.selectedCategoryIndex === index ? 1.0 : 0.6
                                                 }
                                             }
                                             
@@ -8580,7 +8635,11 @@ Window {
                                         Row {
                                             anchors.centerIn: parent
                                             spacing: 8
-                                            Text { text: "⟷"; color: horizBtn.isSelected ? colorAccent : "#606076"; font.pixelSize: 14; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                            Image {
+                                                source: "image://icons/flip_horizontal.svg"
+                                                width: 14; height: 14; anchors.verticalCenter: parent.verticalCenter
+                                                opacity: horizBtn.isSelected ? 1.0 : 0.6
+                                            }
                                             Text { text: "Horizontal"; color: horizBtn.isSelected ? "white" : "#a0a0b0"; font.pixelSize: 12; font.weight: horizBtn.isSelected ? Font.DemiBold : Font.Medium; anchors.verticalCenter: parent.verticalCenter }
                                         }
                                         
@@ -8611,7 +8670,11 @@ Window {
                                         Row {
                                             anchors.centerIn: parent
                                             spacing: 8
-                                            Text { text: "↕"; color: vertBtn.isSelected ? colorAccent : "#606076"; font.pixelSize: 14; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                            Image {
+                                                source: "image://icons/flip_vertical.svg"
+                                                width: 14; height: 14; anchors.verticalCenter: parent.verticalCenter
+                                                opacity: vertBtn.isSelected ? 1.0 : 0.6
+                                            }
                                             Text { text: "Vertical"; color: vertBtn.isSelected ? "white" : "#a0a0b0"; font.pixelSize: 12; font.weight: vertBtn.isSelected ? Font.DemiBold : Font.Medium; anchors.verticalCenter: parent.verticalCenter }
                                         }
                                         
@@ -8643,7 +8706,11 @@ Window {
                                         Row {
                                             anchors.centerIn: parent
                                             spacing: 8
-                                            Text { text: newProjectDialog.lockAspectRatio ? "🔗" : "⛓"; font.pixelSize: 13; color: newProjectDialog.lockAspectRatio ? colorAccent : "#606076"; anchors.verticalCenter: parent.verticalCenter  }
+                                            Image {
+                                                source: newProjectDialog.lockAspectRatio ? "image://icons/link.svg" : "image://icons/unlink.svg"
+                                                width: 14; height: 14; anchors.verticalCenter: parent.verticalCenter
+                                                opacity: newProjectDialog.lockAspectRatio ? 1.0 : 0.6
+                                            }
                                             Text {
                                                 text: newProjectDialog.lockAspectRatio ? "Proporción Ligada" : "Proporción Libre"
                                                 color: newProjectDialog.lockAspectRatio ? "white" : "#a0a0b0"
