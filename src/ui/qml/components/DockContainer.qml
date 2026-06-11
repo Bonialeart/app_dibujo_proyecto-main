@@ -143,7 +143,7 @@ Rectangle {
             
             Rectangle {
                 anchors.fill: parent; anchors.margins: -4; z: -1
-                color: "#1a1a1e"; radius: 4; border.color: accentColor; border.width: 1
+                color: mainWindow ? mainWindow.colorCard : "#1a1a1e"; radius: 4; border.color: accentColor; border.width: 1
             }
         }
     }
@@ -169,7 +169,7 @@ Rectangle {
         Rectangle {
             anchors.centerIn: parent
             width: 70; height: 22; radius: 11
-            color: "#1a1a1e"
+            color: mainWindow ? mainWindow.colorCard : "#1a1a1e"
             border.color: accentColor; border.width: 1.5
             Text {
                 text: root.hoverIndex === 0 ? "Top" : "Insert Here"
@@ -261,7 +261,7 @@ Rectangle {
                     height: isPanelVisible ? undefined : 0
                     SplitView.fillHeight: isPanelVisible
                     SplitView.minimumHeight: isPanelVisible ? (root.isBottom ? 100 : 280) : 0
-                    color: "#151518"
+                    color: mainWindow ? mainWindow.colorPanel : "#151518"
                     clip: true
                     
                     // For a grouped item, determine WHICH panel within the group is currently active
@@ -276,14 +276,14 @@ Rectangle {
                         Rectangle {
                             id: panelHeader
                             width: parent.width; height: 32
-                            color: "#0c0c0f" // Slightly darker for clear contrast with tab content
+                            color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.05) : "#0c0c0f" // Slightly darker for clear contrast with tab content
                             z: 5
                             
                             Rectangle {
-                                width: parent.width; height: 2; anchors.bottom: parent.bottom; color: "#111114" // Smooth shadow transition
+                                width: parent.width; height: 2; anchors.bottom: parent.bottom; color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.15) : "#111114" // Smooth shadow transition
                             }
                             Rectangle {
-                                width: parent.width; height: 1; anchors.bottom: parent.bottom; color: "#1c1c1f" // Hard separator line
+                                width: parent.width; height: 1; anchors.bottom: parent.bottom; color: mainWindow ? mainWindow.colorBorder : "#1c1c1f" // Hard separator line
                             }
                         
                         RowLayout {
@@ -311,7 +311,7 @@ Rectangle {
                                         property bool isActiveTab: modelData.pId === activeTabId
                                         height: parent.height
                                         width: tabContentRow.width + 16 * root.uiScale
-                                        color: isActiveTab ? "#151518" : (tabMa.containsMouse ? "#121215" : "transparent")
+                                        color: isActiveTab ? (mainWindow ? mainWindow.colorPanel : "#151518") : (tabMa.containsMouse ? (mainWindow ? Qt.lighter(mainWindow.colorPanel, 1.05) : "#121215") : "transparent")
                                         
                                         // Slight rounding at the top for tabs
                                         radius: isActiveTab ? 5 : 0
@@ -320,7 +320,7 @@ Rectangle {
                                         // Separator between inactive tabs
                                         Rectangle { 
                                             width: 1; height: 12; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; 
-                                            color: "#1f1f22"; visible: !isActiveTab
+                                            color: mainWindow ? mainWindow.colorBorder : "#1f1f22"; visible: !isActiveTab
                                         }
                                         
                                         // Top accent glow for active tab
@@ -335,7 +335,7 @@ Rectangle {
                                         // Bottom seamless cover
                                         Rectangle {
                                             width: parent.width; height: 2; anchors.bottom: parent.bottom
-                                            color: "#151518"; visible: isActiveTab; z: 5 // Covers the panelHeader bottom border
+                                            color: mainWindow ? mainWindow.colorPanel : "#151518"; visible: isActiveTab; z: 5 // Covers the panelHeader bottom border
                                         }
                                         
                                         Row {
@@ -399,13 +399,13 @@ Rectangle {
                                             y: parent.height + 4
                                             x: (parent.width - width) / 2
                                             background: Rectangle {
-                                                color: "#1e1e24"
-                                                border.color: "#3a3a3d"
+                                                color: mainWindow ? mainWindow.colorPanel : "#1e1e24"
+                                                border.color: mainWindow ? mainWindow.colorBorder : "#3a3a3d"
                                                 radius: 6
                                             }
                                             contentItem: Text {
                                                 text: hoverToolTip.text
-                                                color: "#f0f0f5"
+                                                color: mainWindow ? mainWindow.colorText : "#f0f0f5"
                                                 font.pixelSize: 10
                                                 font.weight: Font.Medium
                                             }

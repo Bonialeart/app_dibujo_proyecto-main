@@ -79,9 +79,9 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 38
-            color: "#0a0a0d"
+            color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.1) : "#0a0a0d"
             radius: 12
-            border.color: "#1a1a24"
+            border.color: mainWindow ? mainWindow.colorBorder : "#1a1a24"
             border.width: 1
             clip: true
             
@@ -110,7 +110,7 @@ Item {
                             // High-end state-dependent background styling
                             color: studioSelectedCategory === modelData.name 
                                 ? accentColor 
-                                : (catMa.containsMouse ? "#1c1c28" : "transparent")
+                                : (catMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e5e7eb" : "#1c1c28") : "transparent")
                             
                             Behavior on color { ColorAnimation { duration: 150 } }
  
@@ -118,7 +118,7 @@ Item {
                                 id: catText
                                 text: modelData.name
                                 anchors.centerIn: parent
-                                color: studioSelectedCategory === modelData.name ? "white" : (catMa.containsMouse ? "#ddd" : "#71717a")
+                                color: studioSelectedCategory === modelData.name ? "white" : (catMa.containsMouse ? (mainWindow ? mainWindow.colorText : "#ddd") : (mainWindow ? mainWindow.colorTextMuted : "#71717a"))
                                 font.pixelSize: 11
                                 font.weight: studioSelectedCategory === modelData.name ? Font.DemiBold : Font.Medium
                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -142,8 +142,8 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 64
             radius: 14
-            color: "#121218"
-            border.color: "#222230"
+            color: mainWindow ? mainWindow.colorCard : "#121218"
+            border.color: mainWindow ? mainWindow.colorBorder : "#222230"
             border.width: 1
 
             // Subtle inner gradient glow
@@ -192,14 +192,14 @@ Item {
 
                     Text {
                         text: mainCanvas ? (mainCanvas.activeBrushName || "Default Brush") : "Default Brush"
-                        color: "white"
+                        color: mainWindow ? mainWindow.colorText : "white"
                         font.pixelSize: 13
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
                     Text {
                         text: "Size: " + (mainCanvas ? Math.round(mainCanvas.brushSize) : 10) + "px  ·  Opac: " + (mainCanvas ? Math.round(mainCanvas.brushOpacity * 100) : 100) + "%"
-                        color: "#71717a"
+                        color: mainWindow ? mainWindow.colorTextMuted : "#71717a"
                         font.pixelSize: 10
                         font.weight: Font.Medium
                     }
@@ -211,9 +211,9 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "#07070a"
+            color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.15) : "#07070a"
             radius: 14
-            border.color: "#14141d"
+            border.color: mainWindow ? mainWindow.colorBorder : "#14141d"
             border.width: 1
             clip: true
 
@@ -255,7 +255,7 @@ Item {
                     
                     color: isActive 
                         ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.12) 
-                        : (brushItemMa.containsMouse ? "#181824" : "transparent")
+                        : (brushItemMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#181824") : "transparent")
                     
                     border.color: isActive ? accentColor : "transparent"
                     border.width: isActive ? 1 : 0
@@ -293,8 +293,8 @@ Item {
                             Layout.preferredWidth: 60
                             Layout.preferredHeight: 32
                             radius: 6
-                            color: "#09090c"
-                            border.color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.3) : "#1a1a24"
+                            color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.25) : "#09090c"
+                            border.color: isActive ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.3) : (mainWindow ? mainWindow.colorBorder : "#1a1a24")
                             border.width: 1
                             clip: true
 
@@ -312,7 +312,7 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             text: brushName
-                            color: isActive ? "white" : (brushItemMa.containsMouse ? "#e4e4e7" : "#a1a1aa")
+                            color: isActive ? (mainWindow && !mainWindow.isDark ? "#111827" : "white") : (brushItemMa.containsMouse ? (mainWindow ? mainWindow.colorText : "#e4e4e7") : (mainWindow ? mainWindow.colorTextMuted : "#a1a1aa"))
                             font.pixelSize: 13
                             elide: Text.ElideRight
                             font.weight: isActive ? Font.DemiBold : Font.Normal

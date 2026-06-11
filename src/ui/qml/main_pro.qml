@@ -126,6 +126,10 @@ Window {
             }
         })
         Qt.callLater(refreshLayoutConfig)
+
+        console.log("[KromoThemeDebug] QML Startup Theme Mode: " + themeMode);
+        console.log("[KromoThemeDebug] QML Startup colorBg: " + colorBg);
+        console.log("[KromoThemeDebug] QML Startup colorPanel: " + colorPanel);
     }
 
     // === DESIGN TOKENS ===
@@ -135,19 +139,25 @@ Window {
     property color themeAccent: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.themeAccent : "#6366f1"
     property real uiScale: (preferencesManager !== undefined && preferencesManager !== null && preferencesManager.uiScale) ? preferencesManager.uiScale : 1.0
     
+    onThemeModeChanged: {
+        console.log("[KromoThemeDebug] QML Theme Mode changed to: " + themeMode);
+        console.log("[KromoThemeDebug] QML colorBg is: " + colorBg);
+        console.log("[KromoThemeDebug] QML colorPanel is: " + colorPanel);
+    }
+    
     readonly property bool showRightToolbar: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showRightToolbar : true
     readonly property bool showRightColorSelector: (preferencesManager !== undefined && preferencesManager !== null) ? preferencesManager.showRightColorSelector : true
     
     readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey" || themeMode === "Studio-Grey"
     
     // Global Colors
-    readonly property color colorBg: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#334155" : (themeMode === "Studio-Grey" ? "#3e3e3e" : "#0a0a0c"))) : "#f3f4f6"
-    readonly property color colorPanel: isDark ? (themeMode === "Midnight" ? "#ee1e293b" : (themeMode === "Blue-Grey" ? "#ee1e293b" : (themeMode === "Studio-Grey" ? "#ee2b2b2b" : "#ee141417"))) : "#ffffff"
+    readonly property color colorBg: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#334155" : (themeMode === "Studio-Grey" ? "#4c4c4c" : "#0a0a0c"))) : "#f3f4f6"
+    readonly property color colorPanel: isDark ? (themeMode === "Midnight" ? "#ee1e293b" : (themeMode === "Blue-Grey" ? "#ee1e293b" : (themeMode === "Studio-Grey" ? "#ee424242" : "#ee141417"))) : "#ffffff"
     readonly property color colorAccent: themeAccent
     readonly property color colorText: isDark ? "#ffffff" : "#111827"
-    readonly property color colorTextMuted: isDark ? (themeMode === "Studio-Grey" ? "#bbbbbb" : "#8e8e93") : "#4b5563"
-    readonly property color colorCard: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#273549" : (themeMode === "Studio-Grey" ? "#333333" : "#1c1c1e"))) : "#f9fafb"
-    readonly property color colorBorder: isDark ? (themeMode === "Midnight" ? "#334155" : (themeMode === "Blue-Grey" ? "#2a3549" : (themeMode === "Studio-Grey" ? "#1e1e1e" : "#2a2a2f"))) : "#e5e7eb"
+    readonly property color colorTextMuted: isDark ? (themeMode === "Studio-Grey" ? "#cccccc" : "#8e8e93") : "#4b5563"
+    readonly property color colorCard: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#273549" : (themeMode === "Studio-Grey" ? "#3a3a3a" : "#1c1c1e"))) : "#f9fafb"
+    readonly property color colorBorder: isDark ? (themeMode === "Midnight" ? "#334155" : (themeMode === "Blue-Grey" ? "#2a3549" : (themeMode === "Studio-Grey" ? "#5a5a5a" : "#2a2a2f"))) : "#e5e7eb"
     
     property int currentPage: 0
     property bool isProjectActive: false
@@ -1317,7 +1327,7 @@ Window {
             Item {
                 id: canvasPage
 
-                Rectangle { anchors.fill: parent; color: "#121214" }
+                Rectangle { anchors.fill: parent; color: colorBg }
 
                 Item {
                     id: canvasViewportContainer
@@ -3639,9 +3649,9 @@ Window {
                     z: 1000
 
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#030305" }
-                        GradientStop { position: 0.5; color: "#06060a" }
-                        GradientStop { position: 1.0; color: "#08080d" }
+                        GradientStop { position: 0.0; color: Qt.darker(colorBg, 1.2) }
+                        GradientStop { position: 0.5; color: colorBg }
+                        GradientStop { position: 1.0; color: Qt.darker(colorBg, 1.1) }
                     }
 
                     // Ambient glow orb
@@ -3692,7 +3702,7 @@ Window {
                         
                         Text {
                             text: "No Project Active"
-                            color: "#7a7a85"
+                            color: colorText
                             font.pixelSize: 24
                             font.weight: Font.Bold
                             font.letterSpacing: -0.5
@@ -3701,7 +3711,7 @@ Window {
                         
                         Text {
                             text: "Create a new canvas or open a project\nfrom the Gallery to start drawing."
-                            color: "#50ffffff"
+                            color: colorTextMuted
                             font.pixelSize: 14
                             font.weight: Font.Light
                             horizontalAlignment: Text.AlignHCenter
@@ -6059,8 +6069,8 @@ Window {
                                         background: Rectangle {
                                             y: (parent.height - height) / 2
                                             width: parent.width; height: 8; radius: 4
-                                            color: "#252528"
-                                            border.color: "#333"; border.width: 1
+                                            color: colorCard
+                                            border.color: colorBorder; border.width: 1
                                             
                                             Rectangle {
                                                 width: sliderSize.visualPosition * parent.width
@@ -6102,8 +6112,8 @@ Window {
                                         background: Rectangle {
                                             y: (parent.height - height) / 2
                                             width: parent.width; height: 8; radius: 4
-                                            color: "#252528"
-                                            border.color: "#333"; border.width: 1
+                                            color: colorCard
+                                            border.color: colorBorder; border.width: 1
                                             Rectangle { width: sliderOpacity.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent }
                                         }
                                         handle: Rectangle {
@@ -6162,7 +6172,7 @@ Window {
                                          onValueChanged: mainCanvas.brushHardness = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
-                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderHardness.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
+                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: colorCard; border.color: colorBorder; border.width: 1; Rectangle { width: sliderHardness.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
                                         handle: Rectangle { x: sliderHardness.visualPosition * (sliderHardness.width - width); y: 5; width: 22; height: 22; radius: 11; color: "#f0f0f0"; border.color: "#1a1a1c"; border.width: 3 }
                                     }
                                     Text { text: Math.round(mainCanvas.brushHardness * 100) + "%"; color: "#666"; font.pixelSize: 12; width: 45; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
@@ -6180,7 +6190,7 @@ Window {
                                          onValueChanged: mainCanvas.brushRoundness = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
-                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderRoundness.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
+                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: colorCard; border.color: colorBorder; border.width: 1; Rectangle { width: sliderRoundness.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
                                         handle: Rectangle { x: sliderRoundness.visualPosition * (sliderRoundness.width - width); y: 5; width: 22; height: 22; radius: 11; color: "#f0f0f0"; border.color: "#1a1a1c"; border.width: 3 }
                                     }
                                     Text { text: Math.round(mainCanvas.brushRoundness * 100) + "%"; color: "#666"; font.pixelSize: 12; width: 45; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
@@ -6198,7 +6208,7 @@ Window {
                                          onValueChanged: mainCanvas.brushAngle = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
-                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderAngle.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
+                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: colorCard; border.color: colorBorder; border.width: 1; Rectangle { width: sliderAngle.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
                                         handle: Rectangle { x: sliderAngle.visualPosition * (sliderAngle.width - width); y: 5; width: 22; height: 22; radius: 11; color: "#f0f0f0"; border.color: "#1a1a1c"; border.width: 3 }
                                     }
                                     Text { text: Math.round(mainCanvas.brushAngle) + "°"; color: "#666"; font.pixelSize: 12; width: 45; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
@@ -6301,7 +6311,7 @@ Window {
                                          onValueChanged: mainCanvas.brushGrain = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
-                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderGrain.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
+                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: colorCard; border.color: colorBorder; border.width: 1; Rectangle { width: sliderGrain.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
                                         handle: Rectangle { x: sliderGrain.visualPosition * (sliderGrain.width - width); y: 5; width: 22; height: 22; radius: 11; color: "#f0f0f0"; border.color: "#1a1a1c"; border.width: 3 }
                                     }
                                     Text { text: Math.round(mainCanvas.brushGrain * 100) + "%"; color: "#666"; font.pixelSize: 12; width: 45; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
@@ -6319,7 +6329,7 @@ Window {
                                          onValueChanged: mainCanvas.brushSpacing = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
-                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderSpacing.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
+                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: colorCard; border.color: colorBorder; border.width: 1; Rectangle { width: sliderSpacing.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
                                         handle: Rectangle { x: sliderSpacing.visualPosition * (sliderSpacing.width - width); y: 5; width: 22; height: 22; radius: 11; color: "#f0f0f0"; border.color: "#1a1a1c"; border.width: 3 }
                                     }
                                     Text { text: Math.round(mainCanvas.brushSpacing * 100) + "%"; color: "#666"; font.pixelSize: 12; width: 45; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }
@@ -6337,7 +6347,7 @@ Window {
                                          onValueChanged: mainCanvas.brushStreamline = value
                                         anchors.verticalCenter: parent.verticalCenter
                                         
-                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: "#252528"; border.color: "#333"; Rectangle { width: sliderStreamline.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
+                                        background: Rectangle { y: 12; width: parent.width; height: 8; radius: 4; color: colorCard; border.color: colorBorder; border.width: 1; Rectangle { width: sliderStreamline.visualPosition * parent.width; height: parent.height; radius: 4; color: colorAccent } }
                                         handle: Rectangle { x: sliderStreamline.visualPosition * (sliderStreamline.width - width); y: 5; width: 22; height: 22; radius: 11; color: "#f0f0f0"; border.color: "#1a1a1c"; border.width: 3 }
                                     }
                                     Text { text: Math.round(mainCanvas.brushStreamline); color: "#666"; font.pixelSize: 12; width: 45; horizontalAlignment: Text.AlignRight; anchors.verticalCenter: parent.verticalCenter }

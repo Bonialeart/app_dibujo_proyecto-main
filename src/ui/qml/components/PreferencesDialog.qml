@@ -27,13 +27,13 @@ Popup {
     // Computed based on Mode
     readonly property bool isDark: themeMode === "Dark" || themeMode === "Midnight" || themeMode === "Blue-Grey" || themeMode === "Studio-Grey"
     
-    readonly property color colorBg: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#334155" : (themeMode === "Studio-Grey" ? "#3e3e3e" : "#0a0a0c"))) : "#f3f4f6"
-    readonly property color colorPanel: isDark ? (themeMode === "Midnight" ? "#1e293b" : (themeMode === "Blue-Grey" ? "#1e293b" : (themeMode === "Studio-Grey" ? "#2b2b2b" : "#141417"))) : "#ffffff"
+    readonly property color colorBg: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#334155" : (themeMode === "Studio-Grey" ? "#4c4c4c" : "#0a0a0c"))) : "#f3f4f6"
+    readonly property color colorPanel: isDark ? (themeMode === "Midnight" ? "#1e293b" : (themeMode === "Blue-Grey" ? "#1e293b" : (themeMode === "Studio-Grey" ? "#424242" : "#141417"))) : "#ffffff"
     readonly property color colorAccent: themeAccent
     readonly property color colorText: isDark ? "#ffffff" : "#111827"
-    readonly property color colorTextMuted: isDark ? (themeMode === "Studio-Grey" ? "#bbbbbb" : "#8e8e93") : "#4b5563"
-    readonly property color colorBorder: isDark ? (themeMode === "Midnight" ? "#334155" : (themeMode === "Blue-Grey" ? "#2a3549" : (themeMode === "Studio-Grey" ? "#1e1e1e" : "#2a2a2f"))) : "#e5e7eb"
-    readonly property color colorInput: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#273549" : (themeMode === "Studio-Grey" ? "#333333" : "#1c1c1e"))) : "#f9fafb"
+    readonly property color colorTextMuted: isDark ? (themeMode === "Studio-Grey" ? "#cccccc" : "#8e8e93") : "#4b5563"
+    readonly property color colorBorder: isDark ? (themeMode === "Midnight" ? "#334155" : (themeMode === "Blue-Grey" ? "#2a3549" : (themeMode === "Studio-Grey" ? "#5a5a5a" : "#2a2a2f"))) : "#e5e7eb"
+    readonly property color colorInput: isDark ? (themeMode === "Midnight" ? "#0f172a" : (themeMode === "Blue-Grey" ? "#273549" : (themeMode === "Studio-Grey" ? "#3a3a3a" : "#1c1c1e"))) : "#f9fafb"
     
     property int currentCategoryIndex: 0
     property string shortcutSearchQuery: ""

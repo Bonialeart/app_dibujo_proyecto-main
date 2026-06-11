@@ -472,12 +472,12 @@ Item {
                 }
             }
 
-            // ── 3. MAIN STACK LAYOUT ──
-            StackLayout {
+            // ── 3. MAIN STACK LAYOUT (OPTIMIZED WITH LOADERS) ──
+            Item {
                 id: viewStack
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                currentIndex: 0
+                property int currentIndex: 0
 
                 onCurrentIndexChanged: {
                     if (currentIndex === 3) {
@@ -485,7 +485,25 @@ Item {
                     }
                 }
 
-                // ── VIEW 0: COLOR BOX ──
+                Loader {
+                    id: viewLoader
+                    anchors.fill: parent
+                    sourceComponent: {
+                        switch (viewStack.currentIndex) {
+                            case 0: return colorBoxComponent
+                            case 1: return colorDiscComponent
+                            case 2: return slidersComponent
+                            case 3: return harmonyComponent
+                            case 4: return palettesComponent
+                            default: return colorBoxComponent
+                        }
+                    }
+                }
+            }
+
+            // --- VIEW COMPONENTS ---
+            Component {
+                id: colorBoxComponent
                 Item {
                     ColumnLayout {
                         anchors.fill: parent
@@ -496,7 +514,7 @@ Item {
                             id: svSquare
                             Layout.fillWidth: true; Layout.fillHeight: true
                             radius: 12
-                            color: viewStack.currentIndex === 0 ? Qt.hsva(root.h, 1, 1, 1) : "black"
+                            color: Qt.hsva(root.h, 1, 1, 1)
 
                             // Gradients
                             Rectangle {
@@ -524,13 +542,13 @@ Item {
                             Rectangle {
                                 width: 18; height: 18; radius: 9
                                 color: "transparent"; border.color: "white"; border.width: 2
-                                x: ((viewStack.currentIndex === 0 ? root.s : 0.0) * svSquare.width) - 9
-                                y: ((1.0 - (viewStack.currentIndex === 0 ? root.v : 0.0)) * svSquare.height) - 9
+                                x: (root.s * svSquare.width) - 9
+                                y: ((1.0 - root.v) * svSquare.height) - 9
                                 Rectangle {
                                     anchors.centerIn: parent; width: 12; height: 12; radius: 6
                                     color: "transparent"; border.color: "black"; border.width: 1
                                 }
-                                layer.enabled: viewStack.currentIndex === 0
+                                layer.enabled: true
                                 layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 5; shadowColor: "#90000000" }
                             }
 
@@ -569,14 +587,14 @@ Item {
                             Rectangle {
                                 width: 18; height: 18; radius: 9
                                 color: "white"; border.color: "#444"; border.width: 1
-                                x: ((viewStack.currentIndex === 0 ? root.h : 0.0) * parent.width) - 9
+                                x: (root.h * parent.width) - 9
                                 anchors.verticalCenter: parent.verticalCenter
                                 Rectangle {
                                     anchors.centerIn: parent; width: 12; height: 12; radius: 6
-                                    color: viewStack.currentIndex === 0 ? Qt.hsva(root.h, 1, 1, 1) : "black"
+                                    color: Qt.hsva(root.h, 1, 1, 1)
                                     border.color: "#50000000"; border.width: 1
                                 }
-                                layer.enabled: viewStack.currentIndex === 0
+                                layer.enabled: true
                                 layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 6; shadowColor: "#90000000" }
                             }
 
@@ -590,8 +608,10 @@ Item {
                         }
                     }
                 }
+            }
 
-                // ── VIEW 1: COLOR DISC (WHEEL) ──
+            Component {
+                id: colorDiscComponent
                 Item {
                     Item {
                         width: Math.min(parent.width, parent.height) * 0.95
@@ -628,9 +648,9 @@ Item {
                         Rectangle {
                             width: 14; height: 14; radius: 7
                             color: "transparent"; border.color: "white"; border.width: 2
-                            x: (parent.width / 2) + (parent.width * 0.45) * Math.cos((viewStack.currentIndex === 1 ? root.h : 0.0) * 2 * Math.PI) - 7
-                            y: (parent.height / 2) - (parent.height * 0.45) * Math.sin((viewStack.currentIndex === 1 ? root.h : 0.0) * 2 * Math.PI) - 7
-                            layer.enabled: viewStack.currentIndex === 1
+                            x: (parent.width / 2) + (parent.width * 0.45) * Math.cos(root.h * 2 * Math.PI) - 7
+                            y: (parent.height / 2) - (parent.height * 0.45) * Math.sin(root.h * 2 * Math.PI) - 7
+                            layer.enabled: true
                             layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 4; shadowColor: "#aa000000" }
                         }
 
@@ -657,7 +677,7 @@ Item {
                             width: parent.width * 0.70; height: width
                             radius: width / 2
                             anchors.centerIn: parent
-                            color: viewStack.currentIndex === 1 ? Qt.hsva(root.h, 1, 1, 1) : "black"
+                            color: Qt.hsva(root.h, 1, 1, 1)
                             clip: true
 
                             Rectangle {
@@ -681,8 +701,8 @@ Item {
                             Rectangle {
                                 width: 16; height: 16; radius: 8
                                 border.color: "white"; border.width: 2; color: "transparent"
-                                x: ((viewStack.currentIndex === 1 ? root.s : 0.0) * parent.width) - 8
-                                y: ((1.0 - (viewStack.currentIndex === 1 ? root.v : 0.0)) * parent.height) - 8
+                                x: (root.s * parent.width) - 8
+                                y: ((1.0 - root.v) * parent.height) - 8
                             }
 
                             MouseArea {
@@ -699,8 +719,10 @@ Item {
                         }
                     }
                 }
+            }
 
-                // ── VIEW 2: IMPROVED COLOR SLIDERS ──
+            Component {
+                id: slidersComponent
                 Item {
                     Flickable {
                         anchors.fill: parent
@@ -720,18 +742,18 @@ Item {
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 10; spacing: 4
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "H"; value: viewStack.currentIndex === 2 ? root.h * 360 : 0.0; maxValue: 360; unit: "°"
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "H"; value: root.h * 360; maxValue: 360; unit: "°"
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => { root.h = val / 360; root.updateColor() }
                                     }
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "S"; value: viewStack.currentIndex === 2 ? root.s : 0.0; maxValue: 1.0; unit: "%"
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "S"; value: root.s; maxValue: 1.0; unit: "%"
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => { root.s = val; root.updateColor() }
                                     }
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "V"; value: viewStack.currentIndex === 2 ? root.v : 0.0; maxValue: 1.0; unit: "%"
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "V"; value: root.v; maxValue: 1.0; unit: "%"
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => { root.v = val; root.updateColor() }
                                     }
                                 }
@@ -744,8 +766,8 @@ Item {
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 10; spacing: 4
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "R"; value: viewStack.currentIndex === 2 ? root.currentColor.r * 255 : 0.0; maxValue: 255; unit: ""
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "R"; value: root.currentColor.r * 255; maxValue: 255; unit: ""
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => {
                                             var c = root.currentColor; var newCol = Qt.rgba(val / 255, c.g, c.b, root.a)
                                             root.currentColor = newCol
@@ -756,8 +778,8 @@ Item {
                                         }
                                     }
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "G"; value: viewStack.currentIndex === 2 ? root.currentColor.g * 255 : 0.0; maxValue: 255; unit: ""
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "G"; value: root.currentColor.g * 255; maxValue: 255; unit: ""
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => {
                                             var c = root.currentColor; var newCol = Qt.rgba(c.r, val / 255, c.b, root.a)
                                             root.currentColor = newCol
@@ -768,8 +790,8 @@ Item {
                                         }
                                     }
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "B"; value: viewStack.currentIndex === 2 ? root.currentColor.b * 255 : 0.0; maxValue: 255; unit: ""
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "B"; value: root.currentColor.b * 255; maxValue: 255; unit: ""
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => {
                                             var c = root.currentColor; var newCol = Qt.rgba(c.r, c.g, val / 255, root.a)
                                             root.currentColor = newCol
@@ -788,25 +810,25 @@ Item {
                                 color: "#151518"; radius: 10; border.color: "#22222a"; border.width: 1
                                 ColumnLayout {
                                     anchors.fill: parent; anchors.margins: 10; spacing: 4
-                                    property var cmyk: viewStack.currentIndex === 2 ? root.getCMYK() : {"c": 0.0, "m": 0.0, "y": 0.0, "k": 0.0}
+                                    property var cmyk: root.getCMYK()
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "C"; value: viewStack.currentIndex === 2 ? parent.cmyk.c : 0.0; maxValue: 1.0; unit: "%"
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "C"; value: parent.cmyk.c; maxValue: 1.0; unit: "%"
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => root.setCMYK(val, parent.cmyk.m, parent.cmyk.y, parent.cmyk.k)
                                     }
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "M"; value: viewStack.currentIndex === 2 ? parent.cmyk.m : 0.0; maxValue: 1.0; unit: "%"
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "M"; value: parent.cmyk.m; maxValue: 1.0; unit: "%"
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, val, parent.cmyk.y, parent.cmyk.k)
                                     }
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "Y"; value: viewStack.currentIndex === 2 ? parent.cmyk.y : 0.0; maxValue: 1.0; unit: "%"
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "Y"; value: parent.cmyk.y; maxValue: 1.0; unit: "%"
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, parent.cmyk.m, val, parent.cmyk.k)
                                     }
                                     ImprovedColorSlider {
-                                        Layout.fillWidth: true; label: "K"; value: viewStack.currentIndex === 2 ? parent.cmyk.k : 0.0; maxValue: 1.0; unit: "%"
-                                        currentH: viewStack.currentIndex === 2 ? root.h : 0.0; currentS: viewStack.currentIndex === 2 ? root.s : 0.0; currentV: viewStack.currentIndex === 2 ? root.v : 0.0
+                                        Layout.fillWidth: true; label: "K"; value: parent.cmyk.k; maxValue: 1.0; unit: "%"
+                                        currentH: root.h; currentS: root.s; currentV: root.v
                                         onSliderMoved: (val) => root.setCMYK(parent.cmyk.c, parent.cmyk.m, parent.cmyk.y, val)
                                     }
                                 }
@@ -814,8 +836,10 @@ Item {
                         }
                     }
                 }
+            }
 
-                // ── VIEW 3: COLOR HARMONY ──
+            Component {
+                id: harmonyComponent
                 Item {
                     ColumnLayout {
                         anchors.fill: parent
@@ -910,24 +934,24 @@ Item {
 
                                 // Secondary harmony reticles
                                 Repeater {
-                                    model: viewStack.currentIndex === 3 ? root.harmonyColors.length - 1 : 0
+                                    model: root.harmonyColors.length - 1
                                     Rectangle {
-                                        property color col: viewStack.currentIndex === 3 ? root.harmonyColors[index + 1] : "black"
+                                        property color col: root.harmonyColors[index + 1]
                                         property real ang: -((col.hsvHue < 0 ? 0 : col.hsvHue) * 2 * Math.PI)
                                         width: 18; height: 18; radius: 9; color: "transparent"; border.color: "white"; border.width: 1.5; opacity: 0.75
-                                        x: (harmonyDisc.width / 2) + ((viewStack.currentIndex === 3 ? root.s : 0.0) * harmonyDisc.width / 2 * Math.cos(ang)) - 9
-                                        y: (harmonyDisc.height / 2) + ((viewStack.currentIndex === 3 ? root.s : 0.0) * harmonyDisc.height / 2 * Math.sin(ang)) - 9
+                                        x: (harmonyDisc.width / 2) + (root.s * harmonyDisc.width / 2 * Math.cos(ang)) - 9
+                                        y: (harmonyDisc.height / 2) + (root.s * harmonyDisc.height / 2 * Math.sin(ang)) - 9
                                     }
                                 }
 
                                 // Primary active reticle
                                 Rectangle {
                                     width: 26; height: 26; radius: 13; color: "transparent"; border.color: "white"; border.width: 2.5
-                                    property real ang: -((viewStack.currentIndex === 3 ? root.h : 0.0) * 2 * Math.PI)
-                                    x: (harmonyDisc.width / 2) + ((viewStack.currentIndex === 3 ? root.s : 0.0) * harmonyDisc.width / 2 * Math.cos(ang)) - 13
-                                    y: (harmonyDisc.height / 2) + ((viewStack.currentIndex === 3 ? root.s : 0.0) * harmonyDisc.height / 2 * Math.sin(ang)) - 13
+                                    property real ang: -(root.h * 2 * Math.PI)
+                                    x: (harmonyDisc.width / 2) + (root.s * harmonyDisc.width / 2 * Math.cos(ang)) - 13
+                                    y: (harmonyDisc.height / 2) + (root.s * harmonyDisc.height / 2 * Math.sin(ang)) - 13
 
-                                    layer.enabled: viewStack.currentIndex === 3
+                                    layer.enabled: true
                                     layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 8; shadowColor: "#90000000" }
 
                                     Rectangle { anchors.centerIn: parent; width: 18; height: 18; radius: 9; color: "transparent"; border.color: "black"; border.width: 1 }
@@ -945,12 +969,12 @@ Item {
                                 gradient: Gradient {
                                     orientation: Gradient.Horizontal
                                     GradientStop { position: 0; color: "black" }
-                                    GradientStop { position: 1; color: viewStack.currentIndex === 3 ? Qt.hsva(root.h, root.s, 1.0, 1.0) : "black" }
+                                    GradientStop { position: 1; color: Qt.hsva(root.h, root.s, 1.0, 1.0) }
                                 }
                             }
 
                             Rectangle {
-                                x: (viewStack.currentIndex === 3 ? root.v : 0.0) * (parent.width - 16)
+                                x: root.v * (parent.width - 16)
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 16; height: 16; radius: 8; color: "white"; border.color: root.accentColor; border.width: 2
                             }
@@ -965,8 +989,10 @@ Item {
                         }
                     }
                 }
+            }
 
-                // ── VIEW 4: PALETTES (LIBRARY) ──
+            Component {
+                id: palettesComponent
                 Item {
                     id: palettesView
 
@@ -1245,12 +1271,29 @@ Item {
                         }
                     }
 
-                    // Content layout
-                    StackLayout {
+                    // Content layout (Optimized using Loader)
+                    Item {
                         id: footStack
                         Layout.fillWidth: true; Layout.fillHeight: true
+                        property int currentIndex: 0
 
-                        // 0: SHADES / HARMONY SWATCHES
+                        Loader {
+                            id: footLoader
+                            anchors.fill: parent
+                            sourceComponent: {
+                                switch (footStack.currentIndex) {
+                                    case 0: return shadesComponent
+                                    case 1: return historyComponent
+                                    case 2: return myPalettesComponent
+                                    default: return shadesComponent
+                                }
+                            }
+                        }
+                    }
+
+                    // Footer Components
+                    Component {
+                        id: shadesComponent
                         Item {
                             RowLayout {
                                 anchors.fill: parent; spacing: 4
@@ -1290,8 +1333,10 @@ Item {
                                 }
                             }
                         }
+                    }
 
-                        // 1: HISTORY (Dynamic Swatches from C++ backend)
+                    Component {
+                        id: historyComponent
                         Item {
                             Flickable {
                                 anchors.fill: parent
@@ -1322,8 +1367,10 @@ Item {
                                 }
                             }
                         }
+                    }
 
-                        // 2: MY PALETTES
+                    Component {
+                        id: myPalettesComponent
                         Item {
                             Text {
                                 text: "Select color and paint to add to history"

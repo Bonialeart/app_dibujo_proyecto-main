@@ -688,7 +688,11 @@ import "../components"
                 // EMPTY STATE OVERLAY
                 Rectangle {
                     anchors.fill: parent
-                    color: "#050507"
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.2) : "#030305" }
+                        GradientStop { position: 0.5; color: mainWindow ? mainWindow.colorBg : "#06060a" }
+                        GradientStop { position: 1.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.1) : "#08080d" }
+                    }
                     visible: !isProjectActive
                     z: 1000
                     
@@ -705,7 +709,7 @@ import "../components"
                         
                         Text {
                             text: "No Project Active"
-                            color: "#444"
+                            color: mainWindow ? mainWindow.colorText : "#444"
                             font.pixelSize: 24
                             font.bold: true
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -713,7 +717,7 @@ import "../components"
                         
                         Text {
                             text: "Please create a new canvas or open a recent\nproject from the Gallery to start drawing."
-                            color: "#333"
+                            color: mainWindow ? mainWindow.colorTextMuted : "#333"
                             font.pixelSize: 14
                             horizontalAlignment: Text.AlignHCenter
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -740,7 +744,7 @@ import "../components"
 
                         Text {
                             text: "or"
-                            color: "#222"
+                            color: mainWindow ? mainWindow.colorTextMuted : "#222"
                             font.pixelSize: 12
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
@@ -748,10 +752,10 @@ import "../components"
                         Rectangle {
                             width: 180; height: 44; radius: 22
                             color: "transparent"
-                            border.color: "#1a1a1c"
+                            border.color: mainWindow ? mainWindow.colorBorder : "#1a1a1c"
                             anchors.horizontalCenter: parent.horizontalCenter
                             
-                            Text { text: "Go to Gallery"; color: "#666"; anchors.centerIn: parent; font.bold: true }
+                            Text { text: "Go to Gallery"; color: mainWindow ? mainWindow.colorTextMuted : "#666"; anchors.centerIn: parent; font.bold: true }
                             
                             MouseArea {
                                 anchors.fill: parent
@@ -813,8 +817,8 @@ import "../components"
                     radius: 20 * uiScale
                     clip: false
                                         // Unified Pure Premium Dark Capsule (Image 2 style)
-                    color: "#252528"
-                    border.color: Qt.rgba(1, 1, 1, 0.03)
+                    color: mainWindow ? mainWindow.colorPanel : "#252528"
+                    border.color: mainWindow ? mainWindow.colorBorder : Qt.rgba(1, 1, 1, 0.03)
                     border.width: 0.5
                     z: 90
                     
@@ -1060,8 +1064,8 @@ import "../components"
                         radius: 24
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        color: "#eb121216"
-                        border.color: "#3a3a40"
+                        color: mainWindow ? Qt.rgba(mainWindow.colorPanel.r, mainWindow.colorPanel.g, mainWindow.colorPanel.b, 0.92) : "#eb121216"
+                        border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
                         border.width: 1
 
                         Text {
@@ -1099,8 +1103,8 @@ import "../components"
                         height: parent.height
                         radius: 24
                         anchors.horizontalCenter: parent.horizontalCenter
-                        color: "#eb121216"
-                        border.color: "#3a3a40"
+                        color: mainWindow ? Qt.rgba(mainWindow.colorPanel.r, mainWindow.colorPanel.g, mainWindow.colorPanel.b, 0.92) : "#eb121216"
+                        border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
                         border.width: 1
 
                         Rectangle {
@@ -1372,8 +1376,8 @@ import "../components"
                         radius: 24
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        color: "#eb121216"
-                        border.color: "#3a3a40"
+                        color: mainWindow ? Qt.rgba(mainWindow.colorPanel.r, mainWindow.colorPanel.g, mainWindow.colorPanel.b, 0.92) : "#eb121216"
+                        border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
                         border.width: 1
 
                         Text {

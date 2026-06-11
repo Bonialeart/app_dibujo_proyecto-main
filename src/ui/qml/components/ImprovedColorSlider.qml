@@ -69,7 +69,7 @@ Item {
                 // 1. HUE RAINBOW
                 Rectangle {
                     anchors.fill: parent
-                    visible: root.getSliderType() === 0
+                    visible: root.sliderType === 0
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
                         GradientStop { position: 0.00; color: "#FF0000" }
@@ -85,11 +85,11 @@ Item {
                 // 2. DYNAMIC TWO-STOP (S, B, R, G, B, CMYK)
                 Rectangle {
                     anchors.fill: parent
-                    visible: root.getSliderType() !== 0
+                    visible: root.sliderType !== 0
                     gradient: Gradient {
                         orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: root.getGradientStart() }
-                        GradientStop { position: 1.0; color: root.getGradientEnd() }
+                        GradientStop { position: 0.0; color: root.gradientStart }
+                        GradientStop { position: 1.0; color: root.gradientEnd }
                     }
                 }
             }
@@ -204,7 +204,7 @@ Item {
         }
     }
     
-    function getSliderType() {
+    readonly property int sliderType: {
         switch(root.label) {
             case "H": return 0   // Hue rainbow
             case "S": return 1   // Saturation
@@ -222,35 +222,30 @@ Item {
         }
     }
 
-    function getGradientStart() {
-        var type = getSliderType();
-        switch(type) {
-            case 1: return Qt.hsva(root.currentH, 0.0, root.currentV, 1.0); // Saturation: Gray to Color
-            case 2: return Qt.hsva(root.currentH, root.currentS, 0.0, 1.0); // Brightness: Black to Color
-            case 3: return "#000000"; // Red start
-            case 4: return "#000000"; // Green start
-            case 5: return "#000000"; // Blue start
-            case 6: return "#FFFFFF"; // CMYK starts from white usually in this design
-            case 7: return "#FFFFFF";
-            case 8: return "#FFFFFF";
-            case 9: return "#FFFFFF";
-            default: return "#000000";
+    readonly property color gradientStart: {
+        switch(sliderType) {
+            case 1: return Qt.hsva(root.currentH, 0.0, root.currentV, 1.0)
+            case 2: return Qt.hsva(root.currentH, root.currentS, 0.0, 1.0)
+            case 6:
+            case 7:
+            case 8:
+            case 9: return "#FFFFFF"
+            default: return "#000000"
         }
     }
 
-    function getGradientEnd() {
-        var type = getSliderType();
-        switch(type) {
-            case 1: return Qt.hsva(root.currentH, 1.0, root.currentV, 1.0); // Saturation end
-            case 2: return Qt.hsva(root.currentH, root.currentS, 1.0, 1.0); // Brightness end
-            case 3: return "#FF0000"; // Red end
-            case 4: return "#00FF00"; // Green end
-            case 5: return "#0000FF"; // Blue end
-            case 6: return "#00FFFF"; // Cyan
-            case 7: return "#FF00FF"; // Magenta
-            case 8: return "#FFFF00"; // Yellow
-            case 9: return "#000000"; // Black
-            default: return "#FFFFFF";
+    readonly property color gradientEnd: {
+        switch(sliderType) {
+            case 1: return Qt.hsva(root.currentH, 1.0, root.currentV, 1.0)
+            case 2: return Qt.hsva(root.currentH, root.currentS, 1.0, 1.0)
+            case 3: return "#FF0000"
+            case 4: return "#00FF00"
+            case 5: return "#0000FF"
+            case 6: return "#00FFFF"
+            case 7: return "#FF00FF"
+            case 8: return "#FFFF00"
+            case 9: return "#000000"
+            default: return "#FFFFFF"
         }
     }
 }

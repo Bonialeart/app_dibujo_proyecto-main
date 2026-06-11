@@ -372,10 +372,7 @@ Item {
                         id: sizeBg
                         anchors.fill: parent
                         radius: 14
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.1) : "#111114" }
-                            GradientStop { position: 1.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.05) : "#1c1c20" }
-                        }
+                        color: mainWindow ? mainWindow.colorCard : "#1c1c20"
                         
                         // Fill Container (clips correctly without squishing radius)
                         Item {
@@ -484,10 +481,7 @@ Item {
                         id: opacBg
                         anchors.fill: parent
                         radius: 14
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.1) : "#111114" }
-                            GradientStop { position: 1.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.05) : "#1c1c20" }
-                        }
+                        color: mainWindow ? mainWindow.colorCard : "#1c1c20"
                         
                         // Fill Container (clips correctly without squishing radius)
                         Item {
@@ -596,10 +590,7 @@ Item {
                         id: stabBg
                         anchors.fill: parent
                         radius: 14
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.1) : "#111114" }
-                            GradientStop { position: 1.0; color: mainWindow ? Qt.darker(mainWindow.colorBg, 1.05) : "#1c1c20" }
-                        }
+                        color: mainWindow ? mainWindow.colorCard : "#1c1c20"
                         
                         // Fill Container (clips correctly without squishing radius)
                         Item {
@@ -933,7 +924,7 @@ Item {
         anchors.right: parent.right
         height: (openProjectsModel && openProjectsModel.count >= 2) ? 30 : 0
         visible: openProjectsModel && openProjectsModel.count >= 2
-        color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.08) : "#0d0d10"
+        color: mainWindow ? mainWindow.colorCard : "#0d0d10"
         z: 940
         clip: true
 
@@ -1270,8 +1261,8 @@ Item {
         y: studioLayout.wsMenuY
         width: 150
         height: wsMenuCol.height + 16
-        color: "#18181c"
-        border.color: "#3a3a40"
+        color: mainWindow ? mainWindow.colorPanel : "#18181c"
+        border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
         border.width: 1
         radius: 8
         
@@ -1344,8 +1335,8 @@ Item {
         y: studioLayout.winMenuY
         width: 280
         height: winMenuCol.height + 16
-        color: "#18181c"
-        border.color: "#3a3a40"
+        color: mainWindow ? mainWindow.colorPanel : "#18181c"
+        border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
         border.width: 1
         radius: 8
 
@@ -1732,8 +1723,8 @@ Item {
         y: studioLayout.hiddenPanelsY
         width: 260
         height: hiddenCol.height + 16
-        color: "#18181c"
-        border.color: "#3a3a40"
+        color: mainWindow ? mainWindow.colorPanel : "#18181c"
+        border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
         border.width: 1
         radius: 8
 
@@ -1862,8 +1853,8 @@ Item {
         y: studioLayout.wsSubMenuY
         width: 240
         height: wsSubCol.height + 16
-        color: "#18181c"
-        border.color: "#3a3a40"
+        color: mainWindow ? mainWindow.colorPanel : "#18181c"
+        border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
         border.width: 1
         radius: 8
         
@@ -2023,8 +2014,8 @@ Item {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         
         background: Rectangle {
-            color: "#18181c"
-            border.color: "#3a3a40"
+            color: mainWindow ? mainWindow.colorPanel : "#18181c"
+            border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
             border.width: 1
             radius: 12
             
@@ -2037,7 +2028,7 @@ Item {
         }
         
         header: Rectangle {
-            color: "#111114"
+            color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.1) : "#111114"
             height: 40
             radius: 12
             clip: true
@@ -2071,8 +2062,8 @@ Item {
                 selectByMouse: true
                 
                 background: Rectangle {
-                    color: "#0a0a0d"
-                    border.color: wsNameInput.activeFocus ? accentColor : "#3a3a40"
+                    color: mainWindow ? mainWindow.colorCard : "#0a0a0d"
+                    border.color: wsNameInput.activeFocus ? accentColor : (mainWindow ? mainWindow.colorBorder : "#3a3a40")
                     border.width: 1
                     radius: 6
                 }
@@ -2136,8 +2127,8 @@ Item {
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         
         background: Rectangle {
-            color: "#18181c"
-            border.color: "#3a3a40"
+            color: mainWindow ? mainWindow.colorPanel : "#18181c"
+            border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
             border.width: 1
             radius: 12
             
@@ -2150,7 +2141,7 @@ Item {
         }
         
         header: Rectangle {
-            color: "#111114"
+            color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.1) : "#111114"
             height: 40
             radius: 12
             clip: true

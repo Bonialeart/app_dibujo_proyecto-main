@@ -17,7 +17,7 @@ if(NOT MSVC)
     # Habilitar IPO/LTO si es soportado por el compilador y CMake
     include(CheckIPOSupported)
     check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
-    if(ipo_supported)
+    if(ipo_supported AND NOT WIN32)
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
         message(STATUS "Link-Time Optimization (LTO) habilitado.")
     else()

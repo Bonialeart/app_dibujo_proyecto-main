@@ -25,7 +25,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumHeight: 100
-            color: "#0a0a0d"
+            color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.1) : "#0a0a0d"
             radius: 6
             clip: true
 
@@ -157,7 +157,7 @@ Item {
                 visible: !targetCanvas || _previewImage.status !== Image.Ready
                 opacity: 0.3
                 Text { text: "🖼"; font.pixelSize: 24; anchors.horizontalCenter: parent.horizontalCenter }
-                Text { text: "No canvas"; color: "#666"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
+                Text { text: "No canvas"; color: mainWindow ? mainWindow.colorTextMuted : "#666"; font.pixelSize: 10; anchors.horizontalCenter: parent.horizontalCenter }
             }
 
             // Click-to-pan & Click-to-Jump interaction
@@ -217,14 +217,14 @@ Item {
                 anchors.top: parent.top; anchors.right: parent.right
                 anchors.topMargin: 6; anchors.rightMargin: 6
                 width: _infoText.implicitWidth + 12; height: 18; radius: 9
-                color: "#aa1a1a1e"
+                color: mainWindow ? Qt.rgba(mainWindow.colorCard.r, mainWindow.colorCard.g, mainWindow.colorCard.b, 0.7) : "#aa1a1a1e"
                 visible: targetCanvas !== null
 
                 Text {
                     id: _infoText
                     anchors.centerIn: parent
                     text: (targetCanvas ? (targetCanvas.canvasWidth + "×" + targetCanvas.canvasHeight) : "")
-                    color: "#777"; font.pixelSize: 8; font.weight: Font.Medium
+                    color: mainWindow ? mainWindow.colorTextMuted : "#777"; font.pixelSize: 8; font.weight: Font.Medium
                 }
             }
         }
@@ -243,8 +243,8 @@ Item {
                 // Zoom out button
                 Rectangle {
                     width: 22; height: 22; radius: 6
-                    color: _zoomOutMa.containsMouse ? "#252530" : "transparent"
-                    Text { text: "−"; color: _zoomOutMa.containsMouse ? "#ddd" : "#666"; font.pixelSize: 16; font.weight: Font.Bold; anchors.centerIn: parent }
+                    color: _zoomOutMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#252530") : "transparent"
+                    Text { text: "−"; color: _zoomOutMa.containsMouse ? (mainWindow ? mainWindow.colorText : "#ddd") : (mainWindow ? mainWindow.colorTextMuted : "#666"); font.pixelSize: 16; font.weight: Font.Bold; anchors.centerIn: parent }
                     MouseArea {
                         id: _zoomOutMa; anchors.fill: parent; hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -265,7 +265,7 @@ Item {
                         x: _zoomSlider.leftPadding
                         y: _zoomSlider.topPadding + _zoomSlider.availableHeight / 2 - height / 2
                         implicitWidth: 200; implicitHeight: 3; radius: 1.5
-                        color: "#1c1c1e"
+                        color: mainWindow ? mainWindow.colorBorder : "#1c1c1e"
 
                         // Fill
                         Rectangle {
@@ -277,7 +277,7 @@ Item {
                         // Center tick (100%)
                         Rectangle {
                             x: parent.width * ((1.0 - 0.1) / (8.0 - 0.1)) - 0.5
-                            y: -2; width: 1; height: 7; color: "#444"
+                            y: -2; width: 1; height: 7; color: mainWindow ? mainWindow.colorBorder : "#444"
                         }
                     }
 
@@ -286,7 +286,7 @@ Item {
                         y: _zoomSlider.topPadding + _zoomSlider.availableHeight / 2 - height / 2
                         implicitWidth: 12; implicitHeight: 12; radius: 6
                         color: _zoomSlider.pressed ? "#fff" : "#ccc"
-                        border.color: "#444"; border.width: 0.5
+                        border.color: mainWindow ? mainWindow.colorBorder : "#444"; border.width: 0.5
 
                         Behavior on scale { NumberAnimation { duration: 80 } }
                         scale: _zoomSlider.pressed ? 1.15 : 1.0
@@ -296,8 +296,8 @@ Item {
                 // Zoom in button
                 Rectangle {
                     width: 22; height: 22; radius: 6
-                    color: _zoomInMa.containsMouse ? "#252530" : "transparent"
-                    Text { text: "+"; color: _zoomInMa.containsMouse ? "#ddd" : "#666"; font.pixelSize: 16; font.weight: Font.Bold; anchors.centerIn: parent }
+                    color: _zoomInMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#252530") : "transparent"
+                    Text { text: "+"; color: _zoomInMa.containsMouse ? (mainWindow ? mainWindow.colorText : "#ddd") : (mainWindow ? mainWindow.colorTextMuted : "#666"); font.pixelSize: 16; font.weight: Font.Bold; anchors.centerIn: parent }
                     MouseArea {
                         id: _zoomInMa; anchors.fill: parent; hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -309,13 +309,13 @@ Item {
                 // Zoom percentage (clickable to reset)
                 Rectangle {
                     width: 42; height: 20; radius: 4
-                    color: _zoomPctMa.containsMouse ? "#252530" : "transparent"
-                    border.color: _zoomPctMa.containsMouse ? "#333" : "transparent"
+                    color: _zoomPctMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#252530") : "transparent"
+                    border.color: _zoomPctMa.containsMouse ? (mainWindow ? mainWindow.colorBorder : "#333") : "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: Math.round(root.currentZoom * 100) + "%"
-                        color: "#aaa"; font.pixelSize: 10; font.weight: Font.Medium
+                        color: mainWindow ? mainWindow.colorTextMuted : "#aaa"; font.pixelSize: 10; font.weight: Font.Medium
                         font.family: "monospace"
                     }
                     MouseArea {
@@ -342,8 +342,8 @@ Item {
                 // Rotate CCW button
                 Rectangle {
                     width: 22; height: 22; radius: 6
-                    color: _rotCcwMa.containsMouse ? "#252530" : "transparent"
-                    Text { text: "↺"; color: _rotCcwMa.containsMouse ? "#ddd" : "#666"; font.pixelSize: 14; font.weight: Font.Bold; anchors.centerIn: parent }
+                    color: _rotCcwMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#252530") : "transparent"
+                    Text { text: "↺"; color: _rotCcwMa.containsMouse ? (mainWindow ? mainWindow.colorText : "#ddd") : (mainWindow ? mainWindow.colorTextMuted : "#666"); font.pixelSize: 14; font.weight: Font.Bold; anchors.centerIn: parent }
                     MouseArea {
                         id: _rotCcwMa; anchors.fill: parent; hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -364,12 +364,12 @@ Item {
                         x: _rotSlider.leftPadding
                         y: _rotSlider.topPadding + _rotSlider.availableHeight / 2 - height / 2
                         implicitWidth: 200; implicitHeight: 3; radius: 1.5
-                        color: "#1c1c1e"
+                        color: mainWindow ? mainWindow.colorBorder : "#1c1c1e"
 
                         // Center tick (0°)
                         Rectangle {
                             x: parent.width / 2 - 0.5
-                            y: -2; width: 1; height: 7; color: "#444"
+                            y: -2; width: 1; height: 7; color: mainWindow ? mainWindow.colorBorder : "#444"
                         }
                     }
 
@@ -378,7 +378,7 @@ Item {
                         y: _rotSlider.topPadding + _rotSlider.availableHeight / 2 - height / 2
                         implicitWidth: 12; implicitHeight: 12; radius: 6
                         color: _rotSlider.pressed ? "#fff" : "#ccc"
-                        border.color: "#444"; border.width: 0.5
+                        border.color: mainWindow ? mainWindow.colorBorder : "#444"; border.width: 0.5
 
                         Behavior on scale { NumberAnimation { duration: 80 } }
                         scale: _rotSlider.pressed ? 1.15 : 1.0
@@ -388,8 +388,8 @@ Item {
                 // Rotate CW button
                 Rectangle {
                     width: 22; height: 22; radius: 6
-                    color: _rotCwMa.containsMouse ? "#252530" : "transparent"
-                    Text { text: "↻"; color: _rotCwMa.containsMouse ? "#ddd" : "#666"; font.pixelSize: 14; font.weight: Font.Bold; anchors.centerIn: parent }
+                    color: _rotCwMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#252530") : "transparent"
+                    Text { text: "↻"; color: _rotCwMa.containsMouse ? (mainWindow ? mainWindow.colorText : "#ddd") : (mainWindow ? mainWindow.colorTextMuted : "#666"); font.pixelSize: 14; font.weight: Font.Bold; anchors.centerIn: parent }
                     MouseArea {
                         id: _rotCwMa; anchors.fill: parent; hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -401,13 +401,13 @@ Item {
                 // Rotation degree (clickable to reset)
                 Rectangle {
                     width: 42; height: 20; radius: 4
-                    color: _rotDegMa.containsMouse ? "#252530" : "transparent"
-                    border.color: _rotDegMa.containsMouse ? "#333" : "transparent"
+                    color: _rotDegMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#252530") : "transparent"
+                    border.color: _rotDegMa.containsMouse ? (mainWindow ? mainWindow.colorBorder : "#333") : "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: Math.round(root.currentRotation) + "°"
-                        color: "#aaa"; font.pixelSize: 10; font.weight: Font.Medium
+                        color: mainWindow ? mainWindow.colorTextMuted : "#aaa"; font.pixelSize: 10; font.weight: Font.Medium
                         font.family: "monospace"
                     }
                     MouseArea {
@@ -424,7 +424,7 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 38
-            color: "#0d0d10"
+            color: mainWindow ? mainWindow.colorCard : "#0d0d10"
             radius: 6
 
             RowLayout {
@@ -472,14 +472,14 @@ Item {
                     Rectangle {
                         Layout.preferredWidth: 32; Layout.preferredHeight: 22; radius: 6
                         property bool isCurrentZoom: Math.abs(root.currentZoom - modelData.zoom) < 0.05
-                        color: isCurrentZoom ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.2) : (_zPresetMa.containsMouse ? "#252530" : "transparent")
+                        color: isCurrentZoom ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.2) : (_zPresetMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#252530") : "transparent")
                         border.color: isCurrentZoom ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.4) : "transparent"
                         border.width: isCurrentZoom ? 1 : 0
 
                         Text {
                             anchors.centerIn: parent
                             text: modelData.label
-                            color: isCurrentZoom ? root.accentColor : (_zPresetMa.containsMouse ? "#ddd" : "#777")
+                            color: isCurrentZoom ? root.accentColor : (_zPresetMa.containsMouse ? (mainWindow ? mainWindow.colorText : "#ddd") : (mainWindow ? mainWindow.colorTextMuted : "#777"))
                             font.pixelSize: 9; font.weight: isCurrentZoom ? Font.Bold : Font.Medium
                         }
                         MouseArea {
@@ -509,7 +509,7 @@ Item {
         Layout.preferredWidth: 28; Layout.preferredHeight: 26; radius: 7
         color: isActive
             ? Qt.rgba(activeColor.r, activeColor.g, activeColor.b, 0.18)
-            : (_ntbMa.containsMouse ? "#252530" : "transparent")
+            : (_ntbMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#252530") : "transparent")
         border.color: isActive ? Qt.rgba(activeColor.r, activeColor.g, activeColor.b, 0.45) : "transparent"
         border.width: isActive ? 1 : 0
 

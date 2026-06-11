@@ -47,8 +47,8 @@ Item {
             Rectangle {
                 anchors.fill: parent; anchors.margins: 4
                 radius: 10
-                color: "#141417"
-                border.color: "#1E1E22"
+                color: mainWindow ? mainWindow.colorCard : "#141417"
+                border.color: mainWindow ? mainWindow.colorBorder : "#1E1E22"
                 border.width: 1
                 
                 ColumnLayout {
@@ -58,14 +58,14 @@ Item {
                     // Row 1: Actions
                     Item {
                         Layout.fillWidth: true; Layout.preferredHeight: 36
-                        Rectangle { width: parent.width; anchors.bottom: parent.bottom; color: "#1E1E22"; height: 1 }
+                        Rectangle { width: parent.width; anchors.bottom: parent.bottom; color: mainWindow ? mainWindow.colorBorder : "#1E1E22"; height: 1 }
                                                 RowLayout {
                             anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 2
                             
                             // Clipping Mask
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
-                                color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (clipMa.containsMouse ? "#222228" : "transparent")
+                                color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (clipMa.containsMouse ? (mainWindow ? Qt.rgba(mainWindow.colorText.r, mainWindow.colorText.g, mainWindow.colorText.b, 0.08) : "#222228") : "transparent")
                                 border.color: activeLayerClipped ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"; border.width: 1
                                 Behavior on color { ColorAnimation { duration: 150 } }
                                 Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -84,7 +84,7 @@ Item {
                             // Alpha Lock
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
-                                color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (alphaMa.containsMouse ? "#222228" : "transparent")
+                                color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.25) : (alphaMa.containsMouse ? (mainWindow ? Qt.rgba(mainWindow.colorText.r, mainWindow.colorText.g, mainWindow.colorText.b, 0.08) : "#222228") : "transparent")
                                 border.color: (activeLayer && activeLayer.alpha_lock) ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.5) : "transparent"; border.width: 1
                                 Behavior on color { ColorAnimation { duration: 150 } }
                                 Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -105,7 +105,7 @@ Item {
                             // Duplicate
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
-                                color: dupMa.containsMouse ? "#222228" : "transparent"
+                                color: dupMa.containsMouse ? (mainWindow ? Qt.rgba(mainWindow.colorText.r, mainWindow.colorText.g, mainWindow.colorText.b, 0.08) : "#222228") : "transparent"
                                 Behavior on color { ColorAnimation { duration: 150 } }
                                 
                                 Image { 
@@ -122,7 +122,7 @@ Item {
                             // Add Layer
                             Rectangle { 
                                 Layout.preferredWidth: 28; Layout.preferredHeight: 28; radius: 6
-                                color: addLyrMa.containsMouse ? "#222228" : "transparent"
+                                color: addLyrMa.containsMouse ? (mainWindow ? Qt.rgba(mainWindow.colorText.r, mainWindow.colorText.g, mainWindow.colorText.b, 0.08) : "#222228") : "transparent"
                                 Behavior on color { ColorAnimation { duration: 150 } }
                                 
                                 Image { 
@@ -210,8 +210,8 @@ Item {
                             Rectangle {
                                 id: blendModeBtn
                                 Layout.preferredWidth: 70; Layout.preferredHeight: 24; radius: 12
-                                color: blendModePopup.visible ? root.accentColor : "#202024"
-                                border.color: "#303036"; border.width: 1
+                                color: blendModePopup.visible ? root.accentColor : (mainWindow ? mainWindow.colorCard : "#202024")
+                                border.color: mainWindow ? mainWindow.colorBorder : "#303036"; border.width: 1
                                 Text { anchors.centerIn: parent; text: (activeLayer ? activeLayer.blendMode : "Normal"); color: blendModePopup.visible ? "white" : "#a0a0a5"; font.pixelSize: 10; font.weight: Font.DemiBold; font.capitalization: Font.AllUppercase }
                                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: if(activeLayer) blendModePopup.open() }
                             }
@@ -223,7 +223,7 @@ Item {
                                 
                                 background: Rectangle {
                                     x: parent.leftPadding; y: parent.height / 2 - 2
-                                    implicitWidth: 100; implicitHeight: 4; radius: 2; color: "#101014"; border.color: "#222228"
+                                    implicitWidth: 100; implicitHeight: 4; radius: 2; color: mainWindow ? mainWindow.colorBg : "#101014"; border.color: mainWindow ? mainWindow.colorBorder : "#222228"
                                     Rectangle { width: parent.visualPosition * parent.width; height: parent.height; color: root.accentColor; radius: 2 }
                                 }
                                 handle: Rectangle {
@@ -252,7 +252,7 @@ Item {
             padding: 0
             
             background: Rectangle {
-                color: "#1c1c1e"; radius: 8; border.color: "#2a2a2d"; border.width: 1
+                color: mainWindow ? mainWindow.colorPanel : "#1c1c1e"; radius: 8; border.color: mainWindow ? mainWindow.colorBorder : "#2a2a2d"; border.width: 1
                 layer.enabled: true
                 layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 10; shadowColor: "#80000000" }
             }
@@ -267,7 +267,7 @@ Item {
                         font.pixelSize: 11; verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
-                        color: hovered ? "#2a2a2d" : "transparent"
+                        color: hovered ? (mainWindow ? mainWindow.colorCard : "#2a2a2d") : "transparent"
                     }
                     onClicked: {
                         if(targetCanvas && activeLayerId !== -1) {

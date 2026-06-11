@@ -109,8 +109,8 @@ Item {
             Rectangle {
                 anchors.fill: parent
                 radius: 24 * uiScale
-                color: "#eb1c1c1f"
-                border.color: Qt.rgba(1, 1, 1, 0.06)
+                color: typeof mainWindow !== "undefined" ? mainWindow.colorPanel : "#eb1c1c1f"
+                border.color: typeof mainWindow !== "undefined" ? mainWindow.colorBorder : Qt.rgba(1, 1, 1, 0.06)
                 border.width: 0.5
                 
                 layer.enabled: true
@@ -129,8 +129,8 @@ Item {
                 anchors.left: parent.left; anchors.leftMargin: 18 * uiScale
                 anchors.top: parent.top; anchors.topMargin: 18 * uiScale
                 
-                Rectangle { width: 10 * uiScale; height: 1 * uiScale; color: "#55ffffff"; anchors.centerIn: parent }
-                Rectangle { width: 1 * uiScale; height: 10 * uiScale; color: "#55ffffff"; anchors.centerIn: parent }
+                Rectangle { width: 10 * uiScale; height: 1 * uiScale; color: typeof mainWindow !== "undefined" ? Qt.rgba(mainWindow.colorText.r, mainWindow.colorText.g, mainWindow.colorText.b, 0.35) : "#55ffffff"; anchors.centerIn: parent }
+                Rectangle { width: 1 * uiScale; height: 10 * uiScale; color: typeof mainWindow !== "undefined" ? Qt.rgba(mainWindow.colorText.r, mainWindow.colorText.g, mainWindow.colorText.b, 0.35) : "#55ffffff"; anchors.centerIn: parent }
             }
 
             // Top Center Readout (e.g., "60 px" or "100 %")
@@ -141,7 +141,7 @@ Item {
                 text: root.previewType === "size" 
                       ? Math.round(root.value) + " px" 
                       : Math.round(root.value * 100) + " %"
-                color: "#e2e2e7"
+                color: typeof mainWindow !== "undefined" ? mainWindow.colorText : "#e2e2e7"
                 font.pixelSize: 13 * uiScale
                 font.bold: true
                 font.letterSpacing: 0.2

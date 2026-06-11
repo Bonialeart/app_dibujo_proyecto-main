@@ -455,20 +455,40 @@ Popup {
             }
             
             // ------------------------------------------------------------------
-            // 3. MAIN VIEWS
+            // 3. MAIN VIEWS (OPTIMIZED WITH LOADERS)
             // ------------------------------------------------------------------
-            StackLayout {
+            Item {
                 id: viewStack
                 Layout.fillWidth: true; Layout.fillHeight: true; Layout.topMargin: 15
-                
-                // VIEW 0: COLOR BOX (REF FOTO 2)
+                property int currentIndex: 0
+
+                Loader {
+                    id: viewLoader
+                    anchors.fill: parent
+                    sourceComponent: {
+                        switch (viewStack.currentIndex) {
+                            case 0: return colorBoxComponent
+                            case 1: return colorDiscComponent
+                            case 2: return slidersComponent
+                            case 3: return harmonyComponent
+                            case 4: return eyedropperComponent
+                            case 5: return palettesComponent
+                            default: return colorBoxComponent
+                        }
+                    }
+                }
+            }
+
+            // --- VIEW COMPONENTS ---
+            Component {
+                id: colorBoxComponent
                 Item {
                     ColumnLayout {
                         anchors.fill: parent; spacing: 18
                         
                         // SV SQUARE (Rounded properly)
                         Rectangle {
-                                id: svSquare
+                            id: svSquare
                             Layout.fillWidth: true; Layout.fillHeight: true
                             radius: 20
                             color: Qt.hsva(root.h, 1, 1, 1)
@@ -561,8 +581,10 @@ Popup {
                         }
                     }
                 }
-                
-                // VIEW 1: PREMIUM COLOR WHEEL (FOTO 2 STYLE)
+            }
+
+            Component {
+                id: colorDiscComponent
                 Item {
                     id: wheelView
                     
@@ -629,9 +651,6 @@ Popup {
                             }
                             onPressed: updateHue(mouse)
                             onPositionChanged: if(pressed) updateHue(mouse)
-                            onReleased: {
-                                // Manual history is now handled by painting or direct click
-                            }
                         }
                         
                         // Hue Selector Knob
@@ -684,15 +703,14 @@ Popup {
                                 }
                                 onPressed: upSV(mouse)
                                 onPositionChanged: if(pressed) upSV(mouse)
-                                onReleased: {
-                                    // Manual history is now handled by painting or direct click
-                                }
                             }
                         }
                     }
                 }
-                
-                // VIEW 2: COLOR SLIDERS (ADVANCED PREMIUM VERSION)
+            }
+
+            Component {
+                id: slidersComponent
                 Item {
                     id: slidersView
                     
@@ -814,8 +832,10 @@ Popup {
                         }
                     }
                 }
-                
-                // VIEW 3: COLOR HARMONY
+            }
+
+            Component {
+                id: harmonyComponent
                 Item {
                     id: harmonyView
                     ColumnLayout {
@@ -909,11 +929,15 @@ Popup {
                         }
                     }
                 }
-                
-                // VIEW 4: EYE DROPPER (Placeholder)
+            }
+
+            Component {
+                id: eyedropperComponent
                 Item { Text { text: "Sampler coming soon"; anchors.centerIn: parent; color: "white" } }
-                
-                // VIEW 5: PALETTES — Themed + Image Extraction
+            }
+
+            Component {
+                id: palettesComponent
                 Item {
                     id: palettesView
 
@@ -1317,10 +1341,29 @@ Popup {
                         }
                     }
                     
-                    StackLayout {
-                        id: footStack; Layout.fillWidth: true; Layout.fillHeight: true
-                        
-                        // 0: SHADES / HARMONY BOX
+                    // Content layout (Optimized using Loader)
+                    Item {
+                        id: footStack
+                        Layout.fillWidth: true; Layout.fillHeight: true
+                        property int currentIndex: 0
+
+                        Loader {
+                            id: footLoader
+                            anchors.fill: parent
+                            sourceComponent: {
+                                switch (footStack.currentIndex) {
+                                    case 0: return shadesComponent
+                                    case 1: return historyComponent
+                                    case 2: return myPalettesComponent
+                                    default: return shadesComponent
+                                }
+                            }
+                        }
+                    }
+
+                    // Footer Components
+                    Component {
+                        id: shadesComponent
                         Item {
                             RowLayout {
                                 anchors.fill: parent; spacing: 5
@@ -1343,7 +1386,6 @@ Popup {
                                                 if(viewStack.currentIndex===3) {
                                                     var col = parent.color
                                                     root.h = col.hsvHue
-                                                    // Maintenance s and v if needed, though they are usually same in my current logic
                                                     root.updateColor()
                                                     root.addToHistory()
                                                 } else { 
@@ -1358,13 +1400,17 @@ Popup {
                                 }
                             }
                         }
-                        
-                        // 1: HISTORY
+                    }
+
+                    Component {
+                        id: historyComponent
                         Item {
                             Flow { anchors.fill: parent; spacing: 8; Repeater { model: backend.history; Rectangle { width: 36; height: 36; radius: 8; color: modelData; MouseArea { anchors.fill: parent; onClicked: root.currentColor = modelData } } } }
                         }
-                        
-                        // 2: PALETTES
+                    }
+
+                    Component {
+                        id: myPalettesComponent
                         Item { Text { text: "Save your favorite palettes"; color: "#555"; anchors.centerIn: parent } }
                     }
                 }

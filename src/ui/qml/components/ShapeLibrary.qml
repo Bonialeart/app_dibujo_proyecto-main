@@ -8,9 +8,9 @@ import QtQuick.Layouts 1.15
 // ═══════════════════════════════════════════════════════════
 Rectangle {
     id: root
-    color: "#0d0d0f"
+    color: mainWindow ? mainWindow.colorPanel : "#0d0d0f"
     radius: 24
-    border.color: "#1a1a1c"
+    border.color: mainWindow ? mainWindow.colorBorder : "#1a1a1c"
     border.width: 1
     clip: true
 
@@ -94,7 +94,7 @@ Rectangle {
 
                     Text {
                         text: currentTitle()
-                        color: "white"
+                        color: mainWindow ? mainWindow.colorText : "white"
                         font.pixelSize: 18
                         font.weight: Font.Bold
                         anchors.left: parent.left
@@ -104,7 +104,7 @@ Rectangle {
 
                     Text {
                         text: currentCount() + " items"
-                        color: "#555"
+                        color: mainWindow ? mainWindow.colorTextMuted : "#555"
                         font.pixelSize: 11
                         anchors.right: parent.right
                         anchors.rightMargin: 16
@@ -118,7 +118,7 @@ Rectangle {
                     Layout.preferredHeight: 1
                     Layout.leftMargin: 16
                     Layout.rightMargin: 16
-                    color: "#1e1e22"
+                    color: mainWindow ? mainWindow.colorBorder : "#1e1e22"
                 }
 
                 // ── Scrollable Grid ──
@@ -135,7 +135,7 @@ Rectangle {
 
                     ScrollBar.vertical: ScrollBar {
                         width: 4
-                        contentItem: Rectangle { color: "#333"; radius: 2 }
+                        contentItem: Rectangle { color: mainWindow ? mainWindow.colorBorder : "#333"; radius: 2 }
                     }
 
                     Column {
@@ -152,8 +152,8 @@ Rectangle {
                                 width: gridCol.width
                                 height: 72
                                 radius: 14
-                                color: shpCard._applied ? "#1a3a1a" : (shpMa.containsMouse ? "#1e1e26" : "#141416")
-                                border.color: shpCard._applied ? "#4ade80" : (shpMa.containsMouse ? accentColor : "#222")
+                                color: shpCard._applied ? (mainWindow && !mainWindow.isDark ? "#d1fae5" : "#1a3a1a") : (shpMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#1e1e26") : (mainWindow ? mainWindow.colorCard : "#141416"))
+                                border.color: shpCard._applied ? "#4ade80" : (shpMa.containsMouse ? accentColor : (mainWindow ? mainWindow.colorBorder : "#222"))
                                 border.width: shpMa.containsMouse || shpCard._applied ? 2 : 1
                                 
                                 property bool _applied: false
@@ -169,7 +169,7 @@ Rectangle {
                                     // Icon box
                                     Rectangle {
                                         width: 48; height: 48; radius: 12
-                                        color: "#1a1a20"
+                                        color: mainWindow ? mainWindow.colorPanel : "#1a1a20"
                                         anchors.verticalCenter: parent.verticalCenter
 
                                         // Shape preview
@@ -181,7 +181,7 @@ Rectangle {
                                                 var ctx = getContext("2d")
                                                 var w = width, h = height
                                                 ctx.clearRect(0,0,w,h)
-                                                ctx.strokeStyle = shpMa.containsMouse ? accentColor.toString() : "white"
+                                                ctx.strokeStyle = shpMa.containsMouse ? accentColor.toString() : (mainWindow ? mainWindow.colorText : "white")
                                                 ctx.lineWidth = 2
                                                 if (model.itemId === "rect") {
                                                     ctx.strokeRect(2, 4, w-4, h-8)
@@ -209,13 +209,13 @@ Rectangle {
                                         spacing: 3
                                         Text {
                                             text: model.label
-                                            color: shpMa.containsMouse ? "white" : "#ccc"
+                                            color: shpMa.containsMouse ? (mainWindow ? mainWindow.colorText : "white") : (mainWindow ? mainWindow.colorText : "#ccc")
                                             font.pixelSize: 14
                                             font.weight: Font.Medium
                                         }
                                         Text {
                                             text: model.desc
-                                            color: "#666"
+                                            color: mainWindow ? mainWindow.colorTextMuted : "#666"
                                             font.pixelSize: 11
                                         }
                                     }
@@ -258,8 +258,8 @@ Rectangle {
                                     width: (gridCol.width - 10) / 2
                                     height: 140
                                     radius: 14
-                                    color: pnlMa.containsMouse ? "#1e1e26" : "#141416"
-                                    border.color: pnlMa.containsMouse ? accentColor : "#222"
+                                    color: pnlMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#1e1e26") : (mainWindow ? mainWindow.colorCard : "#141416")
+                                    border.color: pnlMa.containsMouse ? accentColor : (mainWindow ? mainWindow.colorBorder : "#222")
                                     border.width: pnlMa.containsMouse ? 2 : 1
 
                                     Behavior on color { ColorAnimation { duration: 120 } }
@@ -275,7 +275,7 @@ Rectangle {
                                             width: parent.width
                                             height: 80
                                             radius: 8
-                                            color: "#222"
+                                            color: mainWindow ? mainWindow.colorPanel : "#222"
                                             clip: true
 
                                             Canvas {
@@ -293,7 +293,7 @@ Rectangle {
                                                     var g = 3
 
                                                     ctx.fillStyle = "#f5f5f0"
-                                                    ctx.strokeStyle = pnlMa.containsMouse ? accentColor.toString() : "#888"
+                                                    ctx.strokeStyle = pnlMa.containsMouse ? accentColor.toString() : (mainWindow ? mainWindow.colorTextMuted : "#888")
                                                     ctx.lineWidth = 1.5
 
                                                     var panels = getPanels(model.itemId, mx, my, iw, ih, g)
@@ -314,7 +314,7 @@ Rectangle {
 
                                         Text {
                                             text: model.label
-                                            color: pnlMa.containsMouse ? "white" : "#ccc"
+                                            color: pnlMa.containsMouse ? (mainWindow ? mainWindow.colorText : "white") : (mainWindow ? mainWindow.colorText : "#ccc")
                                             font.pixelSize: 12
                                             font.weight: Font.Medium
                                             width: parent.width
@@ -322,7 +322,7 @@ Rectangle {
                                         }
                                         Text {
                                             text: model.desc
-                                            color: "#555"
+                                            color: mainWindow ? mainWindow.colorTextMuted : "#555"
                                             font.pixelSize: 9
                                             width: parent.width
                                             elide: Text.ElideRight
@@ -356,8 +356,8 @@ Rectangle {
                                     width: (gridCol.width - 10) / 2
                                     height: 140
                                     radius: 14
-                                    color: bubMa.containsMouse ? "#1e1e26" : "#141416"
-                                    border.color: bubMa.containsMouse ? accentColor : "#222"
+                                    color: bubMa.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#1e1e26") : (mainWindow ? mainWindow.colorCard : "#141416")
+                                    border.color: bubMa.containsMouse ? accentColor : (mainWindow ? mainWindow.colorBorder : "#222")
                                     border.width: bubMa.containsMouse ? 2 : 1
 
                                     Behavior on color { ColorAnimation { duration: 120 } }
@@ -373,7 +373,7 @@ Rectangle {
                                             width: parent.width
                                             height: 80
                                             radius: 8
-                                            color: "#1a1a20"
+                                            color: mainWindow ? mainWindow.colorPanel : "#1a1a20"
                                             clip: true
 
                                             Canvas {
@@ -389,7 +389,7 @@ Rectangle {
                                                     var bType = model.itemId.replace("bubble_", "")
 
                                                     ctx.fillStyle = "white"
-                                                    ctx.strokeStyle = bubMa.containsMouse ? accentColor.toString() : "#888"
+                                                    ctx.strokeStyle = bubMa.containsMouse ? accentColor.toString() : (mainWindow ? mainWindow.colorTextMuted : "#888")
                                                     ctx.lineWidth = 2
                                                     ctx.lineJoin = "round"
 
@@ -561,7 +561,7 @@ Rectangle {
 
                                         Text {
                                             text: model.label
-                                            color: bubMa.containsMouse ? "white" : "#ccc"
+                                            color: bubMa.containsMouse ? (mainWindow ? mainWindow.colorText : "white") : (mainWindow ? mainWindow.colorText : "#ccc")
                                             font.pixelSize: 12
                                             font.weight: Font.Medium
                                             width: parent.width
@@ -569,7 +569,7 @@ Rectangle {
                                         }
                                         Text {
                                             text: model.desc
-                                            color: "#555"
+                                            color: mainWindow ? mainWindow.colorTextMuted : "#555"
                                             font.pixelSize: 9
                                             width: parent.width
                                             elide: Text.ElideRight
@@ -600,7 +600,7 @@ Rectangle {
         Rectangle {
             Layout.fillHeight: true
             Layout.preferredWidth: 64
-            color: "#0a0a0c"
+            color: mainWindow ? Qt.darker(mainWindow.colorPanel, 1.1) : "#0a0a0c"
 
             Column {
                 anchors.fill: parent
@@ -613,7 +613,7 @@ Rectangle {
                     width: 52; height: 54
                     anchors.horizontalCenter: parent.horizontalCenter
                     radius: 14
-                    color: selectedCategory === 0 ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (cat0ma.containsMouse ? "#1a1a1e" : "transparent")
+                    color: selectedCategory === 0 ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (cat0ma.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#1a1a1e") : "transparent")
                     border.color: selectedCategory === 0 ? accentColor : "transparent"
                     border.width: selectedCategory === 0 ? 1.5 : 0
 
@@ -629,7 +629,7 @@ Rectangle {
                         Text {
                             text: "Shapes"
                             font.pixelSize: 8; font.weight: Font.Medium
-                            color: selectedCategory === 0 ? accentColor : "#666"
+                            color: selectedCategory === 0 ? accentColor : (mainWindow ? mainWindow.colorTextMuted : "#666")
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                     }
@@ -645,7 +645,7 @@ Rectangle {
                     width: 52; height: 54
                     anchors.horizontalCenter: parent.horizontalCenter
                     radius: 14
-                    color: selectedCategory === 1 ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (cat1ma.containsMouse ? "#1a1a1e" : "transparent")
+                    color: selectedCategory === 1 ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (cat1ma.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#1a1a1e") : "transparent")
                     border.color: selectedCategory === 1 ? accentColor : "transparent"
                     border.width: selectedCategory === 1 ? 1.5 : 0
 
@@ -661,7 +661,7 @@ Rectangle {
                         Text {
                             text: "Panels"
                             font.pixelSize: 8; font.weight: Font.Medium
-                            color: selectedCategory === 1 ? accentColor : "#666"
+                            color: selectedCategory === 1 ? accentColor : (mainWindow ? mainWindow.colorTextMuted : "#666")
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                     }
@@ -677,7 +677,7 @@ Rectangle {
                     width: 52; height: 54
                     anchors.horizontalCenter: parent.horizontalCenter
                     radius: 14
-                    color: selectedCategory === 2 ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (cat2ma.containsMouse ? "#1a1a1e" : "transparent")
+                    color: selectedCategory === 2 ? Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15) : (cat2ma.containsMouse ? (mainWindow && !mainWindow.isDark ? "#e1e7f0" : "#1a1a1e") : "transparent")
                     border.color: selectedCategory === 2 ? accentColor : "transparent"
                     border.width: selectedCategory === 2 ? 1.5 : 0
 
@@ -693,7 +693,7 @@ Rectangle {
                         Text {
                             text: "Bubbles"
                             font.pixelSize: 8; font.weight: Font.Medium
-                            color: selectedCategory === 2 ? accentColor : "#666"
+                            color: selectedCategory === 2 ? accentColor : (mainWindow ? mainWindow.colorTextMuted : "#666")
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                     }

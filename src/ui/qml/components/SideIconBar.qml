@@ -100,7 +100,7 @@ Rectangle {
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 4
                     anchors.horizontalCenter: parent.horizontalCenter
-                    color: "#1c1c1f"
+                    color: mainWindow ? mainWindow.colorBorder : "#1c1c1f"
                     visible: isGroupLast && index !== root.panelModel.count - 1
                 }
                 
@@ -152,8 +152,8 @@ Rectangle {
                     delay: 500
                     x: root.dockSide.indexOf("right") !== -1 ? -width - 4 : root.width + 4
                     y: (parent.height - height) / 2
-                    background: Rectangle { color: "#1e1e24"; border.color: "#3a3a3d"; radius: 6 }
-                    contentItem: Text { text: sideTooltip.text; color: "#f0f0f5"; font.pixelSize: 12; font.weight: Font.Medium }
+                    background: Rectangle { color: mainWindow ? mainWindow.colorPanel : "#1e1e24"; border.color: mainWindow ? mainWindow.colorBorder : "#3a3a3d"; radius: 6 }
+                    contentItem: Text { text: sideTooltip.text; color: mainWindow ? mainWindow.colorText : "#f0f0f5"; font.pixelSize: 12; font.weight: Font.Medium }
                 }
                 
                 // Ghost item when dragging
@@ -161,7 +161,7 @@ Rectangle {
                     id: ghostPanel
                     visible: customDragging
                     width: 40; height: 40
-                    color: "#161619"; border.color: accentColor; border.width: 1
+                    color: mainWindow ? mainWindow.colorPanel : "#161619"; border.color: accentColor; border.width: 1
                     radius: 10; opacity: 0.9 // Floating above
                     x: customDragging ? (ma.mouseX - width/2) : 0
                     y: customDragging ? (ma.mouseY - height/2) : 0
