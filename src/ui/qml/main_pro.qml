@@ -2055,12 +2055,10 @@ Window {
                                 ctx.strokeStyle = "#ffffff";
                                 ctx.stroke();
 
-                                // 4. White Inner Circle
+                                // 4. Hollow Inner Circle (No Fill)
                                 ctx.beginPath();
                                 ctx.arc(cx, cy, innerR, 0, 2*Math.PI);
                                 ctx.closePath();
-                                ctx.fillStyle = "#ffffff";
-                                ctx.fill();
                                 
                                 // Thin outline for inner circle
                                 ctx.lineWidth = 1;
@@ -2076,35 +2074,50 @@ Window {
                                 ctx.stroke();
                             }
                         }
-    
+
                         // Center Pipette Icon
                         Image {
                             source: iconPath("picker.svg")
                             width: 24; height: 24
                             // Tip is at (3.368, 4.368) relative to top-left of the icon image.
+                            // Mirrored horizontally: the tip is now at (24 - 3.368) = 20.632.
                             // Align the tip exactly at the center of the loupe.
-                            x: parent.width/2 - 3.368
+                            x: parent.width/2 - 20.632
                             y: parent.height/2 - 4.368
                             smooth: true
                             mipmap: true
+                            mirror: true // Mirror horizontally to face the other side
                             z: 10
+                            
+                            property color sampledColor: canvasPage.samplingColor
+                            property bool isDarkBg: {
+                                var r = sampledColor.r
+                                var g = sampledColor.g
+                                var b = sampledColor.b
+                                var luminance = 0.299 * r + 0.587 * g + 0.114 * b
+                                return luminance < 0.5
+                            }
                             
                             layer.enabled: true
                             layer.effect: MultiEffect {
-                                colorizationColor: "#27272a" // Dark charcoal for contrast on white background
+                                colorizationColor: parent.isDarkBg ? "#ffffff" : "#27272a"
                                 colorization: 1.0
+                                shadowEnabled: true
+                                shadowColor: parent.isDarkBg ? "#000000" : "#ffffff"
+                                shadowBlur: 3
+                                shadowOpacity: 0.95
                             }
                         }
                     }
-
+ 
                     // Custom Eyedropper Hover Cursor
                     Item {
                         id: customEyedropperCursor
                         width: 24
                         height: 24
                         visible: isProjectActive && canvasPage.activeToolIdx === 10 && !canvasPage.isSampling && pickerMouseArea.containsMouse
-                        // Position so the tip is exactly under the cursor
-                        x: pickerMouseArea.mouseX - 3.368
+                        // Position so the tip is exactly under the cursor (mirrored horizontally)
+                        x: pickerMouseArea.mouseX - 20.632
                         y: pickerMouseArea.mouseY - 4.368
                         z: 2100
                         
@@ -2116,13 +2129,14 @@ Window {
                             var luminance = 0.299 * r + 0.587 * g + 0.114 * b
                             return luminance < 0.5
                         }
-
+ 
                         Image {
                             source: iconPath("picker.svg")
                             width: 24
                             height: 24
                             smooth: true
                             mipmap: true
+                            mirror: true // Mirror horizontally to face the other side
                             
                             layer.enabled: true
                             layer.effect: MultiEffect {
@@ -3327,7 +3341,7 @@ Window {
                     property bool isFromStudio: false
                     property real studioToolX: 0
                     
-                    x: isFromStudio ? studioToolX + 50 : (sideToolbar.x - width - 15)
+                    x: isFromStudio ? (studioToolX > parent.width / 2 ? studioToolX - width - 10 : studioToolX + 50) : (sideToolbar.x - width - 15)
                     y: Math.max(10, Math.min(yLevel - 4, canvasPage.height - height - 10))
                     width: subToolRow.implicitWidth + 24
                     height: 48
@@ -3817,7 +3831,6 @@ Window {
                             y = (parent.height - height) / 2
                         }
                     }                    
-                    
                     width: isHorizontal ? 330 * mainWindow.uiScale : 40 * mainWindow.uiScale
                     height: isHorizontal ? 40 * mainWindow.uiScale : 360 * mainWindow.uiScale
                     radius: 20 * mainWindow.uiScale
@@ -3831,13 +3844,28 @@ Window {
                     
                     Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                     Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+                    Connections {
+                        target: sliderToolbox.parent
+                        ignoreUnknownSignals: true
+                        function onWidthChanged() {
+                            if (sliderToolbox.parent) {
+                                sliderToolbox.x = Math.max(10, Math.min(sliderToolbox.x, sliderToolbox.parent.width - sliderToolbox.width - 10))
+                            }
+                        }
+                        function onHeightChanged() {
+                            if (sliderToolbox.parent) {
+                                sliderToolbox.y = Math.max(50, Math.min(sliderToolbox.y, sliderToolbox.parent.height - sliderToolbox.height - 20))
+                            }
+                        }
+                    }
                     
                     // Soft Shadow
                     Rectangle {
                         anchors.fill: parent; anchors.margins: -4
                         z: -1; radius: parent.radius + 4; color: "black"; opacity: 0.18
                     }
-
+ 
                     // Background drag area (so the whole background of the bar can be dragged cleanly!)
                     MouseArea {
                         id: toolboxDrag
@@ -3845,9 +3873,9 @@ Window {
                         drag.target: sliderToolbox
                         drag.axis: Drag.XAndYAxis
                         drag.minimumX: 10
-                        drag.maximumX: mainWindow.width - sliderToolbox.width - 10
+                        drag.maximumX: sliderToolbox.parent ? (sliderToolbox.parent.width - sliderToolbox.width - 10) : 500
                         drag.minimumY: 50
-                        drag.maximumY: mainWindow.height - sliderToolbox.height - 20
+                        drag.maximumY: sliderToolbox.parent ? (sliderToolbox.parent.height - sliderToolbox.height - 20) : 500
                         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
                         
                         onPressed: sliderToolbox.scale = 1.01

@@ -412,8 +412,19 @@ import "../components"
 
                     onEntered: (drag) => {
                         if (drag.urls.length > 0) {
-                            var ext = drag.urls[0].toString().split('.').pop().toLowerCase()
-                            if (["png", "jpg", "jpeg", "bmp", "tiff", "tif", "gif", "webp"].indexOf(ext) >= 0) {
+                            var urlStr = drag.urls[0].toString().toLowerCase()
+                            var isImg = false
+                            if (urlStr.indexOf("content:") === 0) {
+                                isImg = true
+                            } else if (urlStr.indexOf("http://") === 0 || urlStr.indexOf("https://") === 0) {
+                                isImg = true
+                            } else {
+                                var ext = urlStr.split('.').pop().split(/[?#]/)[0]
+                                if (["png", "jpg", "jpeg", "bmp", "tiff", "tif", "gif", "webp"].indexOf(ext) >= 0) {
+                                    isImg = true
+                                }
+                            }
+                            if (isImg) {
                                 drag.accepted = true
                                 dropOverlay.visible = true
                             }
@@ -801,8 +812,7 @@ import "../components"
                     height: isHorizontal ? 40 * uiScale : 360 * uiScale
                     radius: 20 * uiScale
                     clip: false
-                    
-                    // Unified Pure Premium Dark Capsule (Image 2 style)
+                                        // Unified Pure Premium Dark Capsule (Image 2 style)
                     color: "#252528"
                     border.color: Qt.rgba(1, 1, 1, 0.03)
                     border.width: 0.5
@@ -810,13 +820,28 @@ import "../components"
                     
                     Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                     Behavior on height { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+
+                    Connections {
+                        target: sliderToolbox.parent
+                        ignoreUnknownSignals: true
+                        function onWidthChanged() {
+                            if (sliderToolbox.parent) {
+                                sliderToolbox.x = Math.max(10, Math.min(sliderToolbox.x, sliderToolbox.parent.width - sliderToolbox.width - 10))
+                            }
+                        }
+                        function onHeightChanged() {
+                            if (sliderToolbox.parent) {
+                                sliderToolbox.y = Math.max(50, Math.min(sliderToolbox.y, sliderToolbox.parent.height - sliderToolbox.height - 20))
+                            }
+                        }
+                    }
                     
                     // Soft Shadow
                     Rectangle {
                         anchors.fill: parent; anchors.margins: -4
                         z: -1; radius: parent.radius + 4; color: "black"; opacity: 0.18
                     }
-
+ 
                     // Background drag area (so the whole background of the bar can be dragged cleanly!)
                     MouseArea {
                         id: toolboxDrag
@@ -824,9 +849,9 @@ import "../components"
                         drag.target: sliderToolbox
                         drag.axis: Drag.XAndYAxis
                         drag.minimumX: 10
-                        drag.maximumX: mainWindow.width - sliderToolbox.width - 10
+                        drag.maximumX: sliderToolbox.parent ? (sliderToolbox.parent.width - sliderToolbox.width - 10) : 500
                         drag.minimumY: 50
-                        drag.maximumY: mainWindow.height - sliderToolbox.height - 20
+                        drag.maximumY: sliderToolbox.parent ? (sliderToolbox.parent.height - sliderToolbox.height - 20) : 500
                         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.ArrowCursor
                         
                         onPressed: sliderToolbox.scale = 1.01

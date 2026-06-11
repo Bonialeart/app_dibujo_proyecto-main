@@ -28,6 +28,10 @@
 #include <QEvent>
 #include <QFile>
 #include <QFileInfo>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QEventLoop>
 #include <QFutureWatcher>
 #include <QGuiApplication>
 #include <QHoverEvent>
@@ -2995,6 +2999,7 @@ void CanvasItem::paint(QPainter *painter) {
 
     // 1. Top Half Ring (Sampleed Color)
     QPainterPath topRing;
+    topRing.arcMoveTo(outerRect, 0);
     topRing.arcTo(outerRect, 0, 180);
     topRing.arcTo(innerRect, 180, -180);
     topRing.closeSubpath();
@@ -3004,6 +3009,7 @@ void CanvasItem::paint(QPainter *painter) {
 
     // 2. Bottom Half Ring (Old Color)
     QPainterPath bottomRing;
+    bottomRing.arcMoveTo(outerRect, 180);
     bottomRing.arcTo(outerRect, 180, 180);
     bottomRing.arcTo(innerRect, 0, -180);
     bottomRing.closeSubpath();
@@ -3015,9 +3021,9 @@ void CanvasItem::paint(QPainter *painter) {
     painter->drawLine(QPointF(pos.x() - outerR, pos.y()), QPointF(pos.x() - innerR, pos.y()));
     painter->drawLine(QPointF(pos.x() + innerR, pos.y()), QPointF(pos.x() + outerR, pos.y()));
 
-    // 4. White Inner Circle with outline
+    // 4. Hollow Inner Circle with outline (No Fill)
     painter->setPen(QPen(QColor(161, 161, 170), 1.0f)); // #a1a1aa grey outline
-    painter->setBrush(Qt::white);
+    painter->setBrush(Qt::NoBrush);
     painter->drawEllipse(pos, innerR, innerR);
 
     // 5. Thin outer outline
@@ -3042,8 +3048,20 @@ void CanvasItem::paint(QPainter *painter) {
     pipette.lineTo(-1.5f, 3.0f);
     pipette.closeSubpath();
 
+    float r, g, b, a;
+    m_touchEyedropperColor.getRgbF(&r, &g, &b, &a);
+    double luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    bool isDarkBg = (luminance < 0.5);
+
+    // Outline / shadow for high contrast on hollow/transparent background
+    QPen outlinePen(isDarkBg ? Qt::black : Qt::white, 2.0f);
+    painter->setPen(outlinePen);
+    painter->setBrush(isDarkBg ? Qt::black : Qt::white);
+    painter->drawPath(pipette);
+
+    // Main pipette fill
     painter->setPen(Qt::NoPen);
-    painter->setBrush(QColor(39, 39, 42)); // #27272a dark charcoal
+    painter->setBrush(isDarkBg ? Qt::white : QColor(39, 39, 42)); // White on dark, dark charcoal on light
     painter->drawPath(pipette);
     painter->restore();
 
@@ -3124,7 +3142,7 @@ void CanvasItem::paint(QPainter *painter) {
 
   // Cursores para otras herramientas (opcionales)
   else if (!m_touchIsEyedropper && m_cursorVisible && !m_spacePressed &&
-           m_tool != ToolType::Hand && m_tool != ToolType::Transform) {
+           m_tool != ToolType::Hand && m_tool != ToolType::Transform && m_tool != ToolType::Eyedropper) {
     // 🎯 Professional Precision Cursor (Crosshair with Circle) para
     // eyedropper, lasso, fill, etc.
     painter->save();
@@ -3738,7 +3756,8 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
             m_brushColor,
             wcParams,
             effectivePressure,
-            settings.flow
+            settings.flow,
+            canvasRect.toAlignedRect()
         );
     } else if (m_watercolorEngine && !isWatercolorBrush()) {
         // Si el usuario cambió a un pincel que no es acuarela, finalizar la sesión
@@ -4836,6 +4855,16 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
 void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
   event->accept(); // Evita que el evento suba a QML
+
+  if (m_touchIsEyedropper) {
+    m_lastTouchPos = event->position();
+    m_touchEyedropperColor = QColor(
+        sampleColor(m_lastTouchPos.x(), m_lastTouchPos.y(), 0));
+    setBrushColor(m_touchEyedropperColor);
+    update();
+    event->accept();
+    return;
+  }
 
   if (m_tool == ToolType::Gradient && m_isGradientDragging) {
     QPointF canvasPos = screenToCanvas(event->position());
@@ -5982,7 +6011,41 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
         m_touchTimer = new QTimer(this);
         m_touchTimer->setSingleShot(true);
         connect(m_touchTimer, &QTimer::timeout, this, [this]() {
-          if (m_touchPointCount == 1 && !m_isDrawing) {
+          if (m_touchPointCount == 1) {
+            // Cancel drawing if it was active to avoid drawing a line
+            if (m_isDrawing) {
+              Layer *layer = m_layerManager ? m_layerManager->getActiveLayer() : nullptr;
+              if (layer && layer->buffer && m_strokeBeforeBuffer) {
+                layer->buffer->copyFrom(*m_strokeBeforeBuffer);
+                layer->dirty = true;
+                layer->dirtyRect = QRect(0, 0, m_canvasWidth, m_canvasHeight);
+                if (layer->buffer)
+                  layer->buffer->clearDirtyFlags();
+                m_cachedCanvasImage = QImage();
+
+                if (m_pingFBO && layer->buffer) {
+                  QImage fboImg(layer->buffer->data(), m_canvasWidth, m_canvasHeight,
+                                QImage::Format_RGBA8888_Premultiplied);
+                  m_pingFBO->bind();
+                  QOpenGLPaintDevice device(m_canvasWidth, m_canvasHeight);
+                  QPainter fboPainter(&device);
+                  fboPainter.setCompositionMode(QPainter::CompositionMode_Source);
+                  fboPainter.drawImage(0, 0, fboImg);
+                  fboPainter.end();
+                  m_pingFBO->release();
+                  QOpenGLFramebufferObject::blitFramebuffer(m_pongFBO, m_pingFBO);
+                }
+              }
+              m_isDrawing = false;
+              m_isHoldingForShape = false;
+              m_quickShapeType = QuickShapeType::None;
+              m_quickShapeTimer->stop();
+              m_hasPrediction = false;
+              m_smudgeColorValid = false;
+              m_strokeCancelledByGesture = true;
+              m_strokeBeforeBuffer.reset();
+            }
+
             m_touchIsEyedropper = true;
             m_touchEyedropperColor = QColor(
                 sampleColor(m_lastTouchPos.x(), m_lastTouchPos.y(), 0));
@@ -10214,12 +10277,56 @@ bool CanvasItem::importImageAsLayer(const QString &path) {
   if (localPath.startsWith("file:", Qt::CaseInsensitive))
     localPath = QUrl(path).toLocalFile();
 
-  qDebug() << "[importImageAsLayer] resolved localPath =" << localPath;
-
-  // ── Load the image (PNG, JPG, BMP, TIFF, WebP …) ─────────────────────────
+  // Load the image (PNG, JPG, BMP, TIFF, WebP, etc.) supporting files, Android Content Provider URIs, and Web URLs
   QImage src;
-  if (!src.load(localPath)) {
-    qWarning() << "[importImageAsLayer] Failed to load:" << localPath;
+  bool loaded = false;
+
+  if (localPath.startsWith("content:", Qt::CaseInsensitive)) {
+    qDebug() << "[importImageAsLayer] Loading Android content URI:" << localPath;
+    QFile file(localPath);
+    if (file.open(QIODevice::ReadOnly)) {
+      QByteArray data = file.readAll();
+      loaded = src.loadFromData(data);
+      file.close();
+    } else {
+      qWarning() << "[importImageAsLayer] Failed to open content URI QFile:" << localPath;
+    }
+  }
+  else if (localPath.startsWith("http://", Qt::CaseInsensitive) || localPath.startsWith("https://", Qt::CaseInsensitive)) {
+    qDebug() << "[importImageAsLayer] Downloading web image:" << localPath;
+    QNetworkAccessManager manager;
+    QNetworkRequest request;
+    request.setUrl(QUrl(localPath));
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::UserVerifiedRedirectPolicy);
+    QNetworkReply *reply = manager.get(request);
+
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    // Use finished signal to quit even on error
+    QObject::connect(reply, &QNetworkReply::errorOccurred, &loop, [&loop](QNetworkReply::NetworkError) { loop.quit(); });
+
+    QTimer timer;
+    timer.setSingleShot(true);
+    QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timer.start(10000); // 10s timeout
+
+    loop.exec();
+
+    if (timer.isActive() && reply->error() == QNetworkReply::NoError) {
+      QByteArray data = reply->readAll();
+      loaded = src.loadFromData(data);
+    } else {
+      qWarning() << "[importImageAsLayer] Download failed or timed out:" << reply->errorString();
+    }
+    reply->deleteLater();
+  }
+  else {
+    qDebug() << "[importImageAsLayer] Loading local path:" << localPath;
+    loaded = src.load(localPath);
+  }
+
+  if (!loaded) {
+    qWarning() << "[importImageAsLayer] Failed to load image from path:" << localPath;
     emit notificationRequested("No se pudo cargar la imagen", "error");
     return false;
   }

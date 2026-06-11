@@ -9,8 +9,25 @@ message(STATUS "--------------------------------------------------")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# GCC/Clang Compiler Optimizations (Android & MinGW)
+if(NOT MSVC)
+    message(STATUS "Aplicando flags de optimizacion de velocidad para GCC/Clang")
+    add_compile_options(-O3 -ffast-math)
+    
+    # Habilitar IPO/LTO si es soportado por el compilador y CMake
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
+    if(ipo_supported)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+        message(STATUS "Link-Time Optimization (LTO) habilitado.")
+    else()
+        message(STATUS "LTO no soportado: ${ipo_output}")
+    endif()
+endif()
+
+
 # 1. Configuración de Qt
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Concurrent OpenGL Svg Widgets QuickEffects ShaderTools)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Concurrent OpenGL Svg Widgets QuickEffects ShaderTools Network)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
@@ -157,11 +174,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Widgets
     Qt6::QuickEffects
     Qt6::ShaderTools
+    Qt6::Network
     rust_core
 )
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE opengl32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE opengl32 ws2_32 userenv dbghelp)
 elseif(ANDROID)
     target_link_libraries(${PROJECT_NAME} PRIVATE GLESv3)
 endif()

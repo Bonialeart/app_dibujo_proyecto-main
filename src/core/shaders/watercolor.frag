@@ -497,17 +497,16 @@ vec4 dryStep() {
     float newWetness = mix(wetness, avgWater, uBleed * 0.25);
 
     // 2. Evaporación (Secado progresivo del charco)
-    // Se evapora alrededor de un 2% base por ciclo, escalado por dryingRate y absorción
+    // Se evapora de forma lineal y realista según dryingRate (cada frame dura 80ms, por lo que 0.08 es el factor base)
     // Modulado por el factor de porosidad tridimensional (valles vs crestas)
     float grainEvaporationFactor = mix(0.5, 1.5, paperGrain);
-    float evaporation = 0.02 * uDryingRate * uAbsorption * grainEvaporationFactor;
+    float evaporation = 0.08 * uDryingRate * grainEvaporationFactor;
 
     // Los bordes exteriores secan más rápido
     float minNeighbor = min(min(upWet, downWet), min(leftWet, rightWet));
     float borderMult = (wetness - minNeighbor) > 0.15 ? 1.8 : 1.0;
 
-    newWetness = newWetness * (1.0 - evaporation * borderMult);
-    newWetness = max(0.0, newWetness);
+    newWetness = max(0.0, newWetness - evaporation * borderMult);
 
     // Avanzar la edad del pigmento húmedo
     float newAge = min(1.0, secAge + evaporation * borderMult * 0.5);

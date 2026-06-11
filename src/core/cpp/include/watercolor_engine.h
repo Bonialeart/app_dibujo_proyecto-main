@@ -27,6 +27,7 @@
 #include <QImage>
 #include <QColor>
 #include <QPointF>
+#include <QRect>
 #include <memory>
 
 class WatercolorEngine : public QObject {
@@ -82,7 +83,8 @@ public:
                   const QColor &brushColor,
                   const WatercolorParams &params,
                   float pressure,
-                  float flow);
+                  float flow,
+                  const QRect &dabRect = QRect());
 
     // ─────────────────────────────────────────────────────────────────────
     // Métodos de control del timer
@@ -126,7 +128,8 @@ private:
     void updateWetMapDeposit(GLuint dabTexId,
                              const WatercolorParams &params,
                              float pressure,
-                             float flow);
+                             float flow,
+                             const QRect &dabRect = QRect());
 
 
     // ── Estado ────────────────────────────────────────────────────────────
@@ -163,4 +166,6 @@ private:
     GLuint m_lastCanvasTexId = 0;
     QOpenGLFramebufferObject *m_lastCanvasFBOOut = nullptr;
     WatercolorParams m_lastParams;
+    QRect m_wetBounds;
+    int m_spreadFramesRemaining = 0;
 };

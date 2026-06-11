@@ -25,12 +25,12 @@
                 "rolling": true
             },
             "stroke": {
-                "spacing": 0.04,
+                "spacing": 0.09,
                 "streamline": 0.42,
                 "taper_start": 12.0,
                 "taper_end": 22.0,
                 "jitter_lateral": 0.005,
-                "jitter_linear": 0.010
+                "jitter_linear": 0.01
             },
             "dynamics": {
                 "size": {
@@ -54,11 +54,19 @@
             },
             "pigment": {
                 "granulation": 0.35,
-                "flow": 0.70,
+                "flow": 0.7,
                 "staining": 0.38
             },
-            "bloom": { "enabled": true, "intensity": 0.50, "radius": 16.0 },
-            "edge_darkening": { "enabled": true, "intensity": 0.55, "width": 0.18 },
+            "bloom": {
+                "enabled": true,
+                "intensity": 0.5,
+                "radius": 16.0
+            },
+            "edge_darkening": {
+                "enabled": true,
+                "intensity": 0.55,
+                "width": 0.18
+            },
             "customize": {
                 "default_size": 60,
                 "default_opacity": 0.88,
@@ -84,7 +92,7 @@
             "randomize": {
                 "rotation_jitter": 1.0,
                 "size_jitter": 0.15,
-                "opacity_jitter": 0.10
+                "opacity_jitter": 0.1
             },
             "spray": {
                 "enabled": true,
@@ -100,7 +108,7 @@
                 "scale": 1.25,
                 "rotation": 0.0,
                 "blend_mode": "height_linear",
-                "flow": 0.30,
+                "flow": 0.3,
                 "spray_enabled": true,
                 "particle_size": 76.5,
                 "spray_size_by_brush": true,
@@ -110,7 +118,7 @@
                 "grain": {
                     "texture": "acuarela_aguada.sut.2.layer.png",
                     "scale": 25.0,
-                    "intensity": 0.80,
+                    "intensity": 0.8,
                     "brightness": 75.0,
                     "contrast": -70.0,
                     "invert": true,
@@ -134,27 +142,39 @@
                 "apply_to_tips": false
             },
             "stroke": {
-                "spacing": 0.035,
-                "streamline": 0.60
+                "spacing": 0.08,
+                "streamline": 0.6
             },
             "wet_mix": {
                 "wetness": 0.88,
-                "dilution": 0.80,
+                "dilution": 0.8,
                 "bleed": 0.92,
                 "absorption_rate": 0.05,
                 "drying_time": 5.0,
                 "blend_only": false,
                 "color_mixing": true,
-                "paint_amount": 0.70,
-                "color_stretch": 0.10
+                "paint_amount": 0.7,
+                "color_stretch": 0.1
             },
             "rendering": {
                 "blend_mode": "multiply",
                 "anti_aliasing": true
             },
-            "pigment": { "granulation": 0.20, "flow": 0.65, "staining": 0.0 },
-            "bloom": { "enabled": true, "intensity": 0.45, "radius": 24.0 },
-            "edge_darkening": { "enabled": true, "intensity": 0.75, "width": 0.18 },
+            "pigment": {
+                "granulation": 0.2,
+                "flow": 0.65,
+                "staining": 0.0
+            },
+            "bloom": {
+                "enabled": true,
+                "intensity": 0.45,
+                "radius": 24.0
+            },
+            "edge_darkening": {
+                "enabled": true,
+                "intensity": 0.75,
+                "width": 0.18
+            },
             "customize": {
                 "default_size": 75,
                 "default_opacity": 0.55,
@@ -181,18 +201,31 @@
                 "intensity": 0.25,
                 "blend_mode": "multiply"
             },
-            "stroke": { "spacing": 0.05, "streamline": 0.52 },
+            "stroke": {
+                "spacing": 0.09,
+                "streamline": 0.52
+            },
             "wet_mix": {
-                "wetness": 0.70,
+                "wetness": 0.7,
                 "dilution": 0.55,
                 "bleed": 0.48,
                 "absorption_rate": 0.15,
                 "drying_time": 2.2,
                 "blend_only": false
             },
-            "pigment": { "granulation": 0.30, "flow": 0.70 },
-            "bloom": { "enabled": false, "intensity": 0.0 },
-            "edge_darkening": { "enabled": true, "intensity": 0.22, "width": 0.08 },
+            "pigment": {
+                "granulation": 0.3,
+                "flow": 0.7
+            },
+            "bloom": {
+                "enabled": false,
+                "intensity": 0.0
+            },
+            "edge_darkening": {
+                "enabled": true,
+                "intensity": 0.22,
+                "width": 0.08
+            },
             "customize": {
                 "default_size": 65,
                 "default_opacity": 0.62,
@@ -220,16 +253,34 @@
                 "intensity": 0.45,
                 "blend_mode": "multiply"
             },
-            "stroke": { "spacing": 0.06, "streamline": 0.30 },
-            "wet_mix": { "wetness": 0.22, "dilution": 0.10, "bleed": 0.10 },
-            "pigment": { "granulation": 0.65, "flow": 0.80, "staining": 0.45 },
-            "bloom": { "enabled": false, "intensity": 0.0 },
-            "edge_darkening": { "enabled": true, "intensity": 0.30, "width": 0.12 },
+            "stroke": {
+                "spacing": 0.1,
+                "streamline": 0.3
+            },
+            "wet_mix": {
+                "wetness": 0.22,
+                "dilution": 0.1,
+                "bleed": 0.1
+            },
+            "pigment": {
+                "granulation": 0.65,
+                "flow": 0.8,
+                "staining": 0.45
+            },
+            "bloom": {
+                "enabled": false,
+                "intensity": 0.0
+            },
+            "edge_darkening": {
+                "enabled": true,
+                "intensity": 0.3,
+                "width": 0.12
+            },
             "customize": {
                 "default_size": 45,
-                "default_opacity": 0.80,
-                "default_hardness": 0.30,
-                "default_flow": 0.90
+                "default_opacity": 0.8,
+                "default_hardness": 0.3,
+                "default_flow": 0.9
             }
         },
         {
@@ -250,11 +301,28 @@
                 "scale": 90.0,
                 "intensity": 0.55
             },
-            "stroke": { "spacing": 0.06, "streamline": 0.40 },
-            "wet_mix": { "wetness": 0.60, "dilution": 0.25, "bleed": 0.55, "absorption_rate": 0.35, "drying_time": 1.5 },
-            "pigment": { "granulation": 0.45 },
-            "bloom": { "enabled": true, "intensity": 0.5 },
-            "edge_darkening": { "enabled": true, "intensity": 0.6 },
+            "stroke": {
+                "spacing": 0.1,
+                "streamline": 0.4
+            },
+            "wet_mix": {
+                "wetness": 0.6,
+                "dilution": 0.25,
+                "bleed": 0.55,
+                "absorption_rate": 0.35,
+                "drying_time": 1.5
+            },
+            "pigment": {
+                "granulation": 0.45
+            },
+            "bloom": {
+                "enabled": true,
+                "intensity": 0.5
+            },
+            "edge_darkening": {
+                "enabled": true,
+                "intensity": 0.6
+            },
             "customize": {
                 "default_size": 45,
                 "default_opacity": 0.8
@@ -277,7 +345,10 @@
                 "scale": 90.0,
                 "intensity": 0.3
             },
-            "stroke": { "spacing": 0.02, "streamline": 0.30 },
+            "stroke": {
+                "spacing": 0.07,
+                "streamline": 0.3
+            },
             "customize": {
                 "default_size": 30,
                 "default_opacity": 1.0
@@ -300,9 +371,17 @@
                 "scale": 100.0,
                 "intensity": 0.5
             },
-            "stroke": { "spacing": 0.03, "streamline": 0.5 },
-            "wet_mix": { "dilution": 0.4, "bleed": 0.75 },
-            "pigment": { "granulation": 0.2 },
+            "stroke": {
+                "spacing": 0.08,
+                "streamline": 0.5
+            },
+            "wet_mix": {
+                "dilution": 0.4,
+                "bleed": 0.75
+            },
+            "pigment": {
+                "granulation": 0.2
+            },
             "customize": {
                 "default_size": 35,
                 "default_opacity": 0.9
@@ -325,9 +404,18 @@
                 "scale": 110.0,
                 "intensity": 0.6
             },
-            "stroke": { "spacing": 0.05, "streamline": 0.4 },
-            "wet_mix": { "dilution": 0.6, "bleed": 0.9, "absorption_rate": 0.1 },
-            "bloom": { "enabled": true },
+            "stroke": {
+                "spacing": 0.09,
+                "streamline": 0.4
+            },
+            "wet_mix": {
+                "dilution": 0.6,
+                "bleed": 0.9,
+                "absorption_rate": 0.1
+            },
+            "bloom": {
+                "enabled": true
+            },
             "customize": {
                 "default_size": 50,
                 "default_opacity": 0.8
@@ -350,8 +438,14 @@
                 "scale": 80.0,
                 "intensity": 0.4
             },
-            "stroke": { "spacing": 0.08, "streamline": 0.6 },
-            "wet_mix": { "dilution": 0.95, "bleed": 0.95 },
+            "stroke": {
+                "spacing": 0.1,
+                "streamline": 0.6
+            },
+            "wet_mix": {
+                "dilution": 0.95,
+                "bleed": 0.95
+            },
             "customize": {
                 "default_size": 65,
                 "default_opacity": 0.5
@@ -374,8 +468,13 @@
                 "scale": 100.0,
                 "intensity": 0.4
             },
-            "stroke": { "spacing": 0.04, "streamline": 0.3 },
-            "wet_mix": { "blend_only": true },
+            "stroke": {
+                "spacing": 0.09,
+                "streamline": 0.3
+            },
+            "wet_mix": {
+                "blend_only": true
+            },
             "customize": {
                 "default_size": 55,
                 "default_opacity": 0.0
@@ -398,7 +497,10 @@
                 "scale": 120.0,
                 "intensity": 0.7
             },
-            "stroke": { "spacing": 0.03, "streamline": 0.2 },
+            "stroke": {
+                "spacing": 0.08,
+                "streamline": 0.2
+            },
             "customize": {
                 "default_size": 25,
                 "default_opacity": 0.9
@@ -421,7 +523,10 @@
                 "scale": 100.0,
                 "intensity": 0.4
             },
-            "stroke": { "spacing": 0.3, "streamline": 0.0 },
+            "stroke": {
+                "spacing": 0.3,
+                "streamline": 0.0
+            },
             "customize": {
                 "default_size": 80,
                 "default_opacity": 0.8

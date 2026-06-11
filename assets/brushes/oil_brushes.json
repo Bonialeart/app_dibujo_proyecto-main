@@ -17,7 +17,7 @@
                 "scatter": 0.02
             },
             "stroke": {
-                "spacing": 0.03,
+                "spacing": 0.08,
                 "streamline": 0.2,
                 "rotation": "follow_path",
                 "follow_stroke": true,
@@ -29,7 +29,12 @@
                 "size": {
                     "base_value": 1.0,
                     "min_limit": 0.18,
-                    "pressure_curve": [0.2, 0.0, 0.8, 0.95],
+                    "pressure_curve": [
+                        0.2,
+                        0.0,
+                        0.8,
+                        0.95
+                    ],
                     "velocity_influence": 0.15,
                     "jitter": 0.03
                 },
@@ -98,7 +103,7 @@
                 "scatter": 0.04
             },
             "stroke": {
-                "spacing": 0.04,
+                "spacing": 0.09,
                 "streamline": 0.25,
                 "rotation": "follow_path",
                 "follow_stroke": true,
@@ -188,7 +193,7 @@
                 "angle_jitter": 0.08
             },
             "stroke": {
-                "spacing": 0.015,
+                "spacing": 0.06,
                 "streamline": 0.15,
                 "rotation": "follow_path",
                 "rotation_offset": 90.0
@@ -263,7 +268,7 @@
                 "scatter": 0.12
             },
             "stroke": {
-                "spacing": 0.06,
+                "spacing": 0.1,
                 "streamline": 0.2,
                 "rotation_jitter": 0.25
             },
@@ -341,7 +346,7 @@
                 "roundness": 0.95
             },
             "stroke": {
-                "spacing": 0.03,
+                "spacing": 0.08,
                 "streamline": 0.4
             },
             "dynamics": {
@@ -405,7 +410,7 @@
                 "minimum_diameter": 0.05
             },
             "stroke": {
-                "spacing": 0.02,
+                "spacing": 0.07,
                 "streamline": 0.5
             },
             "dynamics": {
@@ -466,7 +471,7 @@
                 "flatten": 0.5
             },
             "stroke": {
-                "spacing": 0.04,
+                "spacing": 0.09,
                 "streamline": 0.3,
                 "rotation": "follow_path",
                 "follow_stroke": true,

@@ -84,6 +84,7 @@ void WatercolorEngine::endSession() {
 }
 
 void WatercolorEngine::startStroke() {
+    m_wetBounds = QRect();
     if (!m_initialized || !m_wetMapFBO_A || !m_wetMapFBO_B || !m_gl) return;
 
     // Shader inline para envejecer la humedad existente:
@@ -160,17 +161,31 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
                                 const QColor &brushColor,
                                 const WatercolorParams &params,
                                 float pressure,
-                                float flow)
+                                float flow,
+                                const QRect &dabRect)
 {
-    qWarning() << "paintDab: called. m_initialized =" << m_initialized
-               << "m_shader =" << (m_shader != nullptr)
-               << "canvasFBOout =" << (canvasFBOout != nullptr);
     if (!m_initialized || !m_shader || !canvasFBOout) return;
-
 
     m_lastCanvasTexId  = canvasTexIn;
     m_lastCanvasFBOOut = canvasFBOout;
     m_lastParams       = params;
+
+    // Track active wet bounding box
+    if (!dabRect.isEmpty()) {
+        if (m_wetBounds.isEmpty()) {
+            m_wetBounds = dabRect;
+        } else {
+            m_wetBounds = m_wetBounds.united(dabRect);
+        }
+    } else {
+        m_wetBounds = QRect(0, 0, m_width, m_height);
+    }
+
+    // Reset the spread simulation life timer based on the dryingRate (dryingTime = 1.0f / dryingRate)
+    // dryingRate is in [0.1, 1.0]. A frame is 80ms (0.08s).
+    // Add 10 frames safety margin
+    float dryingTime = 1.0f / std::max(0.01f, params.dryingRate);
+    m_spreadFramesRemaining = std::max(10, static_cast<int>(std::ceil(dryingTime / 0.08f)) + 10);
 
     // Paso 1: Aplicar el dab sobre el canvas con lógica de acuarela (Mode 0)
     //         El resultado va al canvasFBOout
@@ -221,19 +236,27 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
     m_shader->setUniformValue("uColorStretch",  params.colorStretch);
     m_shader->setUniformValue("uBrushBlendMode", params.blendMode);
 
+    bool useScissor = !dabRect.isEmpty();
+    if (useScissor) {
+        m_gl->glEnable(GL_SCISSOR_TEST);
+        float gl_y = m_height - dabRect.y() - dabRect.height();
+        m_gl->glScissor(dabRect.x(), gl_y, dabRect.width(), dabRect.height());
+    }
+
     canvasFBOout->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
     m_gl->glDisable(GL_BLEND); // El shader maneja el compositing internamente
     renderFullscreenQuad();
     canvasFBOout->release();
 
+    if (useScissor) {
+        m_gl->glDisable(GL_SCISSOR_TEST);
+    }
+
     m_shader->release();
 
     // Paso 2: Actualizar el WetMap — depositar agua del pincel
-    // Se hace en Mode 0 también (el shader escribe el wetmap vía una segunda salida)
-    // En esta implementación simplificada, el WetMap se actualiza directamente
-    // escribiendo en m_wetMapFBO_B con un pass especial de "depósito de agua"
-    updateWetMapDeposit(dabTexId, params, pressure, flow);
+    updateWetMapDeposit(dabTexId, params, pressure, flow, dabRect);
 
     // Activar timers de difusión y secado
     m_hasWetAreas = true;
@@ -253,7 +276,8 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
 void WatercolorEngine::updateWetMapDeposit(GLuint dabTexId,
                                            const WatercolorParams &params,
                                            float pressure,
-                                           float flow)
+                                           float flow,
+                                           const QRect &dabRect)
 {
     // Pass especial: copiar el WetMap actual (A) al B sumando la nueva agua
     // Usamos un shader inline simple para el depósito
@@ -302,11 +326,23 @@ void WatercolorEngine::updateWetMapDeposit(GLuint dabTexId,
     depositShader->setUniformValue("uDab",         1);
     depositShader->setUniformValue("uWaterAmount", waterAmount);
 
+    bool useScissor = !dabRect.isEmpty();
+    if (useScissor) {
+        m_gl->glEnable(GL_SCISSOR_TEST);
+        float gl_y = m_height - dabRect.y() - dabRect.height();
+        m_gl->glScissor(dabRect.x(), gl_y, dabRect.width(), dabRect.height());
+    }
+
     m_wetMapFBO_B->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
     m_gl->glDisable(GL_BLEND);
     renderFullscreenQuad();
     m_wetMapFBO_B->release();
+
+    if (useScissor) {
+        m_gl->glDisable(GL_SCISSOR_TEST);
+    }
+
     depositShader->release();
 
     // Swap: B ahora es el WetMap actual
@@ -324,6 +360,23 @@ void WatercolorEngine::performSpread() {
         m_spreadTimer->stop();
         return;
     }
+
+    m_spreadFramesRemaining--;
+    if (m_spreadFramesRemaining <= 0) {
+        m_spreadTimer->stop();
+        m_dryTimer->stop();
+        m_hasWetAreas = false;
+        return;
+    }
+
+    // Expand the wet bounds slightly to account for the bleed spreading outward
+    m_wetBounds = m_wetBounds.adjusted(-4, -4, 4, 4).intersected(QRect(0, 0, m_width, m_height));
+    if (m_wetBounds.isEmpty()) return;
+
+    int scissorX = m_wetBounds.x();
+    int scissorY = m_height - m_wetBounds.y() - m_wetBounds.height();
+    int scissorW = m_wetBounds.width();
+    int scissorH = m_wetBounds.height();
 
     // ── PASADA A: Difusión de Pigmento en el Lienzo (Mode 1) ──
     m_gl->glActiveTexture(GL_TEXTURE0);
@@ -360,15 +413,20 @@ void WatercolorEngine::performSpread() {
     m_shader->setUniformValue("uColorStretch",  m_lastParams.colorStretch);
     m_shader->setUniformValue("uBrushBlendMode", m_lastParams.blendMode);
 
+    m_gl->glEnable(GL_SCISSOR_TEST);
+    m_gl->glScissor(scissorX, scissorY, scissorW, scissorH);
+
     m_spreadFBO->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
     m_gl->glDisable(GL_BLEND);
     renderFullscreenQuad();
     m_spreadFBO->release();
     m_shader->release();
+    m_gl->glDisable(GL_SCISSOR_TEST);
 
-    // Guardar el resultado del lienzo de vuelta a m_lastCanvasFBOOut
-    QOpenGLFramebufferObject::blitFramebuffer(m_lastCanvasFBOOut, m_spreadFBO);
+    // Guardar solo el área modificada de vuelta a m_lastCanvasFBOOut
+    QRect glWetBounds(scissorX, scissorY, scissorW, scissorH);
+    QOpenGLFramebufferObject::blitFramebuffer(m_lastCanvasFBOOut, glWetBounds, m_spreadFBO, glWetBounds);
 
     // ── PASADA B: Difusión y Evaporación de Agua en WetMap (Mode 2) ──
     m_gl->glActiveTexture(GL_TEXTURE0);
@@ -404,12 +462,16 @@ void WatercolorEngine::performSpread() {
     m_shader->setUniformValue("uColorStretch",  m_lastParams.colorStretch);
     m_shader->setUniformValue("uBrushBlendMode", m_lastParams.blendMode);
 
+    m_gl->glEnable(GL_SCISSOR_TEST);
+    m_gl->glScissor(scissorX, scissorY, scissorW, scissorH);
+
     m_wetMapFBO_B->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
     m_gl->glDisable(GL_BLEND);
     renderFullscreenQuad();
     m_wetMapFBO_B->release();
     m_shader->release();
+    m_gl->glDisable(GL_SCISSOR_TEST);
 
     // Intercambiar el WetMap (A = nuevo estado simulado)
     std::swap(m_wetMapFBO_A, m_wetMapFBO_B);

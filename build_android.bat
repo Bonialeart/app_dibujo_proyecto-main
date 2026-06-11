@@ -123,4 +123,4 @@ echo  Instala el archivo KromoStudio.apk en tu tablet:
 echo  %SRC%\KromoStudio.apk
 echo ============================================================
 echo.
-pause
+REM pause

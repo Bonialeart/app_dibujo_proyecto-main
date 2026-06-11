@@ -2279,26 +2279,51 @@ Item {
             }
         }
     }
-    // --- TOOLBAR (Canvas Tools) Full-height docked ---
+    // --- TOOLBAR (Canvas Tools) Full-height docked (Movable, Dockable Left/Right, Minimizable) ---
     Rectangle {
         id: toolsToolbar
         width: 48
         property bool isToolbarFloating: false
-        // Full height when docked; compact when floating
-        height: isToolbarFloating
-            ? Math.min(toolsCol.implicitHeight + 120, studioLayout.height * 0.8)
-            : (studioLayout.height - (studioTabBar.visible ? studioTabBar.height : 0) - studioInfoBar.height)
+        property string dockedSide: "left"
+        property bool isMinimized: false
+
+        Connections {
+            target: studioLayout
+            ignoreUnknownSignals: true
+            function onWidthChanged() {
+                if (toolsToolbar.isToolbarFloating) {
+                    toolsToolbar.x = Math.max(0, Math.min(toolsToolbar.x, studioLayout.width - toolsToolbar.width))
+                }
+            }
+            function onHeightChanged() {
+                if (toolsToolbar.isToolbarFloating) {
+                    toolsToolbar.y = Math.max(0, Math.min(toolsToolbar.y, studioLayout.height - toolsToolbar.height))
+                }
+            }
+        }
+
+        // Helper calculations for left and right docking snap points
+        readonly property real leftSnapX: (leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0)
+        readonly property real rightSnapX: studioLayout.width - ((rightIconBar ? rightIconBar.width : 0) + (rightDock ? rightDock.width : 0) + ((rightIconBar2 && rightIconBar2.visible) ? rightIconBar2.width : 0) + (rightDock2 ? rightDock2.width : 0)) - width
+
+        // Full height when docked; compact when floating; 48px when minimized
+        height: isMinimized 
+            ? 48
+            : (isToolbarFloating
+                ? Math.min(toolsCol.implicitHeight + 150, studioLayout.height * 0.8)
+                : (studioLayout.height - (studioTabBar.visible ? studioTabBar.height : 0) - studioInfoBar.height))
         color: mainWindow ? mainWindow.colorPanel : "#0c0c0f"
-        radius: isToolbarFloating ? 8 : 0
-        border.color: isToolbarFloating ? (mainWindow ? mainWindow.colorBorder : "#333") : "transparent"
-        border.width: isToolbarFloating ? 1 : 0
+        radius: (isToolbarFloating || isMinimized) ? 8 : 0
+        border.color: (isToolbarFloating || isMinimized) ? (mainWindow ? mainWindow.colorBorder : "#333") : "transparent"
+        border.width: (isToolbarFloating || isMinimized) ? 1 : 0
         z: 2500
         
-        // Right-side border line when docked
+        // Border line when docked (left side if docked right, right side if docked left)
         Rectangle {
-            visible: !toolsToolbar.isToolbarFloating
+            visible: !toolsToolbar.isToolbarFloating && !toolsToolbar.isMinimized
             width: 1; height: parent.height
-            anchors.right: parent.right
+            anchors.left: toolsToolbar.dockedSide === "right" ? parent.left : undefined
+            anchors.right: toolsToolbar.dockedSide === "left" ? parent.right : undefined
             color: mainWindow ? mainWindow.colorBorder : "#1a1a1e"
         }
 
@@ -2309,30 +2334,31 @@ Item {
         opacity: 1.0
         
         // Initial / Docked positioning
-        x: isToolbarFloating ? x : ((leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0))
+        x: isToolbarFloating ? x : (dockedSide === "left" ? leftSnapX : rightSnapX)
         y: isToolbarFloating ? y : (studioInfoBar.height + (studioTabBar.visible ? studioTabBar.height : 0))
         
         // Shadow when floating
-        layer.enabled: isToolbarFloating
+        layer.enabled: isToolbarFloating || isMinimized
         layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 15; shadowColor: "#80000000"; shadowVerticalOffset: 4 }
         
-        // Grip area (only shown when floating)
+        // Persistent grip area (always visible and draggable when not minimized)
         Rectangle {
             id: toolbarGrip
-            width: parent.width; height: isToolbarFloating ? 16 : 0
+            width: parent.width; height: 20
             color: "transparent"
             anchors.top: parent.top
-            visible: isToolbarFloating
+            visible: !toolsToolbar.isMinimized
             
             Row {
                 spacing: 2; anchors.centerIn: parent
+                opacity: toolsToolbar.isToolbarFloating ? 0.9 : 0.4
                 Repeater { model: 4; Rectangle { width: 3; height: 3; radius: 1.5; color: hoverGrip.containsMouse ? "#888" : "#444" } }
             }
             
             MouseArea {
                 id: hoverGrip
                 anchors.fill: parent; hoverEnabled: true
-                cursorShape: (typeof dragGrip !== 'undefined' && dragGrip && dragGrip.active) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                cursorShape: hoverGrip.drag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                 drag.target: toolsToolbar
                 drag.axis: Drag.XAndYAxis
                 drag.minimumX: 0
@@ -2342,33 +2368,123 @@ Item {
                 
                 onPressed: toolsToolbar.isToolbarFloating = true
                 onReleased: {
-                    var lSnap = (leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0)
-                    if (toolsToolbar.x < lSnap + 20) {
+                    var lSnap = toolsToolbar.leftSnapX
+                    var rSnap = toolsToolbar.rightSnapX
+                    if (toolsToolbar.x < lSnap + 50) {
                         toolsToolbar.isToolbarFloating = false
-                        toolsToolbar.x = Qt.binding(function() { return (leftIconBar ? leftIconBar.width : 0) + (leftDock ? leftDock.width : 0) + ((leftIconBar2 && leftIconBar2.visible) ? leftIconBar2.width : 0) + (leftDock2 ? leftDock2.width : 0) })
+                        toolsToolbar.dockedSide = "left"
+                        toolsToolbar.x = Qt.binding(function() { return toolsToolbar.leftSnapX })
                         toolsToolbar.y = Qt.binding(function() { return studioInfoBar.height + (studioTabBar.visible ? studioTabBar.height : 0) })
+                    } else if (toolsToolbar.x > rSnap - 50) {
+                        toolsToolbar.isToolbarFloating = false
+                        toolsToolbar.dockedSide = "right"
+                        toolsToolbar.x = Qt.binding(function() { return toolsToolbar.rightSnapX })
+                        toolsToolbar.y = Qt.binding(function() { return studioInfoBar.height + (studioTabBar.visible ? studioTabBar.height : 0) })
+                    } else {
+                        toolsToolbar.isToolbarFloating = true
                     }
                 }
             }
         }
-        
-        // Drag handle when docked (subtle top area)
-        MouseArea {
-            visible: !toolsToolbar.isToolbarFloating
-            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-            height: 20
-            hoverEnabled: true
-            cursorShape: Qt.OpenHandCursor
-            onPressed: toolsToolbar.isToolbarFloating = true
+
+        // ── MINIMIZED VIEW ──
+        Item {
+            anchors.fill: parent
+            visible: toolsToolbar.isMinimized
+            
+            // Drag support even when minimized!
+            MouseArea {
+                anchors.fill: parent
+                drag.target: toolsToolbar
+                drag.axis: Drag.XAndYAxis
+                drag.minimumX: 0
+                drag.maximumX: studioLayout.width - toolsToolbar.width
+                drag.minimumY: 0
+                drag.maximumY: studioLayout.height - toolsToolbar.height
+                onPressed: toolsToolbar.isToolbarFloating = true
+                onReleased: {
+                    var lSnap = toolsToolbar.leftSnapX
+                    var rSnap = toolsToolbar.rightSnapX
+                    if (toolsToolbar.x < lSnap + 50) {
+                        toolsToolbar.isToolbarFloating = false
+                        toolsToolbar.dockedSide = "left"
+                        toolsToolbar.x = Qt.binding(function() { return toolsToolbar.leftSnapX })
+                        toolsToolbar.y = Qt.binding(function() { return studioInfoBar.height + (studioTabBar.visible ? studioTabBar.height : 0) })
+                    } else if (toolsToolbar.x > rSnap - 50) {
+                        toolsToolbar.isToolbarFloating = false
+                        toolsToolbar.dockedSide = "right"
+                        toolsToolbar.x = Qt.binding(function() { return toolsToolbar.rightSnapX })
+                        toolsToolbar.y = Qt.binding(function() { return studioInfoBar.height + (studioTabBar.visible ? studioTabBar.height : 0) })
+                    } else {
+                        toolsToolbar.isToolbarFloating = true
+                    }
+                }
+            }
+
+            // Expand Button / Active Tool Display
+            Rectangle {
+                width: 36; height: 36
+                radius: 18
+                color: Qt.rgba(accentColor.r, accentColor.g, accentColor.b, 0.15)
+                border.color: accentColor
+                border.width: 1
+                anchors.centerIn: parent
+                
+                Image {
+                    source: (canvasPage && studioLayout.toolsModel) ? (mainWindow ? mainWindow.iconPath(studioLayout.toolsModel.get(canvasPage.activeToolIdx).icon) : ("image://icons/" + studioLayout.toolsModel.get(canvasPage.activeToolIdx).icon)) : ""
+                    width: 20; height: 20
+                    anchors.centerIn: parent
+                }
+                
+                // Small indicator badge
+                Rectangle {
+                    width: 8; height: 8; radius: 4
+                    color: accentColor
+                    anchors.top: parent.top; anchors.right: parent.right
+                }
+                
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: toolsToolbar.isMinimized = false
+                }
+            }
         }
 
         // ── SINGLE COLUMN LAYOUT: tools centered, orbs pinned at bottom ──
         ColumnLayout {
             id: toolbarInnerLayout
             anchors.fill: parent
-            anchors.topMargin: toolsToolbar.isToolbarFloating ? 20 : 8
+            anchors.topMargin: 20
             anchors.bottomMargin: 8
             spacing: 0
+            visible: !toolsToolbar.isMinimized
+
+            // Minimize Button (Header Control)
+            Rectangle {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 32; Layout.preferredHeight: 18
+                color: "transparent"
+                radius: 4
+                
+                Text {
+                    anchors.centerIn: parent
+                    text: "─"
+                    color: hoverMin.containsMouse ? accentColor : "#777"
+                    font.bold: true
+                    font.pixelSize: 14
+                }
+                
+                MouseArea {
+                    id: hoverMin
+                    anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                    onClicked: toolsToolbar.isMinimized = true
+                }
+                
+                ToolTip.visible: hoverMin.containsMouse
+                ToolTip.text: "Minimizar Barra"
+                ToolTip.delay: 500
+            }
 
             // Flexible top spacer
             Item { Layout.fillWidth: true; Layout.fillHeight: true }

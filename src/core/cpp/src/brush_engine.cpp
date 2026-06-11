@@ -13,6 +13,7 @@
 #include <QPaintEngine>
 #include <QPainter>
 #include <QPointF>
+#include <QRect>
 #include <QString>
 #include <QStringList>
 #include <algorithm>
@@ -1261,8 +1262,19 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
               settings.invertShape, settings.flipX, settings.flipY, settings.roundness, settings.shapeContrast, settings.shapeBlur,
               settings.grainEmphasizeDensity, settings.dualGrainEmphasizeDensity, settings.grainApplyToTips, settings.dualGrainApplyToTips);
 
-          // Blit the result from pongFBO (write target) back to pingFBO (read target)
-          QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
+          // Blit only the sub-rectangle containing the current dab back to pingFBO to save massive GPU bandwidth
+          float r = (dab.size / 2.0f) + 15.0f; // 15px safety margin for smudge/bleed/wet-on-wet
+          int x1 = std::max(0, static_cast<int>(dab.x - r));
+          float gl_y = pingFBO->height() - dab.y;
+          int y1 = std::max(0, static_cast<int>(gl_y - r));
+          int x2 = std::min(pingFBO->width(), static_cast<int>(dab.x + r));
+          int y2 = std::min(pingFBO->height(), static_cast<int>(gl_y + r));
+          if (x2 > x1 && y2 > y1) {
+              QRect blitRect(x1, y1, x2 - x1, y2 - y1);
+              QOpenGLFramebufferObject::blitFramebuffer(pingFBO, blitRect, pongFBO, blitRect);
+          } else {
+              QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
+          }
         }
 
         // Render sprayed particles as instances (optimized to avoid rendering/blit loop lag)
