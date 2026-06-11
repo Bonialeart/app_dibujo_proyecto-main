@@ -1,6 +1,5 @@
 #include "../include/stroke_renderer.h"
 #include "../include/brush_engine.h"
-#include <fstream>
 #include <QColor>
 #include <QCoreApplication>
 #include <QDebug>
@@ -606,9 +605,16 @@ void StrokeRenderer::renderStrokeInstanced(
   m_program->bind();
   m_vao.bind();
 
-  // Upload instance data
+  // Upload instance data — reutiliza la reserva del VBO si cabe para evitar
+  // realocar memoria GPU en cada segmento de trazo (reduce latencia del lápiz)
+  const int neededBytes = static_cast<int>(dabs.size() * sizeof(DabInstance));
   m_instanceVbo.bind();
-  m_instanceVbo.allocate(dabs.data(), dabs.size() * sizeof(DabInstance));
+  if (neededBytes > m_instanceCapacity) {
+    // Crecer con margen para amortiguar trazos rápidos con muchos dabs
+    m_instanceCapacity = neededBytes * 2;
+    m_instanceVbo.allocate(m_instanceCapacity);
+  }
+  m_instanceVbo.write(0, dabs.data(), neededBytes);
   m_instanceVbo.release();
 
   if (type == 7) {

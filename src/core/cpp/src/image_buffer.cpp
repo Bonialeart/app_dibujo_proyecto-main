@@ -456,18 +456,37 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
   if (opacity <= 0.001f)
     return;
 
-  // Clipping regions
-  int startY = std::max(0, -offsetY);
-  int endY = std::min(other.height(), m_height - offsetY);
-  int startX = std::max(0, -offsetX);
-  int endX = std::min(other.width(), m_width - offsetX);
+  // Clipping regions (coordenadas de la fuente)
+  const int startY = std::max(0, -offsetY);
+  const int endY = std::min(other.height(), m_height - offsetY);
+  const int startX = std::max(0, -offsetX);
+  const int endX = std::min(other.width(), m_width - offsetX);
+  if (startX >= endX || startY >= endY)
+    return;
 
-  for (int sy = startY; sy < endY; ++sy) {
+  // Iterar por tiles de la fuente: los tiles no asignados son 100%
+  // transparentes y se saltan en bloque. Además se lee la fila del tile
+  // directamente, evitando la búsqueda tile+módulo de pixelAt() por píxel.
+  for (const auto &srcTile : other.m_tiles) {
+    if (!srcTile)
+      continue;
+    const int tileX0 = srcTile->startX * TILE_SIZE;
+    const int tileY0 = srcTile->startY * TILE_SIZE;
+    const int sy0 = std::max(startY, tileY0);
+    const int sy1 = std::min(endY, tileY0 + TILE_SIZE);
+    const int sx0 = std::max(startX, tileX0);
+    const int sx1 = std::min(endX, tileX0 + TILE_SIZE);
+    if (sx0 >= sx1 || sy0 >= sy1)
+      continue;
+
+  for (int sy = sy0; sy < sy1; ++sy) {
     int dy = sy + offsetY;
-    for (int sx = startX; sx < endX; ++sx) {
+    const uint8_t *srcRow =
+        &srcTile->data[pixelIndexLocal(sx0 - tileX0, sy - tileY0)];
+    for (int sx = sx0; sx < sx1; ++sx, srcRow += 4) {
       int dx = sx + offsetX;
-      const uint8_t *srcPixel = other.pixelAt(sx, sy);
-      if (!srcPixel || srcPixel[3] == 0)
+      const uint8_t *srcPixel = srcRow;
+      if (srcPixel[3] == 0)
         continue;
 
       // 1. Calculate Source Alpha (Total including layer opacity)
@@ -713,12 +732,8 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
                      sA_f * dA_f * r_blend;
       float finalG = (1.0f - dA_f) * sA_f * sG_U + (1.0f - sA_f) * dA_f * dG_U +
                      sA_f * dA_f * g_blend;
-      float finalB = (1.0f - dA_f) * sA_f * sB_U + (1.0f - sA_f) * dA_f * dR_U +
-                     sA_f * dA_f * b_blend; // TYPO CHECK: dR_U -> dB_U
-
-      // Fix typo in blue channel above:
-      finalB = (1.0f - dA_f) * sA_f * sB_U + (1.0f - sA_f) * dA_f * dB_U +
-               sA_f * dA_f * b_blend;
+      float finalB = (1.0f - dA_f) * sA_f * sB_U + (1.0f - sA_f) * dA_f * dB_U +
+                     sA_f * dA_f * b_blend;
 
       float outA = sA_f + dA_f - sA_f * dA_f;
 
@@ -732,6 +747,9 @@ void ImageBuffer::composite(const ImageBuffer &other, int offsetX, int offsetY,
       }
     }
   }
+  } // for srcTile
+
+  m_cacheDirty = true;
 }
 
 void ImageBuffer::drawStrokeTextured(float x1, float y1, float x2, float y2,
@@ -785,8 +803,10 @@ void ImageBuffer::drawStrokeTextured(float x1, float y1, float x2, float y2,
         if (!isValidCoord(destX, destY))
           continue;
 
-        // 2. Get Stamp Source Pixel
+        // 2. Get Stamp Source Pixel (un tile no asignado es transparente)
         const uint8_t *sPixel = stamp.pixelAt(sx, sy);
+        if (!sPixel)
+          continue;
         uint8_t sA = sPixel[3];
         if (sA == 0)
           continue; // optimization
@@ -799,7 +819,7 @@ void ImageBuffer::drawStrokeTextured(float x1, float y1, float x2, float y2,
           int py = destY % pH;
           // Suppose paper is grayscale (R=G=B)
           const uint8_t *pPixel = paper_texture->pixelAt(px, py);
-          float pVal = pPixel[0] / 255.0f;
+          float pVal = pPixel ? (pPixel[0] / 255.0f) : 0.5f;
 
           if (is_watercolor) {
             paperMod = (1.3f - pVal); // Valley accumulation

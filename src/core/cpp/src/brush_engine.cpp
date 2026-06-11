@@ -3,7 +3,6 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
-#include <fstream>
 #include <QOpenGLFramebufferObject>
 #include <QOpenGLPaintDevice>
 #include <QFileInfo>
@@ -821,6 +820,17 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     effectivePressure = 1.0f;
   }
 
+  // Per-brush pressure response curve (cubic Bezier from the preset)
+  effectivePressure = settings.applyPressureCurve(effectivePressure);
+
+  // Min-limit floors so a light touch never collapses to zero
+  float sizePressure =
+      settings.sizeMinPressure +
+      (1.0f - settings.sizeMinPressure) * effectivePressure;
+  float opacityPressure =
+      settings.opacityMinPressure +
+      (1.0f - settings.opacityMinPressure) * effectivePressure;
+
   bool isOpenGL = (QOpenGLContext::currentContext() != nullptr &&
                    (painter->device()->devType() == 10 || // QInternal::OpenGL
                     painter->device()->devType() == 12 || // QInternal::QuickPaintNode
@@ -875,24 +885,6 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     bool hasDualTip = (dualTipTexID != 0 && settings.dualTipEnabled);
     bool hasDualGrain = (dualGrainTexID != 0 && settings.useDualTexture);
 
-    // DEBUG: trace grain state at draw time
-    static int grainDbgCount = 0;
-    if (grainDbgCount++ % 10 == 0) {
-      std::ofstream logFile("e:/Programacion/Rescate_Proyecto/grain_debug_cpp.txt", std::ios::app);
-      if (logFile.is_open()) {
-        logFile << "[GRAIN-DEBUG] useTexture: " << settings.useTexture
-                << " | textureName: " << settings.textureName.toStdString()
-                << " | grainTextureID(settings): " << settings.grainTextureID
-                << " | grainTexID(loaded): " << grainTexID
-                << " | hasGrain: " << hasGrain
-                << " | textureIntensity: " << settings.textureIntensity
-                << " | textureScale: " << settings.textureScale
-                << " | grainBright: " << settings.grainBright
-                << " | grainCon: " << settings.grainCon
-                << " | invertGrain: " << settings.invertGrain << "\n";
-      }
-    }
-
     int uDualTipBlendMode = 0; // multiply
     if (settings.dualTipBlendMode == "mask" || settings.dualTipBlendMode == "subtract") {
       uDualTipBlendMode = 1;
@@ -926,7 +918,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     m_renderer->beginFrame(w, h);
 
     float currentSize =
-        settings.size * (settings.sizeByPressure ? effectivePressure : 1.0f);
+        settings.size * (settings.sizeByPressure ? sizePressure : 1.0f);
     if (currentSize < 1.0f)
       currentSize = 1.0f;
 
@@ -964,6 +956,16 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
     while (distanceToDab <= dist) {
       float t = (dist > 0.0001f) ? (distanceToDab / dist) : 0.0f;
       QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
+
+      // Stroke-path jitter: lateral = perpendicular, linear = along stroke
+      if (settings.jitterLateral > 0.0f || settings.jitterLinear > 0.0f) {
+        float latAmt = ((std::rand() % 2001 - 1000) / 1000.0f) *
+                       settings.jitterLateral * currentSize;
+        float linAmt = ((std::rand() % 2001 - 1000) / 1000.0f) *
+                       settings.jitterLinear * currentSize;
+        float ca = std::cos(strokeAngle), sa = std::sin(strokeAngle);
+        pt += QPointF(linAmt * ca - latAmt * sa, linAmt * sa + latAmt * ca);
+      }
 
       // Progress within stroke
       float totalDist = m_accumulatedDistance + distanceToDab;
@@ -1442,13 +1444,13 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   }
 
   float currentSize =
-      settings.size * (settings.sizeByPressure ? effectivePressure : 1.0f);
+      settings.size * (settings.sizeByPressure ? sizePressure : 1.0f);
   if (currentSize < 1.0f)
     currentSize = 1.0f;
 
   float currentOpacity =
       settings.opacity *
-      (settings.opacityByPressure ? effectivePressure : 1.0f);
+      (settings.opacityByPressure ? opacityPressure : 1.0f);
   if (currentOpacity > 1.0f)
     currentOpacity = 1.0f;
 
@@ -1473,6 +1475,17 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
   while (distanceToDab <= dist) {
     float t = (dist > 0.0001f) ? (distanceToDab / dist) : 0.0f;
     QPointF pt = lastPoint + (currentPoint - lastPoint) * t;
+
+    // Stroke-path jitter: lateral = perpendicular, linear = along stroke
+    if (settings.jitterLateral > 0.0f || settings.jitterLinear > 0.0f) {
+      float strokeAngleQP = std::atan2(dy, dx);
+      float latAmt = ((std::rand() % 2001 - 1000) / 1000.0f) *
+                     settings.jitterLateral * currentSize;
+      float linAmt = ((std::rand() % 2001 - 1000) / 1000.0f) *
+                     settings.jitterLinear * currentSize;
+      float ca = std::cos(strokeAngleQP), sa = std::sin(strokeAngleQP);
+      pt += QPointF(linAmt * ca - latAmt * sa, linAmt * sa + latAmt * ca);
+    }
 
     // Progress within stroke
     float totalDist = m_accumulatedDistance + distanceToDab;
@@ -1696,9 +1709,13 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
   if (dist < 0.01f && m_remainder > 0.1f)
     return;
 
+  // Per-brush pressure response curve + min-limit floors
+  float curvedPressure = m_currentSettings.applyPressureCurve(point.pressure);
+
   float size = m_currentSettings.size;
   if (m_currentSettings.sizeByPressure) {
-    size *= point.pressure;
+    size *= m_currentSettings.sizeMinPressure +
+            (1.0f - m_currentSettings.sizeMinPressure) * curvedPressure;
   }
 
   // Ensure spacing is at least 2.0 pixels to prevent extreme performance lag
@@ -1712,7 +1729,8 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
 
   float opacity = m_currentSettings.opacity;
   if (m_currentSettings.opacityByPressure) {
-    opacity *= point.pressure;
+    opacity *= m_currentSettings.opacityMinPressure +
+               (1.0f - m_currentSettings.opacityMinPressure) * curvedPressure;
   }
 
   // Load textures

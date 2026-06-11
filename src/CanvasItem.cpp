@@ -426,6 +426,14 @@ CanvasItem::CanvasItem(QQuickItem *parent)
     }
   }
 
+  // Load user-edited brushes on top of the factory set. addPreset() replaces
+  // presets with a matching UUID/name, so edited versions win over defaults.
+  QString userBrushDir =
+      QCoreApplication::applicationDirPath() + "/brushes/user";
+  if (QDir(userBrushDir).exists()) {
+    bpm->loadFromDirectory(userBrushDir);
+  }
+
   // Fallback to built-in defaults if no JSON loaded
   if (bpm->allPresets().empty()) {
     bpm->loadDefaults();
@@ -11769,6 +11777,12 @@ void CanvasItem::applyBrushEdit() {
   // Update the preset in the manager
   bpm->updatePreset(m_editingPreset);
 
+  // Persist to disk so edits survive an app restart
+  QString userBrushDir =
+      QCoreApplication::applicationDirPath() + "/brushes/user";
+  QDir().mkpath(userBrushDir);
+  bpm->savePreset(m_editingPreset, userBrushDir);
+
   // Apply to the engine as the active brush
   m_activeBrushName = m_editingPreset.name;
   emit activeBrushNameChanged();
@@ -11791,6 +11805,12 @@ void CanvasItem::saveAsCopyBrush(const QString &newName) {
   copy.name = newName.isEmpty() ? m_editingPreset.name + " Copy" : newName;
 
   bpm->addPreset(copy);
+
+  // Persist the copy to disk
+  QString userBrushDir =
+      QCoreApplication::applicationDirPath() + "/brushes/user";
+  QDir().mkpath(userBrushDir);
+  bpm->savePreset(copy, userBrushDir);
 
   // Update available brushes list
   m_availableBrushes.clear();
@@ -11864,10 +11884,42 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.stroke.taperEnd;
     if (key == "anti_concussion")
       return m_editingPreset.stroke.antiConcussion;
+    if (key == "jitter_lateral")
+      return m_editingPreset.stroke.jitterLateral;
+    if (key == "jitter_linear")
+      return m_editingPreset.stroke.jitterLinear;
+    if (key == "fall_off")
+      return m_editingPreset.stroke.fallOff;
+    if (key == "taper_size")
+      return m_editingPreset.stroke.taperSize;
+    if (key == "distance")
+      return m_editingPreset.stroke.distance;
+  }
+
+  // ── randomize (per-stamp jitter) ──
+  if (category == "randomize") {
+    if (key == "pos_jitter_x")
+      return m_editingPreset.randomize.posJitterX;
+    if (key == "pos_jitter_y")
+      return m_editingPreset.randomize.posJitterY;
+    if (key == "rotation_jitter")
+      return m_editingPreset.randomize.rotationJitter;
+    if (key == "roundness_jitter")
+      return m_editingPreset.randomize.roundnessJitter;
+    if (key == "size_jitter")
+      return m_editingPreset.randomize.sizeJitter;
+    if (key == "opacity_jitter")
+      return m_editingPreset.randomize.opacityJitter;
   }
 
   // ── shape ──
   if (category == "shape") {
+    if (key == "calligraphic")
+      return m_editingPreset.shape.calligraphic;
+    if (key == "count")
+      return m_editingPreset.shape.count;
+    if (key == "count_jitter")
+      return m_editingPreset.shape.countJitter;
     if (key == "roundness")
       return m_editingPreset.shape.roundness;
     if (key == "rotation")
@@ -12004,6 +12056,20 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.wetMix.paintAmount;
     if (key == "color_stretch")
       return m_editingPreset.wetMix.colorStretch;
+    if (key == "bleed")
+      return m_editingPreset.wetMix.bleed;
+    if (key == "absorption_rate")
+      return m_editingPreset.wetMix.absorptionRate;
+    if (key == "drying_time")
+      return m_editingPreset.wetMix.dryingTime;
+    if (key == "wet_on_wet_multiplier")
+      return m_editingPreset.wetMix.wetOnWetMultiplier;
+    if (key == "pressure_pigment")
+      return m_editingPreset.wetMix.pressurePigment;
+    if (key == "pull_pressure")
+      return m_editingPreset.wetMix.pullPressure;
+    if (key == "wet_jitter")
+      return m_editingPreset.wetMix.wetJitter;
   }
 
   // ── color dynamics ──
@@ -12048,6 +12114,14 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.hardnessDynamics.baseValue;
     if (key == "hardness_min")
       return m_editingPreset.hardnessDynamics.minLimit;
+    if (key == "size_curve") {
+      const auto &c = m_editingPreset.sizeDynamics.pressureCurve;
+      return QVariantList{c.cx1, c.cy1, c.cx2, c.cy2};
+    }
+    if (key == "opacity_curve") {
+      const auto &c = m_editingPreset.opacityDynamics.pressureCurve;
+      return QVariantList{c.cx1, c.cy1, c.cx2, c.cy2};
+    }
   }
 
   // ── rendering ──
@@ -12108,6 +12182,8 @@ QVariant CanvasItem::getBrushProperty(const QString &category,
       return m_editingPreset.version;
     if (key == "type")
       return m_editingPreset.type;
+    if (key == "notes")
+      return m_editingPreset.metaData.notes;
   }
 
   qDebug() << "getBrushProperty: Unknown" << category << "/" << key;
@@ -12139,11 +12215,59 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
     } else if (key == "anti_concussion") {
       m_editingPreset.stroke.antiConcussion = value.toBool();
       changed = true;
+    } else if (key == "jitter_lateral") {
+      m_editingPreset.stroke.jitterLateral = value.toFloat();
+      changed = true;
+    } else if (key == "jitter_linear") {
+      m_editingPreset.stroke.jitterLinear = value.toFloat();
+      changed = true;
+    } else if (key == "fall_off") {
+      m_editingPreset.stroke.fallOff = value.toFloat();
+      changed = true;
+    } else if (key == "taper_size") {
+      m_editingPreset.stroke.taperSize = value.toFloat();
+      changed = true;
+    } else if (key == "distance") {
+      m_editingPreset.stroke.distance = value.toFloat();
+      changed = true;
+    }
+  }
+
+  // ── randomize (per-stamp jitter) ──
+  else if (category == "randomize") {
+    if (key == "pos_jitter_x") {
+      m_editingPreset.randomize.posJitterX = value.toFloat();
+      changed = true;
+    } else if (key == "pos_jitter_y") {
+      m_editingPreset.randomize.posJitterY = value.toFloat();
+      changed = true;
+    } else if (key == "rotation_jitter") {
+      m_editingPreset.randomize.rotationJitter = value.toFloat();
+      changed = true;
+    } else if (key == "roundness_jitter") {
+      m_editingPreset.randomize.roundnessJitter = value.toFloat();
+      changed = true;
+    } else if (key == "size_jitter") {
+      m_editingPreset.randomize.sizeJitter = value.toFloat();
+      changed = true;
+    } else if (key == "opacity_jitter") {
+      m_editingPreset.randomize.opacityJitter = value.toFloat();
+      changed = true;
     }
   }
 
   // ── shape ──
   else if (category == "shape") {
+    if (key == "calligraphic") {
+      m_editingPreset.shape.calligraphic = value.toFloat();
+      changed = true;
+    } else if (key == "count") {
+      m_editingPreset.shape.count = value.toInt();
+      changed = true;
+    } else if (key == "count_jitter") {
+      m_editingPreset.shape.countJitter = value.toFloat();
+      changed = true;
+    }
     if (key == "roundness") {
       m_editingPreset.shape.roundness = value.toFloat();
       changed = true;
@@ -12344,6 +12468,27 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
     } else if (key == "color_stretch") {
       m_editingPreset.wetMix.colorStretch = value.toFloat();
       changed = true;
+    } else if (key == "bleed") {
+      m_editingPreset.wetMix.bleed = value.toFloat();
+      changed = true;
+    } else if (key == "absorption_rate") {
+      m_editingPreset.wetMix.absorptionRate = value.toFloat();
+      changed = true;
+    } else if (key == "drying_time") {
+      m_editingPreset.wetMix.dryingTime = value.toFloat();
+      changed = true;
+    } else if (key == "wet_on_wet_multiplier") {
+      m_editingPreset.wetMix.wetOnWetMultiplier = value.toFloat();
+      changed = true;
+    } else if (key == "pressure_pigment") {
+      m_editingPreset.wetMix.pressurePigment = value.toFloat();
+      changed = true;
+    } else if (key == "pull_pressure") {
+      m_editingPreset.wetMix.pullPressure = value.toFloat();
+      changed = true;
+    } else if (key == "wet_jitter") {
+      m_editingPreset.wetMix.wetJitter = value.toFloat();
+      changed = true;
     }
   }
 
@@ -12408,6 +12553,22 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
     } else if (key == "hardness_min") {
       m_editingPreset.hardnessDynamics.minLimit = value.toFloat();
       changed = true;
+    } else if (key == "size_curve" || key == "opacity_curve") {
+      QVariantList pts = value.toList();
+      if (pts.size() >= 4) {
+        auto &dyn = (key == "size_curve") ? m_editingPreset.sizeDynamics
+                                          : m_editingPreset.opacityDynamics;
+        dyn.pressureCurve.cx1 =
+            std::clamp((float)pts[0].toDouble(), 0.0f, 1.0f);
+        dyn.pressureCurve.cy1 =
+            std::clamp((float)pts[1].toDouble(), 0.0f, 1.0f);
+        dyn.pressureCurve.cx2 =
+            std::clamp((float)pts[2].toDouble(), 0.0f, 1.0f);
+        dyn.pressureCurve.cy2 =
+            std::clamp((float)pts[3].toDouble(), 0.0f, 1.0f);
+        dyn.pressureCurve.bake();
+        changed = true;
+      }
     }
   }
 
@@ -12473,6 +12634,12 @@ void CanvasItem::setBrushProperty(const QString &category, const QString &key,
       changed = true;
     } else if (key == "type") {
       m_editingPreset.type = value.toString();
+      changed = true;
+    } else if (key == "category") {
+      m_editingPreset.category = value.toString();
+      changed = true;
+    } else if (key == "notes") {
+      m_editingPreset.metaData.notes = value.toString();
       changed = true;
     }
   }
@@ -14404,6 +14571,9 @@ WatercolorEngine::WatercolorParams CanvasItem::buildWatercolorParams() const {
     params.paintAmount = preset->wetMix.paintAmount;
     params.colorStretch = preset->wetMix.colorStretch;
     params.blendMode = static_cast<int>(preset->blendMode);
+    // Halo capilar: el agua se fuga en las fibras más allá del pigmento.
+    // Escala con el sangrado del preset (más bleed → más fuga de agua).
+    params.waterSpread = 0.25f + 0.5f * preset->wetMix.bleed;
 
     // PigmentSettings
     params.granulation = preset->pigment.granulation;

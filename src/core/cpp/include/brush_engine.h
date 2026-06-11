@@ -278,6 +278,45 @@ struct BrushSettings {
   float velocityDynamics = 0.0f; // For legacy compatibility
   float calligraphicInfluence =
       0.0f; // 0.0 = none, 1.0 = full angle-based width
+
+  // === Per-Brush Pressure Response ===
+  // Cubic Bezier P1/P2 control points; endpoints fixed at (0,0) and (1,1).
+  // Identity (linear) by default so legacy presets behave unchanged.
+  float pressureCurveX1 = 0.0f, pressureCurveY1 = 0.0f;
+  float pressureCurveX2 = 1.0f, pressureCurveY2 = 1.0f;
+  float sizeMinPressure = 0.0f;    // size factor floor at zero pressure
+  float opacityMinPressure = 0.0f; // opacity factor floor at zero pressure
+
+  // Evaluate the per-brush pressure curve: y for a given input pressure x.
+  float applyPressureCurve(float x) const {
+    // Fast path: identity curve
+    if (pressureCurveX1 == 0.0f && pressureCurveY1 == 0.0f &&
+        pressureCurveX2 == 1.0f && pressureCurveY2 == 1.0f) {
+      return x;
+    }
+    x = std::max(0.0f, std::min(1.0f, x));
+    // Newton's method: find t such that bezierX(t) == x
+    float t = x;
+    for (int i = 0; i < 8; ++i) {
+      float mt = 1.0f - t;
+      float bx = 3.0f * mt * mt * t * pressureCurveX1 +
+                 3.0f * mt * t * t * pressureCurveX2 + t * t * t;
+      float dx = bx - x;
+      if (std::abs(dx) < 1e-5f)
+        break;
+      float dbx = 3.0f * mt * mt * pressureCurveX1 +
+                  6.0f * mt * t * (pressureCurveX2 - pressureCurveX1) +
+                  3.0f * t * t * (1.0f - pressureCurveX2);
+      if (std::abs(dbx) < 1e-6f)
+        break;
+      t -= dx / dbx;
+      t = std::max(0.0f, std::min(1.0f, t));
+    }
+    float mt = 1.0f - t;
+    float y = 3.0f * mt * mt * t * pressureCurveY1 +
+              3.0f * mt * t * t * pressureCurveY2 + t * t * t;
+    return std::max(0.0f, std::min(1.0f, y));
+  }
 };
 
 class StrokeRenderer; // Forward declaration

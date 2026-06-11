@@ -63,15 +63,43 @@ const float INV_SQRT2 = 0.70710678;
 // UTILIDADES
 // ============================================================================
 
+// Luminancia perceptual (declarada antes de su primer uso)
+float lumaOf(vec3 c) {
+    return dot(c, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// Saturación aproximada (croma normalizado)
+float satOf(vec3 c) {
+    float mx = max(c.r, max(c.g, c.b));
+    float mn = min(c.r, min(c.g, c.b));
+    return (mx - mn) / max(mx, 0.001);
+}
+
 // Mezcla de colores estilo Kubelka-Munk (más realista que interpolación lineal)
-// Simula cómo los pigmentos físicos mezclan sus reflexiones
+// Simula cómo los pigmentos físicos mezclan sus reflexiones.
+// Con preservación de croma: la mezcla K-M de tonos lejanos tiende a virar
+// hacia grises sucios; restituimos parte de la saturación esperada para que
+// las fusiones húmedas se mantengan limpias y vibrantes.
 vec3 mixKubelkaMunk(vec3 colorA, vec3 colorB, float t) {
     // Transformar a espacio KM (k/s ratio)
     vec3 kmA = (1.0 - colorA) * (1.0 - colorA) / max(2.0 * colorA, vec3(0.001));
     vec3 kmB = (1.0 - colorB) * (1.0 - colorB) / max(2.0 * colorB, vec3(0.001));
     vec3 kmMix = mix(kmA, kmB, t);
     // Volver al espacio RGB
-    return 1.0 + kmMix - sqrt(kmMix * kmMix + 2.0 * kmMix);
+    vec3 rgbMix = 1.0 + kmMix - sqrt(kmMix * kmMix + 2.0 * kmMix);
+    rgbMix = clamp(rgbMix, 0.0, 1.0);
+
+    // Croma esperado: interpolación de las saturaciones de entrada
+    float satMix    = satOf(rgbMix);
+    float satTarget = mix(satOf(colorA), satOf(colorB), t);
+    if (satTarget > satMix + 0.001) {
+        // Recuperar el 60% del croma perdido, escalando alrededor de la luma
+        float satGoal = mix(satMix, satTarget, 0.6);
+        float k = clamp(satGoal / max(satMix, 0.02), 1.0, 2.0);
+        float lum = lumaOf(rgbMix);
+        rgbMix = clamp(vec3(lum) + (rgbMix - vec3(lum)) * k, 0.0, 1.0);
+    }
+    return rgbMix;
 }
 
 // Superposición física de pigmentos estilo Kubelka-Munk (modelo aditivo/sustractivo)
@@ -90,11 +118,6 @@ vec3 layerKubelkaMunk(vec3 canvasColor, vec3 brushColor, float amount) {
     // Volver al espacio RGB
     vec3 rgbFinal = 1.0 + kmFinal - sqrt(kmFinal * kmFinal + 2.0 * kmFinal);
     return clamp(rgbFinal, 0.0, 1.0);
-}
-
-// Luminancia perceptual
-float luminance(vec3 c) {
-    return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
 // Muestreo con offset en píxeles
@@ -162,14 +185,18 @@ vec4 paintDab() {
     effectivePigment *= localPaintAmount;
     dabAlpha *= effectivePigment;
 
+    // ── AGUADA: con mucha agua el lavado se aplica translúcido y uniforme ──
+    // El pigmento queda suspendido en la película de agua; la densidad final
+    // la aportan después el asentamiento en el anillo perimetral (wet edge)
+    // y la sedimentación en los poros del papel, no la pasada del pincel.
+    float washiness = clamp(uWetness * (0.4 + 0.8 * uDilution), 0.0, 1.0);
+    if (uBlendOnly == 0) {
+        dabAlpha *= (1.0 - washiness * 0.30);
+    }
+
     if (dabAlpha < 0.001) {
-        // Sin cobertura de pincel — solo actualizar el mapa de humedad
-        // Depositar humedad del pincel incluso sin pigmento
-        float newWetness = localWet;
-        if (uWetness > 0.01) {
-            newWetness = max(localWet, uWetness * uFlow * uPressure * grain);
-        }
-        // Devolver canvas sin cambios (el wetmap lo gestiona el C++)
+        // Sin cobertura de pincel — el depósito de humedad lo gestiona el
+        // pase de WetMap en C++; el canvas no cambia.
         return canvasSample;
     }
 
@@ -184,13 +211,18 @@ vec4 paintDab() {
         brushRGB = clamp(dabSample.rgb / dabSample.a, 0.0, 1.0);
     }
 
-    // ── GRANULACIÓN: los pigmentos se aglomeran según la textura del papel ──
+    // ── GRANULACIÓN DINÁMICA: depende del agua cargada y de la presión ──
+    // Pincel muy húmedo → el pigmento fluye y SEDIMENTA en los valles del papel.
+    // Pincel seco / poca presión → el pigmento queda atrapado en las CRESTAS
+    // y salta los valles (efecto pincel seco), invirtiendo el patrón.
     if (uGranulation > 0.01 && uGrainIntensity > 0.001) {
         vec2 globalCoord = getGlobalCoord(vTexCoord);
         float gv = getGrainValue(globalCoord);
-        // En valles del papel (gv bajo) se concentra más el pigmento
-        float localGranulation = uGranulation * (1.0 - localPaintAmount * 0.7);
-        float granFactor = 1.0 + localGranulation * (0.5 - gv) * 2.0;
+        float waterLoad = clamp(uWetness * uFlow * (0.4 + 0.6 * uPressure), 0.0, 1.0);
+        float localGranulation = uGranulation * (1.0 - localPaintAmount * 0.5);
+        float valleyTerm = (0.5 - gv) * 2.0;   // +1 en valle, -1 en cresta
+        float granFactor = 1.0 + localGranulation *
+                           mix(-valleyTerm * 0.8, valleyTerm * 1.2, waterLoad);
         dabAlpha = clamp(dabAlpha * granFactor, 0.0, 1.0);
     }
 
@@ -249,6 +281,33 @@ vec4 paintDab() {
                 float extraAlpha = canvasSample.a * blendToMultiply * 0.55;
                 finalAlpha = min(finalAlpha + extraAlpha, 1.0);
             }
+        }
+    }
+
+    // ── WET EDGE: acumulación de pigmento en el borde del agua ──
+    // El pigmento migra con el agua hacia el perímetro del charco y se
+    // deposita donde la humedad cae bruscamente (este píxel está más seco
+    // que su vecino más húmedo). La rampa smoothstep crea un anillo denso
+    // con transición SUAVE hacia el interior, y el grano del papel rompe
+    // su regularidad para que el cerco sea orgánico, no circular.
+    if (uEdgeDarkening > 0.01 && uBlendOnly == 0) {
+        vec2 ts = 2.0 / uCanvasSize;
+        float wMax = max(
+            max(texture(uWetMap, vTexCoord + vec2(ts.x, 0.0)).r,
+                texture(uWetMap, vTexCoord - vec2(ts.x, 0.0)).r),
+            max(texture(uWetMap, vTexCoord + vec2(0.0, ts.y)).r,
+                texture(uWetMap, vTexCoord - vec2(0.0, ts.y)).r));
+        float edge = smoothstep(0.04, 0.45, wMax - localWet);
+        if (edge > 0.001) {
+            float organic = 1.0;
+            if (uGrainIntensity > 0.001) {
+                float gvEdge = getGrainValue(getGlobalCoord(vTexCoord));
+                organic = mix(1.0, 0.6 + 0.8 * gvEdge, uGrainIntensity);
+            }
+            float edgeAmount = edge * uEdgeDarkening * 0.45
+                             * (0.4 + uWetness * 0.6) * organic;
+            finalRGB  *= (1.0 - edgeAmount * 0.5);
+            finalAlpha = min(finalAlpha * (1.0 + edgeAmount), 1.0);
         }
     }
 
@@ -366,17 +425,19 @@ vec4 spreadWet() {
     // y encuentra gran resistencia al intentar subir crestas o barreras de fibra.
     if (uGrainIntensity > 0.01) {
         float neighborGrains[8];
-        // Muestrear el grano en cada vecino usando coordenadas globales alineadas
+        // Muestrear el grano solo en los 4 vecinos cardinales y aproximar las
+        // diagonales como promedio de los cardinales adyacentes: ahorra 4
+        // fetches de textura por píxel por tick con diferencia visual nula.
         vec2 ts = texelSize;
         neighborGrains[0] = getGrainValue(getGlobalCoord(vTexCoord + vec2(0.0, ts.y)));
         neighborGrains[1] = getGrainValue(getGlobalCoord(vTexCoord - vec2(0.0, ts.y)));
         neighborGrains[2] = getGrainValue(getGlobalCoord(vTexCoord - vec2(ts.x, 0.0)));
         neighborGrains[3] = getGrainValue(getGlobalCoord(vTexCoord + vec2(ts.x, 0.0)));
-        
-        neighborGrains[4] = getGrainValue(getGlobalCoord(vTexCoord + vec2(-ts.x,  ts.y) * 0.707));
-        neighborGrains[5] = getGrainValue(getGlobalCoord(vTexCoord + vec2( ts.x,  ts.y) * 0.707));
-        neighborGrains[6] = getGrainValue(getGlobalCoord(vTexCoord + vec2(-ts.x, -ts.y) * 0.707));
-        neighborGrains[7] = getGrainValue(getGlobalCoord(vTexCoord + vec2( ts.x, -ts.y) * 0.707));
+
+        neighborGrains[4] = (neighborGrains[0] + neighborGrains[2]) * 0.5; // Up-Left
+        neighborGrains[5] = (neighborGrains[0] + neighborGrains[3]) * 0.5; // Up-Right
+        neighborGrains[6] = (neighborGrains[1] + neighborGrains[2]) * 0.5; // Down-Left
+        neighborGrains[7] = (neighborGrains[1] + neighborGrains[3]) * 0.5; // Down-Right
 
         for (int i = 0; i < 8; i++) {
             // Conductividad basada en similitud capilar (diferencia de grano absoluta)
@@ -423,20 +484,49 @@ vec4 spreadWet() {
     vec3 newPigment = mixKubelkaMunk(centerRGB_unp, avgPigment, effectiveRate);
     float newAlpha  = mix(centerCenter.a, avgAlpha, effectiveRate);
 
-    // Granulación tridimensional de pigmento en valles
-    if (uGranulation > 0.01 && uGrainIntensity > 0.01) {
-        // En valles (paperGrain bajo), el pigmento se concentra debido a la retención en los poros
-        float granulationFactor = mix(1.0 + uGranulation * 0.40, 1.0 - uGranulation * 0.25, paperGrain);
-        newAlpha = clamp(newAlpha * granulationFactor, 0.0, 1.0);
+    // Gradiente de agua: alto en el perímetro del charco, ~0 en el interior
+    float waterGradient = length(vec2(wetNeighbors[3].r - wetNeighbors[2].r, wetNeighbors[0].r - wetNeighbors[1].r));
+
+    // 2. AGUADA — MIGRACIÓN INTERIOR→PERÍMETRO:
+    // Por capilaridad, el agua arrastra el pigmento desde el interior del
+    // charco hacia su borde. El interior (gradiente bajo, agua alta) pierde
+    // densidad gradualmente mientras el agua está fresca → el centro queda
+    // suave y translúcido; el anillo exterior la acumula (efecto de abajo).
+    float freshness = 1.0 - wetCenter.g;
+    if (uEdgeDarkening > 0.01 && freshness > 0.05) {
+        float interior = wetness * (1.0 - clamp(waterGradient * 8.0, 0.0, 1.0));
+        float depletion = interior * freshness * clamp(uBleed + 0.2, 0.0, 1.0) * 0.030;
+        newAlpha *= (1.0 - depletion);
     }
 
-    // 2. Efecto de borde de acumulación (Watercolor Fringe / Tide-mark) (Paso 3 del algoritmo)
-    // El pigmento se acumula donde el gradiente de agua cae drásticamente (el borde del charco)
-    float waterGradient = length(vec2(wetNeighbors[3].r - wetNeighbors[2].r, wetNeighbors[0].r - wetNeighbors[1].r));
-    if (waterGradient > 0.02 && wetness > 0.02 && uEdgeDarkening > 0.01) {
-        float fringeFactor = waterGradient * 2.8 * uEdgeDarkening;
-        newPigment *= (1.0 - clamp(fringeFactor * 0.65, 0.0, 0.85)); // Deep dark pigment accumulation
-        newAlpha = min(newAlpha * (1.0 + fringeFactor * 1.5), 1.0); // Saturated, crisp border
+    // 3. Granulación tridimensional, modulada por el agua: cuanta más agua
+    // hay en el píxel, más sedimenta el pigmento en los poros. Además de la
+    // densidad (alpha), el pigmento asentado oscurece sutilmente el TONO en
+    // los valles, rompiendo la uniformidad del color digital.
+    if (uGranulation > 0.01 && uGrainIntensity > 0.01) {
+        float settle = 0.5 + 0.5 * wetness;  // El agua intensifica la sedimentación
+        float granulationFactor = mix(1.0 + uGranulation * 0.40 * settle,
+                                      1.0 - uGranulation * 0.25 * settle,
+                                      paperGrain);
+        newAlpha = clamp(newAlpha * granulationFactor, 0.0, 1.0);
+        newPigment *= 1.0 - uGranulation * (1.0 - paperGrain) * wetness * 0.10;
+    }
+
+    // 4. Anillo perimetral de acumulación (Watercolor Fringe / Tide-mark)
+    // El pigmento se asienta donde el gradiente de agua cae drásticamente.
+    // — La banda smoothstep crea un anillo definido con transición suave
+    //   hacia el interior (no un escalón rígido).
+    // — Se intensifica al envejecer el agua (wetCenter.g → 1): el cerco
+    //   aparece progresivamente durante el secado, como en papel real.
+    // — El grano del papel perturba su intensidad → contorno orgánico.
+    if (waterGradient > 0.012 && wetness > 0.02 && uEdgeDarkening > 0.01) {
+        float dryingBoost = 0.55 + 0.9 * wetCenter.g;
+        float rim = smoothstep(0.012, 0.14, waterGradient);
+        float organic = mix(1.0, 0.6 + 0.8 * paperGrain,
+                            min(uGrainIntensity * 1.5, 1.0));
+        float fringeFactor = rim * 2.0 * uEdgeDarkening * dryingBoost * organic;
+        newPigment *= (1.0 - clamp(fringeFactor * 0.60, 0.0, 0.85)); // Acumulación profunda de pigmento
+        newAlpha = min(newAlpha * (1.0 + fringeFactor * 1.4), 1.0);  // Borde saturado y definido
     }
 
     // Devolver color premultiplicado para compositing correcto en FBO
@@ -496,15 +586,21 @@ vec4 dryStep() {
     // Suavizado/difusión de la humedad
     float newWetness = mix(wetness, avgWater, uBleed * 0.25);
 
-    // 2. Evaporación (Secado progresivo del charco)
-    // Se evapora de forma lineal y realista según dryingRate (cada frame dura 80ms, por lo que 0.08 es el factor base)
-    // Modulado por el factor de porosidad tridimensional (valles vs crestas)
+    // 2. Evaporación + absorción (secado progresivo del charco)
+    // Evaporación al aire según dryingRate (cada frame dura 80ms → factor 0.08)
+    // más el agua que el papel absorbe hacia las fibras (uAbsorption).
+    // Modulado por la porosidad tridimensional: las crestas (paperGrain alto)
+    // secan rápido, los valles retienen el agua más tiempo.
     float grainEvaporationFactor = mix(0.5, 1.5, paperGrain);
-    float evaporation = 0.08 * uDryingRate * grainEvaporationFactor;
+    float evaporation = 0.08 * (uDryingRate + uAbsorption * 0.5) * grainEvaporationFactor;
 
-    // Los bordes exteriores secan más rápido
+    // Los bordes exteriores secan más rápido, y de forma IRREGULAR según el
+    // grano del papel: las crestas del perímetro pierden el agua antes que
+    // los poros, de modo que el contorno final del lavado retrocede de forma
+    // orgánica (no como un círculo perfecto que encoge).
     float minNeighbor = min(min(upWet, downWet), min(leftWet, rightWet));
-    float borderMult = (wetness - minNeighbor) > 0.15 ? 1.8 : 1.0;
+    float borderness = smoothstep(0.05, 0.25, wetness - minNeighbor);
+    float borderMult = 1.0 + borderness * (0.6 + 1.2 * paperGrain);
 
     newWetness = max(0.0, newWetness - evaporation * borderMult);
 

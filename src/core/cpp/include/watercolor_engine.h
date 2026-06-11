@@ -55,6 +55,8 @@ public:
         float paintAmount    = 0.7f;  // Cantidad de pintura
         float colorStretch   = 0.1f;  // Extender color
         int   blendMode      = 0;     // Modo de combinación
+        float waterSpread    = 0.4f;  // Halo de agua que se fuga en las fibras
+                                      // más allá del pigmento (punta difusa)
     };
 
     explicit WatercolorEngine(QObject *parent = nullptr);
@@ -77,6 +79,9 @@ public:
     // dabFBO: FBO que contiene el dab renderizado por el motor de pinceles normal
     // canvasFBO: FBO ping-pong del canvas actual (resultado de pasadas anteriores)
     // ─────────────────────────────────────────────────────────────────────
+    // dualDabTexId (opcional): textura de una segunda punta difusa que define
+    // la huella de AGUA (fuga en las fibras) independiente del pigmento.
+    // Si es 0, la huella de agua se deriva de la punta principal expandida.
     void paintDab(GLuint dabFBO,
                   GLuint canvasFBOin,
                   QOpenGLFramebufferObject *canvasFBOout,
@@ -84,7 +89,8 @@ public:
                   const WatercolorParams &params,
                   float pressure,
                   float flow,
-                  const QRect &dabRect = QRect());
+                  const QRect &dabRect = QRect(),
+                  GLuint dualDabTexId = 0);
 
     // ─────────────────────────────────────────────────────────────────────
     // Métodos de control del timer
@@ -125,11 +131,13 @@ private:
                  float flow);
     void renderFullscreenQuad();
     void initQuadGeometry();
+    void ensureAuxShaders();
     void updateWetMapDeposit(GLuint dabTexId,
                              const WatercolorParams &params,
                              float pressure,
                              float flow,
-                             const QRect &dabRect = QRect());
+                             const QRect &dabRect = QRect(),
+                             GLuint dualDabTexId = 0);
 
 
     // ── Estado ────────────────────────────────────────────────────────────
@@ -154,6 +162,11 @@ private:
     // Shader único con uniform uMode para los 3 modos
     QOpenGLShaderProgram *m_shader = nullptr;
 
+    // Shaders auxiliares (antes estáticos locales — provocaban punteros
+    // colgantes al destruir el motor por estar emparentados a `this`)
+    QOpenGLShaderProgram *m_ageShader     = nullptr;
+    QOpenGLShaderProgram *m_depositShader = nullptr;
+
     // Quad geometry (VBO)
     GLuint m_quadVBO = 0;
     bool   m_quadReady = false;
@@ -166,6 +179,9 @@ private:
     GLuint m_lastCanvasTexId = 0;
     QOpenGLFramebufferObject *m_lastCanvasFBOOut = nullptr;
     WatercolorParams m_lastParams;
+    // Unión persistente de TODAS las zonas húmedas de la sesión. Se usa como
+    // scissor de los pases ping-pong del WetMap: cada pase reescribe la región
+    // completa a partir del FBO de lectura, garantizando consistencia A/B.
     QRect m_wetBounds;
     int m_spreadFramesRemaining = 0;
 };

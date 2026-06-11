@@ -55,9 +55,11 @@ void WatercolorEngine::beginSession(int w, int h, QOpenGLFunctions *gl,
     m_gl          = gl;
     m_grainTexId  = grainTextureId;
     m_hasWetAreas = false;
+    m_wetBounds   = QRect();
 
     ensureFBOs(w, h);
     ensureShader();
+    ensureAuxShaders();
 
     // Limpiar WetMap al inicio de sesión
     if (m_wetMapFBO_A) {
@@ -84,60 +86,145 @@ void WatercolorEngine::endSession() {
 }
 
 void WatercolorEngine::startStroke() {
-    m_wetBounds = QRect();
+    // NOTA: m_wetBounds NO se resetea aquí — es la unión persistente de zonas
+    // húmedas de la sesión y mantiene consistente el ping-pong del WetMap.
     if (!m_initialized || !m_wetMapFBO_A || !m_wetMapFBO_B || !m_gl) return;
 
-    // Shader inline para envejecer la humedad existente:
-    // Convierte el canal G (secAge) en 1.0 (viejo) para toda la humedad preexistente
-    static QOpenGLShaderProgram *ageShader = nullptr;
-    if (!ageShader) {
-        ageShader = new QOpenGLShaderProgram(this);
-        ageShader->addShaderFromSourceCode(QOpenGLShader::Vertex,
-            "#version 330 core\n"
-            "layout(location=0)in vec2 p;\n"
-            "layout(location=1)in vec2 t;\n"
-            "out vec2 v;\n"
-            "void main(){gl_Position=vec4(p,0,1);v=t;}\n");
-        ageShader->addShaderFromSourceCode(QOpenGLShader::Fragment,
-            "#version 330 core\n"
-            "in vec2 v;\n"
-            "out vec4 o;\n"
-            "uniform sampler2D uWetMapIn;\n"
-            "void main(){\n"
-            "  vec4 wet = texture(uWetMapIn, v);\n"
-            "  // Si tiene humedad (>0.01), forzar la edad (G) a 1.0 (viejo)\n"
-            "  float agedG = wet.r > 0.01 ? 1.0 : 0.0;\n"
-            "  o = vec4(wet.r, agedG, 0.0, 1.0);\n"
-            "}\n");
-        if (!ageShader->link()) {
-            qWarning() << "WatercolorEngine: age shader link failed:" << ageShader->log();
-        }
-    }
+    ensureAuxShaders();
+    if (!m_ageShader) return;
 
     m_gl->glActiveTexture(GL_TEXTURE0);
     m_gl->glBindTexture(GL_TEXTURE_2D, m_wetMapFBO_A->texture());
 
-    ageShader->bind();
-    ageShader->setUniformValue("uWetMapIn", 0);
+    m_ageShader->bind();
+    m_ageShader->setUniformValue("uWetMapIn", 0);
 
+    // Pase a pantalla completa: reescribe TODO el FBO B desde A, por lo que
+    // no introduce divergencia entre los dos buffers del ping-pong.
     m_wetMapFBO_B->bind();
     m_gl->glViewport(0, 0, m_width, m_height);
     m_gl->glDisable(GL_BLEND);
     renderFullscreenQuad();
     m_wetMapFBO_B->release();
-    ageShader->release();
+    m_ageShader->release();
 
     std::swap(m_wetMapFBO_A, m_wetMapFBO_B);
+}
+
+// Crea los shaders auxiliares (envejecimiento y depósito de agua) como
+// miembros del motor. Antes eran estáticos locales emparentados a `this`:
+// al destruir un motor y crear otro, el puntero estático apuntaba a un
+// programa ya destruido (use-after-free).
+void WatercolorEngine::ensureAuxShaders() {
+    static const char *kQuadVert =
+        "#version 330 core\n"
+        "layout(location=0)in vec2 p;\n"
+        "layout(location=1)in vec2 t;\n"
+        "out vec2 v;\n"
+        "void main(){gl_Position=vec4(p,0,1);v=t;}\n";
+
+    if (!m_ageShader) {
+        m_ageShader = new QOpenGLShaderProgram(this);
+        m_ageShader->addShaderFromSourceCode(QOpenGLShader::Vertex, kQuadVert);
+        m_ageShader->addShaderFromSourceCode(QOpenGLShader::Fragment,
+            "#version 330 core\n"
+            "in vec2 v;\n"
+            "out vec4 fragOut;\n"
+            "uniform sampler2D uWetMapIn;\n"
+            "void main(){\n"
+            "  vec4 wet = texture(uWetMapIn, v);\n"
+            "  // Si tiene humedad (>0.01), forzar la edad (G) a 1.0 (viejo)\n"
+            "  float agedG = wet.r > 0.01 ? 1.0 : 0.0;\n"
+            "  fragOut = vec4(wet.r, agedG, 0.0, 1.0);\n"
+            "}\n");
+        if (!m_ageShader->link()) {
+            qWarning() << "WatercolorEngine: age shader link failed:" << m_ageShader->log();
+            delete m_ageShader;
+            m_ageShader = nullptr;
+        }
+    }
+
+    if (!m_depositShader) {
+        m_depositShader = new QOpenGLShaderProgram(this);
+        m_depositShader->addShaderFromSourceCode(QOpenGLShader::Vertex, kQuadVert);
+        m_depositShader->addShaderFromSourceCode(QOpenGLShader::Fragment,
+            "#version 330 core\n"
+            "in vec2 v;\n"
+            "out vec4 fragOut;\n"
+            "uniform sampler2D uWetMapIn;\n"
+            "uniform sampler2D uDab;\n"
+            "uniform sampler2D uDualDab;\n"
+            "uniform sampler2D uGrain;\n"
+            "uniform int   uHasDualDab;\n"
+            "uniform int   uHasGrain;\n"
+            "uniform float uWaterAmount;\n"
+            "uniform float uWaterSpread;\n"
+            "uniform float uHaloRadius;\n"
+            "uniform float uGrainScale;\n"
+            "uniform vec2  uCanvasSize;\n"
+            "uniform vec2  uTexel;\n"
+            "void main(){\n"
+            "  vec4 wet = texture(uWetMapIn, v);\n"
+            "  float dabA = texture(uDab, v).a;\n"
+            "  // Huella de agua: punta secundaria difusa si existe (dual brush)\n"
+            "  float waterA = dabA;\n"
+            "  if (uHasDualDab == 1) {\n"
+            "    waterA = max(waterA, texture(uDualDab, v).a);\n"
+            "  }\n"
+            "  // Fuga capilar: el agua se extiende en las fibras del papel más\n"
+            "  // allá del borde del pigmento. Kernel de 8 taps (cardinales +\n"
+            "  // diagonales) con radio dependiente de la humedad → halo suave\n"
+            "  if (uWaterSpread > 0.001) {\n"
+            "    vec2 o = uTexel * uHaloRadius;\n"
+            "    float halo = texture(uDab, v + vec2(o.x, 0.0)).a\n"
+            "               + texture(uDab, v - vec2(o.x, 0.0)).a\n"
+            "               + texture(uDab, v + vec2(0.0, o.y)).a\n"
+            "               + texture(uDab, v - vec2(0.0, o.y)).a;\n"
+            "    halo += 0.707 * (texture(uDab, v + o * 0.707).a\n"
+            "                   + texture(uDab, v - o * 0.707).a\n"
+            "                   + texture(uDab, v + vec2( o.x, -o.y) * 0.707).a\n"
+            "                   + texture(uDab, v + vec2(-o.x,  o.y) * 0.707).a);\n"
+            "    waterA = max(waterA, halo * 0.1464 * uWaterSpread);\n"
+            "  }\n"
+            "  // CONTORNO ORGÁNICO: el grano del papel perturba el límite del\n"
+            "  // agua en la zona de transición (ni núcleo ni exterior), para\n"
+            "  // que el borde final del lavado sea irregular, no circular.\n"
+            "  if (uHasGrain == 1 && waterA > 0.001) {\n"
+            "    float edgeZone = smoothstep(0.0, 0.45, waterA)\n"
+            "                   * (1.0 - smoothstep(0.45, 1.0, waterA));\n"
+            "    if (edgeZone > 0.01) {\n"
+            "      vec2 gc = (v * uCanvasSize) / (5.0 * uGrainScale);\n"
+            "      vec4 gs = texture(uGrain, gc);\n"
+            "      float gv = (gs.a < 0.99) ? gs.a\n"
+            "                               : dot(gs.rgb, vec3(0.299, 0.587, 0.114));\n"
+            "      waterA *= mix(1.0, 0.55 + 0.9 * gv, edgeZone * 0.8);\n"
+            "    }\n"
+            "  }\n"
+            "  float water = waterA * uWaterAmount;\n"
+            "  float newWet = clamp(wet.r + water * (1.0 - wet.r * 0.5), 0.0, 1.0);\n"
+            "  // El agua fresca rejuvenece el píxel (edad hacia 0)\n"
+            "  float newAge = (wet.r > 0.01) ? max(0.0, wet.g - water * 0.6) : 0.0;\n"
+            "  fragOut = vec4(newWet, newAge, 0.0, 1.0);\n"
+            "}\n");
+        if (!m_depositShader->link()) {
+            qWarning() << "WatercolorEngine: deposit shader link failed:"
+                       << m_depositShader->log();
+            delete m_depositShader;
+            m_depositShader = nullptr;
+        }
+    }
 }
 
 void WatercolorEngine::invalidate() {
     m_spreadTimer->stop();
     m_dryTimer->stop();
 
-    delete m_wetMapFBO_A; m_wetMapFBO_A = nullptr;
-    delete m_wetMapFBO_B; m_wetMapFBO_B = nullptr;
-    delete m_spreadFBO;   m_spreadFBO   = nullptr;
-    delete m_shader;      m_shader      = nullptr;
+    delete m_wetMapFBO_A;   m_wetMapFBO_A   = nullptr;
+    delete m_wetMapFBO_B;   m_wetMapFBO_B   = nullptr;
+    delete m_spreadFBO;     m_spreadFBO     = nullptr;
+    delete m_shader;        m_shader        = nullptr;
+    delete m_ageShader;     m_ageShader     = nullptr;
+    delete m_depositShader; m_depositShader = nullptr;
 
     if (m_quadVBO) {
         if (m_gl) m_gl->glDeleteBuffers(1, &m_quadVBO);
@@ -162,7 +249,8 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
                                 const WatercolorParams &params,
                                 float pressure,
                                 float flow,
-                                const QRect &dabRect)
+                                const QRect &dabRect,
+                                GLuint dualDabTexId)
 {
     if (!m_initialized || !m_shader || !canvasFBOout) return;
 
@@ -170,12 +258,14 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
     m_lastCanvasFBOOut = canvasFBOout;
     m_lastParams       = params;
 
-    // Track active wet bounding box
+    // Unión persistente de zonas húmedas (margen de 8px por el halo de agua)
     if (!dabRect.isEmpty()) {
+        QRect wetRect = dabRect.adjusted(-8, -8, 8, 8)
+                            .intersected(QRect(0, 0, m_width, m_height));
         if (m_wetBounds.isEmpty()) {
-            m_wetBounds = dabRect;
+            m_wetBounds = wetRect;
         } else {
-            m_wetBounds = m_wetBounds.united(dabRect);
+            m_wetBounds = m_wetBounds.united(wetRect);
         }
     } else {
         m_wetBounds = QRect(0, 0, m_width, m_height);
@@ -256,15 +346,13 @@ void WatercolorEngine::paintDab(GLuint dabTexId,
     m_shader->release();
 
     // Paso 2: Actualizar el WetMap — depositar agua del pincel
-    updateWetMapDeposit(dabTexId, params, pressure, flow, dabRect);
+    updateWetMapDeposit(dabTexId, params, pressure, flow, dabRect, dualDabTexId);
 
-    // Activar timers de difusión y secado
+    // Activar el timer de difusión (el secado está integrado en performSpread,
+    // por lo que el dryTimer ya no se arranca — su slot era un no-op)
     m_hasWetAreas = true;
     if (!m_spreadTimer->isActive()) {
         m_spreadTimer->start();
-    }
-    if (!m_dryTimer->isActive()) {
-        m_dryTimer->start();
     }
 }
 
@@ -277,60 +365,65 @@ void WatercolorEngine::updateWetMapDeposit(GLuint dabTexId,
                                            const WatercolorParams &params,
                                            float pressure,
                                            float flow,
-                                           const QRect &dabRect)
+                                           const QRect &dabRect,
+                                           GLuint dualDabTexId)
 {
-    // Pass especial: copiar el WetMap actual (A) al B sumando la nueva agua
-    // Usamos un shader inline simple para el depósito
-    static QOpenGLShaderProgram *depositShader = nullptr;
-
-    if (!depositShader) {
-        depositShader = new QOpenGLShaderProgram(this);
-        depositShader->addShaderFromSourceCode(QOpenGLShader::Vertex,
-            "#version 330 core\n"
-            "layout(location=0)in vec2 p;\n"
-            "layout(location=1)in vec2 t;\n"
-            "out vec2 v;\n"
-            "void main(){gl_Position=vec4(p,0,1);v=t;}\n");
-        depositShader->addShaderFromSourceCode(QOpenGLShader::Fragment,
-            "#version 330 core\n"
-            "in vec2 v;\n"
-            "out vec4 o;\n"
-            "uniform sampler2D uWetMapIn;\n"
-            "uniform sampler2D uDab;\n"
-            "uniform float uWaterAmount;\n"
-            "void main(){\n"
-            "  vec4 wet = texture(uWetMapIn, v);\n"
-            "  vec4 dab = texture(uDab, v);\n"
-            "  float water = dab.a * uWaterAmount;\n"  // Agua proporcional al dab
-            "  float freshness = wet.g > 0.0 ? 0.0 : 1.0;\n"  // Resetear edad si nuevo agua
-            "  float newWet = clamp(wet.r + water * (1.0 - wet.r * 0.5), 0.0, 1.0);\n"
-            "  float newAge = wet.r > 0.01 ? min(wet.g, 1.0 - water * 0.3) : 0.0;\n"
-            "  o = vec4(newWet, newAge, 0.0, 1.0);\n"
-            "}\n");
-        if (!depositShader->link()) {
-            qWarning() << "WatercolorEngine: deposit shader link failed:"
-                       << depositShader->log();
-        }
-    }
+    ensureAuxShaders();
+    if (!m_depositShader) return;
 
     float waterAmount = params.wetness * flow * pressure;
     if (waterAmount < 0.01f) return;
+
+    // ── SINCRONIZACIÓN PING-PONG ──
+    // El render con scissor solo reescribe el rect del dab en B; el resto de
+    // la zona húmeda quedaría con datos de dos pasadas atrás (la evaporación
+    // se revertiría fuera del dab). Blit GPU→GPU de A→B sobre la unión húmeda
+    // para que B sea idéntico a A antes del depósito parcial.
+    if (!m_wetBounds.isEmpty()) {
+        int glY = m_height - m_wetBounds.y() - m_wetBounds.height();
+        QRect glWet(m_wetBounds.x(), glY, m_wetBounds.width(), m_wetBounds.height());
+        QOpenGLFramebufferObject::blitFramebuffer(m_wetMapFBO_B, glWet,
+                                                  m_wetMapFBO_A, glWet);
+    }
 
     m_gl->glActiveTexture(GL_TEXTURE0);
     m_gl->glBindTexture(GL_TEXTURE_2D, m_wetMapFBO_A->texture());
     m_gl->glActiveTexture(GL_TEXTURE1);
     m_gl->glBindTexture(GL_TEXTURE_2D, dabTexId);
+    m_gl->glActiveTexture(GL_TEXTURE2);
+    m_gl->glBindTexture(GL_TEXTURE_2D, dualDabTexId ? dualDabTexId : 0);
+    m_gl->glActiveTexture(GL_TEXTURE3);
+    m_gl->glBindTexture(GL_TEXTURE_2D, m_grainTexId ? m_grainTexId : 0);
 
-    depositShader->bind();
-    depositShader->setUniformValue("uWetMapIn",    0);
-    depositShader->setUniformValue("uDab",         1);
-    depositShader->setUniformValue("uWaterAmount", waterAmount);
+    bool useGrainEdge = (m_grainTexId != 0 && params.grainIntensity > 0.001f);
+
+    m_depositShader->bind();
+    m_depositShader->setUniformValue("uWetMapIn",    0);
+    m_depositShader->setUniformValue("uDab",         1);
+    m_depositShader->setUniformValue("uDualDab",     2);
+    m_depositShader->setUniformValue("uGrain",       3);
+    m_depositShader->setUniformValue("uHasDualDab",  dualDabTexId ? 1 : 0);
+    m_depositShader->setUniformValue("uHasGrain",    useGrainEdge ? 1 : 0);
+    m_depositShader->setUniformValue("uGrainScale",  std::max(0.1f, params.grainScale));
+    m_depositShader->setUniformValue("uCanvasSize",  QVector2D(m_width, m_height));
+    m_depositShader->setUniformValue("uWaterAmount", waterAmount);
+    // El halo capilar crece con la humedad del pincel
+    m_depositShader->setUniformValue("uWaterSpread",
+        params.waterSpread * (0.5f + 0.5f * params.wetness));
+    // Radio del halo en texels: pincel más cargado de agua → fuga más amplia
+    m_depositShader->setUniformValue("uHaloRadius",
+        2.0f + 4.0f * params.wetness);
+    m_depositShader->setUniformValue("uTexel",
+        QVector2D(1.0f / std::max(1, m_width), 1.0f / std::max(1, m_height)));
 
     bool useScissor = !dabRect.isEmpty();
     if (useScissor) {
+        // Margen de 8px: el halo de agua muestrea hasta ±6 texels del pigmento
+        QRect sc = dabRect.adjusted(-8, -8, 8, 8)
+                       .intersected(QRect(0, 0, m_width, m_height));
         m_gl->glEnable(GL_SCISSOR_TEST);
-        float gl_y = m_height - dabRect.y() - dabRect.height();
-        m_gl->glScissor(dabRect.x(), gl_y, dabRect.width(), dabRect.height());
+        int gl_y = m_height - sc.y() - sc.height();
+        m_gl->glScissor(sc.x(), gl_y, sc.width(), sc.height());
     }
 
     m_wetMapFBO_B->bind();
@@ -343,7 +436,7 @@ void WatercolorEngine::updateWetMapDeposit(GLuint dabTexId,
         m_gl->glDisable(GL_SCISSOR_TEST);
     }
 
-    depositShader->release();
+    m_depositShader->release();
 
     // Swap: B ahora es el WetMap actual
     std::swap(m_wetMapFBO_A, m_wetMapFBO_B);

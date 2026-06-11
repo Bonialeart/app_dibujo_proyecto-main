@@ -173,6 +173,7 @@ private:
   QOpenGLVertexArrayObject m_vao;
   QOpenGLBuffer m_vbo;
   QOpenGLBuffer m_instanceVbo;
+  int m_instanceCapacity = 0; // bytes reservados en m_instanceVbo
 
   bool m_clippingEnabled = false;
 

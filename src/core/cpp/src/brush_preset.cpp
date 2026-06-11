@@ -959,6 +959,15 @@ void BrushPreset::applyToLegacy(BrushSettings &s) const {
   s.jitter = sizeDynamics.jitter; // Legacy
   s.velocityDynamics = sizeDynamics.velocityInfluence;
 
+  // Per-brush pressure response (curve + min limits)
+  s.pressureCurveX1 = sizeDynamics.pressureCurve.cx1;
+  s.pressureCurveY1 = sizeDynamics.pressureCurve.cy1;
+  s.pressureCurveX2 = sizeDynamics.pressureCurve.cx2;
+  s.pressureCurveY2 = sizeDynamics.pressureCurve.cy2;
+  s.sizeMinPressure = std::max(0.0f, std::min(1.0f, sizeDynamics.minLimit));
+  s.opacityMinPressure =
+      std::max(0.0f, std::min(1.0f, opacityDynamics.minLimit));
+
   // New Jitter Settings
   s.jitterLateral = stroke.jitterLateral;
   s.jitterLinear = stroke.jitterLinear;

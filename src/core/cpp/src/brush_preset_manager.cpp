@@ -257,6 +257,22 @@ void BrushPresetManager::addPreset(const BrushPreset &preset) {
   BrushPreset updatedPreset = preset;
   updatedPreset.category = mappedCategory;
 
+  // Replace an existing preset with the same UUID or name (case-insensitive)
+  // instead of duplicating it. This lets user-edited brushes loaded from
+  // brushes/user override the factory version of the same brush.
+  for (auto &group : m_groups) {
+    for (auto &existing : group.brushes) {
+      bool sameUuid = !updatedPreset.uuid.isEmpty() &&
+                      existing.uuid == updatedPreset.uuid;
+      bool sameName =
+          existing.name.compare(updatedPreset.name, Qt::CaseInsensitive) == 0;
+      if (sameUuid || sameName) {
+        existing = updatedPreset;
+        return;
+      }
+    }
+  }
+
   BrushGroup &group = ensureGroup(mappedCategory);
   group.brushes.push_back(updatedPreset);
 }

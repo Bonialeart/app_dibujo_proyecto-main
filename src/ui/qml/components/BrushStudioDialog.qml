@@ -806,6 +806,28 @@ Rectangle {
                                 onValueChanged: studio.setBrushProp("dynamics", "size_jitter", value)
                             }
 
+                            StudioSlider {
+                                label: "Jitter Lateral"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("stroke", "jitter_lateral") || 0 : 0
+                                onValueChanged: studio.setBrushProp("stroke", "jitter_lateral", value)
+                            }
+
+                            StudioSlider {
+                                label: "Jitter Lineal"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("stroke", "jitter_linear") || 0 : 0
+                                onValueChanged: studio.setBrushProp("stroke", "jitter_linear", value)
+                            }
+
+                            StudioSlider {
+                                label: "Desvanecimiento (Fall Off)"
+                                from: 0; to: 2000
+                                suffix: "px"
+                                value: targetCanvas ? targetCanvas.getBrushProperty("stroke", "fall_off") || 0 : 0
+                                onValueChanged: studio.setBrushProp("stroke", "fall_off", value)
+                            }
+
                             StudioToggle {
                                 label: "Anti-Sacudida (Anti-Concussion)"
                                 checked: targetCanvas ? targetCanvas.getBrushProperty("stroke", "anti_concussion") || false : false
@@ -1046,12 +1068,61 @@ Rectangle {
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "size_jitter") || 0 : 0
                                 onValueChanged: studio.setBrushProp("dynamics", "size_jitter", value)
                             }
-                            
+
                             StudioSlider {
                                 label: "Variación de Opacidad"
                                 from: 0; to: 1.0
                                 value: targetCanvas ? targetCanvas.getBrushProperty("dynamics", "opacity_jitter") || 0 : 0
                                 onValueChanged: studio.setBrushProp("dynamics", "opacity_jitter", value)
+                            }
+
+                            // ── Advanced per-stamp jitter (randomize settings) ──
+                            Row {
+                                spacing: 8
+                                Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: "DISPERSIÓN AVANZADA (POR ESTAMPA)"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
+                            }
+
+                            StudioSlider {
+                                label: "Dispersión de Posición X"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("randomize", "pos_jitter_x") || 0 : 0
+                                onValueChanged: studio.setBrushProp("randomize", "pos_jitter_x", value)
+                            }
+
+                            StudioSlider {
+                                label: "Dispersión de Posición Y"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("randomize", "pos_jitter_y") || 0 : 0
+                                onValueChanged: studio.setBrushProp("randomize", "pos_jitter_y", value)
+                            }
+
+                            StudioSlider {
+                                label: "Dispersión de Tamaño"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("randomize", "size_jitter") || 0 : 0
+                                onValueChanged: studio.setBrushProp("randomize", "size_jitter", value)
+                            }
+
+                            StudioSlider {
+                                label: "Dispersión de Ángulo"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("randomize", "rotation_jitter") || 0 : 0
+                                onValueChanged: studio.setBrushProp("randomize", "rotation_jitter", value)
+                            }
+
+                            StudioSlider {
+                                label: "Dispersión de Redondez"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("randomize", "roundness_jitter") || 0 : 0
+                                onValueChanged: studio.setBrushProp("randomize", "roundness_jitter", value)
+                            }
+
+                            StudioSlider {
+                                label: "Dispersión de Opacidad"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("randomize", "opacity_jitter") || 0 : 0
+                                onValueChanged: studio.setBrushProp("randomize", "opacity_jitter", value)
                             }
                         }
 
@@ -1310,7 +1381,7 @@ Rectangle {
 
                             StudioToggle {
                                 label: "Fijo al Lienzo (Rodante)"
-                                checked: targetCanvas ? targetCanvas.getBrushProperty("grain", "rolling") || true : true
+                                checked: targetCanvas ? targetCanvas.getBrushProperty("grain", "rolling") !== false : true
                                 onCheckedChanged: studio.setBrushProp("grain", "rolling", checked)
                             }
                         }
@@ -1335,7 +1406,7 @@ Rectangle {
                             
                             StudioToggle {
                                 label: "Suavizado (Anti-Aliasing)"
-                                checked: targetCanvas ? targetCanvas.getBrushProperty("rendering", "anti_aliasing") || true : true
+                                checked: targetCanvas ? targetCanvas.getBrushProperty("rendering", "anti_aliasing") !== false : true
                                 onCheckedChanged: studio.setBrushProp("rendering", "anti_aliasing", checked)
                             }
                         }
@@ -1544,6 +1615,49 @@ Rectangle {
                                 value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "blur") || 0 : 0
                                 onValueChanged: studio.setBrushProp("wetmix", "blur", value)
                             }
+
+                            // ── Realistic watercolor simulation ──
+                            Row {
+                                spacing: 8
+                                Rectangle { width: 3; height: 12; radius: 1; color: colorAccent; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: "SIMULACIÓN DE ACUARELA"; color: textMuted; font.pixelSize: 10; font.weight: Font.Bold; font.letterSpacing: 1 }
+                            }
+
+                            StudioSlider {
+                                label: "Sangrado / Expansión (Bleed)"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "bleed") || 0 : 0
+                                onValueChanged: studio.setBrushProp("wetmix", "bleed", value)
+                            }
+
+                            StudioSlider {
+                                label: "Absorción del Papel"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "absorption_rate") || 0 : 0
+                                onValueChanged: studio.setBrushProp("wetmix", "absorption_rate", value)
+                            }
+
+                            StudioSlider {
+                                label: "Tiempo de Secado"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "drying_time") || 0 : 0
+                                onValueChanged: studio.setBrushProp("wetmix", "drying_time", value)
+                            }
+
+                            StudioSlider {
+                                label: "Húmedo sobre Húmedo"
+                                from: 0; to: 2.0
+                                suffix: "x"
+                                value: targetCanvas ? (targetCanvas.getBrushProperty("wetmix", "wet_on_wet_multiplier") !== undefined ? targetCanvas.getBrushProperty("wetmix", "wet_on_wet_multiplier") : 1.0) : 1.0
+                                onValueChanged: studio.setBrushProp("wetmix", "wet_on_wet_multiplier", value)
+                            }
+
+                            StudioSlider {
+                                label: "Variación de Humedad (Jitter)"
+                                from: 0; to: 1.0
+                                value: targetCanvas ? targetCanvas.getBrushProperty("wetmix", "wet_jitter") || 0 : 0
+                                onValueChanged: studio.setBrushProp("wetmix", "wet_jitter", value)
+                            }
                         }
 
                         // --- TAB 6: SENSIBILIDAD DEL LÁPIZ ---
@@ -1574,6 +1688,25 @@ Rectangle {
 
                                         property var pts: [[0.0,0.0],[0.33,0.33],[0.66,0.66],[1.0,1.0]]
                                         property int dragging: -1
+
+                                        // Load the per-brush pressure curve from the editing preset
+                                        Component.onCompleted: {
+                                            if (targetCanvas) {
+                                                var c = targetCanvas.getBrushProperty("dynamics", "size_curve")
+                                                if (c && c.length >= 4) {
+                                                    pts = [[0.0, 0.0], [c[0], c[1]], [c[2], c[3]], [1.0, 1.0]]
+                                                    requestPaint()
+                                                }
+                                            }
+                                        }
+
+                                        // Push the curve into the editing preset (persisted on save)
+                                        function commitCurve() {
+                                            if (targetCanvas && pts.length >= 4) {
+                                                studio.setBrushProp("dynamics", "size_curve",
+                                                    [pts[1][0], pts[1][1], pts[2][0], pts[2][1]])
+                                            }
+                                        }
 
                                         onPaint: {
                                             var ctx = getContext("2d")
@@ -1640,17 +1773,18 @@ Rectangle {
                                                 }
                                                 if (bestD < 20) sizeCurveCanvas.dragging = best
                                             }
-                                            onReleased: { sizeCurveCanvas.dragging = -1; sizeCurveCanvas.requestPaint() }
+                                            onReleased: {
+                                                if (sizeCurveCanvas.dragging >= 0) {
+                                                    sizeCurveCanvas.commitCurve()
+                                                }
+                                                sizeCurveCanvas.dragging = -1; sizeCurveCanvas.requestPaint()
+                                            }
                                             onPositionChanged: {
                                                 if (sizeCurveCanvas.dragging >= 0) {
                                                     var nx = Math.max(0, Math.min(1, mouseX / sizeCurveCanvas.width))
                                                     var ny = Math.max(0, Math.min(1, 1 - mouseY / sizeCurveCanvas.height))
                                                     sizeCurveCanvas.pts[sizeCurveCanvas.dragging] = [nx, ny]
                                                     sizeCurveCanvas.requestPaint()
-                                                    // Apply to canvas: map to pressure curve (using P1 and P2 bezier)
-                                                    if (targetCanvas && sizeCurveCanvas.pts.length >= 4) {
-                                                        targetCanvas.setCurvePoints([sizeCurveCanvas.pts[1][0], sizeCurveCanvas.pts[1][1], sizeCurveCanvas.pts[2][0], sizeCurveCanvas.pts[2][1]])
-                                                    }
                                                 }
                                             }
                                         }
@@ -1694,9 +1828,7 @@ Rectangle {
                                                         ]
                                                         sizeCurveCanvas.pts = presets[index]
                                                         sizeCurveCanvas.requestPaint()
-                                                        if (targetCanvas && sizeCurveCanvas.pts.length >= 4) {
-                                                            targetCanvas.setCurvePoints([sizeCurveCanvas.pts[1][0], sizeCurveCanvas.pts[1][1], sizeCurveCanvas.pts[2][0], sizeCurveCanvas.pts[2][1]])
-                                                        }
+                                                        sizeCurveCanvas.commitCurve()
                                                     }
                                                 }
                                             }
@@ -2017,10 +2149,14 @@ Rectangle {
                                     width: parent.width; height: 96; radius: 8; color: bgSurface
                                     border.color: borderDim; border.width: 1
                                     TextEdit {
+                                        id: notesEdit
                                         anchors.fill: parent; anchors.margins: 10
                                         wrapMode: TextEdit.Wrap
                                         color: textPrimary; font.pixelSize: 12
-                                        text: ""
+                                        text: targetCanvas ? (targetCanvas.getBrushProperty("meta", "notes") || "") : ""
+                                        onActiveFocusChanged: {
+                                            if (!activeFocus) studio.setBrushProp("meta", "notes", text)
+                                        }
                                     }
                                     Text {
                                         text: "Añadir notas sobre este pincel..."
@@ -2029,7 +2165,7 @@ Rectangle {
                                         anchors.left: parent.left; anchors.leftMargin: 10
                                         anchors.top: parent.top; anchors.topMargin: 10
                                         opacity: 0.5
-                                        visible: parent.children[0].text === ""
+                                        visible: notesEdit.text === ""
                                     }
                                 }
                             }
