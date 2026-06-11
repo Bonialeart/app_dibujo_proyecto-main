@@ -763,7 +763,8 @@ import "../components"
                 Shortcut { sequences: ["H"]; onActivated: mainCanvas.currentTool = "hand" }
                 Shortcut { sequences: ["Tab"]; onActivated: isZenMode = !isZenMode }
                 */
-                // === MOVABLE PREMIUM SLIDERS TOOLBOX (Adaptive Orientation & Color History Morfosis) ===                Rectangle {
+                // === MOVABLE PREMIUM SLIDERS TOOLBOX (Adaptive Orientation & Color History Morfosis) ===
+                Rectangle {
                     id: sliderToolbox
                     x: 20
                     y: 150 // Static initial Y to avoid startup loops
@@ -1007,7 +1008,7 @@ import "../components"
                     }
                     
                     Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
-                }    }}
+                }
 
                 // === TRANSFORM OPTIONS HUD (Ultra-Premium Redesign) ===
                 Item {
@@ -3591,8 +3592,6 @@ import "../components"
                                 }
                             }
                         }
-                        
-                        } // End slidersView
                         
                         // History Bar (Global)
                         Rectangle { width: parent.width; height: 1; color: "#444" }

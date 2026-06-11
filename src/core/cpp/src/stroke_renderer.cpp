@@ -145,14 +145,16 @@ void StrokeRenderer::initialize() {
 
   // Search for shaders in common paths
   QStringList vertPaths, fragPaths;
-  vertPaths << QCoreApplication::applicationDirPath() + "/shaders/brush.vert"
+  vertPaths << ":/src/core/shaders/brush.vert"
+            << QCoreApplication::applicationDirPath() + "/shaders/brush.vert"
             << QCoreApplication::applicationDirPath() +
                    "/../src/core/shaders/brush.vert"
             << "e:/app_dibujo_proyecto-main/src/core/shaders/brush.vert"
             << "d:/app_dibujo_proyecto-main/src/core/shaders/brush.vert"
             << ":/shaders/brush.vert";
 
-  fragPaths << QCoreApplication::applicationDirPath() + "/shaders/brush.frag"
+  fragPaths << ":/src/core/shaders/brush.frag"
+            << QCoreApplication::applicationDirPath() + "/shaders/brush.frag"
             << QCoreApplication::applicationDirPath() +
                    "/../src/core/shaders/brush.frag"
             << "e:/app_dibujo_proyecto-main/src/core/shaders/brush.frag"

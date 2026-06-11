@@ -40,9 +40,10 @@ uint32_t BrushEngine::loadTexture(const QString &name, bool isTip) {
   } else {
     // Try multiple paths (searching up to root from executable or CWD)
     QStringList searchPaths;
+    searchPaths << ":/assets/textures/" + name;
+    searchPaths << ":/assets/brushes/tips/" + name;
+    searchPaths << ":/assets/brushes/" + name;
     searchPaths << "assets/textures/" + name;
-    searchPaths << "assets/brushes/tips/" + name;
-    searchPaths << "assets/brushes/" + name;
     searchPaths << "../assets/textures/" + name;
     searchPaths << "../assets/brushes/tips/" + name;
     searchPaths << "../assets/brushes/" + name;
@@ -154,9 +155,10 @@ static QImage getTextureImage(const QString &name, bool isTip = true) {
   } else {
     // Try multiple paths (searching up to root from executable or CWD)
     QStringList searchPaths;
+    searchPaths << ":/assets/textures/" + name;
+    searchPaths << ":/assets/brushes/tips/" + name;
+    searchPaths << ":/assets/brushes/" + name;
     searchPaths << "assets/textures/" + name;
-    searchPaths << "assets/brushes/tips/" + name;
-    searchPaths << "assets/brushes/" + name;
     searchPaths << "../assets/textures/" + name;
     searchPaths << "../assets/brushes/tips/" + name;
     searchPaths << "../assets/brushes/" + name;

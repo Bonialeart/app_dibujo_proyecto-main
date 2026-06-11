@@ -977,6 +977,9 @@ private:
   int m_touchPointCount = 0;
   float m_lastPinchScale = 1.0f;
   float m_lastPinchAngle = 0.0f;          // Angle between two touch points (radians)
+  int m_maxTouchPointsThisSession = 0;
+  qint64 m_touchStartTime = 0;
+  bool m_touchMovedThisSession = false;
   bool m_isTwoFingerGesture = false;       // True while a 2-finger gesture is active
   bool m_isThreeFingerGesture = false;     // True while a 3-finger gesture is active
   QPointF m_threeFingerStartPos;           // Start position of 3-finger swipe

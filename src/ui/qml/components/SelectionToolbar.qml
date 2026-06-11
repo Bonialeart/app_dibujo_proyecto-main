@@ -4,19 +4,19 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import Kromo 1.0
 
-// ColorRangeDialog is loaded on demand
-ColorRangeDialog {
-    id: colorRangeDialog
-    canvas: root.canvas
-    uiScale: root.uiScale
-    accentColor: root.accentColor
-}
-
 Item {
     id: root
     property var canvas
     property var uiScale: 1.0
     property color accentColor: "#6366f1"
+
+    // ColorRangeDialog is loaded on demand
+    ColorRangeDialog {
+        id: colorRangeDialog
+        canvas: root.canvas
+        uiScale: root.uiScale
+        accentColor: root.accentColor
+    }
 
     height: 62 * uiScale
     width: mainRow.implicitWidth + 40 * uiScale

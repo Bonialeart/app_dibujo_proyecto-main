@@ -828,6 +828,21 @@ Window {
         anchors.fill: parent
         spacing: 0
 
+        // Spacer for Android Safe Area (Status Bar)
+        Item {
+            Layout.fillWidth: true
+            Layout.preferredHeight: {
+                if (Qt.platform.os === "android") {
+                    if (typeof Screen !== "undefined" && Screen.safeAreaMargins && Screen.safeAreaMargins.top > 0) {
+                        return Screen.safeAreaMargins.top;
+                    }
+                    return 24 * uiScale;
+                }
+                return 0;
+            }
+            visible: Layout.preferredHeight > 0
+        }
+
         // NAVBAR DE MENÚ SUPERIOR (PREMIUM)
         Rectangle {
             Layout.fillWidth: true; Layout.preferredHeight: 38 * uiScale
@@ -7609,6 +7624,7 @@ Window {
         color: "#e0000000"
         
         // Estado interno del diálogo
+        property bool isCreating: false
         property int inputW: 1920
         property int inputH: 1080
         property int inputDPI: 72
@@ -7803,7 +7819,7 @@ Window {
             onFinished: newProjectDialog.visible = false
         }
         
-        MouseArea { anchors.fill: parent; onClicked: newProjectDialog.close() }
+        MouseArea { anchors.fill: parent; enabled: !newProjectDialog.isCreating; onClicked: newProjectDialog.close() }
         
         // === MAIN CARD (Premium 2-Column Layout) ===
         Rectangle {
@@ -7867,6 +7883,7 @@ Window {
                             MouseArea {
                                 id: closeHover
                                 anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                enabled: !newProjectDialog.isCreating
                                 onClicked: newProjectDialog.close()
                             }
                         }
@@ -8974,6 +8991,8 @@ Window {
                             // === CREATE BUTTON ===
                             Rectangle {
                                 width: parent.width; height: 50; radius: 25
+                                opacity: newProjectDialog.isCreating ? 0.6 : 1.0
+                                Behavior on opacity { NumberAnimation { duration: 150 } }
                                 
                                 gradient: Gradient {
                                     orientation: Gradient.Horizontal
@@ -8983,33 +9002,38 @@ Window {
                                 
                                 Row {
                                     anchors.centerIn: parent; spacing: 12
-                                    Text { text: "+"; color: "white"; font.pixelSize: 22; font.weight: Font.Light; anchors.verticalCenter: parent.verticalCenter }
-                                    Text { text: "Crear Proyecto"; color: "white"; font.pixelSize: 15; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter; font.letterSpacing: 0.5 }
+                                    Text { text: "+"; color: "white"; font.pixelSize: 22; font.weight: Font.Light; anchors.verticalCenter: parent.verticalCenter; visible: !newProjectDialog.isCreating }
+                                    Text { text: newProjectDialog.isCreating ? "Creando..." : "Crear Proyecto"; color: "white"; font.pixelSize: 15; font.weight: Font.DemiBold; anchors.verticalCenter: parent.verticalCenter; font.letterSpacing: 0.5 }
                                 }
                                 
                                 MouseArea {
                                     id: createBtnMouse
                                     anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                    enabled: !newProjectDialog.isCreating
                                     onClicked: {
-                                        var isStory = newProjectDialog.isMultiPage;
-                                        var isAnimation = (newProjectDialog.selectedCategoryIndex === 3);
-                                        
-                                        mainWindow.createNewProjectTab(isStory, isAnimation);
-                                        
-                                        if (isAnimation) {
-                                            if (isStudioMode) {
-                                                studioCanvasLayout.loadWorkspace("Animación")
+                                        newProjectDialog.isCreating = true;
+                                        Qt.callLater(function() {
+                                            var isStory = newProjectDialog.isMultiPage;
+                                            var isAnimation = (newProjectDialog.selectedCategoryIndex === 3);
+                                            
+                                            mainWindow.createNewProjectTab(isStory, isAnimation);
+                                            
+                                            if (isAnimation) {
+                                                if (isStudioMode) {
+                                                    studioCanvasLayout.loadWorkspace("Animación")
+                                                }
                                             }
-                                        }
-                                        
-                                        if (animationCamera) animationCamera.clearKeyframes();
-                                        newProjectDialog.close();
+                                            
+                                            if (animationCamera) animationCamera.clearKeyframes();
+                                            newProjectDialog.close();
+                                            newProjectDialog.isCreating = false;
+                                        });
                                     }
                                     onPressed: parent.scale = 0.97
                                     onReleased: parent.scale = 1.0
                                 }
                                 
-                                scale: createBtnMouse.containsMouse ? 1.02 : 1.0
+                                scale: createBtnMouse.containsMouse && !newProjectDialog.isCreating ? 1.02 : 1.0
                                 Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
                             }
                             Item { height: 32 }  // bottom padding in scroll — espacio extra al final

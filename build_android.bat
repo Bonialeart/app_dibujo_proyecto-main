@@ -13,7 +13,8 @@ set QT_HOST=C:\Qt\6.11.1\mingw_64
 set NDK=C:\Users\bonia\AppData\Local\Android\Sdk\ndk\26.3.11579264
 set SDK=C:\Users\bonia\AppData\Local\Android\Sdk
 set JDK=C:\Program Files\Java\jdk-17
-set SRC=E:\Programacion\Rescate_Proyecto
+set SRC=%~dp0
+if "%SRC:~-1%"=="\" set SRC=%SRC:~0,-1%
 set BUILD=%SRC%\build\Android_arm64_CLI
 set LOG=%SRC%\cmake_configure.log
 
@@ -92,10 +93,34 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM -- Firmar la APK generada
+echo.
+echo [4/4] Firmando la APK...
+echo.
+
+set APKSIGNER=%SDK%\build-tools\37.0.0\apksigner.bat
+if not exist "%APKSIGNER%" set APKSIGNER=%SDK%\build-tools\36.1.0\apksigner.bat
+
+if exist "%SRC%\my-release-key.jks" goto :SIGN_APK
+echo [INFO] Creando certificado de firma (keystore)...
+"%JDK%\bin\keytool.exe" -genkey -v -keystore "%SRC%\my-release-key.jks" -keyalg RSA -keysize 2048 -validity 10000 -alias my-alias -storepass password -keypass password -dname "CN=KromoStudio, OU=Development, O=KromoStudio, L=City, S=State, C=US"
+
+:SIGN_APK
+
+"%APKSIGNER%" sign --ks "%SRC%\my-release-key.jks" --ks-key-alias my-alias --ks-pass pass:password --key-pass pass:password --out "%SRC%\KromoStudio.apk" "%BUILD%\android-build-KromoStudio\build\outputs\apk\release\android-build-KromoStudio-release-unsigned.apk"
+
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Fallo al firmar la APK.
+    pause
+    exit /b 1
+)
+
 echo.
 echo ============================================================
-echo  BUILD COMPLETADO!
-echo  APK en: %BUILD%\android-build\build\outputs\apk\
+echo  BUILD COMPLETADO Y FIRMADO!
+echo  Instala el archivo KromoStudio.apk en tu tablet:
+echo  %SRC%\KromoStudio.apk
 echo ============================================================
 echo.
 pause

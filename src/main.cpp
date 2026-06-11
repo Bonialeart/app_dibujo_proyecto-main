@@ -42,7 +42,7 @@ extern "C" {
 }
 
 int main(int argc, char *argv[]) {
-  qInstallMessageHandler(myMessageOutput);
+  // qInstallMessageHandler(myMessageOutput);
 
   // Verificar integración Rust en release builds
   int32_t rust_sum = test_rust_integration(10, 32);

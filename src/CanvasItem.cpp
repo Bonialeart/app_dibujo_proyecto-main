@@ -5,6 +5,16 @@
 #include "WintabManager.h"
 #endif
 #include <fstream>
+
+#ifndef GL_RGBA8
+#define GL_RGBA8 0x8058
+#endif
+#ifndef GL_RGBA16F
+#define GL_RGBA16F 0x881A
+#endif
+#ifndef GL_UNPACK_ROW_LENGTH
+#define GL_UNPACK_ROW_LENGTH 0x0CF2
+#endif
 #include "core/cpp/include/brush_preset_manager.h"
 #include "core/brushes/abr_parser.h"
 #include "core/cpp/include/undo_commands.h"
@@ -290,6 +300,9 @@ CanvasItem::CanvasItem(QQuickItem *parent)
       m_lastCanvasHeight(0), m_hasActiveSpeechBalloon(false),
       m_draggingBalloonHandle(0),
       m_gradientShape("linear") {
+  m_maxTouchPointsThisSession = 0;
+  m_touchStartTime = 0;
+  m_touchMovedThisSession = false;
   m_lastTraceTarget = QPointF(-9999.0f, -9999.0f);
   m_customOpenHandCursor = loadCustomSvgCursor("hand-open.svg");
   m_customClosedHandCursor = loadCustomSvgCursor("hand-closed.svg");
@@ -396,7 +409,8 @@ CanvasItem::CanvasItem(QQuickItem *parent)
 
   // Try loading JSON presets from disk
   QStringList searchPaths;
-  searchPaths << "assets/brushes"
+  searchPaths << ":/assets/brushes"
+              << "assets/brushes"
               << "src/assets/brushes" // Keep for compatibility if needed,
                                       // though folder is gone
               << QCoreApplication::applicationDirPath() + "/assets/brushes"
@@ -1376,10 +1390,11 @@ void CanvasItem::paint(QPainter *painter) {
   if (!m_compositionShader) {
     m_compositionShader = new QOpenGLShaderProgram();
     QStringList paths;
-    paths << QCoreApplication::applicationDirPath() + "/shaders/";
-    paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
-    paths << "src/core/shaders/";
-    paths << "../src/core/shaders/";
+    paths << ":/src/core/shaders/"
+          << QCoreApplication::applicationDirPath() + "/shaders/"
+          << QCoreApplication::applicationDirPath() + "/../src/core/shaders/"
+          << "src/core/shaders/"
+          << "../src/core/shaders/";
     QString vertPath, fragPath;
     for (const QString &path : paths) {
       if (QFile::exists(path + "composition.vert") &&
@@ -1404,10 +1419,11 @@ void CanvasItem::paint(QPainter *painter) {
   if (!m_screentoneShader) {
     m_screentoneShader = new QOpenGLShaderProgram();
     QStringList paths;
-    paths << QCoreApplication::applicationDirPath() + "/shaders/";
-    paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
-    paths << "src/core/shaders/";
-    paths << "../src/core/shaders/";
+    paths << ":/src/core/shaders/"
+          << QCoreApplication::applicationDirPath() + "/shaders/"
+          << QCoreApplication::applicationDirPath() + "/../src/core/shaders/"
+          << "src/core/shaders/"
+          << "../src/core/shaders/";
     QString vertPath, fragPath;
     for (const QString &path : paths) {
       if (QFile::exists(path + "composition.vert") &&
@@ -1451,10 +1467,11 @@ void CanvasItem::paint(QPainter *painter) {
   if (!m_gradientMapShader) {
     m_gradientMapShader = new QOpenGLShaderProgram();
     QStringList paths;
-    paths << QCoreApplication::applicationDirPath() + "/shaders/";
-    paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
-    paths << "src/core/shaders/";
-    paths << "../src/core/shaders/";
+    paths << ":/src/core/shaders/"
+          << QCoreApplication::applicationDirPath() + "/shaders/"
+          << QCoreApplication::applicationDirPath() + "/../src/core/shaders/"
+          << "src/core/shaders/"
+          << "../src/core/shaders/";
     QString vertPath, fragPath;
     for (const QString &path : paths) {
       if (QFile::exists(path + "composition.vert") &&
@@ -1511,10 +1528,11 @@ void CanvasItem::paint(QPainter *painter) {
 
     // Buscar shaders en rutas relativas y absolutas
     QStringList paths;
-    paths << QCoreApplication::applicationDirPath() + "/shaders/";
-    paths << QCoreApplication::applicationDirPath() + "/../src/core/shaders/";
-    paths << "src/core/shaders/"; // Relative to project root
-    paths << "assets/shaders/";   // If we move shaders later
+    paths << ":/src/core/shaders/"
+          << QCoreApplication::applicationDirPath() + "/shaders/"
+          << QCoreApplication::applicationDirPath() + "/../src/core/shaders/"
+          << "src/core/shaders/" // Relative to project root
+          << "assets/shaders/";   // If we move shaders later
 
     QString vertPath, fragPath;
     for (const QString &path : paths) {
@@ -5927,6 +5945,10 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
   m_touchPointCount = points;
 
   if (event->type() == QEvent::TouchBegin) {
+    m_maxTouchPointsThisSession = points;
+    m_touchStartTime = QDateTime::currentMSecsSinceEpoch();
+    m_touchMovedThisSession = false;
+
     // ── Single-finger: eyedropper long-press ──
     if (points == 1 &&
         PreferencesManager::instance()->touchEyedropperEnabled()) {
@@ -6021,6 +6043,13 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
     event->accept();
 
   } else if (event->type() == QEvent::TouchUpdate) {
+    m_maxTouchPointsThisSession = std::max(m_maxTouchPointsThisSession, points);
+    for (int i = 0; i < points; ++i) {
+      QPointF delta = event->points()[i].position() - event->points()[i].pressPosition();
+      if (std::abs(delta.x()) > 15.0f || std::abs(delta.y()) > 15.0f) {
+        m_touchMovedThisSession = true;
+      }
+    }
     m_lastTouchPos = event->points().first().position();
 
     // ── Transition to 3 fingers: brush size gesture ──
@@ -6183,11 +6212,9 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
       // ── Zoom calculation ──
       float currentDist = QLineF(p1, p2).length();
       float newZoom = m_zoomLevel;
-      if (m_lastPinchScale > 30.0f && currentDist > 30.0f) {
+      if (m_lastPinchScale > 10.0f && currentDist > 10.0f) {
         float scaleFactor = currentDist / m_lastPinchScale;
-        if (std::abs(scaleFactor - 1.0f) > 0.005f) {
-          newZoom = std::clamp((float)(m_zoomLevel * scaleFactor), 0.05f, 64.0f);
-        }
+        newZoom = std::clamp((float)(m_zoomLevel * scaleFactor), 0.05f, 64.0f);
       }
 
       // ── Rotation calculation ──
@@ -6196,10 +6223,7 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
       if (angleDelta > M_PI) angleDelta -= 2.0f * M_PI;
       if (angleDelta < -M_PI) angleDelta += 2.0f * M_PI;
       float angleDeltaDeg = qRadiansToDegrees(angleDelta);
-      float newRotation = m_canvasRotation;
-      if (std::abs(angleDeltaDeg) > 0.3f) {
-        newRotation = m_canvasRotation + angleDeltaDeg;
-      }
+      float newRotation = m_canvasRotation + angleDeltaDeg;
 
       // ── Calculate the new ViewOffset to anchor focal point under the new screen 'center' ──
       QPointF viewCenter(width() / 2.0, height() / 2.0);
@@ -6235,13 +6259,14 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
 
     // ── Multi-touch Undo/Redo ──
     if (PreferencesManager::instance()->multitouchUndoRedoEnabled()) {
-      // Only trigger undo/redo if we weren't in a pan/zoom/rotate gesture
-      // and the stroke wasn't just cancelled and wasn't a 3-finger swipe
-      if (!m_strokeCancelledByGesture && !m_isDrawing) {
-        if (points == 2) {
+      qint64 duration = QDateTime::currentMSecsSinceEpoch() - m_touchStartTime;
+      if (duration < 350 && !m_touchMovedThisSession && !m_isDrawing && !m_strokeCancelledByGesture) {
+        if (m_maxTouchPointsThisSession == 2) {
           undo();
-        } else if (points == 3 && !m_threeFingerMoved) {
+          emit notificationRequested("Deshacer", "info");
+        } else if (m_maxTouchPointsThisSession == 3) {
           redo();
+          emit notificationRequested("Rehacer", "info");
         }
       }
     }
@@ -6252,6 +6277,9 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
     m_threeFingerMoved = false;
     m_strokeCancelledByGesture = false;
     m_touchPointCount = 0;
+    m_maxTouchPointsThisSession = 0;
+    m_touchStartTime = 0;
+    m_touchMovedThisSession = false;
   }
 }
 
@@ -13300,7 +13328,9 @@ QImage CanvasItem::loadAndProcessBrushTexture(const QString &texturePath,
     fullPath = texturePath;
   } else {
     QStringList searchPaths;
-    searchPaths << "assets/textures"
+    searchPaths << ":/assets/textures"
+                << ":/assets/brushes"
+                << "assets/textures"
                 << "assets/brushes"
                 << "src/assets/textures"
                 << "src/assets/brushes"
@@ -13821,12 +13851,14 @@ QVariantList CanvasItem::getAvailableTipTextures() const {
   
   // Define candidate search directories
   QStringList brushesCandidates;
-  brushesCandidates << QCoreApplication::applicationDirPath() + "/assets/brushes"
+  brushesCandidates << ":/assets/brushes"
+                    << QCoreApplication::applicationDirPath() + "/assets/brushes"
                     << QCoreApplication::applicationDirPath() + "/../assets/brushes"
                     << QDir::currentPath() + "/assets/brushes";
 
   QStringList texturesCandidates;
-  texturesCandidates << QCoreApplication::applicationDirPath() + "/assets/textures"
+  texturesCandidates << ":/assets/textures"
+                     << QCoreApplication::applicationDirPath() + "/assets/textures"
                      << QCoreApplication::applicationDirPath() + "/../assets/textures"
                      << QDir::currentPath() + "/assets/textures";
 

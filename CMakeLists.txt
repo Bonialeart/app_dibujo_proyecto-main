@@ -110,10 +110,39 @@ set(RESOURCES
 )
 
 # 6. Ejecutable Final
-add_executable(${PROJECT_NAME}
+qt_add_executable(${PROJECT_NAME}
     ${CORE_SOURCES}
     ${UI_SOURCES}
     ${RESOURCES}
+)
+
+# Empaquetar assets y shaders en el sistema de recursos virtuales (qrc)
+file(GLOB_RECURSE ASSETS_FILES
+    RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+    "assets/icons/*.svg"
+    "assets/icons/*.png"
+    "assets/textures/*.png"
+    "assets/textures/*.jpg"
+    "assets/brushes/*.json"
+    "assets/brushes/**/*.json"
+)
+qt_add_resources(${PROJECT_NAME} "assets"
+    PREFIX "/"
+    BASE_RESOURCES_PATH ${CMAKE_CURRENT_SOURCE_DIR}
+    FILES
+        ${ASSETS_FILES}
+)
+
+file(GLOB_RECURSE SHADER_FILES
+    RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+    "src/core/shaders/*.vert"
+    "src/core/shaders/*.frag"
+)
+qt_add_resources(${PROJECT_NAME} "shaders"
+    PREFIX "/"
+    BASE_RESOURCES_PATH ${CMAKE_CURRENT_SOURCE_DIR}
+    FILES
+        ${SHADER_FILES}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE

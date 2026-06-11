@@ -10,6 +10,13 @@
 #include <QDebug>
 #include <cmath>
 
+#ifndef GL_RG16F
+#define GL_RG16F 0x822F
+#endif
+#ifndef GL_RGBA16F
+#define GL_RGBA16F 0x881A
+#endif
+
 // ========================== QUAD VERTICES ====================================
 // Fullscreen triangle-strip quad en NDC (-1..1) con UV (0..1)
 static const float QUAD_VERTS[] = {
@@ -476,7 +483,8 @@ void WatercolorEngine::ensureShader() {
 
     // Buscar shaders en rutas del proyecto
     QStringList paths;
-    paths << QCoreApplication::applicationDirPath() + "/shaders/"
+    paths << ":/src/core/shaders/"
+          << QCoreApplication::applicationDirPath() + "/shaders/"
           << QCoreApplication::applicationDirPath() + "/../src/core/shaders/"
           << "src/core/shaders/";
 

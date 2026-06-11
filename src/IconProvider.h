@@ -29,6 +29,7 @@ public:
 
     // Lista de rutas posibles para buscar iconos
     QStringList searchPaths;
+    searchPaths << ":/assets/icons/" + fileName;
     // Ruta basada en el directorio de la aplicación
     searchPaths << QCoreApplication::applicationDirPath() + "/assets/icons/" +
                        fileName;
