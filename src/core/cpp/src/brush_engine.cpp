@@ -26,6 +26,45 @@ namespace artflow {
 static QMap<QString, uint32_t> g_textureCache;
 static std::vector<QOpenGLTexture *> g_textures; // To manage lifetime
 
+// ===========================================================================
+// SPRAY / SPLATTER THROTTLING (Android 60 FPS)
+// ===========================================================================
+// La emisión masiva de partículas en pinceles de pulverización satura la GPU
+// móvil: un trazo rápido cubre muchos centros de emisión y cada centro genera
+// densidad*3 micro-gotas. Limitamos el TOTAL de partículas por segmento de
+// trazo (particle throttling) y, cuando recortamos el número, agrandamos
+// ligeramente cada gota para conservar la cobertura percibida (densidad
+// visual ≈ nº · tamaño²), sin perder fluidez ni tirones bajo el lápiz.
+namespace {
+#if defined(__ANDROID__) || defined(Q_OS_ANDROID)
+constexpr int kMaxSprayParticlesPerSegment = 280;   // presupuesto móvil
+#else
+constexpr int kMaxSprayParticlesPerSegment = 4000;  // escritorio
+#endif
+
+inline void computeSprayThrottle(int rawPerDab, float dist, float stepSize,
+                                 int &outPerDab, float &outSizeComp) {
+  rawPerDab = std::max(1, rawPerDab);
+  int baseDabs = std::max(1, static_cast<int>(
+                              std::ceil(dist / std::max(0.5f, stepSize))));
+  long projected = static_cast<long>(baseDabs) * rawPerDab;
+  if (projected <= kMaxSprayParticlesPerSegment) {
+    outPerDab = rawPerDab;
+    outSizeComp = 1.0f;
+    return;
+  }
+  // Escala objetivo para no exceder el presupuesto del segmento
+  float scale = static_cast<float>(kMaxSprayParticlesPerSegment) /
+                static_cast<float>(projected);
+  outPerDab = std::max(1, static_cast<int>(std::lround(rawPerDab * scale)));
+  // Compensación de tamaño: cobertura ≈ nº · tamaño² → mantener constante.
+  // Cap a 1.7× para que las gotas no se vuelvan visiblemente "blandas".
+  float realScale = static_cast<float>(outPerDab) /
+                    static_cast<float>(rawPerDab);
+  outSizeComp = std::min(1.7f, 1.0f / std::sqrt(std::max(realScale, 0.05f)));
+}
+} // namespace
+
 uint32_t BrushEngine::loadTexture(const QString &name, bool isTip) {
   QString cacheKey = name + (isTip ? "_tip" : "_grain");
   if (g_textureCache.contains(cacheKey))
@@ -1001,16 +1040,19 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       float opacityBase = c.alphaF() * opacityMultiplier;
 
       if (settings.mainSprayEnabled) {
-        int numParticles = std::max(1, settings.mainParticleDensity * 3);
-        
+        int numParticles;
+        float spraySizeComp;
+        computeSprayThrottle(settings.mainParticleDensity * 3, dist, stepSize,
+                             numParticles, spraySizeComp);
+
         float pSize = settings.mainParticleSize;
         if (settings.mainSpraySizeByBrush) {
           pSize = currentSize * (settings.mainParticleSize / 100.0f);
         }
-        
+
         float maxScatter = (currentSize - pSize) * 0.5f;
         float scatterRadius = std::max(0.0f, maxScatter) * (settings.mainSprayDeviation / 5.0f);
-        
+
         for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
           float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
           float tRandom = (std::rand() % 1001) / 1000.0f;
@@ -1033,7 +1075,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           if (settings.opacityJitter > 0)
             jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
 
-          float devParticleSize = pSize * scaleFactor * sizeMultiplier * calligraphyWidth * jSize;
+          float devParticleSize = pSize * scaleFactor * sizeMultiplier * calligraphyWidth * jSize * spraySizeComp;
 
           QColor finalColor = c;
           finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
@@ -1146,16 +1188,19 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
 
       // Generate Dual Brush Spray Particles
       if (settings.dualTipEnabled && settings.sprayEnabled) {
-        int numParticles = std::max(1, settings.particleDensity * 3);
-        
+        int numParticles;
+        float spraySizeComp;
+        computeSprayThrottle(settings.particleDensity * 3, dist, stepSize,
+                             numParticles, spraySizeComp);
+
         float pSize = settings.particleSize;
         if (settings.spraySizeByBrush) {
           pSize = currentSize * (settings.particleSize / 100.0f);
         }
-        
+
         float maxScatter = (currentSize - pSize) * 0.5f;
         float scatterRadius = std::max(0.0f, maxScatter) * (settings.sprayDeviation / 5.0f);
-        
+
         for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
           float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
           float tRandom = (std::rand() % 1001) / 1000.0f;
@@ -1177,7 +1222,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           if (settings.opacityJitter > 0)
             jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
 
-          float devParticleSize = pSize * scaleFactor * sizeMultiplier * calligraphyWidth * jSize;
+          float devParticleSize = pSize * scaleFactor * sizeMultiplier * calligraphyWidth * jSize * spraySizeComp;
 
           QColor finalColor = c;
           finalColor.setAlphaF(std::clamp(opacityBase * jOpac * settings.dualTipFlow, 0.0f, 1.0f));
@@ -1281,6 +1326,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
 
         // Render sprayed particles as instances (optimized to avoid rendering/blit loop lag)
         if (settings.dualTipEnabled && settings.sprayEnabled && !particleDabs.empty()) {
+          m_renderer->setSprayMode(true);
           m_renderer->renderStrokeInstanced(
               particleDabs, effectivePressure, settings.hardness,
               static_cast<int>(settings.type), m_renderer->viewportWidth(),
@@ -1328,7 +1374,11 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           QOpenGLFramebufferObject::blitFramebuffer(pingFBO, pongFBO);
         }
       } else {
-        // Fast instanced path for standard/dry brushes
+        // Fast instanced path for standard/dry brushes.
+        // Si el trazo es pulverización, activa la ruta rápida del shader
+        // (un solo tap de mezcla húmeda) — se autorrestablece tras el render.
+        if (settings.mainSprayEnabled)
+          m_renderer->setSprayMode(true);
         m_renderer->renderStrokeInstanced(
             instancedDabs, effectivePressure, settings.hardness,
             static_cast<int>(settings.type), m_renderer->viewportWidth(),
@@ -1372,6 +1422,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
 
         // Render sprayed particles as instances
         if (settings.dualTipEnabled && settings.sprayEnabled && !particleDabs.empty()) {
+          m_renderer->setSprayMode(true);
           m_renderer->renderStrokeInstanced(
               particleDabs, effectivePressure, settings.hardness,
               static_cast<int>(settings.type), m_renderer->viewportWidth(),
@@ -1557,7 +1608,10 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
 
       // 1. Draw Main Dab (or Main Spray Particles)
       if (settings.mainSprayEnabled) {
-        int numParticles = std::max(1, settings.mainParticleDensity * 3);
+        int numParticles;
+        float spraySizeComp;
+        computeSprayThrottle(settings.mainParticleDensity * 3, dist, stepSize,
+                             numParticles, spraySizeComp);
         float pSize = settings.mainParticleSize;
         if (settings.mainSpraySizeByBrush) {
           pSize = currentSize * (settings.mainParticleSize / 100.0f);
@@ -1585,7 +1639,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
           if (settings.opacityJitter > 0)
             pjOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
 
-          float finalParticleSize = std::max(0.1f, pSize * sizeMultiplier * calligraphyWidth * pjSize);
+          float finalParticleSize = std::max(0.1f, pSize * sizeMultiplier * calligraphyWidth * pjSize * spraySizeComp);
           float finalParticleOpacity = std::clamp(dabOpacity * pjOpac, 0.0f, 1.0f);
           QPointF finalParticlePt = particlePt + QPointF(pjX, pjY);
           float pRot = (settings.mainParticleDirection * 3.14159265f / 180.0f) + pjRot;
@@ -1619,7 +1673,10 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
       if (settings.dualTipEnabled && settings.sprayEnabled && !settings.dualTipTextureName.isEmpty()) {
         QImage dualTipImg = getTextureImage(settings.dualTipTextureName, true);
         if (!dualTipImg.isNull()) {
-          int numParticles = std::max(1, settings.particleDensity * 3);
+          int numParticles;
+          float spraySizeComp;
+          computeSprayThrottle(settings.particleDensity * 3, dist, stepSize,
+                               numParticles, spraySizeComp);
           float pSize = settings.particleSize;
           if (settings.spraySizeByBrush) {
             pSize = currentSize * (settings.particleSize / 100.0f);
@@ -1647,7 +1704,7 @@ void BrushEngine::paintStroke(QPainter *painter, const QPointF &lastPoint,
             if (settings.opacityJitter > 0)
               pjOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * settings.opacityJitter;
 
-            float finalParticleSize = std::max(0.1f, pSize * sizeMultiplier * calligraphyWidth * pjSize);
+            float finalParticleSize = std::max(0.1f, pSize * sizeMultiplier * calligraphyWidth * pjSize * spraySizeComp);
             float finalParticleOpacity = std::clamp(dabOpacity * pjOpac * settings.dualTipFlow, 0.0f, 1.0f);
             QPointF finalParticlePt = particlePt + QPointF(pjX, pjY);
             float pRot = (settings.particleDirection * 3.14159265f / 180.0f) + pjRot;
@@ -1814,16 +1871,19 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
     float opacityBase = opacity * opacityMultiplier;
 
     if (m_currentSettings.mainSprayEnabled) {
-      int numParticles = std::max(1, m_currentSettings.mainParticleDensity * 3);
-      
+      int numParticles;
+      float spraySizeComp;
+      computeSprayThrottle(m_currentSettings.mainParticleDensity * 3, dist,
+                           spacing, numParticles, spraySizeComp);
+
       float pSize = m_currentSettings.mainParticleSize;
       if (m_currentSettings.mainSpraySizeByBrush) {
         pSize = size * (m_currentSettings.mainParticleSize / 100.0f);
       }
-      
+
       float maxScatter = (size - pSize) * 0.5f;
       float scatterRadius = std::max(0.0f, maxScatter) * (m_currentSettings.mainSprayDeviation / 5.0f);
-      
+
       for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
         float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
         float tRandom = (std::rand() % 1001) / 1000.0f;
@@ -1845,7 +1905,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         if (m_currentSettings.opacityJitter > 0)
           jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * m_currentSettings.opacityJitter;
 
-        float devParticleSize = pSize * sizeMultiplier * jSize;
+        float devParticleSize = pSize * sizeMultiplier * jSize * spraySizeComp;
 
         QColor finalColor = m_currentSettings.color;
         finalColor.setAlphaF(std::clamp(opacityBase * jOpac, 0.0f, 1.0f));
@@ -1946,16 +2006,19 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
 
     // Generate continueStroke particles
     if (m_currentSettings.dualTipEnabled && m_currentSettings.sprayEnabled) {
-      int numParticles = std::max(1, m_currentSettings.particleDensity * 3);
-      
+      int numParticles;
+      float spraySizeComp;
+      computeSprayThrottle(m_currentSettings.particleDensity * 3, dist, spacing,
+                           numParticles, spraySizeComp);
+
       float pSize = m_currentSettings.particleSize;
       if (m_currentSettings.spraySizeByBrush) {
         pSize = size * (m_currentSettings.particleSize / 100.0f);
       }
-      
+
       float maxScatter = (size - pSize) * 0.5f;
       float scatterRadius = std::max(0.0f, maxScatter) * (m_currentSettings.sprayDeviation / 5.0f);
-      
+
       for (int pIdx = 0; pIdx < numParticles; ++pIdx) {
         float theta = (std::rand() % 360) * 3.14159265f / 180.0f;
         float tRandom = (std::rand() % 1001) / 1000.0f;
@@ -1976,7 +2039,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         if (m_currentSettings.opacityJitter > 0)
           jOpac = 1.0f - (std::rand() % 1001 / 1000.0f) * m_currentSettings.opacityJitter;
 
-        float devParticleSize = pSize * sizeMultiplier * jSize;
+        float devParticleSize = pSize * sizeMultiplier * jSize * spraySizeComp;
 
         QColor finalColor = m_currentSettings.color;
         finalColor.setAlphaF(std::clamp(opacityBase * jOpac * m_currentSettings.dualTipFlow, 0.0f, 1.0f));
@@ -2008,6 +2071,8 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
   }
 
   if (!instancedDabs.empty()) {
+    if (m_currentSettings.mainSprayEnabled)
+      m_renderer->setSprayMode(true);
     m_renderer->renderStrokeInstanced(
         instancedDabs, point.pressure, m_currentSettings.hardness,
         (int)m_currentSettings.type, w, h,
@@ -2070,6 +2135,7 @@ void BrushEngine::continueStroke(const StrokePoint &point) {
         m_currentSettings.grainEmphasizeDensity, m_currentSettings.dualGrainEmphasizeDensity, m_currentSettings.grainApplyToTips, m_currentSettings.dualGrainApplyToTips);
 
     if (m_currentSettings.dualTipEnabled && m_currentSettings.sprayEnabled && !particleDabs.empty()) {
+      m_renderer->setSprayMode(true);
       m_renderer->renderStrokeInstanced(
           particleDabs, point.pressure, m_currentSettings.hardness,
           (int)m_currentSettings.type, w, h,

@@ -48,6 +48,22 @@ public:
     Q_INVOKABLE bool hasKeyframe(int trackIdx, int frameIdx) const;
     Q_INVOKABLE QVariantMap getFrameProperties(int trackIdx, int frameIdx);
 
+    // Keyframe editing (drag & drop / duplicate from the timeline)
+    Q_INVOKABLE bool moveKeyframe(int trackIdx, int fromFrame, int toFrame);
+    Q_INVOKABLE bool duplicateKeyframe(int trackIdx, int fromFrame, int toFrame);
+
+    // Easing / interpolation curves. `easing` matches EasingType:
+    // 0 Linear, 1 EaseIn, 2 EaseOut, 3 EaseInOut, 4 Bezier.
+    Q_INVOKABLE void setKeyframeEasing(int trackIdx, int frameIdx, int easing,
+                                       float x1 = 0.42f, float y1 = 0.0f,
+                                       float x2 = 0.58f, float y2 = 1.0f);
+    Q_INVOKABLE int getKeyframeEasing(int trackIdx, int frameIdx) const;
+    // Shared curve math so QML-side animatables (e.g. the camera)
+    // stay in sync with the C++ interpolator.
+    Q_INVOKABLE qreal evaluateEasing(int easing, qreal t,
+                                     qreal x1 = 0.42, qreal y1 = 0.0,
+                                     qreal x2 = 0.58, qreal y2 = 1.0) const;
+
     Q_INVOKABLE bool exportVideo(const QString& path);
 
     void clear();

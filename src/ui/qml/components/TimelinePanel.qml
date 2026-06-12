@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Effects
 
 // ══════════════════════════════════════════════════════════════
 //  TIMELINE PANEL  —  Studio Mode (Bottom Dock)
@@ -19,6 +20,39 @@ Item {
         if (typeof mainWindow !== "undefined" && mainWindow.simpleAnimationBar)
             return mainWindow.simpleAnimationBar
         return null
+    }
+
+    // ── Shared animation camera (dedicated "Cámara" track) ──
+    property var camera: {
+        if (typeof mainWindow !== "undefined" && mainWindow.animationCamera)
+            return mainWindow.animationCamera
+        return null
+    }
+    property real camTrackH: 20
+
+    // Maps a timeline slot to a frame index, honouring durations.
+    function slotToFrame(slot) {
+        var acc = 0
+        for (var i = 0; i < frameCount; i++) {
+            var d = getFrameDuration(i)
+            if (slot < acc + d) return i
+            acc += d
+        }
+        return Math.max(0, frameCount - 1)
+    }
+
+    // Interpolation curves offered for camera keyframes
+    readonly property var easingOptions: [
+        { key: "linear",    label: "Lineal" },
+        { key: "easeIn",    label: "Ease-In" },
+        { key: "easeOut",   label: "Ease-Out" },
+        { key: "easeInOut", label: "Ease-In-Out" },
+        { key: "bezier",    label: "Bezier personalizada" }
+    ]
+    function easingLabel(key) {
+        for (var i = 0; i < easingOptions.length; i++)
+            if (easingOptions[i].key === key) return easingOptions[i].label
+        return "Lineal"
     }
 
     Component.onCompleted: console.log("TimelinePanel loaded — connected:", sharedBar !== null)
@@ -126,15 +160,15 @@ Item {
                     // ── Playback transport ──
                     Row {
                         spacing: 2
-                        TLPill { icon: "⏮"; onClicked: root.goToFrame(0) }
-                        TLPill { icon: "◀"; onClicked: root.goToFrame(root.currentFrameIdx - 1) }
+                        TLPill { iconSource: "image://icons/arrow-left-to-line"; onClicked: root.goToFrame(0) }
+                        TLPill { iconSource: "image://icons/arrow-left-01"; onClicked: root.goToFrame(root.currentFrameIdx - 1) }
                         TLPill {
-                            icon: root.isPlaying ? "⏸" : "▶"
+                            iconSource: root.isPlaying ? "image://icons/pause" : "image://icons/play"
                             highlighted: root.isPlaying
                             onClicked: root.togglePlay()
                         }
-                        TLPill { icon: "▶"; onClicked: root.goToFrame(root.currentFrameIdx + 1) }
-                        TLPill { icon: "⏭"; onClicked: root.goToFrame(root.frameCount - 1) }
+                        TLPill { iconSource: "image://icons/arrow-right-01"; onClicked: root.goToFrame(root.currentFrameIdx + 1) }
+                        TLPill { iconSource: "image://icons/arrow-right-to-line"; onClicked: root.goToFrame(root.frameCount - 1) }
                     }
 
                     // Separator
@@ -167,8 +201,8 @@ Item {
                     Rectangle { width: 1; height: 16; color: Qt.rgba(1,1,1,0.06) }
 
                     // ── Toggle buttons ──
-                    TLPill { icon: "↻"; highlighted: root.loopEnabled; onClicked: root.toggleLoop() }
-                    TLPill { icon: "◉"; highlighted: root.onionEnabled; highlightCol: "#f0d060"
+                    TLPill { iconSource: "image://icons/repeat"; highlighted: root.loopEnabled; onClicked: root.toggleLoop() }
+                    TLPill { iconSource: "image://icons/onion"; highlighted: root.onionEnabled; highlightCol: "#f0d060"
                         onClicked: root.toggleOnion() }
 
                     Rectangle { width: 1; height: 16; color: Qt.rgba(1,1,1,0.06) }
@@ -191,8 +225,8 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     // ── Duplicate & Delete ──
-                    TLPill { icon: "⧉"; onClicked: root.duplicateFrame(); enabled: root.frameCount > 0 }
-                    TLPill { icon: "🗑"; onClicked: root.deleteCurrentFrame(); enabled: root.frameCount > 1 }
+                    TLPill { iconSource: "image://icons/duplicate_outline"; onClicked: root.duplicateFrame(); enabled: root.frameCount > 0 }
+                    TLPill { iconSource: "image://icons/trash"; onClicked: root.deleteCurrentFrame(); enabled: root.frameCount > 1 }
 
                     Rectangle { width: 1; height: 16; color: Qt.rgba(1,1,1,0.06) }
 
@@ -279,7 +313,18 @@ Item {
                     spacing: 14
                     visible: root.frameCount === 0
 
-                    Text { text: "🎞"; font.pixelSize: 42; anchors.horizontalCenter: parent.horizontalCenter; opacity: 0.25 }
+                    Image {
+                        source: "image://icons/film-01"
+                        width: 42; height: 42
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        opacity: 0.25
+                        smooth: true; mipmap: true
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            colorizationColor: "#ffffff"
+                            colorization: 1.0
+                        }
+                    }
                     Text {
                         text: "Sin fotogramas"
                         color: "#555"; font.pixelSize: 14; font.weight: Font.Medium
@@ -317,6 +362,41 @@ Item {
                     visible: root.frameCount > 0
                     clip: true
 
+                    // ── TIMELINE NAVIGATION ──────────────────
+                    // Ctrl + rueda = zoom temporal anclado al cursor;
+                    // el desplazamiento lateral lo da el Flickable.
+                    WheelHandler {
+                        id: stWheelZoom
+                        acceptedModifiers: Qt.ControlModifier
+                        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                        target: null
+                        onWheel: function(event) {
+                            var oldW = root.cellW
+                            var factor = event.angleDelta.y > 0 ? 1.15 : 1 / 1.15
+                            var newW = Math.max(24, Math.min(96, oldW * factor))
+                            if (Math.abs(newW - oldW) < 0.01) return
+                            var localX = stWheelZoom.point.position.x - root.trackLabelW
+                            var contentPx = gridFlick.contentX + localX
+                            var slotUnder = Math.max(0, contentPx / (oldW + root.cellGap))
+                            root.cellW = newW
+                            gridFlick.contentX = Math.max(0,
+                                slotUnder * (newW + root.cellGap) - localX)
+                        }
+                    }
+
+                    // Pinch-to-zoom (Android / pantallas táctiles)
+                    PinchHandler {
+                        id: stPinchZoom
+                        target: null
+                        minimumPointCount: 2
+                        property real startW: 52
+                        onActiveChanged: if (active) startW = root.cellW
+                        onActiveScaleChanged: {
+                            if (!active) return
+                            root.cellW = Math.max(24, Math.min(96, startW * activeScale))
+                        }
+                    }
+
                     // ── Track label ──
                     Rectangle {
                         id: trackHeader
@@ -334,6 +414,63 @@ Item {
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1,1,1,0.04) }
                                 Text { text: "FRAMES"; color: "#3a3a44"; font.pixelSize: 7; font.weight: Font.Bold
                                     font.letterSpacing: 1; anchors.centerIn: parent }
+                            }
+
+                            // ── Camera track label (dedicated track) ──
+                            Item {
+                                visible: root.camera !== null
+                                width: parent.width; height: root.camTrackH + 4
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.topMargin: 2; anchors.bottomMargin: 2
+                                    anchors.leftMargin: 4; anchors.rightMargin: 4
+                                    radius: 6
+                                    color: root.camera && root.camera.active ? "#101c26" : "#111116"
+                                    border.color: root.camera && root.camera.active
+                                        ? Qt.rgba(0.13, 0.83, 0.93, 0.45)
+                                        : Qt.rgba(1, 1, 1, 0.05)
+                                    border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 180 } }
+                                    Behavior on border.color { ColorAnimation { duration: 180 } }
+
+                                    Row {
+                                        anchors.centerIn: parent; spacing: 4
+                                        Image {
+                                            source: "image://icons/camera-01"
+                                            width: 11; height: 11
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            smooth: true; mipmap: true
+                                            layer.enabled: true
+                                            layer.effect: MultiEffect {
+                                                colorizationColor: root.camera && root.camera.active ? "#67e8f9" : "#888"
+                                                colorization: 1.0
+                                            }
+                                        }
+                                        Text {
+                                            text: "Cámara"
+                                            color: root.camera && root.camera.active ? "#67e8f9" : "#888"
+                                            font.pixelSize: 9; font.weight: Font.DemiBold
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+                                    MouseArea {
+                                        id: camLabelMa
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (!root.camera) return
+                                            root.camera.active = !root.camera.active
+                                            root.camera.notify(root.camera.active
+                                                ? "Modo cámara activado" : "Modo cámara desactivado", "info")
+                                        }
+                                    }
+                                    ToolTip.visible: camLabelMa.containsMouse
+                                    ToolTip.text: root.camera && root.camera.active
+                                        ? "Desactivar la cámara" : "Activar la cámara"
+                                    ToolTip.delay: 450
+                                }
                             }
 
                             // Track row label
@@ -435,12 +572,186 @@ Item {
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: Qt.rgba(1,1,1,0.04) }
                             }
 
+                            // ── CAMERA TRACK RAIL (dedicated track) ──
+                            Item {
+                                id: camRail
+                                visible: root.camera !== null
+                                y: root.rulerH + 2
+                                width: parent.width
+                                height: root.camTrackH
+                                z: 6
+
+                                // Studio-grey rail
+                                Rectangle {
+                                    anchors.fill: parent
+                                    anchors.topMargin: 2; anchors.bottomMargin: 2
+                                    radius: 5
+                                    color: root.camera && root.camera.active ? "#0c2230" : "#101014"
+                                    border.color: root.camera && root.camera.active
+                                        ? Qt.rgba(0.13, 0.83, 0.93, 0.30)
+                                        : Qt.rgba(1, 1, 1, 0.05)
+                                    border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 180 } }
+                                }
+                                Rectangle {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    x: 4; width: parent.width - 8; height: 1
+                                    color: root.camera && root.camera.active
+                                        ? Qt.rgba(0.13, 0.83, 0.93, 0.40)
+                                        : Qt.rgba(1, 1, 1, 0.10)
+                                }
+
+                                // Click on the rail = add / update keyframe at slot;
+                                // right-click removes the keyframe (if any).
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    preventStealing: true
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                    onClicked: function(m) {
+                                        if (!root.camera || !root.sharedBar) return
+                                        var slot = Math.max(0, Math.floor(m.x / root.cellStep))
+                                        var targetFrame = root.slotToFrame(slot)
+                                        if (m.button === Qt.RightButton) {
+                                            if (root.camera.hasKeyframeAt(targetFrame)) {
+                                                root.camera.removeKeyframeAt(targetFrame)
+                                                root.camera.notify("Keyframe eliminado", "info")
+                                            }
+                                        } else {
+                                            root.goToFrame(targetFrame)
+                                            root.camera.addKeyframe()
+                                            root.camera.notify(
+                                                "Keyframe añadido en frame " + (targetFrame + 1), "success")
+                                        }
+                                    }
+                                }
+
+                                // Keyframe diamonds — selectable, draggable,
+                                // context menu (right-click / long-press)
+                                Repeater {
+                                    model: root.camera ? root.camera.keyframes : []
+                                    delegate: Item {
+                                        id: stKfItem
+                                        property var kf: (root.camera && modelData)
+                                            ? modelData
+                                            : ({ frameIdx: 0, x: 0, y: 0, zoom: 1 })
+                                        property bool isSelected: root.camera && root.camera.selectedFrameIdx === kf.frameIdx
+                                        property bool isCurrent:  kf.frameIdx === root.currentFrameIdx
+                                        property bool isDragging: stKfMa.pressed && stKfMa.moved
+                                        property int  shownFrame: isDragging ? stKfMa.dragTargetFrame : kf.frameIdx
+                                        property real slotX: root.getSlotOffset(shownFrame) * root.cellStep + root.cellW / 2
+                                        x: slotX - 10
+                                        width: 20; height: parent.height
+                                        z: isDragging ? 10 : (isSelected ? 5 : 0)
+
+                                        Behavior on x { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
+
+                                        // Selection halo
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: 15; height: 15; rotation: 45
+                                            radius: 3
+                                            visible: stKfItem.isSelected || stKfItem.isDragging
+                                            color: "transparent"
+                                            border.color: "#818cf8"
+                                            border.width: 1.5
+                                            opacity: 0.9
+                                        }
+
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: 9; height: 9; rotation: 45
+                                            radius: 1.5
+                                            scale: stKfItem.isDragging ? 1.25 : (stKfMa.containsMouse ? 1.12 : 1.0)
+                                            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutBack } }
+                                            color: {
+                                                if (stKfItem.isSelected || stKfItem.isDragging)
+                                                    return "#818cf8"
+                                                if (stKfItem.isCurrent)
+                                                    return "#ffffff"
+                                                if (root.camera && root.camera.active)
+                                                    return "#22d3ee"
+                                                return "#0e7490"
+                                            }
+                                            border.color: "#0b1220"
+                                            border.width: 1
+                                            Behavior on color { ColorAnimation { duration: 120 } }
+                                        }
+
+                                        MouseArea {
+                                            id: stKfMa
+                                            anchors.fill: parent
+                                            anchors.margins: -4
+                                            hoverEnabled: true
+                                            cursorShape: stKfItem.isDragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+                                            preventStealing: true
+                                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                                            property real pressX: 0
+                                            property bool moved: false
+                                            property bool menuOpened: false
+                                            property int  dragTargetFrame: stKfItem.kf.frameIdx
+
+                                            onPressed: function(m) {
+                                                pressX = mapToItem(camRail, m.x, m.y).x
+                                                moved = false
+                                                menuOpened = false
+                                                dragTargetFrame = stKfItem.kf.frameIdx
+                                                if (root.camera) root.camera.selectedFrameIdx = stKfItem.kf.frameIdx
+                                            }
+                                            onPositionChanged: function(m) {
+                                                if (!pressed) return
+                                                var gx = mapToItem(camRail, m.x, m.y).x
+                                                if (!moved && Math.abs(gx - pressX) < 5) return
+                                                moved = true
+                                                var slot = Math.max(0, Math.round(gx / root.cellStep - 0.5))
+                                                dragTargetFrame = root.slotToFrame(slot)
+                                            }
+                                            onPressAndHold: function(m) {
+                                                if (moved || menuOpened) return
+                                                menuOpened = true
+                                                var gp = mapToItem(root, m.x, m.y)
+                                                stCamKfMenu.openFor(stKfItem.kf.frameIdx, gp.x, gp.y)
+                                            }
+                                            onReleased: function(m) {
+                                                if (menuOpened) return
+                                                if (m.button === Qt.RightButton) {
+                                                    var gp = mapToItem(root, m.x, m.y)
+                                                    stCamKfMenu.openFor(stKfItem.kf.frameIdx, gp.x, gp.y)
+                                                    return
+                                                }
+                                                if (moved) {
+                                                    if (dragTargetFrame !== stKfItem.kf.frameIdx && root.camera) {
+                                                        if (root.camera.moveKeyframe(stKfItem.kf.frameIdx, dragTargetFrame)) {
+                                                            root.goToFrame(dragTargetFrame)
+                                                            root.camera.notify(
+                                                                "Keyframe movido a frame " + (dragTargetFrame + 1),
+                                                                "success")
+                                                        }
+                                                    }
+                                                } else {
+                                                    root.goToFrame(stKfItem.kf.frameIdx)
+                                                }
+                                            }
+                                        }
+
+                                        ToolTip.visible: stKfMa.containsMouse && !stKfItem.isDragging
+                                        ToolTip.text: "Frame " + (kf.frameIdx + 1)
+                                            + "  •  X " + Math.round(kf.x)
+                                            + "  Y " + Math.round(kf.y)
+                                            + "  •  Z " + Math.round(kf.zoom * 100) + "%"
+                                            + "  •  " + root.easingLabel(kf.easing !== undefined ? kf.easing : "linear")
+                                        ToolTip.delay: 350
+                                    }
+                                }
+                            }
+
                             // ── Frame cells ──
                             Item {
                                 id: cellsRow
-                                y: root.rulerH + 2
+                                y: root.rulerH + 2 + (root.camera !== null ? root.camTrackH + 2 : 0)
                                 width: parent.width
-                                height: parent.height - root.rulerH - 2
+                                height: parent.height - y
 
                                 // Grid background lines
                                 Repeater {
@@ -658,7 +969,7 @@ Item {
                                 visible: root.isScrubbing
                                 x: (root.getSlotOffset(root.currentFrameIdx) * root.cellStep)
                                 width: root.getFrameDuration(root.currentFrameIdx) * root.cellStep - root.cellGap
-                                y: root.rulerH + 2
+                                y: cellsRow.y
                                 height: cellsRow.height
                                 color: Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.08)
                                 border.color: root.accentColor
@@ -710,9 +1021,26 @@ Item {
                         color: "#333"; font.pixelSize: 8; font.family: "Consolas"
                     }
                     Item { Layout.fillWidth: true }
-                    Text { visible: root.onionEnabled
-                        text: "🧅 " + root.onionBefore + "/" + root.onionAfter
-                        color: "#f0d060"; font.pixelSize: 8 }
+                    Row {
+                        visible: root.onionEnabled
+                        spacing: 3
+                        Image {
+                            source: "image://icons/onion"
+                            width: 10; height: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            smooth: true; mipmap: true
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                colorizationColor: "#f0d060"
+                                colorization: 1.0
+                            }
+                        }
+                        Text {
+                            text: root.onionBefore + "/" + root.onionAfter
+                            color: "#f0d060"; font.pixelSize: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
                 }
             }
         }
@@ -758,11 +1086,16 @@ Item {
         RowLayout {
             anchors.fill: parent; anchors.leftMargin: 16; anchors.rightMargin: 16; spacing: 10
 
-            Text {
-                text: "⚡"
-                font.pixelSize: 13
-                color: root.accentColor
+            Image {
+                source: "image://icons/sliders"
+                width: 16; height: 16
                 Layout.alignment: Qt.AlignVCenter
+                smooth: true; mipmap: true
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    colorizationColor: root.accentColor
+                    colorization: 1.0
+                }
             }
 
             // Slider container
@@ -899,9 +1232,9 @@ Item {
 
             Rectangle { width: parent.width - 16; height: 1; color: Qt.rgba(1,1,1,0.06); anchors.horizontalCenter: parent.horizontalCenter }
 
-            CtxBtn { icon: "📋"; label: "Duplicar frame"; iconColor: "#7aa2f7"
+            CtxBtn { iconSource: "image://icons/duplicate_outline"; label: "Duplicar frame"; iconColor: "#7aa2f7"
                 onClicked: { root.goToFrame(ctxMenu.frameIdx); root.duplicateFrame(); ctxMenu.dismiss() } }
-            CtxBtn { icon: "🧹"; label: "Limpiar contenido"; iconColor: "#e0af68"
+            CtxBtn { iconSource: "image://icons/eraser"; label: "Limpiar contenido"; iconColor: "#e0af68"
                 onClicked: {
                     if (root.sharedBar) {
                         var item = root.sharedBar.frameModel.get(ctxMenu.frameIdx)
@@ -952,7 +1285,7 @@ Item {
 
             Rectangle { width: parent.width - 16; height: 1; color: Qt.rgba(1,1,1,0.06); anchors.horizontalCenter: parent.horizontalCenter }
 
-            CtxBtn { icon: "🗑"; label: "Eliminar frame"; iconColor: "#f7768e"; labelColor: "#f7768e"; hoverBg: "#2d1a1f"
+            CtxBtn { iconSource: "image://icons/trash"; label: "Eliminar frame"; iconColor: "#f7768e"; labelColor: "#f7768e"; hoverBg: "#2d1a1f"
                 enabled: root.frameCount > 1
                 onClicked: { root.goToFrame(ctxMenu.frameIdx); root.deleteCurrentFrame(); ctxMenu.dismiss() } }
 
@@ -960,10 +1293,167 @@ Item {
         }
     }
 
+    // ── CAMERA KEYFRAME CONTEXT MENU ─────────────────────────
+    Popup {
+        id: stCamKfMenu
+        property int frameIdx: -1
+        width: 216
+        padding: 6
+        z: 10000
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        function openFor(fi, px, py) {
+            frameIdx = fi
+            x = Math.max(6, Math.min(root.width - width - 6, px - width / 2))
+            y = Math.max(6, Math.min(root.height - implicitHeight - 6, py + 8))
+            open()
+        }
+
+        function kfEasing() {
+            if (!root.camera) return "linear"
+            var k = root.camera.getKeyframeAt(frameIdx)
+            return (k && k.easing !== undefined) ? k.easing : "linear"
+        }
+
+        background: Rectangle {
+            color: "#16161c"; radius: 12
+            border.color: Qt.rgba(1, 1, 1, 0.09); border.width: 1
+            Rectangle { anchors.fill: parent; anchors.margins: -5; z: -1
+                radius: 16; color: "#000"; opacity: 0.45 }
+        }
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 140; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.92; to: 1; duration: 160; easing.type: Easing.OutCubic }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
+        }
+
+        contentItem: Column {
+            spacing: 2
+
+            Row {
+                spacing: 6
+                leftPadding: 8
+                topPadding: 2
+                bottomPadding: 4
+                Rectangle { width: 8; height: 8; rotation: 45; radius: 1.5
+                    color: "#818cf8"; anchors.verticalCenter: parent.verticalCenter }
+                Text {
+                    text: "Cámara · Frame " + (stCamKfMenu.frameIdx + 1)
+                    color: "#a1a1aa"; font.pixelSize: 10; font.weight: Font.DemiBold
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Rectangle { width: parent.width - 10; height: 1
+                color: Qt.rgba(1,1,1,0.07); anchors.horizontalCenter: parent.horizontalCenter }
+
+            StCamMenuBtn {
+                iconSource: "image://icons/duplicate_outline"; label: "Duplicar keyframe"
+                onTriggered: {
+                    if (!root.camera) return
+                    var dst = root.camera.duplicateKeyframe(stCamKfMenu.frameIdx)
+                    if (dst >= 0)
+                        root.camera.notify("Keyframe duplicado en frame " + (dst + 1), "success")
+                    else
+                        root.camera.notify("No hay un frame libre para duplicar", "warning")
+                }
+            }
+            StCamMenuBtn {
+                iconSource: "image://icons/trash"; label: "Eliminar keyframe"; destructive: true
+                onTriggered: {
+                    if (!root.camera) return
+                    root.camera.removeKeyframeAt(stCamKfMenu.frameIdx)
+                    root.camera.notify("Keyframe eliminado", "info")
+                }
+            }
+
+            Rectangle { width: parent.width - 10; height: 1
+                color: Qt.rgba(1,1,1,0.07); anchors.horizontalCenter: parent.horizontalCenter }
+
+            Text {
+                text: "INTERPOLACIÓN"
+                color: "#52525b"; font.pixelSize: 8; font.weight: Font.Bold
+                font.letterSpacing: 1
+                leftPadding: 8; topPadding: 4; bottomPadding: 2
+            }
+
+            Repeater {
+                model: root.easingOptions
+                StCamMenuBtn {
+                    required property var modelData
+                    iconSource: stCamKfMenu.kfEasing() === modelData.key ? "image://icons/check" : ""
+                    label: modelData.label
+                    checked: stCamKfMenu.kfEasing() === modelData.key
+                    onTriggered: {
+                        if (!root.camera) return
+                        root.camera.setKeyframeEasing(stCamKfMenu.frameIdx, modelData.key)
+                        root.camera.notify("Interpolación: " + modelData.label, "info")
+                    }
+                }
+            }
+        }
+    }
+
+    component StCamMenuBtn : Rectangle {
+        id: scmb
+        property string icon: ""
+        property string iconSource: ""
+        property string label: ""
+        property bool destructive: false
+        property bool checked: false
+        signal triggered()
+        width: parent ? parent.width : 200
+        height: 28; radius: 7
+        color: scmbMa.containsMouse
+            ? (destructive ? "#2d1619" : "#222230")
+            : (checked ? Qt.rgba(0.51, 0.55, 0.97, 0.10) : "transparent")
+        Behavior on color { ColorAnimation { duration: 90 } }
+        Row {
+            anchors.left: parent.left; anchors.leftMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 7
+            Item {
+                width: 14; height: 14
+                anchors.verticalCenter: parent.verticalCenter
+                Text {
+                    visible: scmb.iconSource === ""
+                    text: scmb.icon; anchors.fill: parent
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    color: scmb.destructive ? "#f87171" : (scmb.checked ? "#818cf8" : "#9ca3af")
+                    font.pixelSize: 11
+                }
+                Image {
+                    visible: scmb.iconSource !== ""
+                    source: scmb.iconSource
+                    width: 12; height: 12; anchors.centerIn: parent
+                    smooth: true; mipmap: true
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        colorizationColor: scmb.destructive ? "#f87171" : (scmb.checked ? "#818cf8" : "#9ca3af")
+                        colorization: 1.0
+                    }
+                }
+            }
+            Text { text: scmb.label
+                color: scmb.destructive ? "#f87171" : (scmb.checked ? "#c7d2fe" : "#d4d4d8")
+                font.pixelSize: 11; font.weight: scmb.checked ? Font.DemiBold : Font.Medium
+                anchors.verticalCenter: parent.verticalCenter }
+        }
+        MouseArea {
+            id: scmbMa; anchors.fill: parent; hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: { scmb.triggered(); stCamKfMenu.close() }
+        }
+    }
+
     // ── Reusable components ──────────────────────────────────
     component TLPill : Rectangle {
         id: pb
-        property string icon: "?"
+        property string icon: ""
+        property string iconSource: ""
         property bool highlighted: false
         property color highlightCol: root.accentColor
         signal clicked()
@@ -974,9 +1464,27 @@ Item {
         opacity: enabled ? 1.0 : 0.3
         Behavior on color { ColorAnimation { duration: 120 } }
 
-        Text { text: pb.icon; color: highlighted ? highlightCol : (pbMa.containsMouse ? "#bbb" : "#666")
+        Text {
+            visible: pb.iconSource === ""
+            text: pb.icon
+            color: highlighted ? highlightCol : (pbMa.containsMouse ? "#bbb" : "#666")
             font.pixelSize: 12; anchors.centerIn: parent
-            Behavior on color { ColorAnimation { duration: 120 } } }
+            Behavior on color { ColorAnimation { duration: 120 } }
+        }
+
+        Image {
+            visible: pb.iconSource !== ""
+            source: pb.iconSource
+            width: 14; height: 14; anchors.centerIn: parent
+            smooth: true; mipmap: true
+            opacity: pb.enabled ? 1.0 : 0.5
+            layer.enabled: true
+            layer.effect: MultiEffect {
+                colorizationColor: highlighted ? highlightCol : (pbMa.containsMouse ? "#ffffff" : "#71717a")
+                colorization: 1.0
+            }
+        }
+
         MouseArea { id: pbMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: if (pb.enabled) pb.clicked() }
     }
@@ -997,8 +1505,12 @@ Item {
 
     component CtxBtn : Rectangle {
         id: ctxb
-        property string icon: ""; property string label: ""; property color iconColor: "#888"
-        property color labelColor: "#ddd"; property color hoverBg: "#252530"
+        property string icon: ""
+        property string iconSource: ""
+        property string label: ""
+        property color iconColor: "#888"
+        property color labelColor: "#ddd"
+        property color hoverBg: "#252530"
         signal clicked()
         width: parent ? parent.width : 180; height: 30; radius: 8
         color: ctxbMa.containsMouse ? hoverBg : "transparent"
@@ -1011,7 +1523,22 @@ Item {
             Behavior on opacity { NumberAnimation { duration: 100 } } }
 
         Row { anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter; spacing: 8
-            Text { text: ctxb.icon; font.pixelSize: 13; width: 18; anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                visible: ctxb.iconSource === ""
+                text: ctxb.icon; font.pixelSize: 13; width: 18; anchors.verticalCenter: parent.verticalCenter
+            }
+            Image {
+                visible: ctxb.iconSource !== ""
+                source: ctxb.iconSource
+                width: 14; height: 14
+                anchors.verticalCenter: parent.verticalCenter
+                smooth: true; mipmap: true
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    colorizationColor: ctxb.iconColor
+                    colorization: 1.0
+                }
+            }
             Text { text: ctxb.label; color: ctxb.labelColor; font.pixelSize: 11; font.weight: Font.Medium; anchors.verticalCenter: parent.verticalCenter } }
 
         MouseArea { id: ctxbMa; anchors.fill: parent; hoverEnabled: true

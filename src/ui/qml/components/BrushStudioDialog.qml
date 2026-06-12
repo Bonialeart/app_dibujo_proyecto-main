@@ -488,7 +488,10 @@ Rectangle {
                                 color: offsetColor ? textMuted : colorAccent
                                 radius: 2
                                 visible: !offsetColor
-                                Behavior on width { NumberAnimation { duration: 80; easing.type: Easing.OutCubic } }
+                                Behavior on width {
+                                    enabled: !slider.pressed
+                                    NumberAnimation { duration: 80; easing.type: Easing.OutCubic }
+                                }
                             }
                         }
 
@@ -581,7 +584,7 @@ Rectangle {
 
                         Timer {
                             id: previewThrottle
-                            interval: 40
+                            interval: 150
                             repeat: false
                             onTriggered: {
                                 if (targetCanvas && studio.brushName) {

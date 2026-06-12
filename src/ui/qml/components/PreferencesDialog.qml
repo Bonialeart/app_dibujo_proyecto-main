@@ -288,14 +288,17 @@ Popup {
             
             // X Button
             Button {
-                text: "✕"
+                id: titleCloseBtn
                 anchors.right: parent.right; anchors.rightMargin: 8
                 anchors.verticalCenter: parent.verticalCenter
                 width: 30; height: 30
+                hoverEnabled: true
                 background: Rectangle { color: "transparent" }
-                contentItem: Text { 
-                    text: parent.text; color: colorTextMuted; font.pixelSize: 14; 
-                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter 
+                contentItem: Image {
+                    source: "image://icons/close.svg"
+                    sourceSize: Qt.size(14, 14)
+                    fillMode: Image.PreserveAspectFit
+                    opacity: titleCloseBtn.hovered ? 1.0 : 0.6
                 }
                 onClicked: root.close()
             }
@@ -838,7 +841,6 @@ Popup {
                                                  Layout.preferredWidth: 20
                                                  Layout.preferredHeight: 20
                                                  visible: (recorderBtn.hovered || recorderBtn.activeFocus) && !!root.tempShortcuts[modelData.id]
-                                                 text: "✕"
                                                  hoverEnabled: true
                                                  
                                                  background: Rectangle {
@@ -846,13 +848,11 @@ Popup {
                                                      radius: 10
                                                  }
                                                  
-                                                 contentItem: Text {
-                                                     text: clearBtn.text
-                                                     color: colorTextMuted
-                                                     font.pixelSize: 10
-                                                     font.bold: true
-                                                     horizontalAlignment: Text.AlignHCenter
-                                                     verticalAlignment: Text.AlignVCenter
+                                                 contentItem: Image {
+                                                     source: "image://icons/close.svg"
+                                                     sourceSize: Qt.size(10, 10)
+                                                     fillMode: Image.PreserveAspectFit
+                                                     opacity: clearBtn.hovered ? 1.0 : 0.6
                                                  }
                                                  
                                                  onClicked: {
@@ -1042,8 +1042,13 @@ Popup {
                                             border.color: resetBtn.containsMouse ? root.colorAccent : root.colorBorder; border.width: 1
                                             RowLayout {
                                                 anchors.centerIn: parent; spacing: 5
-                                                Text { text: "↺"; color: root.colorTextMuted; font.pixelSize: 12 }
-                                                Text { text: "Restablecer"; color: root.colorTextMuted; font.pixelSize: 11 }
+                                                Image {
+                                                    source: "image://icons/rotate.svg"
+                                                    sourceSize: Qt.size(12, 12)
+                                                    fillMode: Image.PreserveAspectFit
+                                                    opacity: resetBtn.containsMouse ? 1.0 : 0.6
+                                                }
+                                                Text { text: "Restablecer"; color: resetBtn.containsMouse ? root.colorText : root.colorTextMuted; font.pixelSize: 11 }
                                             }
                                             MouseArea {
                                                 id: resetBtn; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
@@ -1053,7 +1058,7 @@ Popup {
                                     }
 
                                     Text {
-                                        text: "Usa ▾ para mover botones entre zonas y ✕ para ocultarlos. Los botones ocultos aparecerán en la zona 'Ocultos' y puedes restaurarlos con ↩."
+                                        text: "Use las opciones de cada botón para moverlos entre zonas u ocultarlos. Los botones ocultos aparecerán en la zona 'Ocultos' y pueden ser restaurados."
                                         color: root.colorTextMuted; font.pixelSize: 11
                                         wrapMode: Text.WordWrap
                                         Layout.fillWidth: true
@@ -1215,16 +1220,21 @@ Popup {
             Behavior on color { ColorAnimation { duration: 150 } }
             Behavior on border.color { ColorAnimation { duration: 150 } }
             
-            Text {
+            Image {
                 visible: cbControl.checked
-                text: "✓"
-                color: "white"
-                font.pixelSize: 12
-                font.bold: true
+                source: "image://icons/check.svg"
+                sourceSize: Qt.size(10, 10)
+                fillMode: Image.PreserveAspectFit
                 anchors.centerIn: parent
                 
                 scale: cbControl.checked ? 1.0 : 0.5
                 Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    colorization: 1.0
+                    colorizationColor: "white"
+                }
             }
             
             scale: cbControl.hovered || cbControl.pressed ? 1.05 : 1.0
@@ -1330,11 +1340,17 @@ Popup {
                     border.width: 1
                     visible: layoutGroupRoot.btnLocation !== "hidden"
 
-                    Text {
-                        text: "↺"
-                        font.pixelSize: 12
-                        color: singleResetBtnMA.containsMouse ? root.colorText : root.colorTextMuted
+                    Image {
+                        source: "image://icons/rotate.svg"
+                        sourceSize: Qt.size(12, 12)
+                        fillMode: Image.PreserveAspectFit
                         anchors.centerIn: parent
+
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            colorization: 1.0
+                            colorizationColor: singleResetBtnMA.containsMouse ? root.colorText : root.colorTextMuted
+                        }
                     }
 
                     MouseArea {
@@ -1358,11 +1374,17 @@ Popup {
                     border.width: 1
                     visible: layoutGroupRoot.btnLocation !== "hidden" && layoutGroupRoot.count > 0
 
-                    Text {
-                        text: "🗑"
-                        font.pixelSize: 11
-                        color: singleClearBtnMA.containsMouse ? "#ef4444" : root.colorTextMuted
+                    Image {
+                        source: "image://icons/trash-2.svg"
+                        sourceSize: Qt.size(11, 11)
+                        fillMode: Image.PreserveAspectFit
                         anchors.centerIn: parent
+
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            colorization: 1.0
+                            colorizationColor: singleClearBtnMA.containsMouse ? "#ef4444" : root.colorTextMuted
+                        }
                     }
 
                     MouseArea {
@@ -1437,11 +1459,17 @@ Popup {
                                 color: leftMA.containsMouse ? Qt.rgba(layoutGroupRoot.zoneColor.r, layoutGroupRoot.zoneColor.g, layoutGroupRoot.zoneColor.b, 0.15) : "transparent"
                                 Layout.alignment: Qt.AlignVCenter
 
-                                Text {
-                                    text: "◀"
-                                    font.pixelSize: 10
-                                    color: leftMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                Image {
+                                    source: "image://icons/chevron-left.svg"
+                                    sourceSize: Qt.size(10, 10)
+                                    fillMode: Image.PreserveAspectFit
                                     anchors.centerIn: parent
+
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        colorization: 1.0
+                                        colorizationColor: leftMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                    }
                                 }
 
                                 MouseArea {
@@ -1457,11 +1485,17 @@ Popup {
                                 color: rightMA.containsMouse ? Qt.rgba(layoutGroupRoot.zoneColor.r, layoutGroupRoot.zoneColor.g, layoutGroupRoot.zoneColor.b, 0.15) : "transparent"
                                 Layout.alignment: Qt.AlignVCenter
 
-                                Text {
-                                    text: "▶"
-                                    font.pixelSize: 10
-                                    color: rightMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                Image {
+                                    source: "image://icons/chevron-right.svg"
+                                    sourceSize: Qt.size(10, 10)
+                                    fillMode: Image.PreserveAspectFit
                                     anchors.centerIn: parent
+
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        colorization: 1.0
+                                        colorizationColor: rightMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                    }
                                 }
 
                                 MouseArea {
@@ -1476,12 +1510,17 @@ Popup {
                                 color: locMA.containsMouse ? Qt.rgba(layoutGroupRoot.zoneColor.r, layoutGroupRoot.zoneColor.g, layoutGroupRoot.zoneColor.b, 0.15) : "transparent"
                                 Layout.alignment: Qt.AlignVCenter
 
-                                Text {
-                                    text: "▾"
-                                    font.pixelSize: 12
-                                    font.bold: true
-                                    color: locMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                Image {
+                                    source: "image://icons/chevron-down.svg"
+                                    sourceSize: Qt.size(12, 12)
+                                    fillMode: Image.PreserveAspectFit
                                     anchors.centerIn: parent
+
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        colorization: 1.0
+                                        colorizationColor: locMA.containsMouse ? layoutGroupRoot.zoneColor : root.colorTextMuted
+                                    }
                                 }
 
                                 MouseArea {
@@ -1503,12 +1542,17 @@ Popup {
                                 color: hideMA.containsMouse ? (layoutGroupRoot.btnLocation === "hidden" ? "rgba(74, 222, 128, 0.15)" : "rgba(239, 68, 68, 0.15)") : "transparent"
                                 Layout.alignment: Qt.AlignVCenter
 
-                                Text {
-                                    text: layoutGroupRoot.btnLocation === "hidden" ? "↩" : "✕"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                    color: hideMA.containsMouse ? (layoutGroupRoot.btnLocation === "hidden" ? "#4ade80" : "#ef4444") : root.colorTextMuted
+                                Image {
+                                    source: layoutGroupRoot.btnLocation === "hidden" ? "image://icons/undo.svg" : "image://icons/close.svg"
+                                    sourceSize: Qt.size(11, 11)
+                                    fillMode: Image.PreserveAspectFit
                                     anchors.centerIn: parent
+
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        colorization: 1.0
+                                        colorizationColor: hideMA.containsMouse ? (layoutGroupRoot.btnLocation === "hidden" ? "#4ade80" : "#ef4444") : root.colorTextMuted
+                                    }
                                 }
 
                                 MouseArea {
@@ -1526,7 +1570,7 @@ Popup {
                 // Empty state
                 Text {
                     visible: layoutGroupRoot.count === 0
-                    text: layoutGroupRoot.btnLocation === "hidden" ? "No hay botones ocultos" : "Vacío — mueve botones aquí con ▾"
+                    text: layoutGroupRoot.btnLocation === "hidden" ? "No hay botones ocultos" : "Vacío — mueva botones aquí con el menú de posición"
                     color: root.colorTextMuted; font.pixelSize: 12; opacity: 0.4
                     height: 32; verticalAlignment: Text.AlignVCenter
                     Layout.fillWidth: true
@@ -1583,13 +1627,18 @@ Popup {
                         anchors.rightMargin: 8
                         spacing: 8
 
-                        Text {
-                            text: "✓"
-                            font.pixelSize: 12
-                            font.bold: true
-                            color: root.colorAccent
+                        Image {
+                            source: "image://icons/check.svg"
+                            sourceSize: Qt.size(12, 12)
+                            fillMode: Image.PreserveAspectFit
                             visible: parent.parent.isActive
                             Layout.preferredWidth: 12
+
+                            layer.enabled: true
+                            layer.effect: MultiEffect {
+                                colorization: 1.0
+                                colorizationColor: root.colorAccent
+                            }
                         }
 
                         Item {

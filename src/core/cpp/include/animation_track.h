@@ -3,8 +3,46 @@
 #include "animation_frame.h"
 #include <string>
 #include <map>
+#include <cmath>
 
 namespace artflow {
+
+// ── Easing evaluation ─────────────────────────────────────────
+// Evaluates a cubic bezier easing curve defined by control points
+// (x1,y1) and (x2,y2) at progress t (0..1). Solves x(u)=t with
+// Newton-Raphson and returns y(u).
+inline float evalCubicBezier(float t, float x1, float y1, float x2, float y2) {
+    if (t <= 0.0f) return 0.0f;
+    if (t >= 1.0f) return 1.0f;
+    float u = t;
+    for (int i = 0; i < 8; ++i) {
+        float omu = 1.0f - u;
+        float x = 3.0f * u * omu * omu * x1 + 3.0f * u * u * omu * x2 + u * u * u;
+        float dx = 3.0f * omu * omu * x1 + 6.0f * u * omu * (x2 - x1) + 3.0f * u * u * (1.0f - x2);
+        float err = x - t;
+        if (std::fabs(err) < 1e-5f) break;
+        if (std::fabs(dx) < 1e-6f) break;
+        u -= err / dx;
+        if (u < 0.0f) u = 0.0f;
+        if (u > 1.0f) u = 1.0f;
+    }
+    float omu = 1.0f - u;
+    return 3.0f * u * omu * omu * y1 + 3.0f * u * u * omu * y2 + u * u * u;
+}
+
+inline float evalEasing(EasingType easing, float t, const float* bz = nullptr) {
+    switch (easing) {
+        case EasingType::EaseIn:    return evalCubicBezier(t, 0.42f, 0.0f, 1.0f, 1.0f);
+        case EasingType::EaseOut:   return evalCubicBezier(t, 0.0f, 0.0f, 0.58f, 1.0f);
+        case EasingType::EaseInOut: return evalCubicBezier(t, 0.42f, 0.0f, 0.58f, 1.0f);
+        case EasingType::Bezier:
+            if (bz) return evalCubicBezier(t, bz[0], bz[1], bz[2], bz[3]);
+            return t;
+        case EasingType::Linear:
+        default:
+            return t;
+    }
+}
 
 class AnimationTrack {
 public:
@@ -27,6 +65,26 @@ public:
 
     void removeKeyframe(int index) {
         m_keyframes.erase(index);
+    }
+
+    // Moves a keyframe to another frame index. If the destination
+    // is occupied it is replaced. Returns false if the source
+    // doesn't exist.
+    bool moveKeyframe(int fromIndex, int toIndex) {
+        if (fromIndex == toIndex) return true;
+        auto it = m_keyframes.find(fromIndex);
+        if (it == m_keyframes.end()) return false;
+        AnimationFrame frame = it->second;
+        m_keyframes.erase(it);
+        m_keyframes[toIndex] = frame;
+        return true;
+    }
+
+    bool duplicateKeyframe(int fromIndex, int toIndex) {
+        auto it = m_keyframes.find(fromIndex);
+        if (it == m_keyframes.end()) return false;
+        m_keyframes[toIndex] = it->second;
+        return true;
     }
 
     AnimationFrame getFrame(int index) {
@@ -61,6 +119,9 @@ public:
 
         const AnimationFrame& a = prevIt->second;
         const AnimationFrame& b = nextIt->second;
+
+        // Apply the easing curve of the segment's leading keyframe
+        t = evalEasing(a.getEasing(), t, a.getBezierHandles());
 
         float opacity = a.getOpacity() * (1.0f - t) + b.getOpacity() * t;
 

@@ -2244,15 +2244,15 @@ Window {
 
                     // ═══════════════ CAMERA VIEWFINDER OVERLAY ═══════════════
                     // The frame size is self-managed by the overlay based on
-                    // the camera's appliedZoom.  The parent only positions
-                    // the top-left corner (10 % margin from the viewport
-                    // origin).
+                    // the camera's appliedZoom. The camera frame is anchored
+                    // to the PAPER: appliedX/appliedY are the frame center in
+                    // canvas coordinates, mapped here to screen space.
                     CameraViewfinderOverlay {
                         id: cameraViewfinder
-                        x:      mainCanvas.viewOffset.x * mainCanvas.zoomLevel
-                              + (mainCanvas.canvasWidth  * mainCanvas.zoomLevel - cameraViewfinder.width ) / 2
-                        y:      mainCanvas.viewOffset.y * mainCanvas.zoomLevel
-                              + (mainCanvas.canvasHeight * mainCanvas.zoomLevel - cameraViewfinder.height) / 2
+                        x: (mainCanvas.viewOffset.x + animationCamera.appliedX) * mainCanvas.zoomLevel
+                           - cameraViewfinder.width / 2
+                        y: (mainCanvas.viewOffset.y + animationCamera.appliedY) * mainCanvas.zoomLevel
+                           - cameraViewfinder.height / 2
                         camera: animationCamera
                         frameColor: colorAccent
                     }

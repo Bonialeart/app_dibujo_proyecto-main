@@ -988,6 +988,8 @@ private:
   bool m_threeFingerMoved = false;
   bool m_strokeCancelledByGesture = false; // True if a stroke was cancelled by a multi-touch gesture
   QPointF m_lastTouchCenter;               // Center of two touch points (for smooth pan)
+  QList<QPointF> m_touchHistoryP1;         // History of touch point 1 positions for smoothing
+  QList<QPointF> m_touchHistoryP2;         // History of touch point 2 positions for smoothing
 
   // ── Liquify Engine ──
   artflow::LiquifyEngine *m_liquifyEngine = nullptr;

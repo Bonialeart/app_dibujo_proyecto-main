@@ -6094,6 +6094,13 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
       m_lastPinchAngle = std::atan2(p2.y() - p1.y(), p2.x() - p1.x());
       m_isTwoFingerGesture = true;
 
+      m_touchHistoryP1.clear();
+      m_touchHistoryP2.clear();
+      for (int i = 0; i < 3; ++i) {
+        m_touchHistoryP1.append(p1);
+        m_touchHistoryP2.append(p2);
+      }
+
       // ── Cancel active stroke if user was drawing ──
       if (m_isDrawing) {
         // Revert the stroke buffer to the pre-stroke state
@@ -6233,6 +6240,13 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
       m_lastPinchAngle = std::atan2(p2.y() - p1.y(), p2.x() - p1.x());
       m_isTwoFingerGesture = true;
 
+      m_touchHistoryP1.clear();
+      m_touchHistoryP2.clear();
+      for (int i = 0; i < 3; ++i) {
+        m_touchHistoryP1.append(p1);
+        m_touchHistoryP2.append(p2);
+      }
+
       if (m_touchTimer)
         m_touchTimer->stop();
 
@@ -6281,13 +6295,40 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
       m_lastTouchCenter = center;
       m_lastPinchScale = QLineF(p1, p2).length();
       m_lastPinchAngle = std::atan2(p2.y() - p1.y(), p2.x() - p1.x());
+
+      m_touchHistoryP1.clear();
+      m_touchHistoryP2.clear();
+      for (int i = 0; i < 3; ++i) {
+        m_touchHistoryP1.append(p1);
+        m_touchHistoryP2.append(p2);
+      }
     }
 
     // ── Two-finger gesture: Pan + Zoom + Rotation (Unified rotation-aware focal-point) ──
     if (points == 2 && m_isTwoFingerGesture &&
         PreferencesManager::instance()->touchGesturesEnabled()) {
-      QPointF p1 = event->points()[0].position();
-      QPointF p2 = event->points()[1].position();
+      QPointF rawP1 = event->points()[0].position();
+      QPointF rawP2 = event->points()[1].position();
+
+      // Push raw positions to history
+      m_touchHistoryP1.append(rawP1);
+      m_touchHistoryP2.append(rawP2);
+      if (m_touchHistoryP1.size() > 3) m_touchHistoryP1.removeFirst();
+      if (m_touchHistoryP2.size() > 3) m_touchHistoryP2.removeFirst();
+
+      // Calculate averaged points for low-pass filtering
+      QPointF p1(0, 0);
+      for (const QPointF &pt : m_touchHistoryP1) {
+        p1 += pt;
+      }
+      p1 /= static_cast<double>(m_touchHistoryP1.size());
+
+      QPointF p2(0, 0);
+      for (const QPointF &pt : m_touchHistoryP2) {
+        p2 += pt;
+      }
+      p2 /= static_cast<double>(m_touchHistoryP2.size());
+
       QPointF center = (p1 + p2) / 2.0;
 
       // Calculate the canvas focal point corresponding to the previous frame's screen center
@@ -6331,7 +6372,7 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
       // Apply transformations unstead of multiple sequential calls
       updateViewportTransform(newZoom, newRotation, newViewOffset);
 
-      // Update tracking variables for the next event
+      // Update tracking variables for the next event (using smoothed values)
       m_lastTouchCenter = center;
       m_lastPinchScale = currentDist;
       m_lastPinchAngle = currentAngle;
@@ -11876,14 +11917,26 @@ void CanvasItem::applyEditingPresetToEngine() {
 
   m_brushEngine->setBrush(s);
 
-  // Also update the CanvasItem properties to reflect the editing preset
-  setBrushSize(static_cast<int>(m_editingPreset.defaultSize));
-  setBrushOpacity(m_editingPreset.defaultOpacity);
-  setBrushHardness(m_editingPreset.defaultHardness);
-  setBrushFlow(m_editingPreset.defaultFlow);
-  setBrushSpacing(m_editingPreset.stroke.spacing);
-  setBrushStreamline(m_editingPreset.stroke.streamline);
-  invalidateCursorCache();
+  // Directly update properties to avoid redundant setBrush calls, cursor updates,
+  // disk I/O and main window redraw requests while dragging dialog sliders.
+  m_brushSize = static_cast<int>(m_editingPreset.defaultSize);
+  m_brushOpacity = m_editingPreset.defaultOpacity;
+  m_brushHardness = m_editingPreset.defaultHardness;
+  m_brushFlow = m_editingPreset.defaultFlow;
+  m_brushSpacing = m_editingPreset.stroke.spacing;
+  m_brushStreamline = m_editingPreset.stroke.streamline;
+
+  // Invalidate cursor cache quietly (does not call update() which requests a repaint)
+  m_cursorCacheDirty = true;
+  m_brushOutlineCache = QImage();
+
+  // Emit changed signals once to keep UI properties in sync
+  emit brushSizeChanged();
+  emit brushOpacityChanged();
+  emit brushHardnessChanged();
+  emit brushFlowChanged();
+  emit brushSpacingChanged();
+  emit brushStreamlineChanged();
 }
 
 // ─── Generic Property Getter ──────────────────────────────────────────
@@ -13238,7 +13291,7 @@ QString CanvasItem::get_brush_preview(const QString &brushName) {
   s.color = Qt::white;
   s.size = 35.0f;
   s.opacity = 1.0f;
-  s.spacing = std::max(s.spacing, 0.05f); // Evitar espaciado demasiado denso
+  s.spacing = std::max(s.spacing, 0.10f); // Evitar espaciado demasiado denso en la CPU (por ejemplo, spacing de 0.01)
   tempEngine.setBrush(s);
 
   // Dibujar una curva de onda horizontal extremadamente elegante, suave y centrada
@@ -13250,7 +13303,8 @@ QString CanvasItem::get_brush_preview(const QString &brushName) {
   QPointF lastP = path.pointAtPercent(0);
   tempEngine.resetRemainder();
 
-  int segments = 100;
+  // Reducido de 100 a 40 segmentos para acelerar sustancialmente el cálculo en la CPU
+  int segments = 40;
   for (int i = 1; i <= segments; ++i) {
     float t = (float)i / segments;
     QPointF currP = path.pointAtPercent(t);
@@ -13267,7 +13321,9 @@ QString CanvasItem::get_brush_preview(const QString &brushName) {
   QByteArray ba;
   QBuffer buffer(&ba);
   buffer.open(QIODevice::WriteOnly);
-  img.save(&buffer, "PNG");
+  
+  // Usar factor de calidad 30 para comprimir PNG de manera rápida (compresión zlib nivel 3)
+  img.save(&buffer, "PNG", 30);
 
   QString base64Str = "data:image/png;base64," + ba.toBase64();
   

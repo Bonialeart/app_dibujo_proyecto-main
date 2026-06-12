@@ -29,10 +29,18 @@ Item {
     // Suppress the overlay (e.g. while user is drawing)
     property bool  suppressed: false
 
+    // "Modo Visor Real": letterbox preview of the export framing
+    // (handles hidden, area outside the frame darkened).
+    readonly property bool viewerModeActive: camera !== null && camera.viewerMode
+    readonly property bool ghostingOn:  camera !== null && camera.ghostingEnabled
+    readonly property bool motionPathOn: camera !== null && camera.motionPathEnabled
+
     // ── Internal drag state ───────────────────────────────────
     property bool  _dragging:    false
     property string _dragMode:   ""   // "pan" | "nw"|"ne"|"sw"|"se" | "rotate"
     property point _startMouse:  Qt.point(0, 0)
+    // Global (root-item) coords of the press that started a pan
+    property point _startGlobal: Qt.point(0, 0)
     property real  _startZoom:   1.0
     property real  _startX:      0
     property real  _startY:      0
@@ -44,6 +52,43 @@ Item {
 
     // Don't capture mouse while suppressed
     opacity: suppressed ? 0.3 : 1.0
+
+    // ── Reusable toolbar toggle ───────────────────────────────
+    component VfToggle : Rectangle {
+        id: vt
+        property string icon: "?"
+        property string tip: ""
+        property bool   active: false
+        property bool   shown: true
+        signal toggled()
+        visible: shown
+        width: 24; height: 24; radius: 12
+        color: active
+            ? Qt.rgba(overlay.frameColor.r, overlay.frameColor.g, overlay.frameColor.b, 0.30)
+            : Qt.rgba(0.04, 0.04, 0.06, 0.72)
+        border.color: active ? overlay.frameColor : Qt.rgba(1, 1, 1, 0.18)
+        border.width: 1
+        Behavior on color { ColorAnimation { duration: 130 } }
+        scale: vtMa.pressed ? 0.9 : (vtMa.containsMouse ? 1.08 : 1.0)
+        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutBack } }
+        Text {
+            anchors.centerIn: parent
+            text: vt.icon
+            color: vt.active ? "#ffffff" : "#9ca3af"
+            font.pixelSize: 11
+        }
+        MouseArea {
+            id: vtMa
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            preventStealing: true
+            onClicked: vt.toggled()
+        }
+        ToolTip.visible: vtMa.containsMouse
+        ToolTip.text: vt.tip
+        ToolTip.delay: 450
+    }
 
     // The viewfinder's frame is rotated by the camera's
     // current rotation (which is what the user just keyframed).
@@ -74,6 +119,46 @@ Item {
         return canvasDim * z * 0.80 / cz
     }
 
+    // Frame size for an arbitrary camera zoom (ghost frames)
+    function _frameSizeFor(camZoom, isWidth) {
+        if (!camera || !camera.targetCanvas) return 0
+        var z = camera.targetCanvas.zoomLevel || 1.0
+        if (z <= 0) z = 1.0
+        var cz = (camZoom && camZoom > 0) ? camZoom : 1.0
+        var canvasDim = isWidth
+            ? camera.targetCanvas.canvasWidth
+            : camera.targetCanvas.canvasHeight
+        return canvasDim * z * 0.80 / cz
+    }
+
+    // Screen-space offset (from the current frame center) at which
+    // a camera state {x, y} appears. x/y are paper coordinates of
+    // the frame center, so the delta is direct.
+    function _stateDelta(stX, stY) {
+        if (!camera || !camera.targetCanvas) return Qt.point(0, 0)
+        var z = camera.targetCanvas.zoomLevel || 1.0
+        return Qt.point((stX - camera.appliedX) * z,
+                        (stY - camera.appliedY) * z)
+    }
+
+    // Previous / next keyframes around the current frame (for the
+    // camera ghosting). Recomputed whenever the keyframe set or
+    // the current frame changes.
+    readonly property var ghostKfs: {
+        if (!camera) return []
+        var kfs = camera.keyframes
+        var cur = camera.currentFrameIdx
+        var prev = null, next = null
+        for (var i = 0; i < kfs.length; i++) {
+            if (kfs[i].frameIdx < cur) prev = kfs[i]
+            else if (kfs[i].frameIdx > cur) { next = kfs[i]; break }
+        }
+        var out = []
+        if (prev) out.push({ kf: prev, isPrev: true })
+        if (next) out.push({ kf: next, isPrev: false })
+        return out
+    }
+
     function _paperCenter() {
         if (!camera || !camera.targetCanvas) return Qt.point(0, 0)
         var z = camera.targetCanvas.zoomLevel
@@ -101,13 +186,141 @@ Item {
         camera._suppressApply = false
     }
 
+    // ── WORLD LAYER ───────────────────────────────────────────
+    // Counter-rotated, screen-aligned container for the motion
+    // path and the camera ghost frames. The overlay itself rotates
+    // with the camera; this layer cancels that rotation so the
+    // trajectory is drawn in stable screen space.
+    Item {
+        id: worldLayer
+        anchors.centerIn: parent
+        width: 1; height: 1
+        rotation: -overlay.rotation
+        visible: !overlay.suppressed && !overlay.viewerModeActive
+        z: 0
+
+        // ── Motion path: dotted camera trajectory ──
+        Canvas {
+            id: pathCanvas
+            visible: overlay.motionPathOn
+            // Kept moderate: this is an offscreen image buffer
+            // (width × height × 4 bytes), so don't oversize it.
+            width: 1400; height: 1400
+            x: -width / 2; y: -height / 2
+            renderTarget: Canvas.Image
+
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+                if (!overlay.camera || !overlay.motionPathOn) return
+                var samples = overlay.camera.getMotionPathSamples(10)
+                if (samples.length < 2) return
+                var cx = width / 2, cy = height / 2
+
+                ctx.strokeStyle = Qt.rgba(overlay.frameColor.r, overlay.frameColor.g,
+                                          overlay.frameColor.b, 0.75)
+                ctx.lineWidth = 1.5
+                ctx.setLineDash([4, 5])
+                ctx.beginPath()
+                for (var i = 0; i < samples.length; i++) {
+                    var d = overlay._stateDelta(samples[i].x, samples[i].y)
+                    if (i === 0) ctx.moveTo(cx + d.x, cy + d.y)
+                    else         ctx.lineTo(cx + d.x, cy + d.y)
+                }
+                ctx.stroke()
+                ctx.setLineDash([])
+
+                // Keyframe dots along the path
+                for (var j = 0; j < samples.length; j++) {
+                    if (!samples[j].isKey) continue
+                    var kd = overlay._stateDelta(samples[j].x, samples[j].y)
+                    ctx.beginPath()
+                    ctx.arc(cx + kd.x, cy + kd.y, 3.2, 0, Math.PI * 2)
+                    ctx.fillStyle = overlay.frameColor
+                    ctx.fill()
+                    ctx.lineWidth = 1
+                    ctx.strokeStyle = "#0b1220"
+                    ctx.stroke()
+                }
+            }
+
+            Connections {
+                target: overlay.camera
+                enabled: overlay.camera !== null
+                function onKeyframesChanged()     { pathCanvas.requestPaint() }
+                function onAppliedXChanged()      { pathCanvas.requestPaint() }
+                function onAppliedYChanged()      { pathCanvas.requestPaint() }
+                function onAppliedZoomChanged()   { pathCanvas.requestPaint() }
+                function onCurrentFrameIdxChanged() { pathCanvas.requestPaint() }
+                function onMotionPathEnabledChanged() { pathCanvas.requestPaint() }
+            }
+            Connections {
+                target: overlay.camera ? overlay.camera.targetCanvas : null
+                enabled: overlay.camera !== null && overlay.camera.targetCanvas !== null
+                function onZoomLevelChanged()   { pathCanvas.requestPaint() }
+                function onViewOffsetChanged()  { pathCanvas.requestPaint() }
+            }
+        }
+
+        // ── Camera ghosting: prev / next keyframe framings ──
+        Repeater {
+            model: overlay.ghostingOn ? overlay.ghostKfs : []
+            delegate: Item {
+                property var entry: modelData
+                property var gk: entry.kf
+                property point gd: overlay._stateDelta(gk.x, gk.y)
+                property real gw: overlay._frameSizeFor(gk.zoom, true)
+                property real gh: overlay._frameSizeFor(gk.zoom, false)
+                // Skip the ghost when it matches the current framing
+                visible: Math.abs(gd.x) > 1 || Math.abs(gd.y) > 1
+                         || Math.abs(gw - overlay.width) > 1
+                x: gd.x - gw / 2
+                y: gd.y - gh / 2
+                width: gw; height: gh
+                rotation: gk.rotation || 0
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: "transparent"
+                    border.color: entry.isPrev ? "#cc4444" : "#44cc66"
+                    border.width: 1
+                    opacity: 0.45
+                }
+                // Corner ticks to read the ghost as a camera frame
+                Repeater {
+                    model: 4
+                    Rectangle {
+                        width: 7; height: 7
+                        color: "transparent"
+                        border.color: entry.isPrev ? "#cc4444" : "#44cc66"
+                        border.width: 1.5
+                        opacity: 0.8
+                        x: (index % 2) === 0 ? -1 : parent.width - 6
+                        y: index < 2 ? -1 : parent.height - 6
+                    }
+                }
+                Text {
+                    anchors.top: parent.top
+                    anchors.topMargin: 3
+                    anchors.left: parent.left
+                    anchors.leftMargin: 6
+                    text: (entry.isPrev ? "◀ " : "▶ ") + "F" + (gk.frameIdx + 1)
+                    color: entry.isPrev ? "#cc4444" : "#44cc66"
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                    opacity: 0.85
+                }
+            }
+        }
+    }
+
     // ── The frame rectangle (visualizes the camera's view) ─────
     Rectangle {
         id: frame
         anchors.fill: parent
         color: "transparent"
-        border.color: overlay.frameColor
-        border.width: 1
+        border.color: overlay.viewerModeActive ? "#f8fafc" : overlay.frameColor
+        border.width: overlay.viewerModeActive ? 1.5 : 1
         // Cosmetic: dashed inner stroke
         Rectangle {
             anchors.fill: parent
@@ -117,10 +330,57 @@ Item {
             border.width: 1
             opacity: 0.35
         }
+
+        // Rule-of-thirds grid: makes the overlay read as a camera
+        // viewfinder and helps composing the shot.
+        Item {
+            anchors.fill: parent
+            opacity: overlay._dragging ? 0.35 : 0.16
+            Behavior on opacity { NumberAnimation { duration: 150 } }
+            Rectangle { x: parent.width / 3;     width: 1; height: parent.height; color: overlay.frameColor }
+            Rectangle { x: parent.width * 2 / 3; width: 1; height: parent.height; color: overlay.frameColor }
+            Rectangle { y: parent.height / 3;     height: 1; width: parent.width; color: overlay.frameColor }
+            Rectangle { y: parent.height * 2 / 3; height: 1; width: parent.width; color: overlay.frameColor }
+        }
+    }
+
+    // ── LETTERBOX (Modo Visor Real) ───────────────────────────
+    // Darkens everything outside the camera frame so the user can
+    // preview the pan / zoom exactly as it will export. The four
+    // huge bars extend far past the screen in every direction
+    // (the overlay rotates, so they must over-cover).
+    Item {
+        visible: overlay.viewerModeActive
+        anchors.fill: parent
+        z: 5
+        readonly property real ext: 4000
+        readonly property color maskCol: Qt.rgba(0.02, 0.02, 0.03, 0.82)
+
+        Rectangle { // top
+            x: -parent.ext; y: -parent.ext
+            width: parent.width + 2 * parent.ext; height: parent.ext
+            color: parent.maskCol
+        }
+        Rectangle { // bottom
+            x: -parent.ext; y: parent.height
+            width: parent.width + 2 * parent.ext; height: parent.ext
+            color: parent.maskCol
+        }
+        Rectangle { // left
+            x: -parent.ext; y: 0
+            width: parent.ext; height: parent.height
+            color: parent.maskCol
+        }
+        Rectangle { // right
+            x: parent.width; y: 0
+            width: parent.ext; height: parent.height
+            color: parent.maskCol
+        }
     }
 
     // ── Center crosshair (helps see the rotation pivot) ───────
     Item {
+        visible: !overlay.viewerModeActive
         anchors.centerIn: parent
         Rectangle { width: 14; height: 1.5; color: overlay.frameColor; opacity: 0.6; anchors.centerIn: parent }
         Rectangle { width: 1.5; height: 14; color: overlay.frameColor; opacity: 0.6; anchors.centerIn: parent }
@@ -135,6 +395,45 @@ Item {
         }
     }
 
+    // ── VIEWFINDER TOOLBAR (top-right corner) ─────────────────
+    // Quick toggles: camera ghosting, motion path and "Modo Visor
+    // Real". Stays visible in viewer mode so the user can exit.
+    Row {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 8
+        anchors.rightMargin: 8
+        spacing: 6
+        z: 30
+        visible: overlay.camera !== null && !overlay._dragging
+
+        VfToggle {
+            icon: "◈"; tip: "Papel cebolla de cámara (keyframes vecinos)"
+            shown: !overlay.viewerModeActive
+            active: overlay.ghostingOn
+            onToggled: if (overlay.camera) overlay.camera.ghostingEnabled = !overlay.camera.ghostingEnabled
+        }
+        VfToggle {
+            icon: "∿"; tip: "Trayectoria de la cámara (motion path)"
+            shown: !overlay.viewerModeActive
+            active: overlay.motionPathOn
+            onToggled: if (overlay.camera) overlay.camera.motionPathEnabled = !overlay.camera.motionPathEnabled
+        }
+        VfToggle {
+            icon: "⛶"; tip: overlay.viewerModeActive
+                ? "Salir del Modo Visor Real"
+                : "Modo Visor Real (previsualizar encuadre de exportación)"
+            active: overlay.viewerModeActive
+            onToggled: {
+                if (!overlay.camera) return
+                overlay.camera.viewerMode = !overlay.camera.viewerMode
+                if (overlay.camera.notify)
+                    overlay.camera.notify(overlay.camera.viewerMode
+                        ? "Modo Visor Real activado" : "Modo Visor Real desactivado", "info")
+            }
+        }
+    }
+
     // ── HUD: current camera state (top-left corner) ───────────
     Item {
         x: 10; y: 10
@@ -142,8 +441,16 @@ Item {
         Column {
             spacing: 2
             Text {
-                text: overlay.camera && overlay.camera.targetCanvas
-                    ? "Z " + (overlay.camera.targetCanvas.zoomLevel * 100).toFixed(0) + "%"
+                text: "🎥 CÁMARA"
+                color: overlay.frameColor
+                font.pixelSize: 9
+                font.weight: Font.Bold
+                font.letterSpacing: 1
+                opacity: 0.9
+            }
+            Text {
+                text: overlay.camera
+                    ? "Z " + ((overlay.camera.appliedZoom || 1) * 100).toFixed(0) + "%"
                     : ""
                 color: overlay.frameColor
                 font.pixelSize: 11
@@ -159,16 +466,21 @@ Item {
         }
     }
 
-    // ── PAN: drag the center of the frame ─────────────────────
+    // ── MOVE: drag anywhere inside the frame to move IT ───────
+    // (paper-anchored: only the frame travels over the canvas,
+    // the canvas view is never touched)
     Item {
         anchors.fill: parent
+        visible: !overlay.viewerModeActive
         MouseArea {
             id: panArea
             anchors.fill: parent
             cursorShape: overlay._dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            hoverEnabled: true
             preventStealing: true
             z: 1
             propagateComposedEvents: false
+            property point _startCam: Qt.point(0, 0)
             onPressed: function(m) {
                 if (!overlay.camera || !overlay.camera.targetCanvas) return
                 overlay._dragging   = true
@@ -177,8 +489,7 @@ Item {
                 // delta is unaffected by the overlay moving
                 // under the mouse.
                 overlay._startGlobal = panArea.mapToItem(null, m.x, m.y)
-                var v = overlay.camera.targetCanvas.viewOffset
-                overlay._startView   = Qt.point(v.x, v.y)
+                _startCam = Qt.point(overlay.camera.appliedX, overlay.camera.appliedY)
             }
             onPositionChanged: function(m) {
                 if (!overlay._dragging || overlay._dragMode !== "pan") return
@@ -187,12 +498,9 @@ Item {
                 var dx = gp.x - overlay._startGlobal.x
                 var dy = gp.y - overlay._startGlobal.y
                 var z  = overlay.camera.targetCanvas.zoomLevel || 1.0
-                var newX = overlay._startView.x + dx / z
-                var newY = overlay._startView.y + dy / z
-                overlay.camera.appliedX = newX
-                overlay.camera.appliedY = newY
-                // `canvasOffset` is writable on QCanvasItem; `viewOffset` is read-only.
-                overlay.camera.targetCanvas.canvasOffset = Qt.point(newX, newY)
+                // The frame follows the cursor 1:1 in screen space
+                overlay.camera.appliedX = _startCam.x + dx / z
+                overlay.camera.appliedY = _startCam.y + dy / z
             }
             onReleased: {
                 if (overlay._dragMode === "pan") {
@@ -201,6 +509,11 @@ Item {
                     overlay._commitKeyframe()
                 }
             }
+            ToolTip.visible: panArea.containsMouse && !overlay._dragging
+                && !handleSEMa.containsMouse && !handleNWMa.containsMouse
+                && !handleNEMa.containsMouse && !handleSWMa.containsMouse
+            ToolTip.text: "Arrastra para mover el encuadre · esquinas: zoom · ⊙ superior: rotar"
+            ToolTip.delay: 900
         }
     }
 
@@ -214,7 +527,8 @@ Item {
     // SE corner — drag ↘ to zoom in (scale up around center)
     Rectangle {
         id: handleSE
-        width: 12; height: 12
+        visible: !overlay.viewerModeActive
+        width: 16; height: 16
         color: handleSEMa.containsMouse ? Qt.lighter(overlay.frameColor, 1.4) : overlay.frameColor
         border.color: "white"
         border.width: 1
@@ -237,6 +551,7 @@ Item {
         MouseArea {
             id: handleSEMa
             anchors.fill: parent
+            anchors.margins: -7
             cursorShape: Qt.SizeFDiagCursor
             hoverEnabled: true
             preventStealing: true
@@ -270,14 +585,15 @@ Item {
             }
         }
         ToolTip.visible: handleSEMa.containsMouse && !overlay._dragging
-        ToolTip.text: "Zoom: arrastra hacia afuera (↘) para alejar, hacia adentro (↖) para acercar"
+        ToolTip.text: "Redimensiona el encuadre: hacia afuera lo amplía (aleja la cámara), hacia adentro lo reduce (acerca)"
         ToolTip.delay: 500
     }
 
     // NW corner — drag ↖ to zoom in (scale up around center)
     Rectangle {
         id: handleNW
-        width: 12; height: 12
+        visible: !overlay.viewerModeActive
+        width: 16; height: 16
         color: handleNWMa.containsMouse ? Qt.lighter(overlay.frameColor, 1.4) : overlay.frameColor
         border.color: "white"
         border.width: 1
@@ -300,6 +616,7 @@ Item {
         MouseArea {
             id: handleNWMa
             anchors.fill: parent
+            anchors.margins: -7
             cursorShape: Qt.SizeFDiagCursor
             hoverEnabled: true
             preventStealing: true
@@ -333,14 +650,15 @@ Item {
             }
         }
         ToolTip.visible: handleNWMa.containsMouse && !overlay._dragging
-        ToolTip.text: "Zoom: arrastra hacia afuera (↖) para alejar, hacia adentro (↘) para acercar"
+        ToolTip.text: "Redimensiona el encuadre: hacia afuera lo amplía (aleja la cámara), hacia adentro lo reduce (acerca)"
         ToolTip.delay: 500
     }
 
     // NE corner — drag ↗ to zoom in (scale up around center)
     Rectangle {
         id: handleNE
-        width: 12; height: 12
+        visible: !overlay.viewerModeActive
+        width: 16; height: 16
         color: handleNEMa.containsMouse ? Qt.lighter(overlay.frameColor, 1.4) : overlay.frameColor
         border.color: "white"
         border.width: 1
@@ -363,6 +681,7 @@ Item {
         MouseArea {
             id: handleNEMa
             anchors.fill: parent
+            anchors.margins: -7
             cursorShape: Qt.SizeBDiagCursor
             hoverEnabled: true
             preventStealing: true
@@ -396,14 +715,15 @@ Item {
             }
         }
         ToolTip.visible: handleNEMa.containsMouse && !overlay._dragging
-        ToolTip.text: "Zoom: arrastra hacia afuera (↗) para alejar, hacia adentro (↙) para acercar"
+        ToolTip.text: "Redimensiona el encuadre: hacia afuera lo amplía (aleja la cámara), hacia adentro lo reduce (acerca)"
         ToolTip.delay: 500
     }
 
     // SW corner — drag ↙ to zoom in (scale up around center)
     Rectangle {
         id: handleSW
-        width: 12; height: 12
+        visible: !overlay.viewerModeActive
+        width: 16; height: 16
         color: handleSWMa.containsMouse ? Qt.lighter(overlay.frameColor, 1.4) : overlay.frameColor
         border.color: "white"
         border.width: 1
@@ -426,6 +746,7 @@ Item {
         MouseArea {
             id: handleSWMa
             anchors.fill: parent
+            anchors.margins: -7
             cursorShape: Qt.SizeBDiagCursor
             hoverEnabled: true
             preventStealing: true
@@ -459,38 +780,41 @@ Item {
             }
         }
         ToolTip.visible: handleSWMa.containsMouse && !overlay._dragging
-        ToolTip.text: "Zoom: arrastra hacia afuera (↙) para alejar, hacia adentro (↗) para acercar"
+        ToolTip.text: "Redimensiona el encuadre: hacia afuera lo amplía (aleja la cámara), hacia adentro lo reduce (acerca)"
         ToolTip.delay: 500
     }
 
     // ── ROTATION handle (sits above the top edge, centered) ───
     Item {
         id: rotHandle
-        width: 16
-        height: 32
+        visible: !overlay.viewerModeActive
+        width: 22
+        height: 36
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        anchors.topMargin: 4
+        anchors.topMargin: 6
         z: 10
 
         // Connecting line (from the top edge of the frame down to the
         // rotation handle's top)
         Rectangle {
             width: 1.5
-            height: 4
+            height: 6
             color: overlay.frameColor
             anchors.bottom: parent.top
             anchors.horizontalCenter: parent.horizontalCenter
         }
         // Handle dot
         Rectangle {
-            width: 16; height: 16
-            radius: 8
-            color: overlay.frameColor
+            width: 20; height: 20
+            radius: 10
+            color: rotMa.pressed ? Qt.lighter(overlay.frameColor, 1.3) : overlay.frameColor
             border.color: "white"
             border.width: 1
             anchors.top: parent.top
             anchors.horizontalCenter: parent.horizontalCenter
+            scale: rotMa.pressed ? 1.1 : (rotMa.containsMouse ? 1.08 : 1.0)
+            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutBack } }
         }
         // Rotation icon
         Text {
@@ -498,12 +822,15 @@ Item {
             anchors.verticalCenterOffset: -8
             text: "↻"
             color: "white"
-            font.pixelSize: 10
+            font.pixelSize: 12
             font.weight: Font.Bold
         }
 
         MouseArea {
+            id: rotMa
             anchors.fill: parent
+            anchors.margins: -7
+            hoverEnabled: true
             cursorShape: Qt.CrossCursor
             preventStealing: true
             property real startAngle: 0
@@ -541,5 +868,8 @@ Item {
                 }
             }
         }
+        ToolTip.visible: rotMa.containsMouse && !overlay._dragging
+        ToolTip.text: "Rota el encuadre alrededor de su centro"
+        ToolTip.delay: 500
     }
 }

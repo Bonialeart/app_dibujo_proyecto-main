@@ -121,6 +121,8 @@ import "../components"
                             PinchHandler { 
                                 target: manipulator 
                                 enabled: !mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
+                                minimumTouchPoints: 2
+                                maximumTouchPoints: 2
                             }
                             DragHandler { 
                                 target: manipulator 

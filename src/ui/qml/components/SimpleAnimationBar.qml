@@ -35,6 +35,32 @@ Item {
 
     function refreshCameraKeyMarker() { _camKeyVersion++ }
 
+    // Maps a timeline slot (ruler position) to a frame index,
+    // honouring per-frame durations.
+    function slotToFrame(slot) {
+        var acc = 0
+        for (var i = 0; i < frameCount; i++) {
+            var d = getFrameDuration(i)
+            if (slot < acc + d) return i
+            acc += d
+        }
+        return Math.max(0, frameCount - 1)
+    }
+
+    // Interpolation curves offered for camera keyframes
+    readonly property var easingOptions: [
+        { key: "linear",    label: "Lineal" },
+        { key: "easeIn",    label: "Ease-In" },
+        { key: "easeOut",   label: "Ease-Out" },
+        { key: "easeInOut", label: "Ease-In-Out" },
+        { key: "bezier",    label: "Bezier personalizada" }
+    ]
+    function easingLabel(key) {
+        for (var i = 0; i < easingOptions.length; i++)
+            if (easingOptions[i].key === key) return easingOptions[i].label
+        return "Lineal"
+    }
+
     // Canvas background color
     property color  canvasBgColor: {
         if (targetCanvas && targetCanvas.layerModel && targetCanvas.layerModel.length > 0) {
@@ -242,6 +268,162 @@ Item {
         }
     }
 
+    // ── CAMERA KEYFRAME CONTEXT MENU ─────────────────────────
+    // Opened with right-click (desktop) or long-press (touch) on
+    // a keyframe diamond: delete, duplicate and interpolation.
+    Popup {
+        id: camKfMenu
+        property int frameIdx: -1
+        width: 216
+        padding: 6
+        z: 10000
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        function openFor(fi, px, py) {
+            frameIdx = fi
+            x = Math.max(6, Math.min(root.width - width - 6, px - width / 2))
+            y = Math.max(6, py - implicitHeight - 12)
+            open()
+        }
+
+        function kfEasing() {
+            if (!root.camera) return "linear"
+            var k = root.camera.getKeyframeAt(frameIdx)
+            return (k && k.easing !== undefined) ? k.easing : "linear"
+        }
+
+        background: Rectangle {
+            color: "#16161c"; radius: 12
+            border.color: Qt.rgba(1, 1, 1, 0.09); border.width: 1
+            Rectangle { anchors.fill: parent; anchors.margins: -5; z: -1
+                radius: 16; color: "#000"; opacity: 0.45 }
+        }
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 140; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.92; to: 1; duration: 160; easing.type: Easing.OutCubic }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
+        }
+
+        contentItem: Column {
+            spacing: 2
+
+            // Header
+            Row {
+                spacing: 6
+                leftPadding: 8
+                topPadding: 2
+                bottomPadding: 4
+                Rectangle { width: 8; height: 8; rotation: 45; radius: 1.5
+                    color: "#818cf8"; anchors.verticalCenter: parent.verticalCenter }
+                Text {
+                    text: "Cámara · Frame " + (camKfMenu.frameIdx + 1)
+                    color: "#a1a1aa"; font.pixelSize: 10; font.weight: Font.DemiBold
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Rectangle { width: parent.width - 10; height: 1
+                color: Qt.rgba(1,1,1,0.07); anchors.horizontalCenter: parent.horizontalCenter }
+
+            CamMenuBtn {
+                iconSource: "image://icons/duplicate_outline"; label: "Duplicar keyframe"
+                onTriggered: {
+                    if (!root.camera) return
+                    var dst = root.camera.duplicateKeyframe(camKfMenu.frameIdx)
+                    if (dst >= 0)
+                        root.camera.notify("Keyframe duplicado en frame " + (dst + 1), "success")
+                    else
+                        root.camera.notify("No hay un frame libre para duplicar", "warning")
+                }
+            }
+            CamMenuBtn {
+                iconSource: "image://icons/trash"; label: "Eliminar keyframe"; destructive: true
+                onTriggered: {
+                    if (!root.camera) return
+                    root.camera.removeKeyframeAt(camKfMenu.frameIdx)
+                    root.camera.notify("Keyframe eliminado", "info")
+                }
+            }
+
+            Rectangle { width: parent.width - 10; height: 1
+                color: Qt.rgba(1,1,1,0.07); anchors.horizontalCenter: parent.horizontalCenter }
+
+            Text {
+                text: "INTERPOLACIÓN"
+                color: "#52525b"; font.pixelSize: 8; font.weight: Font.Bold
+                font.letterSpacing: 1
+                leftPadding: 8; topPadding: 4; bottomPadding: 2
+            }
+
+            Repeater {
+                model: root.easingOptions
+                CamMenuBtn {
+                    required property var modelData
+                    iconSource: camKfMenu.kfEasing() === modelData.key ? "image://icons/check" : ""
+                    label: modelData.label
+                    checked: camKfMenu.kfEasing() === modelData.key
+                    closeOnTrigger: true
+                    onTriggered: {
+                        if (!root.camera) return
+                        root.camera.setKeyframeEasing(camKfMenu.frameIdx, modelData.key)
+                        root.camera.notify("Interpolación: " + modelData.label, "info")
+                    }
+                }
+            }
+        }
+    }
+
+    component CamMenuBtn : Rectangle {
+        id: cmb
+        property string icon: ""
+        property string iconSource: ""
+        property string label: ""
+        property bool destructive: false
+        property bool checked: false
+        property bool closeOnTrigger: true
+        signal triggered()
+        width: parent ? parent.width : 200
+        height: 28; radius: 7
+        color: cmbMa.containsMouse
+            ? (destructive ? "#2d1619" : "#222230")
+            : (checked ? Qt.rgba(0.51, 0.55, 0.97, 0.10) : "transparent")
+        Behavior on color { ColorAnimation { duration: 90 } }
+        Row {
+            anchors.left: parent.left; anchors.leftMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 7
+            Text {
+                visible: cmb.iconSource === ""
+                text: cmb.icon; width: 14
+                color: cmb.destructive ? "#f87171" : (cmb.checked ? "#818cf8" : "#9ca3af")
+                font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter
+            }
+            Image {
+                visible: cmb.iconSource !== ""
+                source: cmb.iconSource
+                width: 11; height: 11
+                anchors.verticalCenter: parent.verticalCenter
+                smooth: true; mipmap: true
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    colorizationColor: cmb.destructive ? "#f87171" : (cmb.checked ? "#818cf8" : "#9ca3af")
+                    colorization: 1.0
+                }
+            }
+            Text { text: cmb.label
+                color: cmb.destructive ? "#f87171" : (cmb.checked ? "#c7d2fe" : "#d4d4d8")
+                font.pixelSize: 11; font.weight: cmb.checked ? Font.DemiBold : Font.Medium
+                anchors.verticalCenter: parent.verticalCenter }
+        }
+        MouseArea {
+            id: cmbMa; anchors.fill: parent; hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: { cmb.triggered(); if (cmb.closeOnTrigger) camKfMenu.close() }
+        }
+    }
+
     function addFrame() {
         var newIdx = frameModel.count
         var nm = "AF_Simple_F" + (newIdx + 1)
@@ -417,11 +599,16 @@ Item {
 
                 Row {
                     id: playRow; anchors.centerIn: parent; spacing: 6
-                    Text {
-                        text: root.isPlaying ? "■" : "▶"
-                        color: root.isPlaying ? root.accentColor : "#ffffff"
-                        font.pixelSize: root.isPlaying ? 10 : 11
+                    Image {
+                        source: root.isPlaying ? "image://icons/stop" : "image://icons/play"
+                        width: 10; height: 10
                         anchors.verticalCenter: parent.verticalCenter
+                        smooth: true; mipmap: true
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            colorizationColor: root.isPlaying ? root.accentColor : "#ffffff"
+                            colorization: 1.0
+                        }
                     }
                     Text {
                         text: root.isPlaying ? "Stop" : "Play"
@@ -490,7 +677,7 @@ Item {
             Row { spacing: 4
                 // Loop
                 IconBtn {
-                    icon: "↻"; active: root.loopEnabled; activeCol: root.accentColor
+                    iconSource: "image://icons/repeat"; active: root.loopEnabled; activeCol: root.accentColor
                     tip: "Loop"; onToggled: root.loopEnabled = !root.loopEnabled
                 }
                 // Onion
@@ -501,7 +688,7 @@ Item {
                 }
                 // Camera mode (virtual camera with keyframes)
                 IconBtn {
-                    icon: "🎥"; active: root.camera && root.camera.active; activeCol: "#22d3ee"
+                    iconSource: "image://icons/camera-01"; active: root.camera && root.camera.active; activeCol: "#22d3ee"
                     tip: root.camera && root.camera.active
                         ? "Modo cámara activado (clic para desactivar)"
                         : "Modo cámara (keyframes de paneo/zoom)"
@@ -574,14 +761,14 @@ Item {
                 }
                 // Edit camera properties (opens numeric panel popup)
                 IconBtn {
-                    icon: "✎"; active: false; activeCol: "#22d3ee"
+                    iconSource: "image://icons/edit-2"; active: false; activeCol: "#22d3ee"
                     tip: "Editar propiedades de la cámara (Pos / Zoom / Rotación)"
                     visible: root.camera !== null && root.camera.active
                     onToggled: root.cameraEditRequested()
                 }
                 // Advanced mode
                 IconBtn {
-                    icon: "≡"; active: false; activeCol: "#6366f1"
+                    iconSource: "image://icons/menu-01"; active: false; activeCol: "#6366f1"
                     tip: "Modo Avanzado"
                     onToggled: { if (typeof mainWindow !== "undefined") mainWindow.useAdvancedTimeline = true }
                 }
@@ -830,26 +1017,52 @@ Item {
                                 color: Qt.rgba(0.13, 0.83, 0.93, 0.45)
                             }
 
-                            // Keyframe diamonds
+                            // Keyframe diamonds — selectable, draggable
+                            // (move in time) with context menu on
+                            // right-click or long-press (touch).
                             Repeater {
                                 model: root.camera ? root.camera.keyframes : []
                                 delegate: Item {
+                                    id: kfItem
                                     property var kf: (root.camera && modelData)
                                         ? modelData
                                         : ({ frameIdx: 0, x: 0, y: 0, zoom: 1 })
-                                    property real slotX: root.getSlotOffset(kf.frameIdx) * root.cellStep + root.cellStep / 2
-                                    x: slotX - 7
+                                    property bool isSelected: root.camera && root.camera.selectedFrameIdx === kf.frameIdx
+                                    property bool isCurrent:  kf.frameIdx === root.currentFrameIdx
+                                    property bool isDragging: maKf.pressed && maKf.moved
+                                    property int  shownFrame: isDragging ? maKf.dragTargetFrame : kf.frameIdx
+                                    property real slotX: root.getSlotOffset(shownFrame) * root.cellStep + root.cellStep / 2
+                                    x: slotX - 9
                                     y: 0
-                                    width: 14
+                                    width: 18
                                     height: 14
+                                    z: isDragging ? 10 : (isSelected ? 5 : 0)
+
+                                    Behavior on x { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
+
+                                    // Selection halo
+                                    Rectangle {
+                                        anchors.centerIn: parent
+                                        width: 16; height: 16; rotation: 45
+                                        radius: 3
+                                        visible: kfItem.isSelected || kfItem.isDragging
+                                        color: "transparent"
+                                        border.color: "#818cf8"
+                                        border.width: 1.5
+                                        opacity: 0.9
+                                    }
 
                                     // Diamond
                                     Rectangle {
                                         anchors.centerIn: parent
                                         width: 10; height: 10; rotation: 45
                                         radius: 1.5
+                                        scale: kfItem.isDragging ? 1.25 : (maKf.containsMouse ? 1.12 : 1.0)
+                                        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutBack } }
                                         color: {
-                                            if (kf.frameIdx === root.currentFrameIdx)
+                                            if (kfItem.isSelected || kfItem.isDragging)
+                                                return "#818cf8"
+                                            if (kfItem.isCurrent)
                                                 return "#ffffff"
                                             if (root.camera && root.camera.active)
                                                 return "#22d3ee"
@@ -861,27 +1074,69 @@ Item {
                                     }
 
                                     MouseArea {
-                                        id: maHover
+                                        id: maKf
                                         anchors.fill: parent
+                                        anchors.margins: -5   // generous touch target
                                         hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
+                                        cursorShape: kfItem.isDragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                                         preventStealing: true
                                         acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                        onClicked: function(m) {
+
+                                        property real pressX: 0
+                                        property bool moved: false
+                                        property bool menuOpened: false
+                                        property int  dragTargetFrame: kfItem.kf.frameIdx
+
+                                        onPressed: function(m) {
+                                            pressX = mapToItem(camTrack, m.x, m.y).x
+                                            moved = false
+                                            menuOpened = false
+                                            dragTargetFrame = kfItem.kf.frameIdx
+                                            if (root.camera) root.camera.selectedFrameIdx = kfItem.kf.frameIdx
+                                        }
+                                        onPositionChanged: function(m) {
+                                            if (!pressed) return
+                                            var gx = mapToItem(camTrack, m.x, m.y).x
+                                            if (!moved && Math.abs(gx - pressX) < 5) return
+                                            moved = true
+                                            var slot = Math.max(0, Math.round(gx / root.cellStep - 0.5))
+                                            dragTargetFrame = root.slotToFrame(slot)
+                                        }
+                                        onPressAndHold: function(m) {
+                                            if (moved || menuOpened) return
+                                            menuOpened = true
+                                            var gp = mapToItem(root, m.x, m.y)
+                                            camKfMenu.openFor(kfItem.kf.frameIdx, gp.x, gp.y)
+                                        }
+                                        onReleased: function(m) {
+                                            if (menuOpened) return
                                             if (m.button === Qt.RightButton) {
-                                                root.camera.removeKeyframeAt(kf.frameIdx)
-                                                root.camera.notify("Keyframe eliminado", "info")
+                                                var gp = mapToItem(root, m.x, m.y)
+                                                camKfMenu.openFor(kfItem.kf.frameIdx, gp.x, gp.y)
+                                                return
+                                            }
+                                            if (moved) {
+                                                if (dragTargetFrame !== kfItem.kf.frameIdx && root.camera) {
+                                                    var from = kfItem.kf.frameIdx
+                                                    if (root.camera.moveKeyframe(from, dragTargetFrame)) {
+                                                        root.goToFrame(dragTargetFrame)
+                                                        root.camera.notify(
+                                                            "Keyframe movido a frame " + (dragTargetFrame + 1),
+                                                            "success")
+                                                    }
+                                                }
                                             } else {
-                                                root.goToFrame(kf.frameIdx)
+                                                root.goToFrame(kfItem.kf.frameIdx)
                                             }
                                         }
                                     }
 
-                                    ToolTip.visible: maHover.containsMouse
+                                    ToolTip.visible: maKf.containsMouse && !kfItem.isDragging
                                     ToolTip.text: "Frame " + (kf.frameIdx + 1)
                                         + "  •  X " + Math.round(kf.x)
                                         + "  Y " + Math.round(kf.y)
                                         + "  •  Z " + Math.round(kf.zoom * 100) + "%"
+                                        + "  •  " + root.easingLabel(kf.easing !== undefined ? kf.easing : "linear")
                                     ToolTip.delay: 350
                                 }
                             }
@@ -1579,23 +1834,23 @@ Item {
 
             // ── Actions ──
             CtxBtn {
-                icon: "📄"; label: "Copiar fotograma"; shortcut: ""
+                iconSource: "image://icons/copy"; label: "Copiar fotograma"; shortcut: ""
                 iconColor: "#9ece6a"
                 onClicked: { root.copyFrame(frameCtx.frameIdx); frameCtx.dismiss() }
             }
             CtxBtn {
-                icon: "📋"; label: "Pegar fotograma"; shortcut: ""
+                iconSource: "image://icons/clipboard"; label: "Pegar fotograma"; shortcut: ""
                 iconColor: "#bb9af7"
                 visible: root.copiedFrame !== null
                 onClicked: { root.pasteFrame(frameCtx.frameIdx); frameCtx.dismiss() }
             }
             CtxBtn {
-                icon: "📑"; label: "Duplicar frame"; shortcut: ""
+                iconSource: "image://icons/duplicate_outline"; label: "Duplicar frame"; shortcut: ""
                 iconColor: "#7aa2f7"
                 onClicked: { root.goToFrame(frameCtx.frameIdx); root.duplicateCurrentFrame(); frameCtx.dismiss() }
             }
             CtxBtn {
-                icon: "🧹"; label: "Limpiar contenido"; shortcut: ""
+                iconSource: "image://icons/eraser"; label: "Limpiar contenido"; shortcut: ""
                 iconColor: "#e0af68"
                 onClicked: {
                     var item = root.frameModel.get(frameCtx.frameIdx)
@@ -1607,7 +1862,7 @@ Item {
                 }
             }
             CtxBtn {
-                icon: "🗑️"; label: "Borrar frame"; shortcut: ""
+                iconSource: "image://icons/trash"; label: "Borrar frame"; shortcut: ""
                 iconColor: "#f7768e"
                 onClicked: { root.goToFrame(frameCtx.frameIdx); root.deleteCurrentFrame(); frameCtx.dismiss() }
             }
@@ -1700,6 +1955,7 @@ Item {
     component CtxBtn : Rectangle {
         id: ctxb
         property string icon: ""
+        property string iconSource: ""
         property string label: ""
         property string shortcut: ""
         property color iconColor: "#888"
@@ -1727,9 +1983,23 @@ Item {
             anchors.verticalCenter: parent.verticalCenter; spacing: 10
 
             Text {
+                visible: ctxb.iconSource === ""
                 text: ctxb.icon; font.pixelSize: 14
+                color: ctxb.iconColor
                 anchors.verticalCenter: parent.verticalCenter
                 width: 20
+            }
+            Image {
+                visible: ctxb.iconSource !== ""
+                source: ctxb.iconSource
+                width: 14; height: 14
+                anchors.verticalCenter: parent.verticalCenter
+                smooth: true; mipmap: true
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    colorizationColor: ctxb.iconColor
+                    colorization: 1.0
+                }
             }
             Text {
                 text: ctxb.label; color: ctxb.labelColor

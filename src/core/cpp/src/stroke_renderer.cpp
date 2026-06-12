@@ -321,6 +321,7 @@ void StrokeRenderer::renderStroke(
   m_program->setUniformValue("hardness", hardness);
   m_program->setUniformValue("flow", flow);
   m_program->setUniformValue("brushType", type);
+  m_program->setUniformValue("uSprayMode", 0); // ruta normal (no spray)
   m_program->setUniformValue("uDabPos", QVector2D(x, y));
   m_program->setUniformValue("uDabSize", size);
   m_program->setUniformValue("tipRotation", tipRotation);
@@ -630,6 +631,7 @@ void StrokeRenderer::renderStrokeInstanced(
   m_program->setUniformValue("hardness", hardness);
   m_program->setUniformValue("flow", flow);
   m_program->setUniformValue("brushType", type);
+  m_program->setUniformValue("uSprayMode", m_sprayMode ? 1 : 0);
   m_program->setUniformValue("uInvertShape", invertShape ? 1 : 0);
   m_program->setUniformValue("uFlipX", flipX ? 1 : 0);
   m_program->setUniformValue("uFlipY", flipY ? 1 : 0);
@@ -842,6 +844,10 @@ void StrokeRenderer::renderStrokeInstanced(
 
   m_program->setUniformValue("instanced", 0);
   m_program->release();
+
+  // La ruta rápida de spray es un estado de un solo uso: se restablece para
+  // que el siguiente render (no-spray) no la herede por accidente.
+  m_sprayMode = false;
 }
 
 } // namespace artflow

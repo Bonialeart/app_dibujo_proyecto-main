@@ -168,6 +168,11 @@ public:
 
   void setClippingEnabled(bool enabled) { m_clippingEnabled = enabled; }
 
+  // Activa la ruta rápida de pulverización en el shader: las micro-gotas de
+  // spray/splatter omiten el kernel multi-tap de mezcla húmeda para sostener
+  // 60 FPS en Android. Se restablece solo tras cada render de instancias.
+  void setSprayMode(bool enabled) { m_sprayMode = enabled; }
+
 private:
   QOpenGLShaderProgram *m_program;
   QOpenGLVertexArrayObject m_vao;
@@ -176,6 +181,7 @@ private:
   int m_instanceCapacity = 0; // bytes reservados en m_instanceVbo
 
   bool m_clippingEnabled = false;
+  bool m_sprayMode = false;
 
   // Texture IDs manageable by this class
   unsigned int m_brushTextureId = 0;

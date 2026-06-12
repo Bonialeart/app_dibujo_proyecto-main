@@ -22,6 +22,20 @@ Item {
     // (opens the camera properties popup).
     signal cameraEditRequested()
 
+    // Interpolation curves offered for camera keyframes
+    readonly property var easingOptions: [
+        { key: "linear",    label: "Lineal" },
+        { key: "easeIn",    label: "Ease-In" },
+        { key: "easeOut",   label: "Ease-Out" },
+        { key: "easeInOut", label: "Ease-In-Out" },
+        { key: "bezier",    label: "Bezier personalizada" }
+    ]
+    function easingLabel(key) {
+        for (var i = 0; i < easingOptions.length; i++)
+            if (easingOptions[i].key === key) return easingOptions[i].label
+        return "Lineal"
+    }
+
     // Canvas background color for frame thumbnails
     property color canvasBgColor: {
         if (targetCanvas && targetCanvas.layerModel && targetCanvas.layerModel.length > 0) {
@@ -58,7 +72,7 @@ Item {
     onCurrentFrameIdxChanged: {
         syncVisibility()
         if (root.camera) {
-            root.camera.currentFrameIdx = idx
+            root.camera.currentFrameIdx = currentFrameIdx
             root.camera.applyAtCurrent()
         }
     }
@@ -857,25 +871,50 @@ Item {
                                     }
                                 }
 
-                                // Diamonds
+                                // Diamonds — selectable, draggable in time,
+                                // context menu on right-click / long-press.
                                 Repeater {
                                     model: root.camera ? root.camera.keyframes : []
                                     delegate: Item {
+                                        id: advKfItem
                                         property var kf: (root.camera && modelData)
                                             ? modelData
                                             : ({ frameIdx: 0, x: 0, y: 0, zoom: 1 })
-                                        property real slotX: kf.frameIdx * root.pixelsPerFrame
+                                        property bool isSelected: root.camera && root.camera.selectedFrameIdx === kf.frameIdx
+                                        property bool isCurrent:  kf.frameIdx === root.currentFrameIdx
+                                        property bool isDragging: advKfMa.pressed && advKfMa.moved
+                                        property int  shownFrame: isDragging ? advKfMa.dragTargetFrame : kf.frameIdx
+                                        property real slotX: shownFrame * root.pixelsPerFrame
                                             + root.pixelsPerFrame / 2
-                                        x: slotX - 8
+                                        x: slotX - 10
                                         y: 0
-                                        width: 16; height: 30
+                                        width: 20; height: 30
+                                        z: isDragging ? 10 : (isSelected ? 5 : 0)
+
+                                        Behavior on x { NumberAnimation { duration: 70; easing.type: Easing.OutCubic } }
+
+                                        // Selection halo
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: 18; height: 18; rotation: 45
+                                            radius: 3
+                                            visible: advKfItem.isSelected || advKfItem.isDragging
+                                            color: "transparent"
+                                            border.color: "#818cf8"
+                                            border.width: 1.5
+                                            opacity: 0.9
+                                        }
 
                                         Rectangle {
                                             anchors.centerIn: parent
                                             width: 12; height: 12; rotation: 45
                                             radius: 1.5
+                                            scale: advKfItem.isDragging ? 1.2 : (advKfMa.containsMouse ? 1.1 : 1.0)
+                                            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutBack } }
                                             color: {
-                                                if (kf.frameIdx === root.currentFrameIdx)
+                                                if (advKfItem.isSelected || advKfItem.isDragging)
+                                                    return "#818cf8"
+                                                if (advKfItem.isCurrent)
                                                     return "#ffffff"
                                                 if (root.camera && root.camera.active)
                                                     return "#22d3ee"
@@ -887,17 +926,60 @@ Item {
                                         }
 
                                         MouseArea {
+                                            id: advKfMa
                                             anchors.fill: parent
+                                            anchors.margins: -4
                                             hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
+                                            cursorShape: advKfItem.isDragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
                                             preventStealing: true
                                             acceptedButtons: Qt.LeftButton | Qt.RightButton
-                                            onClicked: function(m) {
+
+                                            property real pressX: 0
+                                            property bool moved: false
+                                            property bool menuOpened: false
+                                            property int  dragTargetFrame: advKfItem.kf.frameIdx
+
+                                            onPressed: function(m) {
+                                                pressX = mapToItem(camAdvTrack, m.x, m.y).x
+                                                moved = false
+                                                menuOpened = false
+                                                dragTargetFrame = advKfItem.kf.frameIdx
+                                                if (root.camera) root.camera.selectedFrameIdx = advKfItem.kf.frameIdx
+                                            }
+                                            onPositionChanged: function(m) {
+                                                if (!pressed) return
+                                                var gx = mapToItem(camAdvTrack, m.x, m.y).x
+                                                if (!moved && Math.abs(gx - pressX) < 5) return
+                                                moved = true
+                                                var f = Math.max(0, Math.round((gx - root.trackLabelWidth - 2) / root.pixelsPerFrame - 0.5))
+                                                if (root.totalFrames > 0)
+                                                    f = Math.min(root.totalFrames - 1, f)
+                                                dragTargetFrame = f
+                                            }
+                                            onPressAndHold: function(m) {
+                                                if (moved || menuOpened) return
+                                                menuOpened = true
+                                                var gp = mapToItem(root, m.x, m.y)
+                                                advCamKfMenu.openFor(advKfItem.kf.frameIdx, gp.x, gp.y)
+                                            }
+                                            onReleased: function(m) {
+                                                if (menuOpened) return
                                                 if (m.button === Qt.RightButton) {
-                                                    root.camera.removeKeyframeAt(kf.frameIdx)
-                                                    root.camera.notify("Keyframe eliminado", "info")
+                                                    var gp = mapToItem(root, m.x, m.y)
+                                                    advCamKfMenu.openFor(advKfItem.kf.frameIdx, gp.x, gp.y)
+                                                    return
+                                                }
+                                                if (moved) {
+                                                    if (dragTargetFrame !== advKfItem.kf.frameIdx && root.camera) {
+                                                        if (root.camera.moveKeyframe(advKfItem.kf.frameIdx, dragTargetFrame)) {
+                                                            root.goToFrame(dragTargetFrame)
+                                                            root.camera.notify(
+                                                                "Keyframe movido a frame " + (dragTargetFrame + 1),
+                                                                "success")
+                                                        }
+                                                    }
                                                 } else {
-                                                    root.goToFrame(kf.frameIdx)
+                                                    root.goToFrame(advKfItem.kf.frameIdx)
                                                 }
                                             }
                                             onEntered: {
@@ -905,6 +987,7 @@ Item {
                                                     + "  •  X " + Math.round(kf.x)
                                                     + "  Y " + Math.round(kf.y)
                                                     + "  •  Z " + Math.round(kf.zoom * 100) + "%"
+                                                    + "  •  " + root.easingLabel(kf.easing !== undefined ? kf.easing : "linear")
                                                 kfTip.visible = true
                                             }
                                             onExited: kfTip.visible = false
@@ -1390,6 +1473,42 @@ Item {
                             trackFlick.contentX = px - trackFlick.width + 60
                     }
                 }
+
+                // ── TIMELINE NAVIGATION ──────────────────────
+                // Ctrl + rueda = zoom temporal anclado al cursor;
+                // el desplazamiento lateral lo da el Flickable.
+                WheelHandler {
+                    id: tlWheelZoom
+                    acceptedModifiers: Qt.ControlModifier
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    target: null
+                    onWheel: function(event) {
+                        var oldPpf = root.pixelsPerFrame
+                        var factor = event.angleDelta.y > 0 ? 1.15 : 1 / 1.15
+                        var newPpf = Math.max(12, Math.min(96, oldPpf * factor))
+                        if (Math.abs(newPpf - oldPpf) < 0.01) return
+                        // Anchor the frame under the cursor
+                        var localX = tlWheelZoom.point.position.x
+                        var contentPx = trackFlick.contentX + localX - root.trackLabelWidth
+                        var frameUnder = Math.max(0, contentPx / oldPpf)
+                        root.pixelsPerFrame = newPpf
+                        trackFlick.contentX = Math.max(0,
+                            frameUnder * newPpf - (localX - root.trackLabelWidth))
+                    }
+                }
+
+                // Pinch-to-zoom (Android / pantallas táctiles)
+                PinchHandler {
+                    id: tlPinchZoom
+                    target: null
+                    minimumPointCount: 2
+                    property real startPpf: 36
+                    onActiveChanged: if (active) startPpf = root.pixelsPerFrame
+                    onActiveScaleChanged: {
+                        if (!active) return
+                        root.pixelsPerFrame = Math.max(12, Math.min(96, startPpf * activeScale))
+                    }
+                }
             }
 
             // ══════════ STATUS BAR — Minimal ══════════
@@ -1455,6 +1574,141 @@ Item {
         MouseArea {
             id: ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
             onClicked: { menuItem.triggered(); menuItem.parent.parent.close() }
+        }
+    }
+
+    // ── CAMERA KEYFRAME CONTEXT MENU ─────────────────────────
+    Popup {
+        id: advCamKfMenu
+        property int frameIdx: -1
+        width: 216
+        padding: 6
+        z: 10000
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        function openFor(fi, px, py) {
+            frameIdx = fi
+            x = Math.max(6, Math.min(root.width - width - 6, px - width / 2))
+            y = Math.max(6, Math.min(root.height - implicitHeight - 6, py + 8))
+            open()
+        }
+
+        function kfEasing() {
+            if (!root.camera) return "linear"
+            var k = root.camera.getKeyframeAt(frameIdx)
+            return (k && k.easing !== undefined) ? k.easing : "linear"
+        }
+
+        background: Rectangle {
+            color: "#16161c"; radius: 12
+            border.color: Qt.rgba(1, 1, 1, 0.09); border.width: 1
+            Rectangle { anchors.fill: parent; anchors.margins: -5; z: -1
+                radius: 16; color: "#000"; opacity: 0.45 }
+        }
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 140; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.92; to: 1; duration: 160; easing.type: Easing.OutCubic }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
+        }
+
+        contentItem: Column {
+            spacing: 2
+
+            Row {
+                spacing: 6
+                leftPadding: 8
+                topPadding: 2
+                bottomPadding: 4
+                Rectangle { width: 8; height: 8; rotation: 45; radius: 1.5
+                    color: "#818cf8"; anchors.verticalCenter: parent.verticalCenter }
+                Text {
+                    text: "Cámara · Frame " + (advCamKfMenu.frameIdx + 1)
+                    color: "#a1a1aa"; font.pixelSize: 10; font.weight: Font.DemiBold
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            Rectangle { width: parent.width - 10; height: 1
+                color: Qt.rgba(1,1,1,0.07); anchors.horizontalCenter: parent.horizontalCenter }
+
+            AdvCamMenuBtn {
+                icon: "⧉"; label: "Duplicar keyframe"
+                onTriggered: {
+                    if (!root.camera) return
+                    var dst = root.camera.duplicateKeyframe(advCamKfMenu.frameIdx)
+                    if (dst >= 0)
+                        root.camera.notify("Keyframe duplicado en frame " + (dst + 1), "success")
+                    else
+                        root.camera.notify("No hay un frame libre para duplicar", "warning")
+                }
+            }
+            AdvCamMenuBtn {
+                icon: "🗑"; label: "Eliminar keyframe"; destructive: true
+                onTriggered: {
+                    if (!root.camera) return
+                    root.camera.removeKeyframeAt(advCamKfMenu.frameIdx)
+                    root.camera.notify("Keyframe eliminado", "info")
+                }
+            }
+
+            Rectangle { width: parent.width - 10; height: 1
+                color: Qt.rgba(1,1,1,0.07); anchors.horizontalCenter: parent.horizontalCenter }
+
+            Text {
+                text: "INTERPOLACIÓN"
+                color: "#52525b"; font.pixelSize: 8; font.weight: Font.Bold
+                font.letterSpacing: 1
+                leftPadding: 8; topPadding: 4; bottomPadding: 2
+            }
+
+            Repeater {
+                model: root.easingOptions
+                AdvCamMenuBtn {
+                    required property var modelData
+                    icon: advCamKfMenu.kfEasing() === modelData.key ? "✓" : " "
+                    label: modelData.label
+                    checked: advCamKfMenu.kfEasing() === modelData.key
+                    onTriggered: {
+                        if (!root.camera) return
+                        root.camera.setKeyframeEasing(advCamKfMenu.frameIdx, modelData.key)
+                        root.camera.notify("Interpolación: " + modelData.label, "info")
+                    }
+                }
+            }
+        }
+    }
+
+    component AdvCamMenuBtn : Rectangle {
+        id: acmb
+        property string icon: ""
+        property string label: ""
+        property bool destructive: false
+        property bool checked: false
+        signal triggered()
+        width: parent ? parent.width : 200
+        height: 28; radius: 7
+        color: acmbMa.containsMouse
+            ? (destructive ? "#2d1619" : "#222230")
+            : (checked ? Qt.rgba(0.51, 0.55, 0.97, 0.10) : "transparent")
+        Behavior on color { ColorAnimation { duration: 90 } }
+        Row {
+            anchors.left: parent.left; anchors.leftMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 7
+            Text { text: acmb.icon; width: 14
+                color: acmb.destructive ? "#f87171" : (acmb.checked ? "#818cf8" : "#9ca3af")
+                font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: acmb.label
+                color: acmb.destructive ? "#f87171" : (acmb.checked ? "#c7d2fe" : "#d4d4d8")
+                font.pixelSize: 11; font.weight: acmb.checked ? Font.DemiBold : Font.Medium
+                anchors.verticalCenter: parent.verticalCenter }
+        }
+        MouseArea {
+            id: acmbMa; anchors.fill: parent; hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: { acmb.triggered(); advCamKfMenu.close() }
         }
     }
 

@@ -131,6 +131,49 @@ bool AnimationManager::hasKeyframe(int trackIdx, int frameIdx) const {
     return false;
 }
 
+bool AnimationManager::moveKeyframe(int trackIdx, int fromFrame, int toFrame) {
+    if (trackIdx < 0 || trackIdx >= getTrackCount() || toFrame < 0) return false;
+    if (!m_tracks[trackIdx].moveKeyframe(fromFrame, toFrame)) return false;
+    emit frameUpdated();
+    return true;
+}
+
+bool AnimationManager::duplicateKeyframe(int trackIdx, int fromFrame, int toFrame) {
+    if (trackIdx < 0 || trackIdx >= getTrackCount() || toFrame < 0) return false;
+    if (!m_tracks[trackIdx].duplicateKeyframe(fromFrame, toFrame)) return false;
+    emit frameUpdated();
+    return true;
+}
+
+void AnimationManager::setKeyframeEasing(int trackIdx, int frameIdx, int easing,
+                                         float x1, float y1, float x2, float y2) {
+    if (trackIdx < 0 || trackIdx >= getTrackCount()) return;
+    auto& keys = m_tracks[trackIdx].getKeyframes();
+    auto it = keys.find(frameIdx);
+    if (it == keys.end()) return;
+    easing = std::max(0, std::min(easing, int(EasingType::Bezier)));
+    it->second.setEasing(static_cast<EasingType>(easing));
+    if (static_cast<EasingType>(easing) == EasingType::Bezier) {
+        it->second.setBezierHandles(x1, y1, x2, y2);
+    }
+    emit frameUpdated();
+}
+
+int AnimationManager::getKeyframeEasing(int trackIdx, int frameIdx) const {
+    if (trackIdx < 0 || trackIdx >= getTrackCount()) return 0;
+    const auto& keys = m_tracks[trackIdx].getKeyframes();
+    auto it = keys.find(frameIdx);
+    if (it == keys.end()) return 0;
+    return static_cast<int>(it->second.getEasing());
+}
+
+qreal AnimationManager::evaluateEasing(int easing, qreal t,
+                                       qreal x1, qreal y1, qreal x2, qreal y2) const {
+    float bz[4] = { float(x1), float(y1), float(x2), float(y2) };
+    easing = std::max(0, std::min(easing, int(EasingType::Bezier)));
+    return evalEasing(static_cast<EasingType>(easing), float(t), bz);
+}
+
 QVariantMap AnimationManager::getFrameProperties(int trackIdx, int frameIdx) {
     QVariantMap map;
     if (trackIdx >= 0 && trackIdx < getTrackCount()) {

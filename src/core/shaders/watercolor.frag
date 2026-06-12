@@ -265,7 +265,11 @@ vec4 paintDab() {
             finalAlpha = min(finalAlpha + spreadBoost * 0.3, 1.0);
 
         } else {
-            // ━━━ ÁREA SECA: Acumulación de pigmento ━━━
+            // ━━━ ÁREA SECA: VELADURA (Glazing / Multiply) ━━━
+            // Una capa de acuarela ya asentada actúa como un filtro de luz
+            // semitransparente. Al pintar encima, el pigmento se ACUMULA de
+            // forma sustractiva (modelo aditivo K-M) y la intersección se
+            // OSCURECE, imitando capas que filtran la luz sobre el papel blanco.
             if (uBlendOnly == 1) {
                 finalRGB = brushRGB;
                 finalAlpha = dabAlpha;
@@ -274,7 +278,29 @@ vec4 paintDab() {
                 // Aumenta proporcionalmente a la presión del lápiz para oscurecer
                 float accumulation = (1.0 - uDilution * 0.40) * uPressure * 1.55;
                 accumulation = clamp(accumulation * (1.0 + localPaintAmount), 0.0, 3.0);
+
+                // PRESERVACIÓN DE LA TEXTURA COLECTIVA (C):
+                // El pigmento de la veladura se asienta MÁS en los valles del
+                // papel que en las crestas → la acumulación se modula por el
+                // grano (centrada en 1) para que el grano de fondo siga
+                // respirando bajo el solapamiento en lugar de aplastarse.
+                if (uGranulation > 0.01 && uGrainIntensity > 0.001) {
+                    float gv = getGrainValue(getGlobalCoord(vTexCoord));
+                    float texBias = mix(1.0 + uGranulation * 0.35,
+                                        1.0 - uGranulation * 0.25, gv);
+                    accumulation *= texBias;
+                }
+
                 finalRGB = layerKubelkaMunk(canvasRGB, brushRGB, accumulation);
+
+                // CONSERVACIÓN DEL BORDE SUBYACENTE (B):
+                // Donde el fondo ya es notablemente más oscuro que la pincelada
+                // nueva (el wet edge / tide-mark del primer trazo), dejamos que
+                // ese borde "perfore" la veladura translúcida para que siga
+                // visible bajo el solapamiento — los dos trazos se leen como
+                // capas aplicadas en momentos distintos, no como una sola mancha.
+                float underEdge = clamp((lumaOf(brushRGB) - lumaOf(canvasRGB)) * 1.5, 0.0, 1.0);
+                finalRGB = mix(finalRGB, min(finalRGB, canvasRGB), underEdge * 0.6);
 
                 // En zonas secas, la opacidad se acumula también (se oscurece)
                 float blendToMultiply = (1.0 - uDilution * 0.5) * uPressure;

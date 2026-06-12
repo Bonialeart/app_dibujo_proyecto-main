@@ -89,6 +89,14 @@ uniform float uPaintAmount;
 uniform float uColorStretch;
 uniform int uBrushBlendMode;
 
+// === Spray / Splatter Fast Path ===
+// 1 = el fragmento pertenece a una micro-gota de pulverización. En Android,
+// miles de gotas por trazo no pueden permitirse el kernel multi-tap de mezcla
+// húmeda (9 lecturas de textura por píxel). En este modo colapsamos esos
+// muestreos a una sola lectura central: misma apariencia para una gota
+// diminuta, una fracción del coste de ancho de banda en la GPU.
+uniform int uSprayMode;
+
 // === Oil Paint Uniforms ===
 uniform float mixing;
 uniform float loading;
@@ -550,7 +558,10 @@ void main() {
             float blendedA   = 0.0;
             float weightSum  = 0.0;
 
-            for (int i = 0; i < 9; i++) {
+            // Spray fast path: una gota es demasiado pequeña para justificar el
+            // kernel de 9 taps — basta el tap central (i=0) sin diferencia visual.
+            int tapCount = (uSprayMode == 1) ? 1 : 9;
+            for (int i = 0; i < tapCount; i++) {
                 vec4 s  = texture(canvasTexture, screenPos + offsets[i]);
                 if (s.a > 0.005) {
                     vec3 sr = s.rgb / s.a;
