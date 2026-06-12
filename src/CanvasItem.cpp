@@ -1589,7 +1589,7 @@ void CanvasItem::paint(QPainter *painter) {
   bool skipCheckerForTransform =
       (m_isTransforming && m_transformStaticTex != nullptr);
   if (!skipCheckerForTransform) {
-    int checkerSize = std::max(5, (int)(20 * m_zoomLevel));
+    int checkerSize = 16; // Static pattern size in screen pixels for optimal performance and aesthetics
     if (m_checkerCache.isNull() || m_checkerCachedSize != checkerSize) {
       m_checkerCachedSize = checkerSize;
       m_checkerCache =
@@ -6328,10 +6328,8 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
 
       QPointF newViewOffset = S_unrot / newZoom - flippedCanvasFocal;
 
-      // Apply transformations
-      setZoomLevel(newZoom);
-      setCanvasRotation(newRotation);
-      setViewOffset(newViewOffset);
+      // Apply transformations unstead of multiple sequential calls
+      updateViewportTransform(newZoom, newRotation, newViewOffset);
 
       // Update tracking variables for the next event
       m_lastTouchCenter = center;
@@ -6402,8 +6400,7 @@ void CanvasItem::nativeGestureEvent(QNativeGestureEvent *event) {
     QPointF S_unrot = unrotated + viewCenter;
 
     QPointF newViewOffset = S_unrot / newZoom - flippedCanvasFocal;
-    setZoomLevel(newZoom);
-    setViewOffset(newViewOffset);
+    updateViewportTransform(newZoom, m_canvasRotation, newViewOffset);
   } else if (event->gestureType() == Qt::RotateNativeGesture) {
     // Native trackpad rotation (macOS / Windows Precision Touchpad)
     float rotDelta = event->value();
@@ -6429,8 +6426,7 @@ void CanvasItem::nativeGestureEvent(QNativeGestureEvent *event) {
     QPointF S_unrot = unrotated + viewCenter;
 
     QPointF newViewOffset = S_unrot / m_zoomLevel - flippedCanvasFocal;
-    setCanvasRotation(newRotation);
-    setViewOffset(newViewOffset);
+    updateViewportTransform(m_zoomLevel, newRotation, newViewOffset);
   }
 }
 
@@ -7198,6 +7194,30 @@ void CanvasItem::setViewOffset(const QPointF &offset) {
   m_viewOffset = offset;
   emit viewOffsetChanged();
   update();
+}
+
+void CanvasItem::updateViewportTransform(float zoom, float rotation, const QPointF &offset) {
+  float normalizedRot = rotation;
+  while (normalizedRot > 180.0f) normalizedRot -= 360.0f;
+  while (normalizedRot < -180.0f) normalizedRot += 360.0f;
+
+  bool zoomChanged = !qFuzzyCompare(m_zoomLevel, zoom);
+  bool rotChanged = !qFuzzyCompare(m_canvasRotation, normalizedRot);
+  bool offsetChanged = (m_viewOffset != offset);
+
+  if (zoomChanged || rotChanged || offsetChanged) {
+    m_zoomLevel = zoom;
+    m_canvasRotation = normalizedRot;
+    m_viewOffset = offset;
+
+    invalidateCursorCache();
+
+    if (zoomChanged) emit zoomLevelChanged();
+    if (rotChanged) emit canvasRotationChanged();
+    if (offsetChanged) emit viewOffsetChanged();
+
+    update();
+  }
 }
 
 // ══════════════════════════════════════════════════════════════

@@ -29,6 +29,16 @@ Window {
         panelSettingsPopup.layoutLabel = label || ("Panel: " + layoutType)
         panelSettingsPopup.open()
     }
+
+    function showLoading(title, subtitle) {
+        loadingTitle.text = title || "Cargando"
+        loadingSubtitle.text = subtitle || "Por favor, espera..."
+        globalLoadingOverlay.opacity = 1.0
+    }
+
+    function hideLoading() {
+        globalLoadingOverlay.opacity = 0.0
+    }
     
     // 💾 PERSIST WINDOW STATE
     Settings {
@@ -600,6 +610,27 @@ Window {
     ListModel { id: recentProjectsModel }
     
     // === MULTI-PROJECT TAB MANAGEMENT HELPERS ===
+    Timer {
+        id: deferredOpenTimer
+        interval: 150
+        repeat: false
+        property string pendingPath: ""
+        onTriggered: {
+            mainWindow.realOpenProjectTab(pendingPath)
+        }
+    }
+
+    Timer {
+        id: deferredCreateTimer
+        interval: 200
+        repeat: false
+        property bool isStory: false
+        property bool isAnimation: false
+        onTriggered: {
+            mainWindow.realCreateNewProjectTab(isStory, isAnimation)
+        }
+    }
+
     function openProjectTab(path) {
         if (!path || path === "") return;
         var normalizedPath = path.toString();
@@ -613,6 +644,14 @@ Window {
                 return;
             }
         }
+        
+        mainWindow.showLoading("Cargando Proyecto", "Abriendo capas y recursos...")
+        deferredOpenTimer.pendingPath = normalizedPath
+        deferredOpenTimer.restart()
+    }
+
+    function realOpenProjectTab(path) {
+        var normalizedPath = path;
         
         // Extract filename
         var filename = normalizedPath.substring(normalizedPath.lastIndexOf("/") + 1);
@@ -639,6 +678,13 @@ Window {
     }
     
     function createNewProjectTab(isStory, isAnimation) {
+        mainWindow.showLoading("Creando Proyecto", "Inicializando lienzo de dibujo...")
+        deferredCreateTimer.isStory = isStory
+        deferredCreateTimer.isAnimation = isAnimation
+        deferredCreateTimer.restart()
+    }
+
+    function realCreateNewProjectTab(isStory, isAnimation) {
         var name = "Sin Título " + (openProjectsModel.count + 1);
         
         openProjectsModel.append({
@@ -686,6 +732,7 @@ Window {
                 }
                 
                 canvas.fitToView();
+                mainWindow.hideLoading();
             }
         });
     }
@@ -1611,8 +1658,11 @@ Window {
                             }
                             if (model.path && model.path !== "") {
                                 load_file_path(model.path);
+                                fitToView();
+                                mainWindow.hideLoading();
+                            } else {
+                                fitToView();
                             }
-                            fitToView();
                         }
                     
                     // Sombra Dinámica que sigue al papel (y se escala)
@@ -10533,6 +10583,94 @@ Window {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: autosaveRecoveryPopup.close()
                     }
+                }
+            }
+        }
+    }
+    // === LOADING OVERLAY (PREMIUM SMOOTH TRANSITION) ===
+    Rectangle {
+        id: globalLoadingOverlay
+        anchors.fill: parent
+        z: 30000 // On top of everything
+        visible: opacity > 0.0
+        opacity: 0.0
+        color: "#e0030305" // Semi-transparent very dark background
+        
+        Behavior on opacity {
+            NumberAnimation { duration: 200; easing.type: Easing.InOutQuad }
+        }
+
+        // Catch all mouse/touch events to prevent background clicks during loading
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.AllButtons
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 24
+            
+            Item {
+                width: 70 * uiScale
+                height: 70 * uiScale
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                // Spinner outer ring
+                Rectangle {
+                    anchors.fill: parent
+                    radius: width / 2
+                    color: "transparent"
+                    border.color: Qt.rgba(colorAccent.r, colorAccent.g, colorAccent.b, 0.15)
+                    border.width: 5 * uiScale
+                }
+
+                // Spinner animated arc using Canvas
+                Canvas {
+                    id: spinnerArc
+                    anchors.fill: parent
+                    onPaint: {
+                        var ctx = getContext("2d");
+                        ctx.reset();
+                        ctx.strokeStyle = colorAccent;
+                        ctx.lineWidth = 5 * uiScale;
+                        ctx.lineCap = "round";
+                        ctx.beginPath();
+                        ctx.arc(width/2, height/2, width/2 - 5 * uiScale, 0, Math.PI * 1.2);
+                        ctx.stroke();
+                    }
+
+                    RotationAnimator on rotation {
+                        from: 0
+                        to: 360
+                        duration: 800
+                        loops: Animation.Infinite
+                        running: globalLoadingOverlay.visible
+                    }
+                }
+            }
+
+            Column {
+                spacing: 8
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                Text {
+                    id: loadingTitle
+                    text: "Preparando Lienzo"
+                    color: "white"
+                    font.pixelSize: 18 * uiScale
+                    font.weight: Font.DemiBold
+                    horizontalAlignment: Text.AlignHCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
+                Text {
+                    id: loadingSubtitle
+                    text: "Por favor, espera un momento..."
+                    color: "#80809a"
+                    font.pixelSize: 13 * uiScale
+                    horizontalAlignment: Text.AlignHCenter
+                    anchors.horizontalCenter: parent.horizontalCenter
                 }
             }
         }

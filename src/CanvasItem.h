@@ -305,6 +305,7 @@ public:
   void setCursorRotation(float value);
   void setZoomLevel(float zoom);
   void setViewOffset(const QPointF &offset);
+  Q_INVOKABLE void updateViewportTransform(float zoom, float rotation, const QPointF &offset);
   void setCurrentTool(const QString &tool);
   void commitTransform();
   void beginTransform();
