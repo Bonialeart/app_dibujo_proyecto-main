@@ -1041,6 +1041,43 @@ import "../components"
                     Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
                 }
 
+                // === VECTOR NODE EDIT HINT (anchors / tangent handles mode) ===
+                Rectangle {
+                    id: vectorEditHint
+                    anchors.top: parent.top
+                    anchors.topMargin: 24
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: vectorEditHintRow.width + 36
+                    height: 38
+                    radius: 19
+                    color: mainWindow ? Qt.rgba(mainWindow.colorPanel.r, mainWindow.colorPanel.g, mainWindow.colorPanel.b, 0.92) : "#eb121216"
+                    border.color: mainWindow ? mainWindow.colorBorder : "#3a3a40"
+                    border.width: 1
+                    z: 500
+                    visible: mainCanvas.isTransforming && mainCanvas.isVectorLayer(mainCanvas.activeLayerIndex)
+
+                    opacity: visible ? 1.0 : 0.0
+                    Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+                    Row {
+                        id: vectorEditHintRow
+                        anchors.centerIn: parent
+                        spacing: 8
+
+                        Rectangle {
+                            width: 10; height: 10; radius: 5
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: "#007aff"
+                        }
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Nodos: arrastra · toca el trazo para añadir · doble toque / clic der. borra · Alt = esquina")
+                            color: mainWindow ? mainWindow.colorText : "#f0f0f2"
+                            font.pixelSize: 13
+                        }
+                    }
+                }
+
                 // === TRANSFORM OPTIONS HUD (Ultra-Premium Redesign) ===
                 Item {
                     id: transformOptionsHUD

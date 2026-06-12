@@ -244,6 +244,179 @@ Item {
 
 
 
+        // --- VECTOR LAYER PRO CONTROLS (Clip Studio-style) ---
+        Rectangle {
+            id: vectorCard
+            visible: activeLayer !== null && activeLayer.type === "vector"
+            Layout.fillWidth: true
+            Layout.preferredHeight: visible ? vectorCardCol.implicitHeight + 24 : 0
+            color: "transparent"
+            clip: true
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 4
+                radius: 10
+                color: mainWindow ? mainWindow.colorCard : "#141417"
+                border.color: Qt.rgba(0, 122/255, 1, 0.35)
+                border.width: 1
+
+                ColumnLayout {
+                    id: vectorCardCol
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 6
+
+                    // Header: badge + stroke/node counters
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Rectangle { width: 8; height: 8; radius: 4; color: "#007aff" }
+                        Text {
+                            text: qsTr("CAPA VECTORIAL")
+                            color: "#007aff"
+                            font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 1.2
+                        }
+                        Item { Layout.fillWidth: true }
+                        Text {
+                            text: {
+                                var m = root.layerModel; // refresca al cambiar las capas
+                                if (!targetCanvas) return "";
+                                return targetCanvas.vectorStrokeCount(targetCanvas.activeLayerIndex) + qsTr(" trazos · ")
+                                     + targetCanvas.vectorNodeCount(targetCanvas.activeLayerIndex) + qsTr(" nodos");
+                            }
+                            color: "#8a8a93"
+                            font.pixelSize: 9; font.family: "Monospace"
+                        }
+                    }
+
+                    // Post-correction slider (fidelity vs smoothing of new strokes)
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: qsTr("Corrección")
+                            color: "#a0a0a5"; font.pixelSize: 10
+                            Layout.preferredWidth: 56
+                            ToolTip.visible: postCorrHoverMa.containsMouse
+                            ToolTip.delay: 400
+                            ToolTip.text: qsTr("Corrección posterior del trazo:\n0 = fiel a tu pulso, 100 = curvas muy suavizadas")
+                            MouseArea { id: postCorrHoverMa; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
+                        }
+
+                        Slider {
+                            id: postCorrSlider
+                            Layout.fillWidth: true; Layout.preferredHeight: 24
+                            from: 0; to: 100; stepSize: 1
+                            value: targetCanvas ? targetCanvas.vectorPostCorrection : 50
+
+                            background: Rectangle {
+                                x: parent.leftPadding; y: parent.height / 2 - 2
+                                implicitWidth: 100; implicitHeight: 4; radius: 2
+                                color: mainWindow ? mainWindow.colorBg : "#101014"
+                                border.color: mainWindow ? mainWindow.colorBorder : "#222228"
+                                Rectangle { width: parent.parent.visualPosition * parent.width; height: parent.height; color: "#007aff"; radius: 2 }
+                            }
+                            handle: Rectangle {
+                                x: parent.leftPadding + parent.visualPosition * (parent.availableWidth - width); y: parent.height / 2 - 7
+                                implicitWidth: 14; implicitHeight: 14; radius: 7
+                                color: "#fff"; border.color: "#555"; border.width: 1
+                                layer.enabled: true; layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 6; shadowColor: "#40000000" }
+                            }
+                            onMoved: if (targetCanvas) targetCanvas.vectorPostCorrection = Math.round(value)
+                        }
+
+                        Text {
+                            text: Math.round(postCorrSlider.value)
+                            color: "#8a8a93"; font.pixelSize: 10; font.weight: Font.DemiBold; font.family: "Monospace"
+                            Layout.preferredWidth: 24; horizontalAlignment: Text.AlignRight
+                        }
+                    }
+
+                    // Action buttons: node editing / simplify / rasterize
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+
+                        Rectangle {
+                            id: nodeEditBtn
+                            property bool active: targetCanvas && targetCanvas.isTransforming
+                                                  && targetCanvas.currentTool === "transform"
+                            Layout.fillWidth: true; Layout.preferredHeight: 26; radius: 13
+                            color: active ? "#007aff" : (nodeEditMa.containsMouse ? "#1a2238" : (mainWindow ? mainWindow.colorBg : "#101014"))
+                            border.color: active ? "#007aff" : (mainWindow ? mainWindow.colorBorder : "#303036")
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 150 } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: qsTr("Editar nodos")
+                                color: nodeEditBtn.active ? "white" : "#a0a0a5"
+                                font.pixelSize: 10; font.weight: Font.DemiBold
+                            }
+                            MouseArea {
+                                id: nodeEditMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (!targetCanvas) return;
+                                    targetCanvas.currentTool = nodeEditBtn.active ? "brush" : "transform";
+                                }
+                            }
+                            ToolTip.visible: nodeEditMa.containsMouse
+                            ToolTip.delay: 400
+                            ToolTip.text: qsTr("Muestra las anclas del trazo para moverlas\n(toca un ancla o tangente y arrastra)")
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true; Layout.preferredHeight: 26; radius: 13
+                            color: simplifyMa.containsMouse ? "#1a2238" : (mainWindow ? mainWindow.colorBg : "#101014")
+                            border.color: mainWindow ? mainWindow.colorBorder : "#303036"
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 150 } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: qsTr("Simplificar")
+                                color: "#a0a0a5"; font.pixelSize: 10; font.weight: Font.DemiBold
+                            }
+                            MouseArea {
+                                id: simplifyMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: if (targetCanvas) targetCanvas.simplifyVectorLayer(targetCanvas.activeLayerIndex, targetCanvas.vectorPostCorrection)
+                            }
+                            ToolTip.visible: simplifyMa.containsMouse
+                            ToolTip.delay: 400
+                            ToolTip.text: qsTr("Reduce los nodos de los trazos existentes\nusando la intensidad del slider (con deshacer)")
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true; Layout.preferredHeight: 26; radius: 13
+                            color: rasterizeMa.containsMouse ? "#2a221a" : (mainWindow ? mainWindow.colorBg : "#101014")
+                            border.color: mainWindow ? mainWindow.colorBorder : "#303036"
+                            border.width: 1
+                            Behavior on color { ColorAnimation { duration: 150 } }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: qsTr("Rasterizar")
+                                color: "#a0a0a5"; font.pixelSize: 10; font.weight: Font.DemiBold
+                            }
+                            MouseArea {
+                                id: rasterizeMa
+                                anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: if (targetCanvas) targetCanvas.rasterizeVectorLayer(targetCanvas.activeLayerIndex)
+                            }
+                            ToolTip.visible: rasterizeMa.containsMouse
+                            ToolTip.delay: 400
+                            ToolTip.text: qsTr("Convierte la capa vectorial en píxeles\n(los nodos dejan de ser editables)")
+                        }
+                    }
+                }
+            }
+        }
+
         // --- BLEND MODE POPUP ---
         Popup {
             id: blendModePopup

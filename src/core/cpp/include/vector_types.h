@@ -1,10 +1,15 @@
 #pragma once
 
+#include <algorithm>
+#include <memory>
 #include <vector>
 #include <QColor>
 #include <QRectF>
+#include <QString>
 
 namespace artflow {
+
+struct BrushSettings;
 
 struct VPoint2D {
     float x = 0.0f;
@@ -36,6 +41,12 @@ struct VectorStroke {
     bool useTexture = false;
     QString textureName;
     bool isEraser = false;
+
+    // Full brush preset captured at stroke creation so the vector path can be
+    // re-rendered with the exact raster brush look (grain, taper, jitter...).
+    // Shared (immutable) between fragments produced by the vector eraser and
+    // undo snapshots, so copies stay cheap.
+    std::shared_ptr<const BrushSettings> brush;
 
     void recalcBounds() {
         if (segments.empty()) {

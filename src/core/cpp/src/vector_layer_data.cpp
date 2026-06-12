@@ -1,9 +1,11 @@
 #include "vector_layer_data.h"
 #include "vector_math.h"
+#include "brush_engine.h"
 #include <algorithm>
 #include <cmath>
 #include <QDebug>
 #include <QPainter>
+#include <QPainterPath>
 #include <QImage>
 #include <QFile>
 #include <QCoreApplication>
@@ -130,9 +132,14 @@ static QImage loadBrushTipImage(const QString &name) {
     return img;
 }
 
-static void paintVectorTipRaster(QPainter *painter, const QPointF &point, float size,
-                                 float opacity, const QColor &color, const QImage &tipImg) {
-    if (tipImg.isNull()) return;
+// Cache of brush tips already tinted with a stroke color. Tinting per dab
+// (convertToFormat + fillRect) was the main CPU cost when re-rendering vector
+// layers on Android; per stroke it is constant, so cache it.
+static QImage tintedTipFor(const QImage &tipImg, const QString &tipName, const QColor &color) {
+    static QMap<QString, QImage> s_tintedCache;
+    const QString key = tipName + QLatin1Char('|') + color.name(QColor::HexArgb);
+    auto it = s_tintedCache.constFind(key);
+    if (it != s_tintedCache.constEnd()) return it.value();
 
     QImage base = tipImg;
     if (base.width() != base.height()) {
@@ -142,11 +149,23 @@ static void paintVectorTipRaster(QPainter *painter, const QPointF &point, float 
         base = base.copy(cx, cy, s, s);
     }
 
-    QImage tintedImg = base.convertToFormat(QImage::Format_ARGB32_Premultiplied);
-    QPainter p(&tintedImg);
+    QImage tinted = base.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QPainter p(&tinted);
     p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    p.fillRect(tintedImg.rect(), color);
+    p.fillRect(tinted.rect(), color);
     p.end();
+
+    if (s_tintedCache.size() > 32) s_tintedCache.clear();
+    s_tintedCache.insert(key, tinted);
+    return tinted;
+}
+
+static void paintVectorTipRaster(QPainter *painter, const QPointF &point, float size,
+                                 float opacity, const QColor &color, const QImage &tipImg,
+                                 const QString &tipName) {
+    if (tipImg.isNull()) return;
+
+    const QImage tintedImg = tintedTipFor(tipImg, tipName, color);
 
     painter->save();
     painter->setOpacity(opacity);
@@ -156,16 +175,30 @@ static void paintVectorTipRaster(QPainter *painter, const QPointF &point, float 
     painter->restore();
 }
 
-static void paintSoftStampVector(QPainter *painter, const QPointF &point, float size,
-                                 float opacity, const QColor &color, float hardness) {
-    painter->save();
-    painter->setPen(Qt::NoPen);
-    painter->setOpacity(opacity);
+// Soft round stamps pre-rendered once per (hardness, color) and drawn scaled.
+// Building a QRadialGradient with ~10 stops per dab does not scale to the
+// thousands of dabs a vector layer re-render produces.
+static QImage softStampFor(const QColor &color, float hardness) {
+    static QMap<QString, QImage> s_stampCache;
+    const int hardnessKey = static_cast<int>(std::clamp(hardness, 0.0f, 1.0f) * 20.0f + 0.5f);
+    const QString key = color.name(QColor::HexArgb) + QLatin1Char('|') + QString::number(hardnessKey);
+    auto it = s_stampCache.constFind(key);
+    if (it != s_stampCache.constEnd()) return it.value();
 
-    QRadialGradient gradient(point, size / 2.0);
+    constexpr int kStampSize = 128;
+    QImage stamp(kStampSize, kStampSize, QImage::Format_ARGB32_Premultiplied);
+    stamp.fill(Qt::transparent);
+
+    QPainter p(&stamp);
+    p.setRenderHint(QPainter::Antialiasing);
+    p.setPen(Qt::NoPen);
+
+    QPointF center(kStampSize / 2.0, kStampSize / 2.0);
+    QRadialGradient gradient(center, kStampSize / 2.0);
     QColor c = color;
+    float h = hardnessKey / 20.0f;
 
-    if (hardness >= 0.99f) {
+    if (h >= 0.99f) {
         gradient.setColorAt(0.0, c);
         gradient.setColorAt(0.95, c);
         QColor transparentColor = c;
@@ -173,14 +206,13 @@ static void paintSoftStampVector(QPainter *painter, const QPointF &point, float 
         gradient.setColorAt(1.0, transparentColor);
     } else {
         gradient.setColorAt(0.0, c);
-        if (hardness > 0.0f) {
-            gradient.setColorAt(hardness, c);
+        if (h > 0.0f) {
+            gradient.setColorAt(h, c);
         }
-
         int steps = 10;
         for (int i = 1; i <= steps; ++i) {
             float t = static_cast<float>(i) / steps;
-            float stop = std::min(1.0f, hardness + t * (1.0f - hardness));
+            float stop = std::min(1.0f, h + t * (1.0f - h));
             float alphaMult = 0.5f * (1.0f + std::cos(t * 3.14159265f));
             QColor stepColor = c;
             stepColor.setAlphaF(c.alphaF() * alphaMult);
@@ -188,8 +220,22 @@ static void paintSoftStampVector(QPainter *painter, const QPointF &point, float 
         }
     }
 
-    painter->setBrush(QBrush(gradient));
-    painter->drawEllipse(point, size / 2.0, size / 2.0);
+    p.setBrush(QBrush(gradient));
+    p.drawEllipse(center, kStampSize / 2.0, kStampSize / 2.0);
+    p.end();
+
+    if (s_stampCache.size() > 32) s_stampCache.clear();
+    s_stampCache.insert(key, stamp);
+    return stamp;
+}
+
+static void paintSoftStampVector(QPainter *painter, const QPointF &point, float size,
+                                 float opacity, const QColor &color, float hardness) {
+    const QImage stamp = softStampFor(color, hardness);
+    painter->save();
+    painter->setOpacity(opacity);
+    QRectF rect(point.x() - size / 2.0, point.y() - size / 2.0, size, size);
+    painter->drawImage(rect, stamp);
     painter->restore();
 }
 
@@ -357,15 +403,130 @@ VectorLayerData::EraseResult VectorLayerData::vectorErase(const VectorStroke& er
     return result;
 }
 
-void VectorLayerData::rasterize(ImageBuffer& output, float scale) const {
+void VectorLayerData::rasterize(ImageBuffer& output, float scale, RasterQuality quality) const {
+    // One QImage wrap + one QPainter + one tile sync for the whole layer.
+    // The previous per-stroke version rebuilt the contiguous cache and synced
+    // it back into the tiled buffer once per stroke (O(strokes * canvas)).
+    QImage canvasImg(output.data(), output.width(), output.height(), QImage::Format_RGBA8888_Premultiplied);
+    QPainter painter(&canvasImg);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, quality == RasterQuality::Final);
+
     for (const auto& stroke : m_strokes) {
-        rasterizeStroke(stroke, output, scale);
+        paintStrokeInternal(painter, stroke, scale, quality);
     }
+
+    painter.end();
+    output.loadRawData(output.data());
+}
+
+void VectorLayerData::rasterizeRegion(ImageBuffer& output, const QRectF& region, float scale,
+                                      RasterQuality quality) const {
+    if (region.isEmpty()) return;
+
+    QRectF scaledRegion(region.x() * scale, region.y() * scale,
+                        region.width() * scale, region.height() * scale);
+    scaledRegion = scaledRegion.intersected(QRectF(0, 0, output.width(), output.height()));
+    if (scaledRegion.isEmpty()) return;
+
+    QImage canvasImg(output.data(), output.width(), output.height(), QImage::Format_RGBA8888_Premultiplied);
+    QPainter painter(&canvasImg);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, quality == RasterQuality::Final);
+    painter.setClipRect(scaledRegion);
+
+    // Clear only the affected region, then re-compose the strokes that touch it.
+    painter.setCompositionMode(QPainter::CompositionMode_Clear);
+    painter.fillRect(scaledRegion, Qt::transparent);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+
+    for (const auto& stroke : m_strokes) {
+        if (!stroke.cachedBounds.intersects(region)) continue;
+        paintStrokeInternal(painter, stroke, scale, quality);
+    }
+
+    painter.end();
+    output.loadRawData(output.data());
 }
 
 void VectorLayerData::rasterizeStroke(const VectorStroke& stroke, ImageBuffer& output, float scale) const {
+    QImage canvasImg(output.data(), output.width(), output.height(), QImage::Format_RGBA8888_Premultiplied);
+    QPainter painter(&canvasImg);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    paintStrokeInternal(painter, stroke, scale, RasterQuality::Final);
+    painter.end();
+    output.loadRawData(output.data());
+}
+
+void VectorLayerData::paintStrokeInternal(QPainter& painter, const VectorStroke& stroke,
+                                          float scale, RasterQuality quality) const {
     if (stroke.segments.empty()) return;
-    
+
+    painter.save();
+
+    // ── Draft preview: flat stroked path, no dabs. Used while dragging nodes
+    // so curvature feedback is instant; the full-precision render happens on
+    // release. ──
+    if (quality == RasterQuality::Draft) {
+        painter.setCompositionMode(stroke.isEraser
+                                       ? QPainter::CompositionMode_DestinationOut
+                                       : QPainter::CompositionMode_SourceOver);
+        painter.setOpacity(stroke.opacity);
+        painter.setBrush(Qt::NoBrush);
+
+        for (const auto& seg : stroke.segments) {
+            float w = stroke.globalWidth * scale * 0.5f *
+                      (seg.p0.pressure * seg.widthStart + seg.p3.pressure * seg.widthEnd);
+            QPen pen(stroke.color, std::max(0.75f, w), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+            painter.setPen(pen);
+
+            QPainterPath path;
+            path.moveTo(seg.p0.x * scale, seg.p0.y * scale);
+            path.cubicTo(seg.cp1.x * scale, seg.cp1.y * scale,
+                         seg.cp2.x * scale, seg.cp2.y * scale,
+                         seg.p3.x * scale, seg.p3.y * scale);
+            painter.drawPath(path);
+        }
+        painter.restore();
+        return;
+    }
+
+    // ── Full brush-engine render: the vector path is replayed through the
+    // raster brush pipeline so it keeps grain, tip shape, taper, jitter and
+    // pressure dynamics instead of looking like a flat line. ──
+    if (stroke.brush) {
+        static BrushEngine s_vectorEngine;
+
+        BrushSettings settings = *stroke.brush;
+        settings.size = std::max(0.5f, stroke.globalWidth * scale);
+        settings.color = stroke.color;
+        settings.opacity = stroke.opacity;
+        if (stroke.isEraser) {
+            settings.type = BrushSettings::Type::Eraser;
+        }
+
+        // Fine adaptive flattening (~0.4 px chord error): the dab spacing
+        // accumulator persists across polyline segments (resetRemainder only
+        // once per stroke), so the brush walks the mathematical Bezier curve
+        // continuously — no visible corners between flattened chords.
+        const float tolerance = std::max(0.2f, 0.4f / std::max(scale, 0.01f));
+        auto pts = flattenStrokePolyline(stroke, tolerance);
+        if (pts.size() >= 2) {
+            s_vectorEngine.resetRemainder();
+            for (size_t i = 1; i < pts.size(); ++i) {
+                QPointF a(pts[i - 1].x * scale, pts[i - 1].y * scale);
+                QPointF b(pts[i].x * scale, pts[i].y * scale);
+                float pressure = 0.5f * (pts[i - 1].pressure + pts[i].pressure);
+                s_vectorEngine.paintStroke(&painter, a, b, pressure, settings);
+            }
+        }
+        painter.restore();
+        return;
+    }
+
+    // ── Legacy fallback (strokes saved before the brush preset was captured):
+    // spaced dab stamping with cached tinted tips / soft stamps. ──
     QImage tipImg;
     bool hasTexture = false;
     if (!stroke.tipTextureName.isEmpty()) {
@@ -379,11 +540,6 @@ void VectorLayerData::rasterizeStroke(const VectorStroke& stroke, ImageBuffer& o
         hasTexture = !tipImg.isNull();
     }
 
-    QImage canvasImg(output.data(), output.width(), output.height(), QImage::Format_RGBA8888_Premultiplied);
-    QPainter painter(&canvasImg);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setRenderHint(QPainter::SmoothPixmapTransform);
-    
     if (stroke.isEraser) {
         painter.setCompositionMode(QPainter::CompositionMode_DestinationOut);
     } else {
@@ -397,27 +553,27 @@ void VectorLayerData::rasterizeStroke(const VectorStroke& stroke, ImageBuffer& o
         float distSinceLastDab = 0.0f;
         VPoint2D prev = pts[0];
         float wPrev = prev.pressure * seg.widthStart * stroke.globalWidth * scale;
-        
+
         // Draw first dab
         if (hasTexture) {
-            paintVectorTipRaster(&painter, QPointF(prev.x * scale, prev.y * scale), wPrev, stroke.opacity, stroke.color, tipImg);
+            paintVectorTipRaster(&painter, QPointF(prev.x * scale, prev.y * scale), wPrev, stroke.opacity, stroke.color, tipImg, stroke.tipTextureName);
         } else {
             paintSoftStampVector(&painter, QPointF(prev.x * scale, prev.y * scale), wPrev, stroke.opacity, stroke.color, stroke.hardness);
         }
 
         for (size_t i = 1; i < pts.size(); ++i) {
             VPoint2D curr = pts[i];
-            
+
             float tSegment = static_cast<float>(i) / (pts.size() - 1);
             float wStart = seg.widthStart * stroke.globalWidth * scale;
             float wEnd = seg.widthEnd * stroke.globalWidth * scale;
-            float wCurr = (prev.pressure * (1.0f - tSegment) + curr.pressure * tSegment) * 
+            float wCurr = (prev.pressure * (1.0f - tSegment) + curr.pressure * tSegment) *
                           (wStart * (1.0f - tSegment) + wEnd * tSegment);
 
             float dx = curr.x - prev.x;
             float dy = curr.y - prev.y;
             float d = std::sqrt(dx * dx + dy * dy);
-            
+
             if (d < 1e-6f) {
                 prev = curr;
                 wPrev = wCurr;
@@ -425,38 +581,37 @@ void VectorLayerData::rasterizeStroke(const VectorStroke& stroke, ImageBuffer& o
             }
 
             distSinceLastDab += d;
-            
+
             float radius = ((wPrev + wCurr) * 0.5f) * 0.5f;
-            float step = std::max(0.5f, radius * stroke.spacing * 2.0f); 
+            float step = std::max(0.5f, radius * stroke.spacing * 2.0f);
 
             while (distSinceLastDab >= step) {
                 float t = (step - (distSinceLastDab - d)) / d;
                 t = std::clamp(t, 0.0f, 1.0f);
-                
+
                 float x = prev.x + t * dx;
                 float y = prev.y + t * dy;
                 float w = wPrev + t * (wCurr - wPrev);
-                
+
                 if (hasTexture) {
-                    paintVectorTipRaster(&painter, QPointF(x * scale, y * scale), w, stroke.opacity, stroke.color, tipImg);
+                    paintVectorTipRaster(&painter, QPointF(x * scale, y * scale), w, stroke.opacity, stroke.color, tipImg, stroke.tipTextureName);
                 } else {
                     paintSoftStampVector(&painter, QPointF(x * scale, y * scale), w, stroke.opacity, stroke.color, stroke.hardness);
                 }
-                
+
                 distSinceLastDab -= step;
-                
+
                 // Recalculate step dynamically
                 radius = w * 0.5f;
                 step = std::max(0.5f, radius * stroke.spacing * 2.0f);
             }
-            
+
             prev = curr;
             wPrev = wCurr;
         }
     }
-    
-    painter.end();
-    output.loadRawData(output.data());
+
+    painter.restore();
 }
 
 void VectorLayerData::transformAll(const QTransform& matrix) {

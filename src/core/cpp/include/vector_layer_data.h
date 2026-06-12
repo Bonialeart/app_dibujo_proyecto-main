@@ -6,10 +6,16 @@
 #include <memory>
 #include <QTransform>
 
+class QPainter;
+
 namespace artflow {
 
 class VectorLayerData {
 public:
+    // Draft = fast approximate preview (flat polyline pen, coarse flattening),
+    // used while a node is being dragged. Final = full brush-engine rendering.
+    enum class RasterQuality { Draft, Final };
+
     VectorLayerData(int canvasW, int canvasH);
     ~VectorLayerData() = default;
 
@@ -30,8 +36,15 @@ public:
     EraseResult vectorErase(const VectorStroke& eraserPath);
 
     // Rasterization
-    void rasterize(ImageBuffer& output, float scale = 1.0f) const;
+    void rasterize(ImageBuffer& output, float scale = 1.0f,
+                   RasterQuality quality = RasterQuality::Final) const;
     void rasterizeStroke(const VectorStroke& stroke, ImageBuffer& output, float scale = 1.0f) const;
+
+    // Re-rasterize only `region` (canvas coordinates): clears the region and
+    // redraws the strokes that intersect it, clipped. Much cheaper than a full
+    // rasterize() when editing a single stroke on a crowded layer.
+    void rasterizeRegion(ImageBuffer& output, const QRectF& region, float scale = 1.0f,
+                         RasterQuality quality = RasterQuality::Final) const;
 
     // Transformations
     void transformAll(const QTransform& matrix);
@@ -45,6 +58,9 @@ public:
     int canvasHeight() const { return m_canvasH; }
 
 private:
+    void paintStrokeInternal(QPainter& painter, const VectorStroke& stroke,
+                             float scale, RasterQuality quality) const;
+
     int m_canvasW;
     int m_canvasH;
     std::vector<VectorStroke> m_strokes;

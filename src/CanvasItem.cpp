@@ -54,6 +54,7 @@
 #include <QStandardPaths>
 #include <QStringList>
 #include <QTabletEvent>
+#include <QSettings>
 #include <QTimer>
 #include <QUrl>
 #include <QUuid>
@@ -310,6 +311,12 @@ CanvasItem::CanvasItem(QQuickItem *parent)
   m_lastTraceTarget = QPointF(-9999.0f, -9999.0f);
   m_customOpenHandCursor = loadCustomSvgCursor("hand-open.svg");
   m_customClosedHandCursor = loadCustomSvgCursor("hand-closed.svg");
+
+  {
+    QSettings settings;
+    m_vectorPostCorrection =
+        std::clamp(settings.value("vector/postCorrection", 50).toInt(), 0, 100);
+  }
 
   // Initialize default gradient stops (Sunset)
   QVariantMap stop1, stop2, stop3;
@@ -2403,15 +2410,26 @@ void CanvasItem::paint(QPainter *painter) {
     // If active layer is a vector layer, draw its curves control/anchor points overlay!
     Layer *layer = m_layerManager->getActiveLayer();
     if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
-      QTransform t;
-      t.translate(m_transformBox.x(), m_transformBox.y());
-      t = t * m_transformMatrix;
-      t.translate(-m_transformBox.x(), -m_transformBox.y());
+      // Same canvas-space transform used by hit testing and the commit, so
+      // anchors always sit exactly on the rendered stroke.
+      QTransform t = canvasSpaceTransform();
 
       painter->setRenderHint(QPainter::Antialiasing);
 
+      // G1 smoothness test: same criterion as the drag logic (~15 deg)
+      auto isSmoothJoint = [](const VPoint2D &handleIn, const VPoint2D &anchor,
+                              const VPoint2D &handleOut) {
+        float ax = anchor.x - handleIn.x, ay = anchor.y - handleIn.y;
+        float bx = handleOut.x - anchor.x, by = handleOut.y - anchor.y;
+        float la = std::hypot(ax, ay), lb = std::hypot(bx, by);
+        if (la < 1e-3f || lb < 1e-3f) return true;
+        return (ax * bx + ay * by) / (la * lb) > 0.965f;
+      };
+
       for (const auto& stroke : layer->vectorData->getStrokes()) {
-        for (const auto& seg : stroke.segments) {
+        const auto &segs = stroke.segments;
+        for (size_t i = 0; i < segs.size(); ++i) {
+          const auto &seg = segs[i];
           QPointF p0 = t.map(QPointF(seg.p0.x, seg.p0.y));
           QPointF cp1 = t.map(QPointF(seg.cp1.x, seg.cp1.y));
           QPointF cp2 = t.map(QPointF(seg.cp2.x, seg.cp2.y));
@@ -2429,11 +2447,32 @@ void CanvasItem::paint(QPainter *painter) {
           painter->drawRect(QRectF(cp1.x() - rControl, cp1.y() - rControl, rControl * 2, rControl * 2));
           painter->drawRect(QRectF(cp2.x() - rControl, cp2.y() - rControl, rControl * 2, rControl * 2));
 
-          // Draw main anchors as solid blue circles
-          painter->setBrush(QColor(0, 122, 255));
+          // Anchors: smooth joints as blue circles, corner joints as orange
+          // diamonds (Clip Studio-style visual distinction). Endpoints are
+          // always circles.
           float rAnchor = 4.0f / m_zoomLevel;
-          painter->drawEllipse(p0, rAnchor, rAnchor);
-          painter->drawEllipse(p3, rAnchor, rAnchor);
+          auto drawAnchor = [&](const QPointF &pt, bool corner) {
+            if (corner) {
+              painter->setPen(QPen(QColor(255, 149, 0), 1.0f / m_zoomLevel));
+              painter->setBrush(QColor(255, 149, 0));
+              QPolygonF diamond;
+              diamond << QPointF(pt.x(), pt.y() - rAnchor * 1.2)
+                      << QPointF(pt.x() + rAnchor * 1.2, pt.y())
+                      << QPointF(pt.x(), pt.y() + rAnchor * 1.2)
+                      << QPointF(pt.x() - rAnchor * 1.2, pt.y());
+              painter->drawPolygon(diamond);
+            } else {
+              painter->setPen(QPen(QColor(0, 122, 255), 1.0f / m_zoomLevel));
+              painter->setBrush(QColor(0, 122, 255));
+              painter->drawEllipse(pt, rAnchor, rAnchor);
+            }
+          };
+
+          bool p0Corner = (i > 0) && !isSmoothJoint(segs[i - 1].cp2, seg.p0, seg.cp1);
+          drawAnchor(p0, p0Corner);
+          if (i == segs.size() - 1) {
+            drawAnchor(p3, false); // last endpoint (interior p3 == next p0)
+          }
         }
       }
     }
@@ -2446,7 +2485,7 @@ void CanvasItem::paint(QPainter *painter) {
 
     // Screen space deals for handles
     painter->save();
-    QRectF screenBox = m_transformMatrix.mapRect(m_transformBox);
+    QRectF screenBox = canvasSpaceTransform().mapRect(m_transformBox);
     // ... draw handles ...
     painter->restore();
   }
@@ -3320,11 +3359,11 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
     vp.x = canvasPos.x();
     vp.y = canvasPos.y();
     vp.pressure = effectivePressure;
-    if (m_vectorPointBuffer.empty() || 
-        std::abs(m_vectorPointBuffer.back().x - vp.x) > 0.01f ||
-        std::abs(m_vectorPointBuffer.back().y - vp.y) > 0.01f) {
-      m_vectorPointBuffer.push_back(vp);
-    }
+    // Real-time decimation: collinear/near-duplicate samples are merged as
+    // they arrive, so the buffer stays small on long strokes and the final
+    // Bezier fit starts from clean data. Threshold ~1.25 screen px.
+    float minDist = std::max(0.35f, 1.25f / std::max(m_zoomLevel, 0.05f));
+    appendStrokePointFiltered(m_vectorPointBuffer, vp, minDist);
   }
 
   BrushSettings settings = m_brushEngine->getBrush();
@@ -3933,6 +3972,11 @@ void CanvasItem::handleDraw(const QPointF &pos, float pressure, float tilt) {
 
 void CanvasItem::detectAndDrawQuickShape() {
   if (!m_isDrawing || m_strokePoints.size() < 10)
+    return;
+
+  // Never auto-snap freehand strokes on vector layers: the drawn shape must
+  // be preserved as-is and stay editable through its anchor points.
+  if (m_isVectorDrawing)
     return;
 
   m_isHoldingForShape = true;
@@ -4617,58 +4661,26 @@ void CanvasItem::mousePressEvent(QMouseEvent *event) {
 
     if (m_isTransforming) {
       // Check if we clicked on an anchor or control point of a vector layer!
-      Layer *layer = m_layerManager->getActiveLayer();
-      if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
-        QTransform t;
-        t.translate(m_transformBox.x(), m_transformBox.y());
-        t = t * m_transformMatrix;
-        t.translate(-m_transformBox.x(), -m_transformBox.y());
-        
-        float clickRadius = 12.0f / m_zoomLevel;
-        bool foundPoint = false;
+      bool isTouchDevice =
+          event->device() &&
+          event->device()->type() == QInputDevice::DeviceType::TouchScreen;
 
-        for (auto& stroke : layer->vectorData->getStrokes()) {
-          for (size_t segIdx = 0; segIdx < stroke.segments.size(); ++segIdx) {
-            auto& seg = stroke.segments[segIdx];
-            
-            QPointF p0_trans = t.map(QPointF(seg.p0.x, seg.p0.y));
-            QPointF cp1_trans = t.map(QPointF(seg.cp1.x, seg.cp1.y));
-            QPointF cp2_trans = t.map(QPointF(seg.cp2.x, seg.cp2.y));
-            QPointF p3_trans = t.map(QPointF(seg.p3.x, seg.p3.y));
-
-            auto checkAndLock = [&](const QPointF& transPt, int pointType) {
-              float dx = canvasPos.x() - transPt.x();
-              float dy = canvasPos.y() - transPt.y();
-              float d = std::hypot(dx, dy);
-              if (d < clickRadius) {
-                m_isDraggingVectorPoint = true;
-                m_draggedStrokeId = stroke.id;
-                m_draggedSegmentIdx = segIdx;
-                m_draggedPointType = pointType;
-                foundPoint = true;
-                return true;
-              }
-              return false;
-            };
-
-            if (checkAndLock(p0_trans, 0)) break;
-            if (checkAndLock(cp1_trans, 1)) break;
-            if (checkAndLock(cp2_trans, 2)) break;
-            if (checkAndLock(p3_trans, 3)) break;
-          }
-          if (foundPoint) break;
-        }
-
-        if (foundPoint) {
-          m_vectorBeforeData = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
-          m_transformBeforeBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
-          m_dragStartMousePos = event->position();
-          event->accept();
-          return;
-        }
+      // Right-click (or Alt+click) on an anchor deletes it
+      bool deleteModifier = (event->button() == Qt::RightButton) ||
+                            (event->modifiers() & Qt::AltModifier);
+      if (deleteModifier &&
+          tryDeleteVectorNodeAt(event->position(), isTouchDevice)) {
+        event->accept();
+        return;
       }
 
-      QRectF transformedBox = m_transformMatrix.mapRect(m_transformBox);
+      if (event->button() == Qt::LeftButton &&
+          tryBeginVectorNodeDrag(event->position(), isTouchDevice)) {
+        event->accept();
+        return;
+      }
+
+      QRectF transformedBox = canvasSpaceTransform().mapRect(m_transformBox);
       if (transformedBox.contains(canvasPos)) {
         if (m_currentToolStr == "move") {
           m_isDraggingTransformInCpp = true;
@@ -4935,57 +4947,12 @@ void CanvasItem::mouseMoveEvent(QMouseEvent *event) {
     return;
   }
 
-  // Handle C++ vector point dragging
+  // Handle C++ vector point dragging (Alt = break tangent pairing -> corner)
   if (m_isTransforming && m_isDraggingVectorPoint) {
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
-      QPointF canvasPos = screenToCanvas(event->position());
-      
-      QTransform t;
-      t.translate(m_transformBox.x(), m_transformBox.y());
-      t = t * m_transformMatrix;
-      t.translate(-m_transformBox.x(), -m_transformBox.y());
-      
-      QTransform invT = t.inverted();
-      QPointF origPos = invT.map(canvasPos);
-
-      // Now we update the dragged point inside the segment!
-      VectorStroke* stroke = layer->vectorData->getStroke(m_draggedStrokeId);
-      if (stroke && m_draggedSegmentIdx < stroke->segments.size()) {
-        auto& seg = stroke->segments[m_draggedSegmentIdx];
-        if (m_draggedPointType == 0) {
-          seg.p0.x = origPos.x(); seg.p0.y = origPos.y();
-          // Sync with previous segment's end point if there is one
-          if (m_draggedSegmentIdx > 0) {
-            stroke->segments[m_draggedSegmentIdx - 1].p3.x = origPos.x();
-            stroke->segments[m_draggedSegmentIdx - 1].p3.y = origPos.y();
-          }
-        } else if (m_draggedPointType == 1) {
-          seg.cp1.x = origPos.x(); seg.cp1.y = origPos.y();
-        } else if (m_draggedPointType == 2) {
-          seg.cp2.x = origPos.x(); seg.cp2.y = origPos.y();
-        } else if (m_draggedPointType == 3) {
-          seg.p3.x = origPos.x(); seg.p3.y = origPos.y();
-          // Sync with next segment's start point if there is one
-          if (m_draggedSegmentIdx + 1 < stroke->segments.size()) {
-            stroke->segments[m_draggedSegmentIdx + 1].p0.x = origPos.x();
-            stroke->segments[m_draggedSegmentIdx + 1].p0.y = origPos.y();
-          }
-        }
-        stroke->recalcBounds();
-      }
-
-      // Re-rasterize the entire vector layer immediately for real-time visual feedback!
-      layer->buffer->clear();
-      layer->vectorData->rasterize(*layer->buffer);
-      layer->dirty = false;
-      layer->markDirty();
-      m_cachedCanvasImage = QImage(); // Force redraw!
-      
-      update();
-      event->accept();
-      return;
-    }
+    updateVectorNodeDrag(event->position(),
+                         event->modifiers() & Qt::AltModifier);
+    event->accept();
+    return;
   }
 
   // Handle C++ transform dragging
@@ -5465,18 +5432,7 @@ void CanvasItem::mouseReleaseEvent(QMouseEvent *event) {
   }
 
   if (m_isDraggingVectorPoint) {
-    m_isDraggingVectorPoint = false;
-    Layer *layer = m_layerManager->getActiveLayer();
-    if (layer && layer->type == Layer::Type::Vector && layer->vectorData) {
-      auto afterVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
-      auto afterBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
-      m_undoManager->pushCommand(std::make_unique<VectorUndoCommand>(
-          m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
-          std::move(afterBuffer), std::move(m_vectorBeforeData), std::move(afterVector)));
-    }
-    m_draggedStrokeId = 0;
-    m_draggedPointType = -1;
-    update();
+    endVectorNodeDrag();
     event->accept();
     return;
   }
@@ -6006,6 +5962,41 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
     m_touchStartTime = QDateTime::currentMSecsSinceEpoch();
     m_touchMovedThisSession = false;
 
+    // ── Single-finger: vector node editing (touch events never reach the
+    // mouse handlers because we consume them, so route node drags here) ──
+    if (points == 1 && m_isTransforming &&
+        tryBeginVectorNodeDrag(event->points().first().position(), true)) {
+      if (m_touchTimer)
+        m_touchTimer->stop();
+
+      // Double-tap on the same anchor deletes it (touch equivalent of
+      // right-click). Only anchors, not tangent handles.
+      qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+      bool isAnchor = (m_draggedPointType == 0 || m_draggedPointType == 3);
+      if (isAnchor && nowMs - m_lastNodeTapMs < 350 &&
+          m_lastNodeTapStroke == m_draggedStrokeId &&
+          m_lastNodeTapSeg == m_draggedSegmentIdx &&
+          m_lastNodeTapType == m_draggedPointType) {
+        uint32_t strokeId = m_draggedStrokeId;
+        size_t segIdx = m_draggedSegmentIdx;
+        int pointType = m_draggedPointType;
+        // Cancel the drag that tryBeginVectorNodeDrag just started
+        m_isDraggingVectorPoint = false;
+        m_draggedStrokeId = 0;
+        m_draggedPointType = -1;
+        m_lastNodeTapMs = 0;
+        deleteVectorNode(strokeId, segIdx, pointType);
+      } else {
+        m_lastNodeTapMs = nowMs;
+        m_lastNodeTapStroke = m_draggedStrokeId;
+        m_lastNodeTapSeg = m_draggedSegmentIdx;
+        m_lastNodeTapType = m_draggedPointType;
+      }
+
+      event->accept();
+      return;
+    }
+
     // ── Single-finger: eyedropper long-press ──
     if (points == 1 &&
         PreferencesManager::instance()->touchEyedropperEnabled()) {
@@ -6141,6 +6132,17 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
     event->accept();
 
   } else if (event->type() == QEvent::TouchUpdate) {
+    // ── Vector node drag in progress: track the finger directly ──
+    if (m_isDraggingVectorPoint) {
+      if (points == 1) {
+        updateVectorNodeDrag(event->points().first().position());
+        event->accept();
+        return;
+      }
+      // A second finger landed (gesture starting): commit the edit cleanly.
+      endVectorNodeDrag();
+    }
+
     m_maxTouchPointsThisSession = std::max(m_maxTouchPointsThisSession, points);
     for (int i = 0; i < points; ++i) {
       QPointF delta = event->points()[i].position() - event->points()[i].pressPosition();
@@ -6383,6 +6385,9 @@ void CanvasItem::touchEventOverride(QTouchEvent *event) {
 
   } else if (event->type() == QEvent::TouchEnd ||
              event->type() == QEvent::TouchCancel) {
+    if (m_isDraggingVectorPoint) {
+      endVectorNodeDrag();
+    }
     if (m_touchTimer)
       m_touchTimer->stop();
     m_touchIsEyedropper = false;
@@ -7597,6 +7602,10 @@ void CanvasItem::beginTransform() {
   m_initialMatrix = QTransform();
   m_transformMatrix = QTransform();
   m_transformMatrix.translate(m_transformBox.x(), m_transformBox.y());
+  // The matrix above maps selection-local coords (origin = box top-left) to
+  // canvas coords. Remember that origin: canvasSpaceTransform() needs it to
+  // map canvas-space points (vector anchors) through the same transform.
+  m_transformBoxOrigin = m_transformBox.topLeft();
   m_isTransforming = true;
   m_isMeshTransform = false;
   m_meshPoints.clear();
@@ -8006,11 +8015,11 @@ void CanvasItem::applyTransform() {
   if (layer && layer->buffer) {
     if (layer->type == Layer::Type::Vector) {
       if (layer->vectorData) {
-        QTransform t;
-        t.translate(m_transformBox.x(), m_transformBox.y());
-        t = t * m_transformMatrix;
-        t.translate(-m_transformBox.x(), -m_transformBox.y());
-        layer->vectorData->transformAll(t);
+        // Canvas-space equivalent of the local->canvas transform matrix.
+        // The old translate(box)*M*translate(-box) sandwich collapsed to M
+        // alone (QTransform pre-multiplies), shifting every stroke by the
+        // content-bounds origin on commit.
+        layer->vectorData->transformAll(canvasSpaceTransform());
         
         layer->buffer->clear();
         layer->vectorData->rasterize(*layer->buffer);
@@ -8451,6 +8460,100 @@ void CanvasItem::rasterizeVectorLayer(int index) {
   updateLayersList();
 }
 
+void CanvasItem::setVectorPostCorrection(int value) {
+  value = std::clamp(value, 0, 100);
+  if (m_vectorPostCorrection == value) return;
+  m_vectorPostCorrection = value;
+  QSettings settings;
+  settings.setValue("vector/postCorrection", value);
+  emit vectorPostCorrectionChanged();
+}
+
+int CanvasItem::vectorStrokeCount(int index) const {
+  if (!m_layerManager) return 0;
+  Layer *layer = m_layerManager->getLayer(index);
+  if (!layer || layer->type != Layer::Type::Vector || !layer->vectorData) return 0;
+  return static_cast<int>(layer->vectorData->getStrokes().size());
+}
+
+int CanvasItem::vectorNodeCount(int index) const {
+  if (!m_layerManager) return 0;
+  Layer *layer = m_layerManager->getLayer(index);
+  if (!layer || layer->type != Layer::Type::Vector || !layer->vectorData) return 0;
+  int nodes = 0;
+  for (const auto &stroke : layer->vectorData->getStrokes()) {
+    if (!stroke.segments.empty()) {
+      nodes += static_cast<int>(stroke.segments.size()) + 1;
+    }
+  }
+  return nodes;
+}
+
+void CanvasItem::simplifyVectorLayer(int index, int strength) {
+  if (!m_layerManager) return;
+  Layer *layer = m_layerManager->getLayer(index);
+  if (!layer || layer->type != Layer::Type::Vector || !layer->vectorData ||
+      !layer->buffer || layer->locked) {
+    return;
+  }
+
+  auto beforeVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+  auto beforeBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+
+  // strength 0..100 -> tolerance 0.5..8 canvas px
+  float tolerance = 0.5f + std::clamp(strength, 0, 100) * 0.075f;
+  int removedNodes = 0;
+
+  for (auto &stroke : layer->vectorData->getStrokes()) {
+    if (stroke.segments.size() < 2) continue;
+
+    // Flatten with raw per-point pressure (NOT flattenStrokePolyline, which
+    // folds width factors into pressure and would shrink widths on refit).
+    std::vector<VPoint2D> pts;
+    for (size_t i = 0; i < stroke.segments.size(); ++i) {
+      auto segPts = flattenToPolyline(stroke.segments[i], 0.35f);
+      if (pts.empty()) {
+        pts = std::move(segPts);
+      } else if (segPts.size() > 1) {
+        pts.insert(pts.end(), segPts.begin() + 1, segPts.end());
+      }
+    }
+    if (pts.size() < 2) continue;
+
+    auto refitted = fitBezierChain(pts, tolerance, tolerance * 0.4f);
+    if (!refitted.empty() && refitted.size() < stroke.segments.size()) {
+      removedNodes += static_cast<int>(stroke.segments.size() - refitted.size());
+      stroke.segments = std::move(refitted);
+      stroke.recalcBounds();
+    }
+  }
+
+  if (removedNodes == 0) {
+    emit notificationRequested("No hay nodos redundantes", "info");
+    return;
+  }
+
+  layer->buffer->clear();
+  layer->vectorData->rasterize(*layer->buffer);
+  layer->dirty = false;
+  layer->markDirty();
+  m_cachedCanvasImage = QImage();
+
+  if (m_undoManager) {
+    auto afterVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+    auto afterBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+    m_undoManager->pushCommand(std::make_unique<VectorUndoCommand>(
+        m_layerManager, index, std::move(beforeBuffer), std::move(afterBuffer),
+        std::move(beforeVector), std::move(afterVector)));
+  }
+
+  emit notificationRequested(
+      QString("Simplificado: %1 nodos menos").arg(removedNodes), "info");
+  update();
+  updateLayersList();
+  setProjectDirty(true);
+}
+
 void CanvasItem::finalizeVectorStroke() {
   m_isVectorDrawing = false;
   
@@ -8485,14 +8588,22 @@ void CanvasItem::finalizeVectorStroke() {
     }
   } else {
     if (m_vectorPointBuffer.size() >= 2) {
-      auto segments = fitBezierChain(m_vectorPointBuffer, 6.0f, 3.0f);
+      // Post-correction (Clip Studio-like): the slider controls how far the
+      // fitted curve may deviate from the drawn path. The input is low-pass
+      // smoothed inside fitBezierChain, so these tolerances work on the
+      // intended shape, not on sensor jitter: 0 -> 0.5 px (faithful),
+      // 50 -> 2 px (clean: an 'S' fits in ~4-6 nodes), 100 -> 8 px (strong
+      // smoothing). Zoomed in, the effective tolerance shrinks further.
+      float base = 0.5f * std::pow(16.0f, m_vectorPostCorrection / 100.0f);
+      float fitTolerance = std::clamp(base / std::max(m_zoomLevel, 0.05f), base / 3.0f, base);
+      auto segments = fitBezierChain(m_vectorPointBuffer, fitTolerance, fitTolerance * 0.4f);
       if (!segments.empty()) {
         VectorStroke stroke;
         stroke.segments = std::move(segments);
         stroke.color = m_brushColor;
         stroke.opacity = m_brushOpacity;
         stroke.globalWidth = m_brushSize;
-        
+
         if (m_brushEngine) {
           BrushSettings s = m_brushEngine->getBrush();
           stroke.tipTextureName = s.tipTextureName;
@@ -8501,6 +8612,9 @@ void CanvasItem::finalizeVectorStroke() {
           stroke.useTexture = s.useTexture;
           stroke.textureName = s.textureName;
           stroke.isEraser = false;
+          // Capture the full preset so the vector path renders through the
+          // raster brush pipeline (grain, taper, jitter, pressure dynamics).
+          stroke.brush = std::make_shared<BrushSettings>(s);
         }
 
         stroke.recalcBounds();
@@ -8542,6 +8656,384 @@ void CanvasItem::finalizeVectorStroke() {
 
   m_lastPos = QPointF();
   capture_timelapse_frame();
+  update();
+  updateLayersList();
+  setProjectDirty(true);
+}
+
+QTransform CanvasItem::canvasSpaceTransform() const {
+  // m_transformMatrix maps selection-local coordinates (origin at the box
+  // captured by beginTransform) to canvas coordinates. To run canvas-space
+  // points (vector anchors) through it, convert to local space first.
+  // At the identity state (M = translate(boxOrigin)) this returns identity,
+  // so anchors sit exactly on the rendered stroke.
+  QTransform t = m_transformMatrix;
+  t.translate(-m_transformBoxOrigin.x(), -m_transformBoxOrigin.y());
+  return t;
+}
+
+bool CanvasItem::tryBeginVectorNodeDrag(const QPointF &screenPos, bool isTouch) {
+  if (!m_isTransforming || !m_layerManager) return false;
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || layer->type != Layer::Type::Vector || !layer->vectorData ||
+      !layer->buffer) {
+    return false;
+  }
+
+  QPointF canvasPos = screenToCanvas(screenPos);
+
+  QTransform t = canvasSpaceTransform();
+
+  // Fingers need a much larger hit target than a mouse cursor.
+  const float clickRadius = (isTouch ? 26.0f : 12.0f) / m_zoomLevel;
+
+  uint32_t bestStrokeId = 0;
+  size_t bestSegIdx = 0;
+  int bestPointType = -1;
+  float bestDist = clickRadius;
+
+  auto consider = [&](uint32_t strokeId, size_t segIdx, int pointType,
+                      float px, float py) {
+    QPointF mapped = t.map(QPointF(px, py));
+    float d = std::hypot(canvasPos.x() - mapped.x(), canvasPos.y() - mapped.y());
+    if (d < bestDist) {
+      bestDist = d;
+      bestStrokeId = strokeId;
+      bestSegIdx = segIdx;
+      bestPointType = pointType;
+    }
+  };
+
+  // Pass 1: anchors only. They take priority so a nearby tangent handle can
+  // never steal the tap from the anchor the user is aiming at.
+  for (const auto &stroke : layer->vectorData->getStrokes()) {
+    for (size_t i = 0; i < stroke.segments.size(); ++i) {
+      const auto &seg = stroke.segments[i];
+      consider(stroke.id, i, 0, seg.p0.x, seg.p0.y);
+      consider(stroke.id, i, 3, seg.p3.x, seg.p3.y);
+    }
+  }
+
+  // Pass 2: tangent handles, only when no anchor is within reach.
+  if (bestPointType == -1) {
+    for (const auto &stroke : layer->vectorData->getStrokes()) {
+      for (size_t i = 0; i < stroke.segments.size(); ++i) {
+        const auto &seg = stroke.segments[i];
+        consider(stroke.id, i, 1, seg.cp1.x, seg.cp1.y);
+        consider(stroke.id, i, 2, seg.cp2.x, seg.cp2.y);
+      }
+    }
+  }
+
+  // Pass 3: clicked on the stroke body itself (no node nearby) -> insert a
+  // new anchor there and start dragging it (Clip Studio-style add-on-click).
+  bool snapshotTaken = false;
+  if (bestPointType == -1) {
+    // Hit-test in untransformed stroke space
+    QPointF localPos = t.inverted().map(canvasPos);
+    VPoint2D vp;
+    vp.x = localPos.x();
+    vp.y = localPos.y();
+
+    float bestStrokeDist = clickRadius;
+    uint32_t hitStrokeId = 0;
+    int hitSegIdx = -1;
+    float hitT = 0.0f;
+
+    for (const auto &stroke : layer->vectorData->getStrokes()) {
+      QRectF expanded = stroke.cachedBounds.adjusted(-clickRadius, -clickRadius,
+                                                     clickRadius, clickRadius);
+      if (!expanded.contains(localPos)) continue;
+      auto res = distanceToStroke(vp, stroke);
+      if (res.segIdx >= 0 && res.distance < bestStrokeDist) {
+        bestStrokeDist = res.distance;
+        hitStrokeId = stroke.id;
+        hitSegIdx = res.segIdx;
+        hitT = res.t;
+      }
+    }
+
+    if (hitSegIdx >= 0) {
+      VectorStroke *stroke = layer->vectorData->getStroke(hitStrokeId);
+      if (stroke && hitSegIdx < static_cast<int>(stroke->segments.size())) {
+        // Snapshot BEFORE mutating so the release-time undo covers the
+        // insertion together with the drag.
+        m_vectorBeforeData = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+        m_transformBeforeBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+        snapshotTaken = true;
+
+        if (hitT < 0.05f || hitT > 0.95f) {
+          // Practically on an existing anchor: grab it instead of inserting
+          bestStrokeId = hitStrokeId;
+          bestSegIdx = hitSegIdx;
+          bestPointType = (hitT < 0.05f) ? 0 : 3;
+        } else {
+          auto halves = subdivide(stroke->segments[hitSegIdx], hitT);
+          stroke->segments[hitSegIdx] = halves.first;
+          stroke->segments.insert(stroke->segments.begin() + hitSegIdx + 1, halves.second);
+          stroke->recalcBounds();
+
+          bestStrokeId = hitStrokeId;
+          bestSegIdx = hitSegIdx;
+          bestPointType = 3; // the new anchor = end of the first half
+          emit notificationRequested("Nodo añadido", "info");
+        }
+      }
+    }
+  }
+
+  if (bestPointType == -1) return false;
+
+  m_isDraggingVectorPoint = true;
+  m_draggedStrokeId = bestStrokeId;
+  m_draggedSegmentIdx = bestSegIdx;
+  m_draggedPointType = bestPointType;
+  m_dragStartMousePos = screenPos;
+
+  if (!snapshotTaken) {
+    m_vectorBeforeData = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+    m_transformBeforeBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+  }
+
+  if (VectorStroke *stroke = layer->vectorData->getStroke(m_draggedStrokeId)) {
+    m_vectorDragDirtyRect = stroke->cachedBounds;
+  } else {
+    m_vectorDragDirtyRect = QRectF();
+  }
+  update(); // refresh the overlay (a new anchor may be visible already)
+  return true;
+}
+
+void CanvasItem::updateVectorNodeDrag(const QPointF &screenPos, bool breakTangents) {
+  Layer *layer = m_layerManager ? m_layerManager->getActiveLayer() : nullptr;
+  if (!layer || layer->type != Layer::Type::Vector || !layer->vectorData ||
+      !layer->buffer) {
+    return;
+  }
+
+  QPointF canvasPos = screenToCanvas(screenPos);
+  QPointF origPos = canvasSpaceTransform().inverted().map(canvasPos);
+
+  VectorStroke *stroke = layer->vectorData->getStroke(m_draggedStrokeId);
+  if (!stroke || m_draggedSegmentIdx >= stroke->segments.size()) return;
+
+  auto &segs = stroke->segments;
+  auto &seg = segs[m_draggedSegmentIdx];
+
+  // G1-smoothness test around a shared anchor: are the incoming and outgoing
+  // tangents collinear (within ~15 deg)? Corner nodes stay corners.
+  auto isSmoothAt = [](const VPoint2D &handleIn, const VPoint2D &anchor,
+                       const VPoint2D &handleOut) {
+    float ax = anchor.x - handleIn.x, ay = anchor.y - handleIn.y;
+    float bx = handleOut.x - anchor.x, by = handleOut.y - anchor.y;
+    float la = std::hypot(ax, ay), lb = std::hypot(bx, by);
+    if (la < 1e-3f || lb < 1e-3f) return true;
+    return (ax * bx + ay * by) / (la * lb) > 0.965f;
+  };
+
+  if (m_draggedPointType == 0) {
+    // Anchor: translate its attached tangent handles with it so the local
+    // curvature is preserved instead of deforming around a stranded handle.
+    float dx = static_cast<float>(origPos.x()) - seg.p0.x;
+    float dy = static_cast<float>(origPos.y()) - seg.p0.y;
+    seg.p0.x += dx; seg.p0.y += dy;
+    seg.cp1.x += dx; seg.cp1.y += dy;
+    if (m_draggedSegmentIdx > 0) {
+      auto &prevSeg = segs[m_draggedSegmentIdx - 1];
+      prevSeg.p3.x = seg.p0.x; prevSeg.p3.y = seg.p0.y;
+      prevSeg.cp2.x += dx; prevSeg.cp2.y += dy;
+    }
+  } else if (m_draggedPointType == 3) {
+    float dx = static_cast<float>(origPos.x()) - seg.p3.x;
+    float dy = static_cast<float>(origPos.y()) - seg.p3.y;
+    seg.p3.x += dx; seg.p3.y += dy;
+    seg.cp2.x += dx; seg.cp2.y += dy;
+    if (m_draggedSegmentIdx + 1 < segs.size()) {
+      auto &nextSeg = segs[m_draggedSegmentIdx + 1];
+      nextSeg.p0.x = seg.p3.x; nextSeg.p0.y = seg.p3.y;
+      nextSeg.cp1.x += dx; nextSeg.cp1.y += dy;
+    }
+  } else if (m_draggedPointType == 1) {
+    // Tangent handle: if the anchor was smooth, mirror the opposite handle's
+    // direction to keep G1 continuity (its length is preserved). Holding Alt
+    // breaks the pairing to sculpt a sharp corner (Clip Studio-style).
+    bool smooth = !breakTangents && m_draggedSegmentIdx > 0 &&
+                  isSmoothAt(segs[m_draggedSegmentIdx - 1].cp2, seg.p0, seg.cp1);
+    seg.cp1.x = origPos.x(); seg.cp1.y = origPos.y();
+    if (smooth) {
+      auto &prevSeg = segs[m_draggedSegmentIdx - 1];
+      float lx = seg.p0.x - seg.cp1.x;
+      float ly = seg.p0.y - seg.cp1.y;
+      float len = std::hypot(lx, ly);
+      if (len > 1e-4f) {
+        float oppLen = std::hypot(prevSeg.cp2.x - seg.p0.x, prevSeg.cp2.y - seg.p0.y);
+        prevSeg.cp2.x = seg.p0.x + lx / len * oppLen;
+        prevSeg.cp2.y = seg.p0.y + ly / len * oppLen;
+      }
+    }
+  } else if (m_draggedPointType == 2) {
+    bool smooth = !breakTangents && m_draggedSegmentIdx + 1 < segs.size() &&
+                  isSmoothAt(seg.cp2, seg.p3, segs[m_draggedSegmentIdx + 1].cp1);
+    seg.cp2.x = origPos.x(); seg.cp2.y = origPos.y();
+    if (smooth) {
+      auto &nextSeg = segs[m_draggedSegmentIdx + 1];
+      float lx = seg.p3.x - seg.cp2.x;
+      float ly = seg.p3.y - seg.cp2.y;
+      float len = std::hypot(lx, ly);
+      if (len > 1e-4f) {
+        float oppLen = std::hypot(nextSeg.cp1.x - seg.p3.x, nextSeg.cp1.y - seg.p3.y);
+        nextSeg.cp1.x = seg.p3.x + lx / len * oppLen;
+        nextSeg.cp1.y = seg.p3.y + ly / len * oppLen;
+      }
+    }
+  }
+
+  stroke->recalcBounds();
+
+  // Fast draft re-render limited to the region the stroke occupied before and
+  // after this step. The full-precision brush render happens on release.
+  QRectF dirty = m_vectorDragDirtyRect.united(stroke->cachedBounds)
+                     .adjusted(-4.0, -4.0, 4.0, 4.0);
+  layer->vectorData->rasterizeRegion(
+      *layer->buffer, dirty, 1.0f,
+      artflow::VectorLayerData::RasterQuality::Draft);
+  m_vectorDragDirtyRect = stroke->cachedBounds;
+
+  layer->dirty = false;
+  layer->markDirty(dirty.toAlignedRect());
+  m_cachedCanvasImage = QImage(); // Force redraw!
+  update();
+}
+
+void CanvasItem::endVectorNodeDrag() {
+  if (!m_isDraggingVectorPoint) return;
+  m_isDraggingVectorPoint = false;
+
+  Layer *layer = m_layerManager ? m_layerManager->getActiveLayer() : nullptr;
+  if (layer && layer->type == Layer::Type::Vector && layer->vectorData &&
+      layer->buffer) {
+    // Replace the draft preview with the final full-quality brush render.
+    layer->buffer->clear();
+    layer->vectorData->rasterize(*layer->buffer);
+    layer->dirty = false;
+    layer->markDirty();
+    m_cachedCanvasImage = QImage();
+
+    if (m_undoManager) {
+      auto afterVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+      auto afterBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+      m_undoManager->pushCommand(std::make_unique<VectorUndoCommand>(
+          m_layerManager, m_activeLayerIndex, std::move(m_transformBeforeBuffer),
+          std::move(afterBuffer), std::move(m_vectorBeforeData), std::move(afterVector)));
+    }
+  }
+
+  m_draggedStrokeId = 0;
+  m_draggedPointType = -1;
+  m_vectorDragDirtyRect = QRectF();
+  update();
+}
+
+bool CanvasItem::tryDeleteVectorNodeAt(const QPointF &screenPos, bool isTouch) {
+  if (!m_isTransforming || !m_layerManager) return false;
+  Layer *layer = m_layerManager->getActiveLayer();
+  if (!layer || layer->type != Layer::Type::Vector || !layer->vectorData ||
+      !layer->buffer) {
+    return false;
+  }
+
+  QPointF canvasPos = screenToCanvas(screenPos);
+  QTransform t = canvasSpaceTransform();
+  const float clickRadius = (isTouch ? 26.0f : 12.0f) / m_zoomLevel;
+
+  uint32_t bestStrokeId = 0;
+  size_t bestSegIdx = 0;
+  int bestPointType = -1;
+  float bestDist = clickRadius;
+
+  // Only anchors can be deleted (not tangent handles)
+  for (const auto &stroke : layer->vectorData->getStrokes()) {
+    for (size_t i = 0; i < stroke.segments.size(); ++i) {
+      const auto &seg = stroke.segments[i];
+      auto consider = [&](int pointType, float px, float py) {
+        QPointF mapped = t.map(QPointF(px, py));
+        float d = std::hypot(canvasPos.x() - mapped.x(), canvasPos.y() - mapped.y());
+        if (d < bestDist) {
+          bestDist = d;
+          bestStrokeId = stroke.id;
+          bestSegIdx = i;
+          bestPointType = pointType;
+        }
+      };
+      consider(0, seg.p0.x, seg.p0.y);
+      consider(3, seg.p3.x, seg.p3.y);
+    }
+  }
+
+  if (bestPointType == -1) return false;
+  deleteVectorNode(bestStrokeId, bestSegIdx, bestPointType);
+  return true;
+}
+
+void CanvasItem::deleteVectorNode(uint32_t strokeId, size_t segIdx, int pointType) {
+  Layer *layer = m_layerManager ? m_layerManager->getActiveLayer() : nullptr;
+  if (!layer || layer->type != Layer::Type::Vector || !layer->vectorData ||
+      !layer->buffer) {
+    return;
+  }
+  VectorStroke *stroke = layer->vectorData->getStroke(strokeId);
+  if (!stroke || segIdx >= stroke->segments.size()) return;
+
+  auto beforeVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+  auto beforeBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+
+  auto &segs = stroke->segments;
+  // Normalize the anchor to a boundary index: boundary k sits between
+  // segment k-1 and segment k (k = 0 is the stroke start, k = n the end).
+  size_t boundary = (pointType == 0) ? segIdx : segIdx + 1;
+  bool strokeRemoved = false;
+
+  if (segs.size() == 1) {
+    // Deleting either anchor of a single-segment stroke removes the stroke.
+    layer->vectorData->removeStroke(strokeId);
+    strokeRemoved = true;
+  } else if (boundary == 0) {
+    segs.erase(segs.begin());
+  } else if (boundary >= segs.size()) {
+    segs.pop_back();
+  } else {
+    // Interior anchor: merge the two adjacent segments into one, keeping the
+    // outer tangent handles so the overall shape changes as little as possible.
+    BezierSegment merged;
+    merged.p0 = segs[boundary - 1].p0;
+    merged.cp1 = segs[boundary - 1].cp1;
+    merged.cp2 = segs[boundary].cp2;
+    merged.p3 = segs[boundary].p3;
+    merged.widthStart = segs[boundary - 1].widthStart;
+    merged.widthEnd = segs[boundary].widthEnd;
+    segs[boundary - 1] = merged;
+    segs.erase(segs.begin() + boundary);
+  }
+
+  if (!strokeRemoved) {
+    stroke->recalcBounds();
+  }
+
+  layer->buffer->clear();
+  layer->vectorData->rasterize(*layer->buffer);
+  layer->dirty = false;
+  layer->markDirty();
+  m_cachedCanvasImage = QImage();
+
+  if (m_undoManager) {
+    auto afterVector = std::make_unique<artflow::VectorLayerData>(*layer->vectorData);
+    auto afterBuffer = std::make_unique<artflow::ImageBuffer>(*layer->buffer);
+    m_undoManager->pushCommand(std::make_unique<VectorUndoCommand>(
+        m_layerManager, m_activeLayerIndex, std::move(beforeBuffer),
+        std::move(afterBuffer), std::move(beforeVector), std::move(afterVector)));
+  }
+
+  emit notificationRequested(strokeRemoved ? "Trazo eliminado" : "Nodo eliminado", "info");
   update();
   updateLayersList();
   setProjectDirty(true);

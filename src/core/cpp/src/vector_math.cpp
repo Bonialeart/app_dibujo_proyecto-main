@@ -108,12 +108,16 @@ std::pair<BezierSegment, BezierSegment> subdivide(const BezierSegment& segment, 
     return {left, right};
 }
 
-static void flattenRecursive(const BezierSegment& segment, float tolerance, std::vector<VPoint2D>& points) {
+// Maximum subdivision depth: bounds both stack usage and point count on
+// degenerate curves (critical on Android where stack sizes are smaller).
+static constexpr int kMaxFlattenDepth = 16;
+
+static void flattenRecursive(const BezierSegment& segment, float tolerance, std::vector<VPoint2D>& points, int depth = 0) {
     float dx = segment.p3.x - segment.p0.x;
     float dy = segment.p3.y - segment.p0.y;
     float lenSq = dx * dx + dy * dy;
     float len = std::sqrt(lenSq);
-    
+
     float d1 = 0.0f;
     float d2 = 0.0f;
     if (len > 1e-4f) {
@@ -124,12 +128,12 @@ static void flattenRecursive(const BezierSegment& segment, float tolerance, std:
         d2 = std::sqrt((segment.cp2.x - segment.p0.x)*(segment.cp2.x - segment.p0.x) + (segment.cp2.y - segment.p0.y)*(segment.cp2.y - segment.p0.y));
     }
 
-    if (d1 + d2 < tolerance) {
+    if (d1 + d2 < tolerance || depth >= kMaxFlattenDepth) {
         points.push_back(segment.p3);
     } else {
         auto halves = subdivide(segment, 0.5f);
-        flattenRecursive(halves.first, tolerance, points);
-        flattenRecursive(halves.second, tolerance, points);
+        flattenRecursive(halves.first, tolerance, points, depth + 1);
+        flattenRecursive(halves.second, tolerance, points, depth + 1);
     }
 }
 
@@ -147,7 +151,7 @@ struct FlatPoint {
     float t;
 };
 
-static void flattenRecursiveWithT(const BezierSegment& segment, float tStart, float tEnd, int segIdx, float tolerance, std::vector<FlatPoint>& points) {
+static void flattenRecursiveWithT(const BezierSegment& segment, float tStart, float tEnd, int segIdx, float tolerance, std::vector<FlatPoint>& points, int depth = 0) {
     float dx = segment.p3.x - segment.p0.x;
     float dy = segment.p3.y - segment.p0.y;
     float lenSq = dx * dx + dy * dy;
@@ -163,7 +167,7 @@ static void flattenRecursiveWithT(const BezierSegment& segment, float tStart, fl
         d2 = std::sqrt((segment.cp2.x - segment.p0.x)*(segment.cp2.x - segment.p0.x) + (segment.cp2.y - segment.p0.y)*(segment.cp2.y - segment.p0.y));
     }
 
-    if (d1 + d2 < tolerance) {
+    if (d1 + d2 < tolerance || depth >= kMaxFlattenDepth) {
         FlatPoint fp;
         fp.pt = segment.p3;
         fp.segIdx = segIdx;
@@ -172,8 +176,8 @@ static void flattenRecursiveWithT(const BezierSegment& segment, float tStart, fl
     } else {
         float tMid = (tStart + tEnd) * 0.5f;
         auto halves = subdivide(segment, 0.5f);
-        flattenRecursiveWithT(halves.first, tStart, tMid, segIdx, tolerance, points);
-        flattenRecursiveWithT(halves.second, tMid, tEnd, segIdx, tolerance, points);
+        flattenRecursiveWithT(halves.first, tStart, tMid, segIdx, tolerance, points, depth + 1);
+        flattenRecursiveWithT(halves.second, tMid, tEnd, segIdx, tolerance, points, depth + 1);
     }
 }
 
@@ -291,11 +295,24 @@ std::pair<VectorStroke, VectorStroke> splitStrokeAt(const VectorStroke& stroke, 
 
     auto halves = subdivide(stroke.segments[segIdx], t);
 
+    // Copy every style property (including the captured brush preset) so the
+    // fragments keep rendering exactly like the original stroke.
+    auto copyStyle = [&stroke](VectorStroke& dst) {
+        dst.color = stroke.color;
+        dst.opacity = stroke.opacity;
+        dst.globalWidth = stroke.globalWidth;
+        dst.tipTextureName = stroke.tipTextureName;
+        dst.spacing = stroke.spacing;
+        dst.hardness = stroke.hardness;
+        dst.useTexture = stroke.useTexture;
+        dst.textureName = stroke.textureName;
+        dst.isEraser = stroke.isEraser;
+        dst.brush = stroke.brush;
+    };
+
     VectorStroke firstPart;
-    firstPart.color = stroke.color;
-    firstPart.opacity = stroke.opacity;
-    firstPart.globalWidth = stroke.globalWidth;
-    
+    copyStyle(firstPart);
+
     for (int i = 0; i < segIdx; ++i) {
         firstPart.segments.push_back(stroke.segments[i]);
     }
@@ -303,10 +320,8 @@ std::pair<VectorStroke, VectorStroke> splitStrokeAt(const VectorStroke& stroke, 
     firstPart.recalcBounds();
 
     VectorStroke secondPart;
-    secondPart.color = stroke.color;
-    secondPart.opacity = stroke.opacity;
-    secondPart.globalWidth = stroke.globalWidth;
-    
+    copyStyle(secondPart);
+
     secondPart.segments.push_back(halves.second);
     for (size_t i = segIdx + 1; i < stroke.segments.size(); ++i) {
         secondPart.segments.push_back(stroke.segments[i]);
@@ -370,14 +385,27 @@ StrokeDistanceResult distanceToStroke(const VPoint2D& point, const VectorStroke&
 // Philip Schneider's Curve Fitting Algorithm Implementation
 // ---------------------------------------------------------
 
+// End tangents averaged over up to 3 neighbors (1/k falloff): a single
+// adjacent-point difference is dominated by sensor noise on dense input.
 static VPoint2D computeLeftTangent(const std::vector<VPoint2D>& points, int end) {
-    VPoint2D t = {points[end+1].x - points[end].x, points[end+1].y - points[end].y, 0};
-    return normalize(t);
+    int last = static_cast<int>(points.size()) - 1;
+    VPoint2D acc = {0, 0, 0};
+    for (int k = 1; k <= 3 && end + k <= last; ++k) {
+        float w = 1.0f / k;
+        acc.x += (points[end + k].x - points[end].x) * w;
+        acc.y += (points[end + k].y - points[end].y) * w;
+    }
+    return normalize(acc);
 }
 
 static VPoint2D computeRightTangent(const std::vector<VPoint2D>& points, int end) {
-    VPoint2D t = {points[end-1].x - points[end].x, points[end-1].y - points[end].y, 0};
-    return normalize(t);
+    VPoint2D acc = {0, 0, 0};
+    for (int k = 1; k <= 3 && end - k >= 0; ++k) {
+        float w = 1.0f / k;
+        acc.x += (points[end - k].x - points[end].x) * w;
+        acc.y += (points[end - k].y - points[end].y) * w;
+    }
+    return normalize(acc);
 }
 
 static std::vector<float> chordLengthParameterize(const std::vector<VPoint2D>& points, int first, int last) {
@@ -537,32 +565,46 @@ static void fitRecursive(const std::vector<VPoint2D>& points, int first, int las
         return;
     }
 
-    // Reparameterize & try again once
-    if (maxError < tolerance * 3.0f) {
-        auto uPrime = reparameterize(seg, points, first, last, u);
-        seg = generateBezier(points, first, last, uPrime, tHat1, tHat2);
-        maxError = 0.0f;
-        for (int i = first + 1; i < last; ++i) {
-            VPoint2D p = evalBezier(seg, uPrime[i - first]);
-            float dx = p.x - points[i].x;
-            float dy = p.y - points[i].y;
-            float err = dx * dx + dy * dy;
-            if (err > maxError) {
-                maxError = err;
-                splitPoint = i;
+    // Iterative Newton-Raphson reparameterization: refine the parameter
+    // values and refit several times before giving up and splitting. This is
+    // what keeps an 'S' at 3-5 segments instead of splitting into dozens.
+    if (maxError < tolerance * 4.0f) {
+        std::vector<float> uPrime = u;
+        for (int iter = 0; iter < 4; ++iter) {
+            uPrime = reparameterize(seg, points, first, last, uPrime);
+            seg = generateBezier(points, first, last, uPrime, tHat1, tHat2);
+            maxError = 0.0f;
+            for (int i = first + 1; i < last; ++i) {
+                VPoint2D p = evalBezier(seg, uPrime[i - first]);
+                float dx = p.x - points[i].x;
+                float dy = p.y - points[i].y;
+                float err = dx * dx + dy * dy;
+                if (err > maxError) {
+                    maxError = err;
+                    splitPoint = i;
+                }
             }
-        }
-        maxError = std::sqrt(maxError);
-        if (maxError < tolerance) {
-            result.push_back(seg);
-            return;
+            maxError = std::sqrt(maxError);
+            if (maxError < tolerance) {
+                result.push_back(seg);
+                return;
+            }
         }
     }
 
-    // If still fails, split recursively
+    // If still fails, split recursively at the worst point.
+    // Center tangent convention (Schneider / Graphics Gems): right-end
+    // tangents point BACKWARD along the curve (cp2 = p_last + tHat2 * alpha),
+    // so the left half receives the backward direction and the right half its
+    // negation (forward). Getting this sign wrong inverts the handles at
+    // every split, the error never converges, and the fitter shatters the
+    // stroke into hundreds of kinked micro-segments.
+    // The tangent is averaged over a small window to resist sensor noise.
+    int lo = std::max(first, splitPoint - 3);
+    int hi = std::min(last, splitPoint + 3);
     VPoint2D tHatMid = {
-        points[splitPoint+1].x - points[splitPoint-1].x,
-        points[splitPoint+1].y - points[splitPoint-1].y,
+        points[lo].x - points[hi].x,
+        points[lo].y - points[hi].y,
         0
     };
     tHatMid = normalize(tHatMid);
@@ -584,40 +626,80 @@ static float perpendicularDistance(const VPoint2D& p, const VPoint2D& lineStart,
     return std::abs(dy * p.x - dx * p.y + lineEnd.x * lineStart.y - lineEnd.y * lineStart.x) / std::sqrt(lenSq);
 }
 
-static void rdpSimplifyRecursive(const std::vector<VPoint2D>& points, int first, int last, float epsilon, std::vector<bool>& keep) {
-    if (last <= first + 1) return;
-    
-    float maxDist = 0.0f;
-    int splitIdx = first;
-    
-    VPoint2D lineStart = points[first];
-    VPoint2D lineEnd = points[last];
-    
-    for (int i = first + 1; i < last; ++i) {
-        float dist = perpendicularDistance(points[i], lineStart, lineEnd);
-        if (dist > maxDist) {
-            maxDist = dist;
-            splitIdx = i;
+void smoothStrokePoints(std::vector<VPoint2D>& points, int iterations) {
+    if (points.size() < 3) return;
+    std::vector<VPoint2D> prev;
+    for (int it = 0; it < iterations; ++it) {
+        prev = points;
+        for (size_t i = 1; i + 1 < points.size(); ++i) {
+            points[i].x = 0.25f * prev[i - 1].x + 0.5f * prev[i].x + 0.25f * prev[i + 1].x;
+            points[i].y = 0.25f * prev[i - 1].y + 0.5f * prev[i].y + 0.25f * prev[i + 1].y;
+            points[i].pressure = 0.25f * prev[i - 1].pressure + 0.5f * prev[i].pressure +
+                                 0.25f * prev[i + 1].pressure;
         }
-    }
-    
-    if (maxDist > epsilon) {
-        keep[splitIdx] = true;
-        rdpSimplifyRecursive(points, first, splitIdx, epsilon, keep);
-        rdpSimplifyRecursive(points, splitIdx, last, epsilon, keep);
     }
 }
 
-static std::vector<VPoint2D> rdpSimplify(const std::vector<VPoint2D>& points, float epsilon) {
+std::vector<VPoint2D> rdpSimplify(const std::vector<VPoint2D>& points, float epsilon,
+                                  float pressureWeight) {
     if (points.size() < 3) return points;
-    
+
     std::vector<bool> keep(points.size(), false);
     keep[0] = true;
     keep[points.size() - 1] = true;
-    
-    rdpSimplifyRecursive(points, 0, static_cast<int>(points.size() - 1), epsilon, keep);
-    
+
+    // Iterative RDP (explicit stack): long freehand strokes on Android would
+    // otherwise risk deep recursion.
+    std::vector<std::pair<int, int>> stack;
+    stack.reserve(64);
+    stack.push_back({0, static_cast<int>(points.size() - 1)});
+
+    while (!stack.empty()) {
+        auto [first, last] = stack.back();
+        stack.pop_back();
+        if (last <= first + 1) continue;
+
+        const VPoint2D& lineStart = points[first];
+        const VPoint2D& lineEnd = points[last];
+
+        float chordX = lineEnd.x - lineStart.x;
+        float chordY = lineEnd.y - lineStart.y;
+        float chordLenSq = chordX * chordX + chordY * chordY;
+
+        float maxDist = 0.0f;
+        int splitIdx = first;
+
+        for (int i = first + 1; i < last; ++i) {
+            float dist = perpendicularDistance(points[i], lineStart, lineEnd);
+
+            if (pressureWeight > 0.0f) {
+                // Deviation of pressure vs. linear interpolation along the chord:
+                // a point that encodes a width change is information, not noise.
+                float t = 0.5f;
+                if (chordLenSq > 1e-6f) {
+                    t = ((points[i].x - lineStart.x) * chordX +
+                         (points[i].y - lineStart.y) * chordY) / chordLenSq;
+                    t = std::clamp(t, 0.0f, 1.0f);
+                }
+                float expectedP = lineStart.pressure + t * (lineEnd.pressure - lineStart.pressure);
+                dist += std::abs(points[i].pressure - expectedP) * pressureWeight;
+            }
+
+            if (dist > maxDist) {
+                maxDist = dist;
+                splitIdx = i;
+            }
+        }
+
+        if (maxDist > epsilon) {
+            keep[splitIdx] = true;
+            stack.push_back({first, splitIdx});
+            stack.push_back({splitIdx, last});
+        }
+    }
+
     std::vector<VPoint2D> result;
+    result.reserve(points.size() / 4 + 2);
     for (size_t i = 0; i < points.size(); ++i) {
         if (keep[i]) {
             result.push_back(points[i]);
@@ -626,16 +708,98 @@ static std::vector<VPoint2D> rdpSimplify(const std::vector<VPoint2D>& points, fl
     return result;
 }
 
+bool appendStrokePointFiltered(std::vector<VPoint2D>& buffer, const VPoint2D& pt,
+                               float minDistance,
+                               float maxAngleDeviationDeg,
+                               float pressureTolerance) {
+    if (buffer.empty()) {
+        buffer.push_back(pt);
+        return true;
+    }
+
+    VPoint2D& last = buffer.back();
+    float dx = pt.x - last.x;
+    float dy = pt.y - last.y;
+    float distSq = dx * dx + dy * dy;
+
+    if (distSq < minDistance * minDistance) {
+        // Too close: merge instead of appending, keeping the strongest pressure
+        // so quick pressure peaks are not lost.
+        if (pt.pressure > last.pressure) {
+            last.pressure = pt.pressure;
+        }
+        return false;
+    }
+
+    if (buffer.size() >= 2) {
+        const VPoint2D& prev = buffer[buffer.size() - 2];
+        float d1x = last.x - prev.x;
+        float d1y = last.y - prev.y;
+        float d2x = pt.x - prev.x;
+        float d2y = pt.y - prev.y;
+        float l1 = std::sqrt(d1x * d1x + d1y * d1y);
+        float l2 = std::sqrt(d2x * d2x + d2y * d2y);
+
+        if (l1 > 1e-5f && l2 > 1e-5f) {
+            float cosA = (d1x * d2x + d1y * d2y) / (l1 * l2);
+            float cosThreshold = std::cos(maxAngleDeviationDeg * 3.14159265f / 180.0f);
+            // Bounded-error slide: besides a small angle, the point being
+            // absorbed must sit within a sub-pixel band of the new chord.
+            // An angle-only test eats gentle arcs step by step and turns them
+            // into straight lines; this keeps the drawn shape faithful.
+            float perpDist = std::abs(d2x * (last.y - prev.y) - d2y * (last.x - prev.x)) / l2;
+            float slideEps = minDistance * 0.3f;
+            if (cosA > cosThreshold && perpDist < slideEps &&
+                std::abs(pt.pressure - last.pressure) < pressureTolerance) {
+                // Truly straight with stable pressure: slide the last point
+                // forward instead of growing the buffer.
+                last = pt;
+                return true;
+            }
+        }
+    }
+
+    buffer.push_back(pt);
+    return true;
+}
+
+std::vector<VPoint2D> flattenStrokePolyline(const VectorStroke& stroke, float tolerance) {
+    std::vector<VPoint2D> out;
+    if (stroke.segments.empty()) return out;
+
+    auto flat = flattenStroke(stroke, tolerance);
+    out.reserve(flat.size());
+    int lastSegIdx = static_cast<int>(stroke.segments.size()) - 1;
+    for (const auto& fp : flat) {
+        const BezierSegment& seg = stroke.segments[std::clamp(fp.segIdx, 0, lastSegIdx)];
+        float widthFactor = seg.widthStart + fp.t * (seg.widthEnd - seg.widthStart);
+        VPoint2D p = fp.pt;
+        p.pressure = std::clamp(p.pressure * widthFactor, 0.0f, 4.0f);
+        out.push_back(p);
+    }
+    return out;
+}
+
 std::vector<BezierSegment> fitBezierChain(const std::vector<VPoint2D>& points, float tolerance, float epsilon) {
     std::vector<BezierSegment> result;
     if (points.size() < 2) return result;
 
-    // Pre-simplify using RDP to clean tremors and flatten straight lines
-    std::vector<VPoint2D> simplified = rdpSimplify(points, epsilon);
+    // 1. Low-pass smooth the raw input: stylus/touch sensors jitter both in
+    //    position and (especially) pressure. Without this, the jitter exceeds
+    //    the fit tolerance and the fitter splits a simple 'S' into dozens of
+    //    kinked micro-segments ("faceted" strokes, 100+ nodes).
+    std::vector<VPoint2D> smoothed = points;
+    smoothStrokePoints(smoothed, 2);
+
+    // 2. RDP decimation. Pressure deviation is weighted only moderately —
+    //    it was just smoothed, so what survives is a real width change.
+    std::vector<VPoint2D> simplified = rdpSimplify(smoothed, epsilon, epsilon * 1.5f);
     if (simplified.size() < 2) {
-        simplified = points;
+        simplified = smoothed;
     }
 
+    // 3. Schneider curve fit: polyline -> few cubic Bezier segments with
+    //    G1-continuous tangents at the joints.
     VPoint2D tHat1 = computeLeftTangent(simplified, 0);
     VPoint2D tHat2 = computeRightTangent(simplified, static_cast<int>(simplified.size() - 1));
 

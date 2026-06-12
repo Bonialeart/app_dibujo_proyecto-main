@@ -110,6 +110,8 @@ public:
       int activeLayerIndex READ activeLayerIndex NOTIFY activeLayerChanged)
   Q_PROPERTY(
       bool isTransforming READ isTransforming NOTIFY isTransformingChanged)
+  Q_PROPERTY(int vectorPostCorrection READ vectorPostCorrection WRITE
+                 setVectorPostCorrection NOTIFY vectorPostCorrectionChanged)
   Q_PROPERTY(bool isFreeTransformActive READ isFreeTransformActive WRITE setIsFreeTransformActive NOTIFY isFreeTransformActiveChanged)
   Q_PROPERTY(float brushAngle READ brushAngle WRITE setBrushAngle NOTIFY
                  brushAngleChanged)
@@ -562,8 +564,16 @@ public:
   Q_INVOKABLE void rasterizeVectorLayer(int index);
   Q_INVOKABLE bool isVectorLayer(int index) const;
 
+  // Vector layer pro controls (Studio panel)
+  int vectorPostCorrection() const { return m_vectorPostCorrection; }
+  void setVectorPostCorrection(int value);
+  Q_INVOKABLE int vectorStrokeCount(int index) const;
+  Q_INVOKABLE int vectorNodeCount(int index) const;
+  Q_INVOKABLE void simplifyVectorLayer(int index, int strength);
+
 signals:
   void canvasPreviewChanged();
+  void vectorPostCorrectionChanged();
   void animationManagerChanged();
   void perspectiveRulerChanged();
   void brushSizeChanged();
@@ -1042,7 +1052,26 @@ private:
   uint32_t m_draggedStrokeId = 0;
   size_t m_draggedSegmentIdx = 0;
   int m_draggedPointType = -1; // 0: p0, 1: cp1, 2: cp2, 3: p3
+  QRectF m_vectorDragDirtyRect; // Bounds of the edited stroke before the last drag step
+  int m_vectorPostCorrection = 50; // 0 = fiel al trazo, 100 = máxima suavización
+  QPointF m_transformBoxOrigin; // Box top-left captured at beginTransform (local-space origin)
+  // Double-tap detection for touch node deletion
+  qint64 m_lastNodeTapMs = 0;
+  uint32_t m_lastNodeTapStroke = 0;
+  size_t m_lastNodeTapSeg = 0;
+  int m_lastNodeTapType = -1;
   void finalizeVectorStroke();
+
+  // Vector node editing (shared by mouse and touch paths)
+  // m_transformMatrix maps selection-local coords (origin = m_transformBoxOrigin)
+  // to canvas coords; this returns the equivalent canvas-space -> canvas-space
+  // transform used for anchors, hit tests and the vector commit.
+  QTransform canvasSpaceTransform() const;
+  bool tryBeginVectorNodeDrag(const QPointF &screenPos, bool isTouch);
+  void updateVectorNodeDrag(const QPointF &screenPos, bool breakTangents = false);
+  void endVectorNodeDrag();
+  bool tryDeleteVectorNodeAt(const QPointF &screenPos, bool isTouch);
+  void deleteVectorNode(uint32_t strokeId, size_t segIdx, int pointType);
   void syncPerspectiveLayer();
 
   void handleAutoSave();
