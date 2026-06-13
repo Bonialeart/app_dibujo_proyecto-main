@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
-import "../Translations.js" as Trans
+import "../translations.js" as Trans
 
 Item {
     id: galleryRoot
@@ -417,7 +417,8 @@ Item {
                             if (galleryRoot.targetIndex !== -1) {
                                 var a = projectModel.get(galleryRoot.draggedIndex)
                                 var b = projectModel.get(galleryRoot.targetIndex)
-                                if (mainCanvas.create_folder_from_merge(a.path, b.path)) {
+                                var ops = (typeof nativeProjectModel !== "undefined" && nativeProjectModel) ? nativeProjectModel : mainCanvas
+                                if (a && b && ops && ops.create_folder_from_merge(a.path, b.path)) {
                                     refreshGallery()
                                 }
                             }

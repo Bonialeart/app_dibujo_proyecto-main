@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import QtQuick.Effects
-import "../Translations.js" as Trans
+import "../translations.js" as Trans
 
 Popup {
     id: root

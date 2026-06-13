@@ -18,8 +18,12 @@
 #include "core/cpp/include/brush_preset_manager.h"
 #include "core/brushes/abr_parser.h"
 #include "core/cpp/include/undo_commands.h"
+#include "ProjectModel.h"
 #include <QBuffer>
 #include <QCoreApplication>
+#include <QDataStream>
+#include <QHash>
+#include <QSet>
 #include <QCursor>
 #include <QSvgRenderer>
 #include <QDateTime>
@@ -189,7 +193,7 @@ public:
     }
   }
 
-  std::string name() const override { return "Vector Stroke"; }
+  std::string name() const override { return "Vector Edit"; }
 
 private:
   artflow::LayerManager *m_manager;
@@ -2243,8 +2247,22 @@ void CanvasItem::paint(QPainter *painter) {
                                QImage::Format_RGBA8888_Premultiplied);
                 QImage baseImg = getProcessedLayerImage(baseLayer, rawBaseImg, dirtyUnion);
 
+                // Si la base del grupo es la capa en sesión de liquify, no
+                // dibujar sus píxeles (la forma original se vería duplicada
+                // bajo el preview deformado); los hijos siguen recortados al
+                // alfa original de la base hasta aplicar/cancelar.
+                const bool liquifyingBase =
+                    (m_isLiquifying && i == m_activeLayerIndex);
+
                 // Copy the base layer's content corresponding to the dirty union first!
-                QImage groupImg = baseImg.copy(dirtyUnion);
+                QImage groupImg;
+                if (liquifyingBase) {
+                  groupImg = QImage(dirtyUnion.size(),
+                                    QImage::Format_RGBA8888_Premultiplied);
+                  groupImg.fill(Qt::transparent);
+                } else {
+                  groupImg = baseImg.copy(dirtyUnion);
+                }
 
                 QPainter groupPainter(&groupImg);
                 groupPainter.setRenderHint(QPainter::SmoothPixmapTransform,
@@ -2279,7 +2297,10 @@ void CanvasItem::paint(QPainter *painter) {
                 cpuPainter.drawImage(dirtyUnion.topLeft(), groupImg);
 
                 // Draw panel border on top of the clipped artwork
-                if (QString::fromStdString(baseLayer->name).startsWith("Panel ", Qt::CaseInsensitive)) {
+                // (omitido durante liquify de la base: el borde proviene de
+                // baseImg y reintroduciría la silueta original)
+                if (!liquifyingBase &&
+                    QString::fromStdString(baseLayer->name).startsWith("Panel ", Qt::CaseInsensitive)) {
                   QImage borderImg = baseImg.copy(dirtyUnion);
                   for (int y = 0; y < borderImg.height(); ++y) {
                     QRgb *row = reinterpret_cast<QRgb*>(borderImg.scanLine(y));
@@ -2993,7 +3014,11 @@ void CanvasItem::paint(QPainter *painter) {
   // ══════════════════════════════════════════════════════════════
   // LIQUIFY PREVIEW OVERLAY
   // ══════════════════════════════════════════════════════════════
-  if (m_isLiquifying && !m_liquifyPreviewCache.isNull()) {
+  const bool liquifyPreviewReady =
+      m_isLiquifying &&
+      (!m_liquifyPreviewCache.isNull() ||
+       (m_liquifyEngine && m_liquifyEngine->gpuActive()));
+  if (liquifyPreviewReady) {
     QRectF lPaperRect(
         m_viewOffset.x() * m_zoomLevel, m_viewOffset.y() * m_zoomLevel,
         m_canvasWidth * m_zoomLevel, m_canvasHeight * m_zoomLevel);
@@ -3004,7 +3029,7 @@ void CanvasItem::paint(QPainter *painter) {
   painter->restore();
 
   // Draw Liquify cursor (screen space — after rotation restore)
-  if (m_isLiquifying && !m_liquifyPreviewCache.isNull()) {
+  if (liquifyPreviewReady) {
     if (m_cursorVisible && m_liquifyEngine) {
       float liqRadius = m_liquifyEngine->radius() * m_zoomLevel;
       painter->save();
@@ -8208,56 +8233,21 @@ QVariantList CanvasItem::getRecentProjects() {
 
 QVariantList CanvasItem::get_project_list() { return _scanSync(); }
 
+QString CanvasItem::getDefaultProjectsFolderUrl() const {
+  const QString dir =
+      QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
+      "/KromoStudioProjects";
+  QDir().mkpath(dir); // Asegurar que exista para que el diálogo abra ahí
+  return QUrl::fromLocalFile(dir).toString();
+}
+
 bool CanvasItem::create_folder_from_merge(const QString &sourcePath,
                                           const QString &targetPath) {
-  if (sourcePath.isEmpty() || targetPath.isEmpty() || sourcePath == targetPath)
-    return false;
-
-  QFileInfo srcInfo(sourcePath);
-  QFileInfo tgtInfo(targetPath);
-
-  if (!srcInfo.exists() || !tgtInfo.exists())
-    return false;
-
-  QDir parentDir =
-      srcInfo.dir(); // Assuming both in same parent dir for simplicity
-
-  if (tgtInfo.isDir()) {
-    // Target is a folder, move source inside
-    QString newPath = tgtInfo.absoluteFilePath() + "/" + srcInfo.fileName();
-    bool success = QFile::rename(sourcePath, newPath);
-    if (success) {
-      emit projectListChanged();
-    }
-    return success;
-  } else if (srcInfo.isDir()) {
-    // Source is a folder, move target inside (just in case they dragged
-    // folder onto a drawing somehow)
-    QString newPath = srcInfo.absoluteFilePath() + "/" + tgtInfo.fileName();
-    bool success = QFile::rename(targetPath, newPath);
-    if (success) {
-      emit projectListChanged();
-    }
-    return success;
-  } else {
-    // Both are files, create a new folder
-    QString folderName =
-        "Group_" + QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
-    QString newDirPath = parentDir.absolutePath() + "/" + folderName;
-
-    if (parentDir.mkdir(folderName)) {
-      bool success1 =
-          QFile::rename(sourcePath, newDirPath + "/" + srcInfo.fileName());
-      bool success2 =
-          QFile::rename(targetPath, newDirPath + "/" + tgtInfo.fileName());
-
-      if (success1 || success2) {
-        emit projectListChanged();
-        return true;
-      }
-    }
-  }
-  return false;
+  // Lógica compartida en ProjectModel (disponible también sin canvas activo).
+  const bool ok = mergeKromoProjects(sourcePath, targetPath);
+  if (ok)
+    emit projectListChanged();
+  return ok;
 }
 
 void CanvasItem::load_file_path(const QString &path) { loadProject(path); }
@@ -9737,13 +9727,18 @@ void CanvasItem::setBackgroundColor(const QString &color) {
 
 bool CanvasItem::loadProject(const QString &path) {
   QString localPath = path;
-  if (localPath.startsWith("file:///")) {
+  if (localPath.startsWith("file:", Qt::CaseInsensitive)) {
     localPath = QUrl(path).toLocalFile();
   }
 
   QFileInfo info(localPath);
   if (!info.exists())
     return false;
+
+  // Photoshop documents are deserialized by the native PSD importer.
+  if (localPath.endsWith(".psd", Qt::CaseInsensitive)) {
+    return importPSD(localPath);
+  }
 
   qDebug() << "Loading project (Single File) from:" << localPath;
 
@@ -9752,6 +9747,9 @@ bool CanvasItem::loadProject(const QString &path) {
     qWarning() << "Could not open project file for reading";
     return false;
   }
+
+  // Registrar como reciente para que aparezca en Inicio aunque esté fuera de KromoStudioProjects
+  recordRecentProject(localPath);
 
   QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
   file.close();
@@ -9942,6 +9940,11 @@ bool CanvasItem::saveProject(const QString &pathText) {
     baseDir.mkpath(".");
 
   QString targetPath = pathText;
+  // QML FileDialog devuelve rutas con esquema file:/// (o file://) que QFile
+  // no reconoce en Windows/Android. Convertir a ruta local nativa primero.
+  if (targetPath.startsWith("file:", Qt::CaseInsensitive)) {
+    targetPath = QUrl(pathText).toLocalFile();
+  }
   if (!targetPath.contains("/") && !targetPath.contains("\\")) {
     targetPath = baseDir.filePath(targetPath);
   }
@@ -10126,6 +10129,7 @@ bool CanvasItem::saveProject(const QString &pathText) {
   // 4. Update current project path/name
   m_currentProjectPath = targetPath;
   m_currentProjectName = info.baseName();
+  recordRecentProject(targetPath); // Visible en Inicio aunque esté fuera de KromoStudioProjects
   emit currentProjectPathChanged();
   emit currentProjectNameChanged();
 
@@ -10161,82 +10165,9 @@ bool CanvasItem::saveProject(const QString &pathText) {
 }
 
 QVariantList CanvasItem::_scanSync() {
-  QVariantList results;
-  // Always scan the main project directory for the root lists
-  // (Home/Gallery)
-  QString path =
-      QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) +
-      "/KromoStudioProjects";
-
-  if (!QFileInfo(path).isDir()) {
-    QDir().mkpath(path);
-  }
-
-  QDir dir(path);
-  QFileInfoList entries = dir.entryInfoList(
-      QDir::Dirs | QDir::Files | QDir::NoDotAndDotDot, QDir::Time);
-
-  for (const QFileInfo &info : entries) {
-    if (info.fileName().endsWith(".png") || info.fileName().endsWith(".jpg"))
-      continue;
-    if (info.fileName().endsWith(".json"))
-      continue;
-
-    QString suffix = info.suffix().toLower();
-    if (info.isFile() && (suffix == "stxf" || suffix == "aflow" || suffix == "artflow" || suffix == "kromo" || suffix == "kstudio")) {
-      QVariantMap item;
-      item["name"] = info.completeBaseName();
-      item["path"] = info.absoluteFilePath();
-      item["type"] = "drawing";
-      item["date"] = info.lastModified().toString("dd MMM yyyy");
-
-      QFile f(info.absoluteFilePath());
-      if (f.open(QIODevice::ReadOnly)) {
-        QByteArray jsonData = f.readAll();
-        QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-        if (!doc.isNull()) {
-          QJsonObject root = doc.object();
-          if (root.contains("thumbnail")) {
-            QString b64 = root["thumbnail"].toString();
-            if (!b64.isEmpty()) {
-              item["preview"] = "data:image/png;base64," + b64;
-            }
-          }
-        }
-        f.close();
-      }
-      results.append(item);
-    } else if (info.isDir()) {
-      QVariantMap item;
-      item["name"] = info.fileName();
-      item["path"] = info.absoluteFilePath();
-      item["type"] = "folder";
-      item["date"] = info.lastModified().toString("dd MMM yyyy");
-
-      // Scan folder for internal thumbnails to show the "stack" look
-      QDir subDir(info.absoluteFilePath());
-      QFileInfoList subEntries = subDir.entryInfoList(QStringList() << "*.kromo" << "*.kstudio" << "*.stxf" << "*.aflow" << "*.artflow",
-                                                      QDir::Files, QDir::Time);
-      QVariantList thumbs;
-      for (int i = 0; i < qMin(subEntries.size(), 3); ++i) {
-        QFile f(subEntries[i].absoluteFilePath());
-        if (f.open(QIODevice::ReadOnly)) {
-          QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
-          if (!doc.isNull() && doc.object().contains("thumbnail")) {
-            thumbs.append("data:image/png;base64," +
-                          doc.object()["thumbnail"].toString());
-          }
-          f.close();
-        }
-      }
-      item["thumbnails"] = thumbs;
-      if (thumbs.size() > 0)
-        item["preview"] = thumbs[0]; // Front cover
-
-      results.append(item);
-    }
-  }
-  return results;
+  // Fuente única de escaneo (compartida con ProjectModel). No depende del estado
+  // de este canvas; combina KromoStudioProjects con recientes externos.
+  return scanKromoProjects();
 }
 
 QVariantList CanvasItem::get_sketchbook_pages(const QString &folderPath) {
@@ -10789,7 +10720,7 @@ bool CanvasItem::exportImage(const QString &path, const QString &format) {
     return false;
 
   QString localPath = path;
-  if (localPath.startsWith("file:///")) {
+  if (localPath.startsWith("file:", Qt::CaseInsensitive)) {
     localPath = QUrl(path).toLocalFile();
   }
 
@@ -13920,6 +13851,22 @@ void CanvasItem::capture_timelapse_frame() {
 
 void CanvasItem::undo() {
   if (m_isTransforming) {
+    // Vector node-edit mode: Ctrl+Z undoes the last node operation instead of
+    // cancelling the whole transform session.
+    Layer *layer = m_layerManager ? m_layerManager->getActiveLayer() : nullptr;
+    if (layer && layer->type == Layer::Type::Vector &&
+        m_undoManager && m_undoManager->canUndo()) {
+      m_undoManager->undo();
+      m_cachedCanvasImage = QImage();
+      setProjectDirty(true);
+      m_activeLayerIndex = m_layerManager->getActiveLayerIndex();
+      m_lastActiveLayerIndex = m_activeLayerIndex;
+      updateLayersList();
+      emit activeLayerChanged();
+      dirtyPanelOverlay();
+      update();
+      return;
+    }
     cancelTransform();
     return;
   }
@@ -13936,6 +13883,20 @@ void CanvasItem::undo() {
 
 void CanvasItem::redo() {
   if (m_isTransforming) {
+    Layer *layer = m_layerManager ? m_layerManager->getActiveLayer() : nullptr;
+    if (layer && layer->type == Layer::Type::Vector &&
+        m_undoManager && m_undoManager->canRedo()) {
+      m_undoManager->redo();
+      m_cachedCanvasImage = QImage();
+      setProjectDirty(true);
+      m_activeLayerIndex = m_layerManager->getActiveLayerIndex();
+      m_lastActiveLayerIndex = m_activeLayerIndex;
+      updateLayersList();
+      emit activeLayerChanged();
+      dirtyPanelOverlay();
+      update();
+      return;
+    }
     cancelTransform();
   }
   if (m_undoManager && m_undoManager->canRedo()) {
@@ -14918,8 +14879,17 @@ void CanvasItem::beginLiquify() {
   // Initialize the engine with the current layer data
   m_liquifyEngine->begin(*layer->buffer, m_canvasWidth, m_canvasHeight);
 
+  // Arrancar la sesión GPU de inmediato (mapa de desplazamiento en FBO
+  // ping-pong); si no hay contexto GL se mantiene el respaldo CPU/Rust.
+  m_liquifyEngine->primeGpu();
+
   m_isLiquifying = true;
   m_liquifyLastPos = QPointF(-1, -1);
+
+  // Forzar recomposición completa SIN la capa activa: el composite cacheado
+  // aún contiene el trazo original y se vería duplicado bajo el preview
+  // deformado (el salto de capa en paint() solo aplica al recomponer).
+  m_cachedCanvasImage = QImage();
 
   // Render initial preview (just the original)
   m_liquifyPreviewCache = QImage();
@@ -14980,7 +14950,7 @@ void CanvasItem::cancelLiquify() {
     layer->dirty = true;
   }
 
-  m_liquifyEngine->end(); // Clears engine state
+  m_liquifyEngine->abort(); // Clears engine state without baking
   m_liquifyBeforeBuffer.reset();
   m_isLiquifying = false;
   m_liquifyPreviewCache = QImage();
@@ -15040,13 +15010,48 @@ void CanvasItem::handleLiquifyDraw(const QPointF &canvasPos, float pressure) {
   m_liquifyEngine->setStrength(origStrength);
 
   // Update preview cache (throttled via requestUpdate)
-  m_liquifyPreviewCache = m_liquifyEngine->renderPreview();
+  if (m_liquifyEngine->gpuActive()) {
+    // Ruta GPU: el preview se dibuja directamente desde las texturas GPU en
+    // renderLiquifyPreview(); no hay readback por dab a la CPU.
+    m_liquifyPreviewCache = QImage();
+  } else {
+    m_liquifyPreviewCache = m_liquifyEngine->renderPreview();
+  }
   requestUpdate();
 }
 
 void CanvasItem::renderLiquifyPreview(QPainter *painter,
                                       const QRectF &paperRect) {
-  if (!m_isLiquifying || m_liquifyPreviewCache.isNull())
+  if (!m_isLiquifying)
+    return;
+
+  // Ruta GPU: dibujar el quad deformado (liquify.frag) directamente desde la
+  // textura fuente + el mapa de desplazamiento, sin pasar por la CPU.
+  if (m_liquifyEngine && m_liquifyEngine->gpuActive() &&
+      QOpenGLContext::currentContext()) {
+    QPaintDevice *dev = painter->device();
+    const qreal vw = dev->width();
+    const qreal vh = dev->height();
+    if (vw <= 0 || vh <= 0)
+      return;
+    // Mapear las esquinas del lienzo (con zoom/pan/rotación del painter) a
+    // coordenadas de dispositivo normalizadas del viewport actual.
+    const QTransform t = painter->combinedTransform();
+    auto toNdc = [&](const QPointF &p) {
+      const QPointF s = t.map(p);
+      return QPointF(s.x() / vw * 2.0 - 1.0, 1.0 - s.y() / vh * 2.0);
+    };
+    const QPointF corners[4] = {
+        toNdc(paperRect.topLeft()), toNdc(paperRect.topRight()),
+        toNdc(paperRect.bottomLeft()), toNdc(paperRect.bottomRight())};
+
+    painter->beginNativePainting();
+    m_liquifyEngine->drawPreview(corners, 1.0f);
+    painter->endNativePainting();
+    return;
+  }
+
+  if (m_liquifyPreviewCache.isNull())
     return;
 
   painter->save();
@@ -15673,6 +15678,54 @@ static QByteArray getPsdBlendModeKey(BlendMode mode) {
   }
 }
 
+// Mapea la clave de modo de mezcla "8BIM" de un PSD a nuestro BlendMode.
+// La comparación es insensible a mayúsculas/espacios para tolerar tanto las
+// claves estándar de Photoshop ("hLit"/"sLit") como las que escribe exportPSD.
+static BlendMode psdKeyToBlendMode(const QByteArray &key) {
+  QByteArray k = key.trimmed().toLower();
+  if (k == "mul") return BlendMode::Multiply;
+  if (k == "scrn") return BlendMode::Screen;
+  if (k == "over") return BlendMode::Overlay;
+  if (k == "dark") return BlendMode::Darken;
+  if (k == "lite") return BlendMode::Lighten;
+  if (k == "div") return BlendMode::ColorDodge;
+  if (k == "idiv") return BlendMode::ColorBurn;
+  if (k == "hlit") return BlendMode::HardLight;
+  if (k == "slit") return BlendMode::SoftLight;
+  if (k == "diff") return BlendMode::Difference;
+  if (k == "smud") return BlendMode::Exclusion;
+  if (k == "fdiv") return BlendMode::Divide;
+  return BlendMode::Normal;
+}
+
+// Descompresión PackBits (RLE) de una fila de canal PSD.
+// Rellena exactamente `expected` bytes en `dst` (con ceros si la fuente
+// se queda corta) para no desbordar el buffer destino.
+static void decodePackBits(const QByteArray &src, char *dst, int expected) {
+  int si = 0, di = 0;
+  const int n = src.size();
+  while (si < n && di < expected) {
+    qint8 hdr = static_cast<qint8>(src[si++]);
+    if (hdr >= 0) {
+      // Copia literal de (hdr + 1) bytes
+      int count = hdr + 1;
+      for (int i = 0; i < count && si < n && di < expected; ++i)
+        dst[di++] = src[si++];
+    } else if (hdr != -128) {
+      // Repite el siguiente byte (1 - hdr) veces
+      int count = 1 - hdr;
+      if (si < n) {
+        char val = src[si++];
+        for (int i = 0; i < count && di < expected; ++i)
+          dst[di++] = val;
+      }
+    }
+    // hdr == -128: no-op (sin datos)
+  }
+  while (di < expected)
+    dst[di++] = 0;
+}
+
 bool CanvasItem::exportPSD(const QString &path) {
   QFile file(path);
   if (!file.open(QIODevice::WriteOnly)) {
@@ -15874,6 +15927,352 @@ bool CanvasItem::exportPSD(const QString &path) {
 
   file.close();
   qDebug() << "[PSD Export] PSD file successfully exported to:" << path;
+  return true;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Importador PSD nativo
+// Deserializa un Photoshop Document de 8 bits / RGB: cabecera, registros de
+// capas (límites, canales, modo de mezcla, opacidad, visibilidad, nombre) y
+// datos de imagen Raw o RLE (PackBits). Reconstruye cada capa en formato
+// premultiplicado y la inserta en el lienzo, redimensionándolo al tamaño del PSD.
+// ════════════════════════════════════════════════════════════════════════════
+bool CanvasItem::importPSD(const QString &path) {
+  QString localPath = path;
+  if (localPath.startsWith("file:", Qt::CaseInsensitive))
+    localPath = QUrl(path).toLocalFile();
+
+  QFile file(localPath);
+  if (!file.open(QIODevice::ReadOnly)) {
+    qWarning() << "[PSD Import] No se pudo abrir:" << localPath;
+    emit notificationRequested("No se pudo abrir el archivo PSD", "error");
+    return false;
+  }
+
+  QDataStream in(&file);
+  in.setByteOrder(QDataStream::BigEndian);
+
+  // ── 1. Cabecera (File Header) ──────────────────────────────────────────────
+  char sig[4];
+  if (in.readRawData(sig, 4) != 4 || qstrncmp(sig, "8BPS", 4) != 0) {
+    emit notificationRequested("Firma PSD inválida", "error");
+    return false;
+  }
+  quint16 version = 0;
+  in >> version;
+  if (version != 1) { // 2 = PSB (large doc), no soportado
+    emit notificationRequested("Formato PSB no soportado (solo PSD)", "error");
+    return false;
+  }
+  in.skipRawData(6); // Reservado
+  quint16 channels = 0, depth = 0, colorMode = 0;
+  quint32 psdHeight = 0, psdWidth = 0;
+  in >> channels;
+  in >> psdHeight >> psdWidth;
+  in >> depth >> colorMode;
+
+  if (channels < 3 || colorMode != 3 || depth != 8) {
+    emit notificationRequested("Solo se soportan PSD RGB de 8 bits", "error");
+    return false;
+  }
+  if (psdWidth == 0 || psdHeight == 0 || psdWidth > 30000 || psdHeight > 30000) {
+    emit notificationRequested("Dimensiones de PSD inválidas", "error");
+    return false;
+  }
+
+  const int W = static_cast<int>(psdWidth);
+  const int H = static_cast<int>(psdHeight);
+
+  // ── 2. Color Mode Data (se omite) ──────────────────────────────────────────
+  quint32 colorModeLen = 0;
+  in >> colorModeLen;
+  in.skipRawData(colorModeLen);
+
+  // ── 3. Image Resources (se omite) ──────────────────────────────────────────
+  quint32 imageResLen = 0;
+  in >> imageResLen;
+  in.skipRawData(imageResLen);
+
+  // ── 4. Layer and Mask Information ───────────────────────────────────────────
+  quint32 layerMaskLen = 0;
+  in >> layerMaskLen;
+  const qint64 layerMaskEnd = file.pos() + layerMaskLen;
+
+  struct PsdChannelInfo { qint16 id; quint32 length; };
+  struct PsdLayerRecord {
+    int top = 0, left = 0, bottom = 0, right = 0;
+    QVector<PsdChannelInfo> channels;
+    BlendMode blend = BlendMode::Normal;
+    quint8 opacity = 255;
+    bool visible = true;
+    QString name;
+  };
+  QVector<PsdLayerRecord> records;
+
+  if (layerMaskLen > 0) {
+    quint32 layerInfoLen = 0;
+    in >> layerInfoLen;
+    qint16 layerCountRaw = 0;
+    in >> layerCountRaw;
+    int layerCount = qAbs(static_cast<int>(layerCountRaw));
+
+    // Registros de capa
+    for (int i = 0; i < layerCount; ++i) {
+      PsdLayerRecord rec;
+      qint32 t = 0, l = 0, b = 0, r = 0;
+      in >> t >> l >> b >> r;
+      rec.top = t; rec.left = l; rec.bottom = b; rec.right = r;
+
+      quint16 nch = 0;
+      in >> nch;
+      for (int c = 0; c < nch; ++c) {
+        qint16 cid = 0;
+        quint32 clen = 0;
+        in >> cid >> clen;
+        rec.channels.append({cid, clen});
+      }
+
+      char blendSig[4];
+      in.readRawData(blendSig, 4); // "8BIM"
+      char blendKey[4];
+      in.readRawData(blendKey, 4);
+      rec.blend = psdKeyToBlendMode(QByteArray(blendKey, 4));
+
+      quint8 op = 255, clipping = 0, flags = 0, filler = 0;
+      in >> op >> clipping >> flags >> filler;
+      rec.opacity = op;
+      rec.visible = !(flags & 0x02); // bit 1: 1 = oculta
+
+      quint32 extraLen = 0;
+      in >> extraLen;
+      const qint64 extraEnd = file.pos() + extraLen;
+
+      // Datos de máscara de capa (se omiten)
+      quint32 maskLen = 0;
+      in >> maskLen;
+      in.skipRawData(maskLen);
+
+      // Rangos de mezcla (se omiten)
+      quint32 blendRangesLen = 0;
+      in >> blendRangesLen;
+      in.skipRawData(blendRangesLen);
+
+      // Nombre de capa (Pascal string, alineado a 4 bytes incluyendo el byte de longitud)
+      quint8 nameLen = 0;
+      in >> nameLen;
+      QByteArray nameBytes(nameLen, '\0');
+      if (nameLen > 0)
+        in.readRawData(nameBytes.data(), nameLen);
+      rec.name = QString::fromUtf8(nameBytes).trimmed();
+      if (rec.name.isEmpty())
+        rec.name = QStringLiteral("Layer %1").arg(i + 1);
+
+      // Saltar al final de los campos extra (omite Unicode name, section dividers, etc.)
+      file.seek(extraEnd);
+      records.append(rec);
+    }
+
+    // ── Datos de imagen de cada capa (en el mismo orden que los registros) ────
+    QVector<QImage> layerImages;
+    for (const PsdLayerRecord &rec : records) {
+      const int lw = rec.right - rec.left;
+      const int lh = rec.bottom - rec.top;
+
+      QHash<qint16, QByteArray> chanData;
+      for (const PsdChannelInfo &ch : rec.channels) {
+        const qint64 chanEnd = file.pos() + ch.length;
+        // Canales de máscara (-2, -3) tienen dimensiones distintas: se omiten.
+        if (ch.id < -1 || lw <= 0 || lh <= 0) {
+          file.seek(chanEnd);
+          continue;
+        }
+        quint16 compression = 0;
+        in >> compression;
+        QByteArray decoded(lw * lh, '\0');
+        if (compression == 0) {
+          // Raw
+          in.readRawData(decoded.data(), lw * lh);
+        } else if (compression == 1) {
+          // RLE PackBits: lh contadores de bytes por línea, luego los datos
+          QVector<quint16> rowLengths(lh);
+          for (int y = 0; y < lh; ++y)
+            in >> rowLengths[y];
+          for (int y = 0; y < lh; ++y) {
+            QByteArray rowData(rowLengths[y], '\0');
+            if (rowLengths[y] > 0)
+              in.readRawData(rowData.data(), rowLengths[y]);
+            decodePackBits(rowData, decoded.data() + y * lw, lw);
+          }
+        } else {
+          // ZIP u otro: no soportado, se omite el canal
+          file.seek(chanEnd);
+          continue;
+        }
+        chanData.insert(ch.id, decoded);
+        file.seek(chanEnd); // Reposicionar exactamente al final del canal
+      }
+
+      // Reconstruir la capa (premultiplicada) a su tamaño de límites
+      QImage img(qMax(lw, 1), qMax(lh, 1), QImage::Format_RGBA8888_Premultiplied);
+      img.fill(Qt::transparent);
+      if (lw > 0 && lh > 0) {
+        const QByteArray rC = chanData.value(0);
+        const QByteArray gC = chanData.value(1);
+        const QByteArray bC = chanData.value(2);
+        const QByteArray aC = chanData.value(-1);
+        const bool hasA = !aC.isEmpty();
+        for (int y = 0; y < lh; ++y) {
+          uchar *scan = img.scanLine(y);
+          for (int x = 0; x < lw; ++x) {
+            const int idx = y * lw + x;
+            uint8_t rv = idx < rC.size() ? static_cast<uint8_t>(rC[idx]) : 0;
+            uint8_t gv = idx < gC.size() ? static_cast<uint8_t>(gC[idx]) : 0;
+            uint8_t bv = idx < bC.size() ? static_cast<uint8_t>(bC[idx]) : 0;
+            uint8_t av = hasA ? (idx < aC.size() ? static_cast<uint8_t>(aC[idx]) : 255) : 255;
+            // El PSD guarda color sin premultiplicar; premultiplicamos.
+            scan[x * 4 + 0] = static_cast<uint8_t>((rv * av) / 255);
+            scan[x * 4 + 1] = static_cast<uint8_t>((gv * av) / 255);
+            scan[x * 4 + 2] = static_cast<uint8_t>((bv * av) / 255);
+            scan[x * 4 + 3] = av;
+          }
+        }
+      }
+      layerImages.append(img);
+    }
+
+    // ── Reconstrucción en el lienzo ──────────────────────────────────────────
+    if (!records.isEmpty()) {
+      syncGpuToCpu();
+      resizeCanvas(W, H);
+      setBackgroundColor("transparent");
+
+      // resizeCanvas() deja una "Layer 1" por defecto en el índice 0; añadimos
+      // las capas del PSD (bottom→top, igual que el orden de los registros) y
+      // luego eliminamos esa capa por defecto sobrante.
+      for (int i = 0; i < records.size(); ++i) {
+        const PsdLayerRecord &rec = records[i];
+        const QImage &src = layerImages[i];
+
+        int newIdx = m_layerManager->addLayer(rec.name.toStdString());
+        Layer *layer = m_layerManager->getLayer(newIdx);
+        if (!layer || !layer->buffer)
+          continue;
+
+        // Componer la imagen de la capa (tamaño de límites) en un lienzo completo
+        QImage full(W, H, QImage::Format_RGBA8888_Premultiplied);
+        full.fill(Qt::transparent);
+        if (!src.isNull()) {
+          QPainter p(&full);
+          p.setCompositionMode(QPainter::CompositionMode_Source);
+          p.drawImage(rec.left, rec.top, src);
+          p.end();
+        }
+        layer->buffer->loadRawData(full.constBits());
+        layer->opacity = rec.opacity / 255.0f;
+        layer->visible = rec.visible;
+        layer->blendMode = rec.blend;
+        layer->markDirty();
+      }
+
+      // Eliminar la capa por defecto del índice 0 (ahora hay > 1 capa)
+      if (m_layerManager->getLayerCount() > records.size())
+        m_layerManager->removeLayer(0);
+
+      int topIdx = m_layerManager->getLayerCount() - 1;
+      setActiveLayer(topIdx < 0 ? 0 : topIdx);
+
+      clearRenderCaches();
+      updateLayersList();
+      requestUpdate();
+
+      m_currentProjectPath.clear();
+      m_currentProjectName = QFileInfo(localPath).completeBaseName();
+      emit currentProjectPathChanged();
+      emit currentProjectNameChanged();
+      setProjectDirty(true);
+
+      file.close();
+      emit notificationRequested(
+          QStringLiteral("✓ PSD importado: %1 capas").arg(records.size()),
+          "success");
+      return true;
+    }
+  }
+
+  // ── Fallback: PSD aplanado (sin capas) → cargar la imagen fusionada ─────────
+  file.seek(layerMaskEnd);
+  quint16 mergedCompression = 0;
+  in >> mergedCompression;
+
+  QVector<QByteArray> mergedChans(channels);
+  bool mergedOk = true;
+  if (mergedCompression == 0) {
+    for (int c = 0; c < channels; ++c) {
+      mergedChans[c].resize(W * H);
+      in.readRawData(mergedChans[c].data(), W * H);
+    }
+  } else if (mergedCompression == 1) {
+    QVector<quint16> rowCounts(channels * H);
+    for (int i = 0; i < channels * H; ++i)
+      in >> rowCounts[i];
+    int ri = 0;
+    for (int c = 0; c < channels; ++c) {
+      mergedChans[c].resize(W * H);
+      for (int y = 0; y < H; ++y) {
+        QByteArray rowData(rowCounts[ri], '\0');
+        if (rowCounts[ri] > 0)
+          in.readRawData(rowData.data(), rowCounts[ri]);
+        decodePackBits(rowData, mergedChans[c].data() + y * W, W);
+        ++ri;
+      }
+    }
+  } else {
+    mergedOk = false;
+  }
+
+  if (!mergedOk) {
+    emit notificationRequested("Compresión PSD no soportada", "error");
+    return false;
+  }
+
+  QImage merged(W, H, QImage::Format_RGBA8888_Premultiplied);
+  const bool hasA = channels >= 4;
+  for (int y = 0; y < H; ++y) {
+    uchar *scan = merged.scanLine(y);
+    for (int x = 0; x < W; ++x) {
+      const int idx = y * W + x;
+      uint8_t rv = static_cast<uint8_t>(mergedChans[0][idx]);
+      uint8_t gv = static_cast<uint8_t>(mergedChans[1][idx]);
+      uint8_t bv = static_cast<uint8_t>(mergedChans[2][idx]);
+      uint8_t av = hasA ? static_cast<uint8_t>(mergedChans[3][idx]) : 255;
+      scan[x * 4 + 0] = static_cast<uint8_t>((rv * av) / 255);
+      scan[x * 4 + 1] = static_cast<uint8_t>((gv * av) / 255);
+      scan[x * 4 + 2] = static_cast<uint8_t>((bv * av) / 255);
+      scan[x * 4 + 3] = av;
+    }
+  }
+
+  syncGpuToCpu();
+  resizeCanvas(W, H);
+  setBackgroundColor("transparent");
+  Layer *layer = m_layerManager->getLayer(0);
+  if (layer && layer->buffer) {
+    layer->buffer->loadRawData(merged.constBits());
+    layer->markDirty();
+  }
+  setActiveLayer(0);
+  clearRenderCaches();
+  updateLayersList();
+  requestUpdate();
+
+  m_currentProjectPath.clear();
+  m_currentProjectName = QFileInfo(localPath).completeBaseName();
+  emit currentProjectPathChanged();
+  emit currentProjectNameChanged();
+  setProjectDirty(true);
+
+  file.close();
+  emit notificationRequested("✓ PSD importado (imagen aplanada)", "success");
   return true;
 }
 

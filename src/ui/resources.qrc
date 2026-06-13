@@ -1,7 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/">
     <file>qml/main_pro.qml</file>
-    <file>qml/Translations.js</file>
+    <file>qml/translations.js</file>
     <file>qml/components/AppButton.qml</file>
     <file>qml/components/DashboardView.qml</file>
     <file>qml/components/GalleryView.qml</file>
@@ -45,6 +45,7 @@
     <file>qml/components/NavigatorPanel.qml</file>
     <file>qml/components/BrushLibraryPanel.qml</file>
     <file>qml/components/StudioSlider.qml</file>
+    <file>qml/components/StudioSlidersPanel.qml</file>
     <file>qml/components/FloatingPanel.qml</file>
     <file>qml/components/BrushSettingsPanel.qml</file>
     <file>qml/components/GradientSettingsPanel.qml</file>

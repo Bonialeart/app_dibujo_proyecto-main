@@ -32,6 +32,10 @@
 #include <memory>
 #include <vector>
 
+class QOpenGLShaderProgram;
+class QOpenGLFramebufferObject;
+class QOpenGLTexture;
+
 namespace artflow {
 
 // ─── Liquify Brush Modes ──────────────────────────────────────────
@@ -114,7 +118,45 @@ public:
 
   bool isActive() const { return m_active; }
 
+  // ── GPU path (OpenGL ES 2.0/3.0) ──
+  // The displacement map lives in a ping-pong pair of FBOs; each brush dab
+  // is one fragment pass (liquify_brush.frag) and the live preview is drawn
+  // straight from GPU textures (liquify.frag) — no per-dab CPU readback.
+
+  // Starts/joins the GPU session. Requires a current GL context; returns
+  // false (and the engine stays on the Rust/CPU path) when none is current.
+  bool primeGpu();
+  bool gpuActive() const { return m_gpuSession; }
+
+  // Draws the deformed preview as a screen-space quad. Must be called with
+  // the GL context current (inside QPainter::beginNativePainting()).
+  // ndcCorners: TL, TR, BL, BR of the canvas rect in normalized device coords.
+  void drawPreview(const QPointF ndcCorners[4], float opacity);
+
+  // Discards the session without baking (cancel path).
+  void abort();
+
+  // Frees GL objects; call with the GL context current.
+  void releaseGpuResources();
+
 private:
+  // ── GPU internals ──
+  bool ensureGpuResources();
+  void applyBrushGpu(float cx, float cy, float prevCx, float prevCy);
+  QImage bakeGpu() const;
+
+  bool m_gpuSession = false;       // dabs are accumulating on the GPU
+  bool m_dispClearPending = false; // displacement FBOs need a zero-clear
+  bool m_sourceDirty = false;      // m_sourceImage needs (re)upload
+  float m_dispZero = 0.5f;         // exact encoding zero point (format-dependent)
+  QImage m_sourceImage;            // snapshot of the layer at begin()
+
+  QOpenGLShaderProgram *m_brushProgram = nullptr;
+  QOpenGLShaderProgram *m_previewProgram = nullptr;
+  QOpenGLFramebufferObject *m_dispPing = nullptr; // read
+  QOpenGLFramebufferObject *m_dispPong = nullptr; // write
+  mutable QOpenGLFramebufferObject *m_bakeFBO = nullptr;
+  QOpenGLTexture *m_sourceTex = nullptr;
   // ── State ──
   bool m_active = false;
   LiquifyMode m_mode = LiquifyMode::Push;

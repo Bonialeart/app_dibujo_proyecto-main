@@ -353,6 +353,7 @@ public:
   bool projectDirty() const { return m_projectDirty; }
   void setProjectDirty(bool dirty);
   Q_INVOKABLE bool importImageAsLayer(const QString &path);
+  Q_INVOKABLE bool importPSD(const QString &path);
   Q_INVOKABLE bool importABR(const QString &path);
   Q_INVOKABLE void updateTransformProperties(float x, float y, float scale,
                                              float rotation, float w, float h);
@@ -449,6 +450,9 @@ public:
                                             const QString &targetPath);
   QRectF transformBox() const { return m_transformBox; }
   Q_INVOKABLE QVariantList get_project_list(); // RE-ADDED
+  // Carpeta de biblioteca por defecto (Documentos/KromoStudioProjects) como
+  // URL file:/// — para inicializar el FileDialog de guardado.
+  Q_INVOKABLE QString getDefaultProjectsFolderUrl() const;
   Q_INVOKABLE QVariantList get_sketchbook_pages(const QString &folderPath);
   Q_INVOKABLE QString create_new_sketchbook(const QString &name,
                                             const QString &coverColor);

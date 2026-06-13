@@ -2659,4 +2659,19 @@ Item {
             }
         }
     }
+
+    // --- VERTICAL BRUSH SIZE & OPACITY SLIDERS PANEL (Studio Mode) ---
+    StudioSlidersPanel {
+        id: studioSlidersPanel
+        mainCanvas: studioLayout.mainCanvas
+        accentColor: studioLayout.accentColor
+        
+        x: toolsToolbar.dockedSide === "left" 
+            ? (toolsToolbar.x + toolsToolbar.width + 12 * uiScale) 
+            : (toolsToolbar.x - width - 12 * uiScale)
+        y: studioInfoBar.height + (studioTabBar.visible ? studioTabBar.height : 0) + 40 * uiScale
+        
+        visible: studioLayout.visible && !studioLayout.isZenMode
+        z: 2800
+    }
 }

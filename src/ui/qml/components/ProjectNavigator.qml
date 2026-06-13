@@ -21,6 +21,13 @@ Item {
         }
     }
 
+    // Refresca la vista actual (Dashboard/Galería) tras guardar/borrar/renombrar,
+    // sin depender de las señales del canvas activo.
+    function refresh() {
+        if (stack.currentItem && typeof stack.currentItem.refresh === "function")
+            stack.currentItem.refresh()
+    }
+
     StackView {
         id: stack
         anchors.fill: parent
@@ -56,6 +63,7 @@ Item {
             onOpenProject: (path) => navRoot.openDrawing(path)
             onOpenSketchbook: (path, title) => navRoot.openSketchbook(path, title)
             onCreateNewProject: navRoot.createNewProject()
+            onCreateNewGroup: navRoot.createNewGroup()
         }
     }
     
